@@ -90,6 +90,20 @@ INSERT INTO movimentacao (id, veiculo_id, tipo, mensalista_id, tarifa_id, data_e
 INSERT INTO movimentacao (id, veiculo_id, tipo, mensalista_id, tarifa_id, data_entrada, status) VALUES
   (6,5,'AVULSO',NULL,1,now() - INTERVAL '6 hours','CANCELADO');
 
+-- ---------- NOTA DE ENTRADA (compra do fornecedor, confirmada) ----------
+INSERT INTO nota_entrada (id, numero, serie, fornecedor_id, condicao_pagamento_id, data_emissao, data_chegada, valor_produtos, valor_total, situacao) VALUES
+  (1,'1001','1',1,2,DATE '2026-06-01',DATE '2026-06-03',500.00,500.00,'CONFIRMADA');
+INSERT INTO item_nota_entrada (nota_entrada_id, produto_id, sequencia, quantidade, valor_unitario, valor_total) VALUES
+  (1,1,1,120,2.50,300.00),
+  (1,2,2,200,1.00,200.00);
+
+-- ---------- NOTA DE SAIDA (venda na conveniencia, confirmada) ----------
+INSERT INTO nota_saida (id, numero, serie, cliente_id, condicao_pagamento_id, data_emissao, data_saida, valor_produtos, valor_total, situacao) VALUES
+  (1,'5001','1',1,1,DATE '2026-06-10',DATE '2026-06-10',16.00,16.00,'CONFIRMADA');
+INSERT INTO item_nota_saida (nota_saida_id, produto_id, sequencia, quantidade, valor_unitario, valor_total) VALUES
+  (1,1,1,2,5.00,10.00),
+  (1,3,2,1,6.00,6.00);
+
 -- ---------- AJUSTE DAS SEQUENCIAS (IDENTITY) ----------
 SELECT setval(pg_get_serial_sequence('pais','id'),               (SELECT max(id) FROM pais));
 SELECT setval(pg_get_serial_sequence('estado','id'),             (SELECT max(id) FROM estado));
@@ -110,3 +124,5 @@ SELECT setval(pg_get_serial_sequence('tarifa','id'),             (SELECT max(id)
 SELECT setval(pg_get_serial_sequence('veiculo','id'),            (SELECT max(id) FROM veiculo));
 SELECT setval(pg_get_serial_sequence('mensalista','id'),         (SELECT max(id) FROM mensalista));
 SELECT setval(pg_get_serial_sequence('movimentacao','id'),       (SELECT max(id) FROM movimentacao));
+SELECT setval(pg_get_serial_sequence('nota_entrada','id'),       (SELECT max(id) FROM nota_entrada));
+SELECT setval(pg_get_serial_sequence('nota_saida','id'),         (SELECT max(id) FROM nota_saida));
