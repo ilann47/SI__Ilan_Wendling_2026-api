@@ -115,6 +115,14 @@ INSERT INTO conta_receber (id, cliente_id, nota_saida_id, condicao_pagamento_id,
 INSERT INTO conta_receber (id, cliente_id, mensalista_id, numero_parcela, total_parcelas, valor_original, valor_total, data_emissao, data_vencimento, situacao) VALUES
   (2,1,1,1,1,250.00,250.00,DATE '2026-06-01',DATE '2026-06-10','PENDENTE');
 
+-- ---------- NOTA DE SERVICO (NFS-e: servico de estacionamento) ----------
+-- NFS-e da diaria avulsa do Jose (origem = movimentacao)
+INSERT INTO nota_servico (id, numero, serie, cliente_id, servico_id, movimentacao_id, forma_pagamento_id, data_emissao, valor_servico, aliquota_iss, valor_iss, valor_total, situacao) VALUES
+  (1,'9001','1',3,1,4,1,DATE '2026-06-13',50.00,5.00,2.50,50.00,'EMITIDA');
+-- NFS-e da mensalidade da Maria (origem = mensalista)
+INSERT INTO nota_servico (id, numero, serie, cliente_id, servico_id, mensalista_id, condicao_pagamento_id, data_emissao, valor_servico, aliquota_iss, valor_iss, valor_total, situacao) VALUES
+  (2,'9002','1',1,2,1,1,DATE '2026-06-01',250.00,5.00,12.50,250.00,'EMITIDA');
+
 -- ---------- AJUSTE DAS SEQUENCIAS (IDENTITY) ----------
 SELECT setval(pg_get_serial_sequence('pais','id'),               (SELECT max(id) FROM pais));
 SELECT setval(pg_get_serial_sequence('estado','id'),             (SELECT max(id) FROM estado));
@@ -139,3 +147,4 @@ SELECT setval(pg_get_serial_sequence('nota_entrada','id'),       (SELECT max(id)
 SELECT setval(pg_get_serial_sequence('nota_saida','id'),         (SELECT max(id) FROM nota_saida));
 SELECT setval(pg_get_serial_sequence('conta_pagar','id'),        (SELECT max(id) FROM conta_pagar));
 SELECT setval(pg_get_serial_sequence('conta_receber','id'),      (SELECT max(id) FROM conta_receber));
+SELECT setval(pg_get_serial_sequence('nota_servico','id'),       (SELECT max(id) FROM nota_servico));
