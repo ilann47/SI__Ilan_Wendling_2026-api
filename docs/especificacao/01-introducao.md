@@ -4,7 +4,7 @@
 
 Este documento integra a especificação de requisitos do Sistema de Controle do **Estacionamento Kaneko**, elaborado segundo o modelo de prática profissional de Sistemas de Informação. Esta seção apresenta a finalidade do documento, delimita o escopo do produto de software — explicitando o que está dentro e fora do alcance da versão 1 (v1) — e descreve a empresa para a qual o sistema é proposto. As seções seguintes da especificação tratam da análise do negócio, dos requisitos funcionais e não funcionais, dos casos de uso, do modelo de dados (Diagrama Entidade-Relacionamento e dicionário de dados) e dos demais artefatos técnicos.
 
-A delimitação de escopo aqui apresentada está fundamentada diretamente no modelo físico de dados do sistema, materializado no arquivo `database/schema.sql` (PostgreSQL 17, banco `estacionamento_kaneko`), que reúne 32 tabelas distribuídas pelos domínios de geografia, pessoas, condições e formas de pagamento, recursos humanos, pátio (mensalista e avulso), conveniência com controle de estoque, documentos fiscais e financeiro a pagar e a receber.
+A delimitação de escopo aqui apresentada está fundamentada diretamente no modelo físico de dados do sistema, materializado no arquivo `database/schema.sql` (PostgreSQL 17, banco `estacionamento_kaneko`), que reúne 31 tabelas distribuídas pelos domínios de geografia, pessoas, condições e formas de pagamento, recursos humanos, pátio (mensalista e avulso), conveniência com controle de estoque, documentos fiscais e financeiro a pagar e a receber.
 
 ---
 
