@@ -37,9 +37,9 @@ INSERT INTO funcionario (id, nome, cpf, telefone, email, cidade_id, nacionalidad
   (3,'Ana Souza','333.333.333-33','45999990003','ana@kaneko.com',2,1,3,DATE '1995-11-03','FEMININO',DATE '2025-02-01',2000.00);
 
 -- ---------- FORNECEDOR (com condicao + limite) ----------
-INSERT INTO fornecedor (id, nome, nome_fantasia, documento, telefone, email, cidade_id, nacionalidade_id, condicao_pagamento_id, limite_credito) VALUES
-  (1,'Bebidas Cataratas Ltda','Cataratas Bebidas','11.111.111/0001-11','4533330001','vendas@cataratas.com',2,1,2,5000.00),
-  (2,'Snacks do Oeste ME','Oeste Snacks','22.222.222/0001-22','4533330002','contato@oestesnacks.com',3,1,3,3000.00);
+INSERT INTO fornecedor (id, nome, nome_fantasia, documento, cidade_id, nacionalidade_id, condicao_pagamento_id, limite_credito) VALUES
+  (1,'Bebidas Cataratas Ltda','Cataratas Bebidas','11.111.111/0001-11',2,1,2,5000.00),
+  (2,'Snacks do Oeste ME','Oeste Snacks','22.222.222/0001-22',3,1,3,3000.00);
 
 -- ---------- CLIENTE (com condicao + limite) ----------
 INSERT INTO cliente (id, nome, tipo, documento, telefone, email, endereco, numero, bairro, cep, cidade_id, nacionalidade_id, condicao_pagamento_id, data_nascimento, sexo, limite_credito) VALUES
@@ -137,9 +137,11 @@ INSERT INTO produto_fornecedor (produto_id, fornecedor_id, codigo_prod, custo) V
   (1,1,'CC350',2.50),(2,1,'AG500',1.00),(3,2,'SLG100',3.00);
 -- Contatos do fornecedor 1 (Cataratas)
 INSERT INTO fornecedor_email (fornecedor_id, email, tipo, principal) VALUES
-  (1,'vendas@cataratas.com','COMERCIAL',TRUE),(1,'financeiro@cataratas.com','FINANCEIRO',FALSE);
+  (1,'vendas@cataratas.com','COMERCIAL',TRUE),(1,'financeiro@cataratas.com','FINANCEIRO',FALSE),
+  (2,'contato@oestesnacks.com','COMERCIAL',TRUE);
 INSERT INTO fornecedor_telefone (fornecedor_id, telefone, tipo, principal) VALUES
-  (1,'4533330001','COMERCIAL',TRUE),(1,'45999998888','CELULAR',FALSE);
+  (1,'4533330001','COMERCIAL',TRUE),(1,'45999998888','CELULAR',FALSE),
+  (2,'4533330002','COMERCIAL',TRUE);
 
 -- ---------- AJUSTE DAS SEQUENCIAS (IDENTITY) ----------
 SELECT setval(pg_get_serial_sequence('pais','id'),               (SELECT max(id) FROM pais));
