@@ -4,10 +4,10 @@
 -- =====================================================================
 
 -- ---------- GEOGRAFIA ----------
-INSERT INTO pais (id, nome, sigla) VALUES (1,'Brasil','BRA');
+INSERT INTO pais (id, nome, sigla, codigo, nacionalidade) VALUES (1,'Brasil','BRA','55','Brasileiro');
 INSERT INTO estado (id, nome, uf, pais_id) VALUES (1,'Parana','PR',1),(2,'Sao Paulo','SP',1);
-INSERT INTO cidade (id, nome, ddd, estado_id) VALUES
-  (1,'Missal','45',1),(2,'Foz do Iguacu','45',1),(3,'Cascavel','45',1),(4,'Sao Paulo','11',2);
+INSERT INTO cidade (id, nome, ddd, codigo_ibge, estado_id) VALUES
+  (1,'Missal','45','4115358',1),(2,'Foz do Iguacu','45','4108304',1),(3,'Cascavel','45','4104808',1),(4,'Sao Paulo','11','3550308',2);
 
 -- ---------- PAGAMENTO ----------
 INSERT INTO forma_pagamento (id, nome, descricao) VALUES
@@ -27,25 +27,25 @@ INSERT INTO parcela_condicao_pagamento (condicao_pagamento_id, numero, dias, per
   (3,2,60,50.00,4);
 
 -- ---------- RH ----------
-INSERT INTO cargo (id, nome, descricao) VALUES
-  (1,'Gerente','Responsavel pela operacao'),
-  (2,'Operador de Patio','Registra entradas e saidas'),
-  (3,'Caixa','Recebe pagamentos');
-INSERT INTO funcionario (id, nome, cpf, telefone, email, cidade_id, cargo_id, data_admissao, salario) VALUES
-  (1,'Carlos Pereira','111.111.111-11','45999990001','carlos@kaneko.com',2,1,DATE '2024-01-15',5000.00),
-  (2,'Joao Mendes','222.222.222-22','45999990002','joao@kaneko.com',1,2,DATE '2024-03-10',2200.00),
-  (3,'Ana Souza','333.333.333-33','45999990003','ana@kaneko.com',2,3,DATE '2025-02-01',2000.00);
+INSERT INTO cargo (id, nome, descricao, salario_base, carga_horaria, requer_cnh) VALUES
+  (1,'Gerente','Responsavel pela operacao',5000.00,220,FALSE),
+  (2,'Operador de Patio','Registra entradas e saidas',2000.00,220,TRUE),
+  (3,'Caixa','Recebe pagamentos',1800.00,220,FALSE);
+INSERT INTO funcionario (id, nome, cpf, telefone, email, cidade_id, nacionalidade_id, cargo_id, data_nascimento, sexo, data_admissao, salario) VALUES
+  (1,'Carlos Pereira','111.111.111-11','45999990001','carlos@kaneko.com',2,1,1,DATE '1985-04-12','MASCULINO',DATE '2024-01-15',5000.00),
+  (2,'Joao Mendes','222.222.222-22','45999990002','joao@kaneko.com',1,1,2,DATE '1990-08-20','MASCULINO',DATE '2024-03-10',2200.00),
+  (3,'Ana Souza','333.333.333-33','45999990003','ana@kaneko.com',2,1,3,DATE '1995-11-03','FEMININO',DATE '2025-02-01',2000.00);
 
 -- ---------- FORNECEDOR (com condicao + limite) ----------
-INSERT INTO fornecedor (id, nome, nome_fantasia, documento, telefone, email, cidade_id, condicao_pagamento_id, limite_credito) VALUES
-  (1,'Bebidas Cataratas Ltda','Cataratas Bebidas','11.111.111/0001-11','4533330001','vendas@cataratas.com',2,2,5000.00),
-  (2,'Snacks do Oeste ME','Oeste Snacks','22.222.222/0001-22','4533330002','contato@oestesnacks.com',3,3,3000.00);
+INSERT INTO fornecedor (id, nome, nome_fantasia, documento, telefone, email, cidade_id, nacionalidade_id, condicao_pagamento_id, limite_credito) VALUES
+  (1,'Bebidas Cataratas Ltda','Cataratas Bebidas','11.111.111/0001-11','4533330001','vendas@cataratas.com',2,1,2,5000.00),
+  (2,'Snacks do Oeste ME','Oeste Snacks','22.222.222/0001-22','4533330002','contato@oestesnacks.com',3,1,3,3000.00);
 
 -- ---------- CLIENTE (com condicao + limite) ----------
-INSERT INTO cliente (id, nome, documento, telefone, email, endereco, numero, bairro, cep, cidade_id, condicao_pagamento_id, limite_credito) VALUES
-  (1,'Maria Silva','444.444.444-44','45988880001','maria@email.com','Rua das Flores','100','Centro','85890-000',2,1,1000.00),
-  (2,'Tech Solucoes Ltda','33.333.333/0001-33','45988880002','adm@techsol.com','Av. Brasil','2000','Centro','85851-000',4,3,5000.00),
-  (3,'Jose Santos','555.555.555-55','45988880003','jose@email.com','Rua XV','50','Sao Cristovao','85870-000',1,1,500.00);
+INSERT INTO cliente (id, nome, tipo, documento, telefone, email, endereco, numero, bairro, cep, cidade_id, nacionalidade_id, condicao_pagamento_id, data_nascimento, sexo, limite_credito) VALUES
+  (1,'Maria Silva','FISICA','444.444.444-44','45988880001','maria@email.com','Rua das Flores','100','Centro','85890-000',2,1,1,DATE '1988-06-15','FEMININO',1000.00),
+  (2,'Tech Solucoes Ltda','JURIDICA','33.333.333/0001-33','45988880002','adm@techsol.com','Av. Brasil','2000','Centro','85851-000',4,1,3,NULL,NULL,5000.00),
+  (3,'Jose Santos','FISICA','555.555.555-55','45988880003','jose@email.com','Rua XV','50','Sao Cristovao','85870-000',1,1,1,DATE '1979-02-28','MASCULINO',500.00);
 
 -- ---------- CADASTROS DE APOIO (produto/servico) ----------
 INSERT INTO categoria (id, nome, descricao) VALUES (1,'Bebidas','Bebidas em geral'),(2,'Snacks','Salgadinhos e doces'),(3,'Limpeza','Produtos de limpeza');
