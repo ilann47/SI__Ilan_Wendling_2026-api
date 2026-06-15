@@ -104,6 +104,17 @@ INSERT INTO item_nota_saida (nota_saida_id, produto_id, sequencia, quantidade, v
   (1,1,1,2,5.00,10.00),
   (1,3,2,1,6.00,6.00);
 
+-- ---------- FINANCEIRO (contas geradas pelas notas / mensalidade) ----------
+-- A pagar: da nota de entrada (compra a prazo 30 dias)
+INSERT INTO conta_pagar (id, fornecedor_id, nota_entrada_id, condicao_pagamento_id, numero_parcela, total_parcelas, valor_original, valor_total, data_emissao, data_vencimento, situacao) VALUES
+  (1,1,1,2,1,1,500.00,500.00,DATE '2026-06-01',DATE '2026-07-01','PENDENTE');
+-- A receber: da venda na conveniencia (a vista, ja recebida)
+INSERT INTO conta_receber (id, cliente_id, nota_saida_id, condicao_pagamento_id, forma_pagamento_id, numero_parcela, total_parcelas, valor_original, valor_recebido, valor_total, data_emissao, data_vencimento, data_recebimento, situacao) VALUES
+  (1,1,1,1,1,1,1,16.00,16.00,16.00,DATE '2026-06-10',DATE '2026-06-10',DATE '2026-06-10','RECEBIDA');
+-- A receber: da mensalidade (mensalista, pendente)
+INSERT INTO conta_receber (id, cliente_id, mensalista_id, numero_parcela, total_parcelas, valor_original, valor_total, data_emissao, data_vencimento, situacao) VALUES
+  (2,1,1,1,1,250.00,250.00,DATE '2026-06-01',DATE '2026-06-10','PENDENTE');
+
 -- ---------- AJUSTE DAS SEQUENCIAS (IDENTITY) ----------
 SELECT setval(pg_get_serial_sequence('pais','id'),               (SELECT max(id) FROM pais));
 SELECT setval(pg_get_serial_sequence('estado','id'),             (SELECT max(id) FROM estado));
@@ -126,3 +137,5 @@ SELECT setval(pg_get_serial_sequence('mensalista','id'),         (SELECT max(id)
 SELECT setval(pg_get_serial_sequence('movimentacao','id'),       (SELECT max(id) FROM movimentacao));
 SELECT setval(pg_get_serial_sequence('nota_entrada','id'),       (SELECT max(id) FROM nota_entrada));
 SELECT setval(pg_get_serial_sequence('nota_saida','id'),         (SELECT max(id) FROM nota_saida));
+SELECT setval(pg_get_serial_sequence('conta_pagar','id'),        (SELECT max(id) FROM conta_pagar));
+SELECT setval(pg_get_serial_sequence('conta_receber','id'),      (SELECT max(id) FROM conta_receber));
