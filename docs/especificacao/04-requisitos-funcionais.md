@@ -47,7 +47,7 @@ Entidade que representa as unidades federativas, vinculadas a um país.
 O sistema deve permitir listar os estados, exibindo nome, UF e país correspondente, com filtro por país, por UF e por situação.
 
 ### 4.2.2 Inserir Estado
-O sistema deve permitir cadastrar um estado informando **nome**, **UF** (sigla de 2 caracteres) e o **país** (obrigatórios). Não é permitido cadastrar a mesma UF duas vezes para o mesmo país (restrição `uq_estado_uf_pais`).
+O sistema deve permitir cadastrar um estado informando **nome**, **UF** (sigla de até 3 caracteres) e o **país** (obrigatórios). Não é permitido cadastrar a mesma UF duas vezes para o mesmo país (restrição `uq_estado_uf_pais`).
 
 ### 4.2.3 Alterar Estado
 O sistema deve permitir editar nome, UF e país de um estado, respeitando a unicidade de UF por país.

@@ -112,7 +112,7 @@ Hierarquia **País → Estado → Cidade**, base para a nacionalidade e o endere
 
 **País.** *Listagem* exibe nome, sigla, código e nacionalidade (gentílico), com filtro por nome e por situação. *Cadastro/Edição* expõe os campos `nome` (obrigatório e único — `uq_pais_nome`), `sigla`, `codigo`, `nacionalidade` e `ativo`. *Exclusão* inativa; bloqueada (409) se houver estados, funcionários, clientes ou fornecedores vinculados.
 
-**Estado.** *Listagem* exibe nome, UF e país, com filtro por país e UF. *Cadastro/Edição* expõe `nome`, `uf` (2 caracteres), `pais_id` (seletor de país) e `ativo`; a combinação UF+país é única (`uq_estado_uf_pais`). *Exclusão* bloqueada se houver cidades vinculadas.
+**Estado.** *Listagem* exibe nome, UF e país, com filtro por país e UF. *Cadastro/Edição* expõe `nome`, `uf` (até 3 caracteres), `pais_id` (seletor de país) e `ativo`; a combinação UF+país é única (`uq_estado_uf_pais`). *Exclusão* bloqueada se houver cidades vinculadas.
 
 **Cidade.** *Listagem* exibe nome, DDD, código IBGE e estado, com filtro por estado. *Cadastro/Edição* expõe `nome`, `ddd`, `codigo_ibge`, `estado_id` (seletor) e `ativo`; nome único por estado (`uq_cidade_nome_estado`). *Exclusão* bloqueada se houver pessoas vinculadas.
 

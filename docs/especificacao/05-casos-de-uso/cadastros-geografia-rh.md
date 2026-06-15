@@ -104,7 +104,7 @@ O caso de uso é ativado quando o usuário seleciona a opção "País" no menu d
 
 - **RN001:** O acesso à funcionalidade é permitido somente a usuário autenticado no sistema.
 - **RN002:** O campo Nome é de preenchimento obrigatório e limitado a 60 caracteres.
-- **RN003:** O campo UF (sigla, ex.: PR, SP) é de preenchimento obrigatório e limitado a 2 caracteres.
+- **RN003:** O campo UF (sigla, ex.: PR, SP) é de preenchimento obrigatório e limitado a 3 caracteres (padrão ISO 3166-2).
 - **RN004:** O campo País é de preenchimento obrigatório e deve referenciar um país previamente cadastrado (chave estrangeira `fk_estado_pais`).
 - **RN005:** A combinação País + UF deve ser única no sistema (restrição `uq_estado_uf_pais`). Não é permitido cadastrar a mesma UF para o mesmo país mais de uma vez.
 - **RN006:** Todo estado é cadastrado, por padrão, como Ativo.
@@ -147,7 +147,7 @@ O caso de uso é ativado quando o usuário seleciona a opção "Estado" no menu 
 1. O usuário aciona o comando "Inserir" na tela de consulta.
 2. O sistema apresenta o formulário de cadastro de estado com os campos:
    - Nome * (até 60 caracteres)
-   - UF * (até 2 caracteres)
+   - UF * (até 3 caracteres)
    - País * (seleção de país cadastrado)
    - Ativo (sim/não — padrão: sim)
 3. O usuário preenche os campos e aciona o comando "Salvar".
