@@ -56,6 +56,13 @@ INSERT INTO servico (id, nome, descricao, valor_padrao) VALUES
   (2,'Mensalidade','Plano mensal de estacionamento',250.00),
   (3,'Lavagem Simples','Lavagem externa do veiculo',30.00);
 
+-- ---------- PRODUTO (conveniencia) ----------
+INSERT INTO produto (id, nome, codigo_barras, marca_id, unidade_medida_id, categoria_id, valor_compra, valor_venda, percentual_lucro, quantidade, quantidade_minima) VALUES
+  (1,'Coca-Cola Lata 350ml','7894900011517',1,1,1,2.50,5.00,100.00,120,24),
+  (2,'Agua Mineral 500ml','7891000051234',3,1,1,1.00,2.50,150.00,200,48),
+  (3,'Salgadinho Pacote 100g','7892840812345',2,4,2,3.00,6.00,100.00,60,12),
+  (4,'Detergente 500ml','7891234567890',3,2,3,2.00,4.50,125.00,30,6);
+
 -- ---------- TARIFA (id=1 'Tarifa padrao' ja veio do schema) ----------
 INSERT INTO tarifa (id, descricao, valor_hora, valor_diaria, tolerancia_min, valor_mensalidade) VALUES (2,'Tarifa Moto',7.00,35.00,15,180.00);
 
@@ -98,6 +105,7 @@ SELECT setval(pg_get_serial_sequence('categoria','id'),          (SELECT max(id)
 SELECT setval(pg_get_serial_sequence('marca','id'),              (SELECT max(id) FROM marca));
 SELECT setval(pg_get_serial_sequence('unidade_medida','id'),     (SELECT max(id) FROM unidade_medida));
 SELECT setval(pg_get_serial_sequence('servico','id'),            (SELECT max(id) FROM servico));
+SELECT setval(pg_get_serial_sequence('produto','id'),            (SELECT max(id) FROM produto));
 SELECT setval(pg_get_serial_sequence('tarifa','id'),             (SELECT max(id) FROM tarifa));
 SELECT setval(pg_get_serial_sequence('veiculo','id'),            (SELECT max(id) FROM veiculo));
 SELECT setval(pg_get_serial_sequence('mensalista','id'),         (SELECT max(id) FROM mensalista));
