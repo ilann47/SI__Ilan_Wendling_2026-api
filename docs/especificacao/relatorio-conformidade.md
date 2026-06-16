@@ -4,7 +4,7 @@
 
 **Documento:** Relatório de Conformidade e Plano de Refatoração
 **Sistema:** Estacionamento Kaneko Ltda. (Maringá-PR) — controle de estacionamento (mensalista + avulso) com módulos de Conveniência, Fiscal e Financeiro
-**Versão do sistema auditado:** v1 (modelagem + especificação; backend ainda não implementado)
+**Versão do sistema auditado:** v1 (modelagem + especificação). **Atualização 2026-06-16:** o backend foi implementado (Spring Boot 4 / Java 25, 252 testes automatizados) — ver a seção **"Atualização — Status de Implementação"** ao final.
 **Natureza:** Auditoria de qualidade e conformidade com o modelo acadêmico de "Especificação de Requisitos por Casos de Uso" (padrão prática profissional de Sistemas de Informação)
 **Artefatos-base da auditoria:** `database/schema.sql` (schema físico validado, 825 linhas) e o conjunto de casos de uso em `docs/especificacao/05-casos-de-uso/`
 **Autor:** Arquitetura de Software / Auditoria de Qualidade
@@ -149,6 +149,31 @@ Ordem recomendada:
 | **P4** | Roadmap de implementação (Flyway → JPA → services → controllers → pátio → relatórios) | Entrega incremental | Materialização da v1 codificada |
 
 **Rastreabilidade.** Todos os achados desta Parte C estão ancorados em `database/schema.sql` (constraints e índices citados por nome/linha) e nos casos de uso de `docs/especificacao/05-casos-de-uso/` (RN001 e fluxos de pátio/fiscal/financeiro). Nenhuma recomendação introduz dependência ou requisito fora do escopo declarado na Parte B.
+
+---
+
+## Atualização — Status de Implementação (2026-06-16)
+
+Esta seção registra o estado do **backend efetivamente codificado** sobre as fundações validadas (schema + casos de uso), atualizando o que, na auditoria original, constava como "backend ainda não implementado".
+
+**Visão geral.** Aplicação **Spring Boot 4 / Java 25 / PostgreSQL 17** completa, organizada por funcionalidade (package-by-feature), com **252 testes de integração** verdes cobrindo todos os fluxos de cada módulo (criar, listar, buscar, 404, atualizar, excluir, e os conflitos/validações 409/400/401) e os processos de pátio, fiscais e financeiros. **As 31 tabelas do schema estão mapeadas.** O `schema.sql` foi mantido **congelado** como fonte da verdade — nenhuma alteração de DDL foi feita; o Flyway aplica-o como `V1` imutável e o Hibernate roda em `ddl-auto=validate`.
+
+**Estado por item do plano (Parte C):**
+
+| Item | Situação | Observação |
+|---|---|---|
+| **P4 — Roadmap de implementação** | **Concluído** | Flyway V1 → entidades JPA + enums → repositories → services com RNxxx → controllers REST + OpenAPI/Swagger → operação de pátio → módulos Conveniência, Fiscal e Financeiro. |
+| **P3 — Autenticação e segurança** | **Implementado** | Spring Security + **JWT HS256** (HMAC manual, sem dependência externa) + **BCrypt** em `usuario.senha`; perfis ADMIN/OPERADOR; **RN001** efetivada (`/api/**` exige token, exceto `/api/auth`, Swagger e actuator). Configurável por `app.security.enabled`. Senha nunca é exposta nem logada. |
+| **P2 — Regras de negócio no serviço** | **Parcial** | A **existência** de todo referenciado é validada (HTTP 404 padronizado em ProblemDetail), e os processos fiscais/financeiros aplicam as regras de cálculo (rateio, parcelas, baixa, estoque com validação de saldo na venda). As validações **semânticas** adicionais de P2 (referenciado com `ativo = TRUE`; `mensalista.status = ATIVO`; coerência `mensalista_id`↔`veiculo_id`; gravação de `tarifa_id` na saída) permanecem como **evolução recomendada**, salvo onde o fluxo do pátio já as exige. |
+| **P1 — Integridade no banco** | **Não aplicado (por decisão)** | O schema foi **congelado**; as constraints P1.1–P1.3 não foram adicionadas. Como **mitigação**, a camada de serviço calcula e assegura a composição de `valor_total` (`valor_original − desconto + juros + multa`) ao gerar/lançar títulos. As constraints permanecem recomendadas para uma futura migração `V2`, quando o schema for reaberto. |
+
+**Decisões de implementação relevantes (além do plano):**
+
+- **Observabilidade** — `X-Trace-Id` de correlação por requisição (gerado/propagado, exposto no header e no MDC dos logs); erros centralizados em **ProblemDetail (RFC 7807)** com o `traceId`; handler genérico para 500 (loga sem vazar *stacktrace*); health check via actuator.
+- **Geração de títulos** — a confirmação de nota de **entrada** soma estoque + atualiza custo e gera `conta_pagar`; a de **saída** valida e baixa estoque e gera `conta_receber`; ambas distribuem o total nas parcelas da condição de pagamento (a última parcela fecha o total, evitando resíduo de arredondamento). A `nota_servico` calcula o **ISS** e não gera título (serviço pago no ato).
+- **Configuração sem segredos no código** — banco, porta, segredo/validade do JWT e o liga/desliga da segurança são parametrizados por variáveis de ambiente, com padrões de desenvolvimento.
+
+A instrução de execução (pré-requisitos, variáveis, Swagger, login e testes) está no [`README.md`](../../README.md) na raiz do projeto.
 
 ---
 
