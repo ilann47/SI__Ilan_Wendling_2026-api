@@ -7,8 +7,9 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Repositorio de {@link Cliente}. As consultas carregam cidade e nacionalidade
- * via {@link EntityGraph} para a montagem da resposta sem lazy loading.
+ * Repositorio de {@link Cliente}. As consultas carregam cidade, nacionalidade e
+ * condicao de pagamento via {@link EntityGraph} para a montagem da resposta sem
+ * lazy loading.
  */
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
@@ -19,10 +20,10 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     boolean existsByDocumentoAndIdNot(String documento, Long id);
 
     @Override
-    @EntityGraph(attributePaths = {"cidade", "nacionalidade"})
+    @EntityGraph(attributePaths = {"cidade", "nacionalidade", "condicaoPagamento"})
     Page<Cliente> findAll(Pageable pageable);
 
     @Override
-    @EntityGraph(attributePaths = {"cidade", "nacionalidade"})
+    @EntityGraph(attributePaths = {"cidade", "nacionalidade", "condicaoPagamento"})
     Optional<Cliente> findById(Long id);
 }

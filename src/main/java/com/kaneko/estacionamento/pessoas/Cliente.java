@@ -3,6 +3,7 @@ package com.kaneko.estacionamento.pessoas;
 import com.kaneko.estacionamento.common.BaseEntity;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.Pais;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,11 +22,8 @@ import lombok.Setter;
  * {@code cliente}.
  *
  * <p>O documento (CPF/CNPJ) e unico no sistema ({@code uq_cliente_documento}).
- * As referencias a cidade e nacionalidade (pais) sao opcionais.
- *
- * <p>Observacao: a coluna {@code condicao_pagamento_id} existe no schema mas
- * ainda nao e mapeada aqui — o relacionamento sera adicionado quando o modulo
- * de Pagamento (condicao_pagamento) for implementado.
+ * As referencias a cidade, nacionalidade (pais) e condicao de pagamento sao
+ * opcionais.
  */
 @Entity
 @Table(name = "cliente")
@@ -88,6 +86,10 @@ public class Cliente extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nacionalidade_id")
     private Pais nacionalidade;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "condicao_pagamento_id")
+    private CondicaoPagamento condicaoPagamento;
 
     @Column(name = "limite_credito", nullable = false, precision = 15, scale = 2)
     private BigDecimal limiteCredito = BigDecimal.ZERO;

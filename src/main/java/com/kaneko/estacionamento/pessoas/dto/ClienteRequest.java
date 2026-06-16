@@ -43,6 +43,7 @@ public record ClienteRequest(
 
         Long cidadeId,
         Long nacionalidadeId,
+        Long condicaoPagamentoId,
 
         @PositiveOrZero(message = "O limite de crédito não pode ser negativo.")
         BigDecimal limiteCredito,

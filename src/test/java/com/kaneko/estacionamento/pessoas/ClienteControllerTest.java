@@ -14,6 +14,8 @@ import com.kaneko.estacionamento.geografia.Estado;
 import com.kaneko.estacionamento.geografia.EstadoRepository;
 import com.kaneko.estacionamento.geografia.Pais;
 import com.kaneko.estacionamento.geografia.PaisRepository;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +45,9 @@ class ClienteControllerTest {
 
     @Autowired
     private CidadeRepository cidadeRepository;
+
+    @Autowired
+    private CondicaoPagamentoRepository condicaoPagamentoRepository;
 
     private Long cidadeId;
 
@@ -144,6 +149,32 @@ class ClienteControllerTest {
     void retorna404QuandoCidadeNaoExiste() throws Exception {
         String json = """
                 { "nome": "Cliente B", "documento": "88888888888", "cidadeId": 999999 }
+                """;
+        mvc.perform(post("/api/clientes")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void criaClienteComCondicaoPagamento() throws Exception {
+        CondicaoPagamento condicao = new CondicaoPagamento();
+        condicao.setNome("A Vista");
+        condicao.setNumeroParcelas(1);
+        Long condicaoId = condicaoPagamentoRepository.save(condicao).getId();
+
+        String json = "{ \"nome\": \"Cliente Pago\", \"documento\": \"55555555555\","
+                + " \"condicaoPagamentoId\": " + condicaoId + " }";
+        mvc.perform(post("/api/clientes")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.condicaoPagamentoId").value(condicaoId))
+                .andExpect(jsonPath("$.condicaoPagamentoNome").value("A Vista"));
+    }
+
+    @Test
+    void retorna404QuandoCondicaoPagamentoNaoExiste() throws Exception {
+        String json = """
+                { "nome": "Cliente C", "documento": "66666666666", "condicaoPagamentoId": 999999 }
                 """;
         mvc.perform(post("/api/clientes")
                         .contentType(MediaType.APPLICATION_JSON).content(json))

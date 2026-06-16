@@ -6,6 +6,8 @@ import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
 import com.kaneko.estacionamento.geografia.Pais;
 import com.kaneko.estacionamento.geografia.PaisRepository;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pessoas.dto.ClienteRequest;
 import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
@@ -17,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Regras de negocio do cadastro de Cliente.
  *
  * <p>Garante a unicidade do documento (CPF/CNPJ) e valida as referencias
- * opcionais a cidade e nacionalidade (pais) quando informadas.
+ * opcionais a cidade, nacionalidade (pais) e condicao de pagamento quando
+ * informadas.
  */
 @Service
 public class ClienteService {
@@ -25,13 +28,16 @@ public class ClienteService {
     private final ClienteRepository repository;
     private final CidadeRepository cidadeRepository;
     private final PaisRepository paisRepository;
+    private final CondicaoPagamentoRepository condicaoPagamentoRepository;
 
     public ClienteService(ClienteRepository repository,
                           CidadeRepository cidadeRepository,
-                          PaisRepository paisRepository) {
+                          PaisRepository paisRepository,
+                          CondicaoPagamentoRepository condicaoPagamentoRepository) {
         this.repository = repository;
         this.cidadeRepository = cidadeRepository;
         this.paisRepository = paisRepository;
+        this.condicaoPagamentoRepository = condicaoPagamentoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -90,6 +96,7 @@ public class ClienteService {
         cliente.setCep(req.cep());
         cliente.setCidade(req.cidadeId() != null ? buscarCidade(req.cidadeId()) : null);
         cliente.setNacionalidade(req.nacionalidadeId() != null ? buscarPais(req.nacionalidadeId()) : null);
+        cliente.setCondicaoPagamento(req.condicaoPagamentoId() != null ? buscarCondicao(req.condicaoPagamentoId()) : null);
         cliente.setLimiteCredito(req.limiteCredito() != null ? req.limiteCredito() : BigDecimal.ZERO);
         cliente.setObservacao(req.observacao());
         if (req.ativo() != null) {
@@ -105,5 +112,10 @@ public class ClienteService {
     private Pais buscarPais(Long paisId) {
         return paisRepository.findById(paisId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pais", paisId));
+    }
+
+    private CondicaoPagamento buscarCondicao(Long condicaoPagamentoId) {
+        return condicaoPagamentoRepository.findById(condicaoPagamentoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", condicaoPagamentoId));
     }
 }
