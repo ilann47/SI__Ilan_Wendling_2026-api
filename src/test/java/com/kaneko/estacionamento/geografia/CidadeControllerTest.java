@@ -1,7 +1,9 @@
 package com.kaneko.estacionamento.geografia;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,8 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Teste de integracao do CRUD de Cidade, exercitando a referencia (FK) ao
- * Estado.
+ * Teste de integracao do CRUD de Cidade — todos os fluxos, exercitando a FK
+ * para Estado.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -48,11 +50,18 @@ class CidadeControllerTest {
         estadoId = estadoRepository.save(estado).getId();
     }
 
+    private Number criar(String nome) throws Exception {
+        String json = "{ \"nome\": \"" + nome + "\", \"estadoId\": " + estadoId + " }";
+        String body = mvc.perform(post("/api/cidades")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
+
     @Test
     void criaEbuscaPorId() throws Exception {
-        String json = """
-                { "nome": "Maringa", "ddd": "44", "codigoIbge": "4115200", "estadoId": %d }
-                """.formatted(estadoId);
+        String json = "{ \"nome\": \"Maringa\", \"ddd\": \"44\", \"codigoIbge\": \"4115200\", \"estadoId\": " + estadoId + " }";
         String body = mvc.perform(post("/api/cidades")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
@@ -68,13 +77,46 @@ class CidadeControllerTest {
     }
 
     @Test
-    void rejeitaNomeDuplicadoNoMesmoEstadoCom409() throws Exception {
-        String json = """
-                { "nome": "Londrina", "estadoId": %d }
-                """.formatted(estadoId);
-        mvc.perform(post("/api/cidades")
+    void listaCidades() throws Exception {
+        criar("Maringa");
+        criar("Londrina");
+        mvc.perform(get("/api/cidades"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void atualizaCidade() throws Exception {
+        Number id = criar("Marina");
+        String json = "{ \"nome\": \"Maringa\", \"ddd\": \"44\", \"estadoId\": " + estadoId + " }";
+        mvc.perform(put("/api/cidades/" + id)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
-                .andExpect(status().isCreated());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Maringa"))
+                .andExpect(jsonPath("$.ddd").value("44"));
+    }
+
+    @Test
+    void atualizaCidadeInexistenteRetorna404() throws Exception {
+        String json = "{ \"nome\": \"X\", \"estadoId\": " + estadoId + " }";
+        mvc.perform(put("/api/cidades/999999")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void excluiCidadeEdepoisRetorna404() throws Exception {
+        Number id = criar("Temporaria");
+        mvc.perform(delete("/api/cidades/" + id))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/cidades/" + id))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rejeitaNomeDuplicadoNoMesmoEstadoCom409() throws Exception {
+        criar("Londrina");
+        String json = "{ \"nome\": \"Londrina\", \"estadoId\": " + estadoId + " }";
         mvc.perform(post("/api/cidades")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isConflict());
