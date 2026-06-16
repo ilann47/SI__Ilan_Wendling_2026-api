@@ -18,6 +18,9 @@ public interface MensalistaRepository extends JpaRepository<Mensalista, Long> {
     /** Mesma checagem, ignorando o proprio registro — usado em alteracoes. */
     boolean existsByVeiculoIdAndStatusAndIdNot(Long veiculoId, StatusMensalista status, Long id);
 
+    /** Contrato de um veiculo no status informado (ex.: o contrato ATIVO), se houver. */
+    Optional<Mensalista> findFirstByVeiculoIdAndStatus(Long veiculoId, StatusMensalista status);
+
     @Override
     @EntityGraph(attributePaths = {"cliente", "veiculo"})
     Page<Mensalista> findAll(Pageable pageable);
