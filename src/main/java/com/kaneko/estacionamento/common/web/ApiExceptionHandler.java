@@ -5,60 +5,89 @@ import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
- * Tratamento centralizado de erros da API, padronizando as respostas no
- * formato {@link ProblemDetail} (RFC 7807).
+ * Tratamento centralizado de erros da API, padronizando as respostas no formato
+ * {@link ProblemDetail} (RFC 7807). Todo problema carrega o {@code traceId} da
+ * requisicao para correlacao com os logs.
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ProblemDetail handleNaoEncontrado(RecursoNaoEncontradoException ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
-        pd.setTitle("Recurso nao encontrado");
-        return pd;
+        return problem(HttpStatus.NOT_FOUND, "Recurso nao encontrado", ex.getMessage());
     }
 
     @ExceptionHandler(AutenticacaoException.class)
     public ProblemDetail handleAutenticacao(AutenticacaoException ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
-        pd.setTitle("Nao autenticado");
-        return pd;
+        return problem(HttpStatus.UNAUTHORIZED, "Nao autenticado", ex.getMessage());
     }
 
     @ExceptionHandler(ConflitoException.class)
     public ProblemDetail handleConflito(ConflitoException ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
-        pd.setTitle("Conflito");
-        return pd;
+        return problem(HttpStatus.CONFLICT, "Conflito", ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleIntegridade(DataIntegrityViolationException ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+        return problem(HttpStatus.CONFLICT, "Conflito de integridade",
                 "A operacao viola uma restricao de integridade (por exemplo, registro vinculado a outros ou valor duplicado).");
-        pd.setTitle("Conflito de integridade");
-        return pd;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidacao(MethodArgumentNotValidException ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
                 "Ha campos invalidos na requisicao.");
-        pd.setTitle("Requisicao invalida");
         Map<String, String> erros = new LinkedHashMap<>();
         for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
             erros.put(fe.getField(), fe.getDefaultMessage());
         }
         pd.setProperty("erros", erros);
+        return pd;
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleCorpoIlegivel(HttpMessageNotReadableException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
+                "O corpo da requisicao esta ausente ou malformado.");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ProblemDetail handleTipoInvalido(MethodArgumentTypeMismatchException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
+                "O parametro '" + ex.getName() + "' tem um valor invalido.");
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleGenerico(Exception ex) {
+        String traceId = MDC.get(TraceIdFilter.MDC_KEY);
+        log.error("Erro nao tratado [traceId={}]", traceId, ex);
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno",
+                "Ocorreu um erro inesperado. Utilize o traceId informado para suporte.");
+    }
+
+    private ProblemDetail problem(HttpStatus status, String title, String detail) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
+        pd.setTitle(title);
+        String traceId = MDC.get(TraceIdFilter.MDC_KEY);
+        if (traceId != null) {
+            pd.setProperty("traceId", traceId);
+        }
         return pd;
     }
 }
