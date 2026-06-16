@@ -6,12 +6,15 @@ import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
 import com.kaneko.estacionamento.geografia.Pais;
 import com.kaneko.estacionamento.geografia.PaisRepository;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pessoas.dto.ClienteRequest;
+import com.kaneko.estacionamento.pessoas.dto.ClienteResponse;
 import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,8 +44,12 @@ public class ClienteService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Cliente> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<ClienteResponse> listar(String nome, String documento, Boolean ativo, Pageable pageable) {
+        Specification<Cliente> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("nome", nome),
+                FiltroSpecs.contemIgnoreCase("documento", documento),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(ClienteResponse::from);
     }
 
     @Transactional(readOnly = true)

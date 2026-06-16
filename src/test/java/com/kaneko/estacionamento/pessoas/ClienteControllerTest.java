@@ -107,6 +107,22 @@ class ClienteControllerTest {
     }
 
     @Test
+    void filtraPorNomeEporDocumento() throws Exception {
+        criar("Ana Paula", "11111111111");
+        criar("Bruno Costa", "22222222222");
+
+        mvc.perform(get("/api/clientes").param("nome", "ana"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Ana Paula"));
+
+        mvc.perform(get("/api/clientes").param("documento", "2222"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Bruno Costa"));
+    }
+
+    @Test
     void atualizaCliente() throws Exception {
         Number id = criar("Maria", "33333333333");
         String json = "{ \"nome\": \"Maria Souza\", \"documento\": \"33333333333\","
