@@ -1,0 +1,256 @@
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
+import { type ResourceConfig } from '../components/crud/resourceConfig';
+import { type FieldConfig } from '../components/form/fieldConfig';
+import { cols } from './columns';
+import { tipoFreteOptions } from './options';
+
+/**
+ * Itens de nota fiscal (entrada/saida) reutilizaveis.
+ * Soma de cols (4+2+2+2+1 = 11) + 1 (botao remover) = 12.
+ */
+const itensNotaSubFields: FieldConfig[] = [
+  {
+    name: 'produtoId',
+    label: 'Produto',
+    type: 'reference',
+    required: true,
+    cols: 4,
+    reference: { basePath: '/api/produtos', labelField: 'nome' },
+  },
+  { name: 'quantidade', label: 'Qtd.', type: 'number', required: true, cols: 2 },
+  { name: 'valorUnitario', label: 'Vlr. unit.', type: 'money', required: true, cols: 2 },
+  { name: 'valorDesconto', label: 'Desc.', type: 'money', cols: 2 },
+  { name: 'percentualDesconto', label: '% Desc.', type: 'percent', cols: 1 },
+];
+
+export const notaEntradaConfig: ResourceConfig = {
+  key: 'notas-entrada',
+  basePath: '/api/notas-entrada',
+  singular: 'Nota de Entrada',
+  plural: 'Notas de Entrada',
+  subtitle: 'Entradas de mercadoria (compras) com baixa no estoque e contas a pagar.',
+  canEdit: false,
+  canDelete: true,
+  columns: [
+    cols.id(),
+    cols.text('numero', 'Número', { flex: 0, width: 120 }),
+    cols.text('fornecedorNome', 'Fornecedor'),
+    cols.date('dataEmissao', 'Emissão'),
+    cols.money('valorTotal', 'Total'),
+    cols.status('situacao', 'Situação'),
+  ],
+  fields: [
+    { name: 'numero', label: 'Número', type: 'text', required: true, cols: 4 },
+    { name: 'serie', label: 'Série', type: 'text', cols: 2 },
+    { name: 'modelo', label: 'Modelo', type: 'text', cols: 2 },
+    { name: 'tipoFrete', label: 'Tipo de frete', type: 'select', cols: 4, options: tipoFreteOptions, defaultValue: 'CIF' },
+    {
+      name: 'fornecedorId',
+      label: 'Fornecedor',
+      type: 'reference',
+      required: true,
+      cols: 6,
+      reference: { basePath: '/api/fornecedores', labelField: 'nome' },
+    },
+    {
+      name: 'condicaoPagamentoId',
+      label: 'Condição de pagamento',
+      type: 'reference',
+      cols: 6,
+      reference: { basePath: '/api/condicoes-pagamento', labelField: 'nome' },
+    },
+    { name: 'dataEmissao', label: 'Emissão', type: 'date', cols: 4 },
+    { name: 'dataChegada', label: 'Chegada', type: 'date', cols: 4 },
+    { name: 'valorFrete', label: 'Frete', type: 'money', cols: 3 },
+    { name: 'valorSeguro', label: 'Seguro', type: 'money', cols: 3 },
+    { name: 'outrasDespesas', label: 'Outras desp.', type: 'money', cols: 3 },
+    { name: 'valorDesconto', label: 'Desconto', type: 'money', cols: 3 },
+    { name: 'observacao', label: 'Observação', type: 'textarea' },
+    { name: 'itens', label: 'Itens', type: 'subitems', subFields: itensNotaSubFields },
+  ],
+  rowActions: [
+    {
+      key: 'confirmar',
+      label: 'Confirmar',
+      icon: <CheckCircleOutlineIcon />,
+      method: 'post',
+      pathSuffix: (r) => `/${r.id}/confirmacao`,
+      confirm: 'Confirmar a nota? Isso soma o estoque e gera as contas a pagar.',
+      visible: (r) => r.situacao === 'PENDENTE',
+    },
+    {
+      key: 'cancelar',
+      label: 'Cancelar',
+      icon: <CancelOutlinedIcon />,
+      color: 'error',
+      method: 'post',
+      pathSuffix: (r) => `/${r.id}/cancelamento`,
+      confirm: 'Cancelar esta nota?',
+      visible: (r) => r.situacao === 'PENDENTE',
+    },
+  ],
+};
+
+export const notaSaidaConfig: ResourceConfig = {
+  key: 'notas-saida',
+  basePath: '/api/notas-saida',
+  singular: 'Nota de Saída',
+  plural: 'Notas de Saída',
+  subtitle: 'Saídas de mercadoria (vendas) com baixa no estoque e contas a receber.',
+  canEdit: false,
+  canDelete: true,
+  columns: [
+    cols.id(),
+    cols.text('numero', 'Número', { flex: 0, width: 120 }),
+    cols.text('clienteNome', 'Cliente'),
+    cols.date('dataEmissao', 'Emissão'),
+    cols.money('valorTotal', 'Total'),
+    cols.status('situacao', 'Situação'),
+  ],
+  fields: [
+    { name: 'numero', label: 'Número', type: 'text', required: true, cols: 4 },
+    { name: 'serie', label: 'Série', type: 'text', cols: 2 },
+    { name: 'modelo', label: 'Modelo', type: 'text', cols: 2 },
+    { name: 'tipoFrete', label: 'Tipo de frete', type: 'select', cols: 4, options: tipoFreteOptions, defaultValue: 'CIF' },
+    {
+      name: 'clienteId',
+      label: 'Cliente',
+      type: 'reference',
+      required: true,
+      cols: 6,
+      reference: { basePath: '/api/clientes', labelField: 'nome' },
+    },
+    {
+      name: 'condicaoPagamentoId',
+      label: 'Condição de pagamento',
+      type: 'reference',
+      cols: 6,
+      reference: { basePath: '/api/condicoes-pagamento', labelField: 'nome' },
+    },
+    { name: 'dataEmissao', label: 'Emissão', type: 'date', cols: 4 },
+    { name: 'dataSaida', label: 'Saída', type: 'date', cols: 4 },
+    { name: 'valorFrete', label: 'Frete', type: 'money', cols: 3 },
+    { name: 'valorSeguro', label: 'Seguro', type: 'money', cols: 3 },
+    { name: 'outrasDespesas', label: 'Outras desp.', type: 'money', cols: 3 },
+    { name: 'valorDesconto', label: 'Desconto', type: 'money', cols: 3 },
+    { name: 'observacao', label: 'Observação', type: 'textarea' },
+    { name: 'itens', label: 'Itens', type: 'subitems', subFields: itensNotaSubFields },
+  ],
+  rowActions: [
+    {
+      key: 'confirmar',
+      label: 'Confirmar',
+      icon: <CheckCircleOutlineIcon />,
+      method: 'post',
+      pathSuffix: (r) => `/${r.id}/confirmacao`,
+      confirm: 'Confirmar a nota? Isso baixa o estoque e gera as contas a receber.',
+      visible: (r) => r.situacao === 'PENDENTE',
+    },
+    {
+      key: 'cancelar',
+      label: 'Cancelar',
+      icon: <CancelOutlinedIcon />,
+      color: 'error',
+      method: 'post',
+      pathSuffix: (r) => `/${r.id}/cancelamento`,
+      confirm: 'Cancelar esta nota?',
+      visible: (r) => r.situacao === 'PENDENTE',
+    },
+  ],
+};
+
+export const notaServicoConfig: ResourceConfig = {
+  key: 'notas-servico',
+  basePath: '/api/notas-servico',
+  singular: 'Nota de Serviço',
+  plural: 'Notas de Serviço',
+  subtitle: 'Notas fiscais de serviço (NFS-e) com apuração de ISS.',
+  canEdit: true,
+  canDelete: true,
+  columns: [
+    cols.id(),
+    cols.text('numero', 'Número', { flex: 0, width: 120 }),
+    cols.text('clienteNome', 'Cliente'),
+    cols.money('valorServico', 'Serviço'),
+    cols.money('valorIss', 'ISS'),
+    cols.money('valorTotal', 'Total'),
+    cols.status('situacao', 'Situação'),
+  ],
+  fields: [
+    { name: 'numero', label: 'Número', type: 'text', required: true, cols: 4 },
+    { name: 'serie', label: 'Série', type: 'text', cols: 2 },
+    { name: 'modelo', label: 'Modelo', type: 'text', cols: 2 },
+    {
+      name: 'clienteId',
+      label: 'Cliente',
+      type: 'reference',
+      required: true,
+      cols: 4,
+      reference: { basePath: '/api/clientes', labelField: 'nome' },
+    },
+    {
+      name: 'servicoId',
+      label: 'Serviço',
+      type: 'reference',
+      cols: 4,
+      reference: { basePath: '/api/servicos', labelField: 'nome' },
+    },
+    { name: 'valorServico', label: 'Valor do serviço', type: 'money', required: true, cols: 4 },
+    { name: 'aliquotaIss', label: 'Alíquota ISS', type: 'percent', cols: 4 },
+    { name: 'valorDesconto', label: 'Desconto', type: 'money', cols: 4 },
+    { name: 'dataEmissao', label: 'Emissão', type: 'date', cols: 4 },
+    {
+      name: 'movimentacaoId',
+      label: 'Movimentação (origem)',
+      type: 'reference',
+      cols: 6,
+      reference: { basePath: '/api/movimentacoes', labelField: 'veiculoPlaca' },
+    },
+    {
+      name: 'mensalistaId',
+      label: 'Mensalista (origem)',
+      type: 'reference',
+      cols: 6,
+      reference: { basePath: '/api/mensalistas', labelField: 'veiculoPlaca' },
+    },
+    {
+      name: 'condicaoPagamentoId',
+      label: 'Condição de pagamento',
+      type: 'reference',
+      cols: 6,
+      reference: { basePath: '/api/condicoes-pagamento', labelField: 'nome' },
+    },
+    {
+      name: 'formaPagamentoId',
+      label: 'Forma de pagamento',
+      type: 'reference',
+      cols: 6,
+      reference: { basePath: '/api/formas-pagamento', labelField: 'nome' },
+    },
+    { name: 'observacao', label: 'Observação', type: 'textarea' },
+  ],
+  rowActions: [
+    {
+      key: 'emitir',
+      label: 'Emitir',
+      icon: <CheckCircleOutlineIcon />,
+      method: 'post',
+      pathSuffix: (r) => `/${r.id}/emissao`,
+      confirm: 'Emitir esta nota de serviço?',
+      visible: (r) => r.situacao === 'PENDENTE',
+    },
+    {
+      key: 'cancelar',
+      label: 'Cancelar',
+      icon: <CancelOutlinedIcon />,
+      color: 'error',
+      method: 'post',
+      pathSuffix: (r) => `/${r.id}/cancelamento`,
+      confirm: 'Cancelar esta nota?',
+      visible: (r) => r.situacao !== 'CANCELADA',
+    },
+  ],
+};
+
+export const fiscalConfigs = [notaEntradaConfig, notaSaidaConfig, notaServicoConfig];

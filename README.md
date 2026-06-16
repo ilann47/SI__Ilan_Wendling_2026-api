@@ -135,6 +135,21 @@ Cada módulo segue a fatia `Controller → Service → Repository → Entity`, c
 (`record` + Bean Validation) na borda e respostas de erro padronizadas em
 `ProblemDetail` (RFC 7807).
 
+## Frontend (interface web)
+
+Além da API + Swagger, há uma **SPA moderna** (React + TypeScript + MUI) em
+[`frontend/`](frontend/) que consome esta API: login JWT, dashboard, operação de
+pátio em tempo real, CRUD de todos os cadastros (com filtros e paginação), notas
+fiscais (com itens), financeiro (com baixa) e relatórios.
+
+```bash
+cd frontend && npm install && npm run dev   # http://localhost:5173
+```
+
+O dev server faz proxy de `/api` para o backend (sem CORS). No primeiro acesso use
+**`admin` / `admin123`** — um administrador é criado automaticamente quando não há
+usuários (troque a senha depois). Detalhes em [frontend/README.md](frontend/README.md).
+
 ## Documentação
 
 A especificação acadêmica completa (introdução, análise de negócio, DER,
