@@ -1,13 +1,16 @@
 package com.kaneko.estacionamento.patio;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +21,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Teste de integracao do contrato de Mensalista, exercitando as FKs
- * (cliente/veiculo) e a regra de no maximo um contrato ATIVO por veiculo.
+ * Teste de integracao do contrato de Mensalista — todos os fluxos, exercitando
+ * as FKs e a regra de no maximo um contrato ATIVO por veiculo.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -50,11 +53,21 @@ class MensalistaControllerTest {
         veiculoId = veiculoRepository.save(veiculo).getId();
     }
 
+    private Number criar(String status) throws Exception {
+        String campoStatus = status != null ? ", \"status\": \"" + status + "\"" : "";
+        String json = "{ \"clienteId\": " + clienteId + ", \"veiculoId\": " + veiculoId
+                + ", \"valorMensal\": 250.00" + campoStatus + " }";
+        String body = mvc.perform(post("/api/mensalistas")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
+
     @Test
     void criaContratoComStatusAtivoPadrao() throws Exception {
-        String json = """
-                { "clienteId": %d, "veiculoId": %d, "valorMensal": 250.00 }
-                """.formatted(clienteId, veiculoId);
+        String json = "{ \"clienteId\": " + clienteId + ", \"veiculoId\": " + veiculoId
+                + ", \"valorMensal\": 250.00 }";
         String body = mvc.perform(post("/api/mensalistas")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
@@ -70,13 +83,48 @@ class MensalistaControllerTest {
     }
 
     @Test
-    void rejeitaSegundoContratoAtivoNoMesmoVeiculoCom409() throws Exception {
-        String json = """
-                { "clienteId": %d, "veiculoId": %d, "valorMensal": 250 }
-                """.formatted(clienteId, veiculoId);
-        mvc.perform(post("/api/mensalistas")
+    void listaMensalistas() throws Exception {
+        criar(null);          // ATIVO
+        criar("SUSPENSO");    // segundo contrato (nao conflita com o ATIVO)
+        mvc.perform(get("/api/mensalistas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void atualizaMensalista() throws Exception {
+        Number id = criar(null);
+        String json = "{ \"clienteId\": " + clienteId + ", \"veiculoId\": " + veiculoId
+                + ", \"valorMensal\": 300.00, \"status\": \"ATIVO\" }";
+        mvc.perform(put("/api/mensalistas/" + id)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
-                .andExpect(status().isCreated());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.valorMensal").value(300.00));
+    }
+
+    @Test
+    void atualizaMensalistaInexistenteRetorna404() throws Exception {
+        String json = "{ \"clienteId\": " + clienteId + ", \"veiculoId\": " + veiculoId
+                + ", \"valorMensal\": 250 }";
+        mvc.perform(put("/api/mensalistas/999999")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void excluiMensalistaEdepoisRetorna404() throws Exception {
+        Number id = criar(null);
+        mvc.perform(delete("/api/mensalistas/" + id))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/mensalistas/" + id))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rejeitaSegundoContratoAtivoNoMesmoVeiculoCom409() throws Exception {
+        criar(null);
+        String json = "{ \"clienteId\": " + clienteId + ", \"veiculoId\": " + veiculoId
+                + ", \"valorMensal\": 250 }";
         mvc.perform(post("/api/mensalistas")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isConflict());
@@ -84,9 +132,7 @@ class MensalistaControllerTest {
 
     @Test
     void retorna404QuandoVeiculoNaoExiste() throws Exception {
-        String json = """
-                { "clienteId": %d, "veiculoId": 999999, "valorMensal": 250 }
-                """.formatted(clienteId);
+        String json = "{ \"clienteId\": " + clienteId + ", \"veiculoId\": 999999, \"valorMensal\": 250 }";
         mvc.perform(post("/api/mensalistas")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isNotFound());
@@ -94,13 +140,17 @@ class MensalistaControllerTest {
 
     @Test
     void rejeitaPeriodoInvalidoCom409() throws Exception {
-        String json = """
-                { "clienteId": %d, "veiculoId": %d, "valorMensal": 250,
-                  "dataInicio": "2026-01-10", "dataFim": "2026-01-05" }
-                """.formatted(clienteId, veiculoId);
+        String json = "{ \"clienteId\": " + clienteId + ", \"veiculoId\": " + veiculoId
+                + ", \"valorMensal\": 250, \"dataInicio\": \"2026-01-10\", \"dataFim\": \"2026-01-05\" }";
         mvc.perform(post("/api/mensalistas")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void retorna404QuandoNaoEncontrado() throws Exception {
+        mvc.perform(get("/api/mensalistas/999999"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

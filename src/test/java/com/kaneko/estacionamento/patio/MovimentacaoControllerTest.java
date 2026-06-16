@@ -20,8 +20,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Teste de integracao da operacao de patio (entrada/saida), cobrindo a
- * deteccao de mensalista, a regra de 1 aberta por veiculo e o fechamento.
+ * Teste de integracao da operacao de patio (entrada/saida) — todos os fluxos:
+ * deteccao de mensalista, regra de 1 aberta por veiculo, listagem, patio atual,
+ * fechamento e tentativa de saida de movimentacao ja fechada.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -79,21 +80,25 @@ class MovimentacaoControllerTest {
         mensalistaRepository.save(mensalista);
     }
 
+    private Number entrar(Long veiculoId) throws Exception {
+        String json = "{ \"veiculoId\": " + veiculoId + " }";
+        String body = mvc.perform(post("/api/movimentacoes/entrada")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
+
     @Test
     void fluxoEntradaSaidaAvulso() throws Exception {
-        String entrada = """
-                { "veiculoId": %d }
-                """.formatted(veiculoAvulsoId);
-        String body = mvc.perform(post("/api/movimentacoes/entrada")
-                        .contentType(MediaType.APPLICATION_JSON).content(entrada))
-                .andExpect(status().isCreated())
+        Number id = entrar(veiculoAvulsoId);
+        mvc.perform(get("/api/movimentacoes/" + id))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tipo").value("AVULSO"))
                 .andExpect(jsonPath("$.status").value("ABERTO"))
                 .andExpect(jsonPath("$.tarifaId").isNotEmpty())
-                .andExpect(jsonPath("$.mensalistaId").isEmpty())
-                .andReturn().getResponse().getContentAsString();
+                .andExpect(jsonPath("$.mensalistaId").isEmpty());
 
-        Number id = JsonPath.read(body, "$.id");
         mvc.perform(post("/api/movimentacoes/" + id + "/saida"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FECHADO"))
@@ -102,25 +107,39 @@ class MovimentacaoControllerTest {
     }
 
     @Test
+    void listaMovimentacoes() throws Exception {
+        entrar(veiculoAvulsoId);
+        mvc.perform(get("/api/movimentacoes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void patioMostraApenasAbertas() throws Exception {
+        Number aberta = entrar(veiculoAvulsoId);
+        Number fechada = entrar(veiculoMensalistaId);
+        mvc.perform(post("/api/movimentacoes/" + fechada + "/saida"))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/api/movimentacoes/patio"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
     void naoPermiteEntrada2xNoMesmoVeiculo() throws Exception {
-        String entrada = """
-                { "veiculoId": %d }
-                """.formatted(veiculoAvulsoId);
+        entrar(veiculoAvulsoId);
         mvc.perform(post("/api/movimentacoes/entrada")
-                        .contentType(MediaType.APPLICATION_JSON).content(entrada))
-                .andExpect(status().isCreated());
-        mvc.perform(post("/api/movimentacoes/entrada")
-                        .contentType(MediaType.APPLICATION_JSON).content(entrada))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"veiculoId\": " + veiculoAvulsoId + " }"))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void entradaDetectaMensalistaAtivo() throws Exception {
-        String entrada = """
-                { "veiculoId": %d }
-                """.formatted(veiculoMensalistaId);
         mvc.perform(post("/api/movimentacoes/entrada")
-                        .contentType(MediaType.APPLICATION_JSON).content(entrada))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"veiculoId\": " + veiculoMensalistaId + " }"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.tipo").value("MENSALISTA"))
                 .andExpect(jsonPath("$.mensalistaId").isNotEmpty())
@@ -129,19 +148,26 @@ class MovimentacaoControllerTest {
 
     @Test
     void saidaDeMensalistaNaoCobra() throws Exception {
-        String entrada = """
-                { "veiculoId": %d }
-                """.formatted(veiculoMensalistaId);
-        String body = mvc.perform(post("/api/movimentacoes/entrada")
-                        .contentType(MediaType.APPLICATION_JSON).content(entrada))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        Number id = JsonPath.read(body, "$.id");
-
+        Number id = entrar(veiculoMensalistaId);
         mvc.perform(post("/api/movimentacoes/" + id + "/saida"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FECHADO"))
                 .andExpect(jsonPath("$.valorCobrado").value(0));
+    }
+
+    @Test
+    void naoPermiteSaidaDeMovimentacaoJaFechada() throws Exception {
+        Number id = entrar(veiculoAvulsoId);
+        mvc.perform(post("/api/movimentacoes/" + id + "/saida"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/movimentacoes/" + id + "/saida"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void retorna404QuandoNaoEncontrada() throws Exception {
+        mvc.perform(get("/api/movimentacoes/999999"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
