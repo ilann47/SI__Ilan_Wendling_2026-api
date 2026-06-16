@@ -32,3 +32,5 @@ app:
   jwt:
     secret: chave-de-teste-com-ao-menos-32-bytes-para-hmac-sha256
     expiration-minutes: 60
+  bootstrap-admin:
+    enabled: false
