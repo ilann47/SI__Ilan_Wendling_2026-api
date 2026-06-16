@@ -1,7 +1,9 @@
 package com.kaneko.estacionamento.pessoas;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,8 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Teste de integracao do CRUD de Cliente, incluindo a unicidade de documento e
- * a referencia opcional a Cidade.
+ * Teste de integracao do CRUD de Cliente — todos os fluxos, com a unicidade de
+ * documento e a referencia opcional a Cidade.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -62,12 +64,19 @@ class ClienteControllerTest {
         cidadeId = cidadeRepository.save(cidade).getId();
     }
 
+    private Number criar(String nome, String documento) throws Exception {
+        String json = "{ \"nome\": \"" + nome + "\", \"documento\": \"" + documento + "\" }";
+        String body = mvc.perform(post("/api/clientes")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
+
     @Test
     void criaEbuscaPorId() throws Exception {
-        String json = """
-                { "nome": "Joao da Silva", "documento": "12345678901", "tipo": "FISICA",
-                  "sexo": "MASCULINO", "cidadeId": %d, "limiteCredito": 500.00 }
-                """.formatted(cidadeId);
+        String json = "{ \"nome\": \"Joao da Silva\", \"documento\": \"12345678901\", \"tipo\": \"FISICA\","
+                + " \"sexo\": \"MASCULINO\", \"cidadeId\": " + cidadeId + ", \"limiteCredito\": 500.00 }";
         String body = mvc.perform(post("/api/clientes")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
@@ -84,15 +93,50 @@ class ClienteControllerTest {
     }
 
     @Test
+    void listaClientes() throws Exception {
+        criar("Cliente Um", "11111111111");
+        criar("Cliente Dois", "22222222222");
+        mvc.perform(get("/api/clientes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void atualizaCliente() throws Exception {
+        Number id = criar("Maria", "33333333333");
+        String json = "{ \"nome\": \"Maria Souza\", \"documento\": \"33333333333\","
+                + " \"apelido\": \"Mari\", \"limiteCredito\": 1500.00 }";
+        mvc.perform(put("/api/clientes/" + id)
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Maria Souza"))
+                .andExpect(jsonPath("$.apelido").value("Mari"))
+                .andExpect(jsonPath("$.limiteCredito").value(1500.00));
+    }
+
+    @Test
+    void atualizaClienteInexistenteRetorna404() throws Exception {
+        String json = "{ \"nome\": \"X\", \"documento\": \"00000000000\" }";
+        mvc.perform(put("/api/clientes/999999")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void excluiClienteEdepoisRetorna404() throws Exception {
+        Number id = criar("Temporario", "44444444444");
+        mvc.perform(delete("/api/clientes/" + id))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/clientes/" + id))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void rejeitaDocumentoDuplicadoCom409() throws Exception {
-        String json = """
-                { "nome": "Cliente A", "documento": "99999999999" }
-                """;
+        criar("Cliente A", "99999999999");
         mvc.perform(post("/api/clientes")
-                        .contentType(MediaType.APPLICATION_JSON).content(json))
-                .andExpect(status().isCreated());
-        mvc.perform(post("/api/clientes")
-                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"nome\": \"Cliente B\", \"documento\": \"99999999999\" }"))
                 .andExpect(status().isConflict());
     }
 
@@ -103,6 +147,12 @@ class ClienteControllerTest {
                 """;
         mvc.perform(post("/api/clientes")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void retorna404QuandoNaoEncontrado() throws Exception {
+        mvc.perform(get("/api/clientes/999999"))
                 .andExpect(status().isNotFound());
     }
 
