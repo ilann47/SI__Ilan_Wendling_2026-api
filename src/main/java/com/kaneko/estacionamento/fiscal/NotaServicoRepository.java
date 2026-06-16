@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.fiscal;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +14,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface NotaServicoRepository extends JpaRepository<NotaServico, Long> {
 
     boolean existsByNumeroAndSerie(String numero, String serie);
+
+    /** Notas de servico numa situacao, emitidas no intervalo — base do faturamento (4.27). */
+    List<NotaServico> findBySituacaoAndDataEmissaoBetween(
+            SituacaoNotaServico situacao, LocalDate inicio, LocalDate fim);
 
     @Override
     @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})

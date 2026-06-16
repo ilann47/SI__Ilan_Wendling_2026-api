@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.patio;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,10 @@ public interface MensalistaRepository extends JpaRepository<Mensalista, Long> {
 
     /** Contrato de um veiculo no status informado (ex.: o contrato ATIVO), se houver. */
     Optional<Mensalista> findFirstByVeiculoIdAndStatus(Long veiculoId, StatusMensalista status);
+
+    /** Contratos num status, ordenados pelo inicio — base do relatorio 4.30. */
+    @EntityGraph(attributePaths = {"cliente", "veiculo"})
+    List<Mensalista> findByStatusOrderByDataInicioAsc(StatusMensalista status);
 
     @Override
     @EntityGraph(attributePaths = {"cliente", "veiculo"})
