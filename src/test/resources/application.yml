@@ -22,3 +22,13 @@ spring:
       hibernate:
         jdbc:
           time_zone: America/Sao_Paulo
+
+# Por padrao a seguranca fica desligada nos testes de cadastro/processo (os
+# controllers sao exercitados diretamente). Os testes de autenticacao reativam
+# com @SpringBootTest(properties = "app.security.enabled=true").
+app:
+  security:
+    enabled: false
+  jwt:
+    secret: chave-de-teste-com-ao-menos-32-bytes-para-hmac-sha256
+    expiration-minutes: 60

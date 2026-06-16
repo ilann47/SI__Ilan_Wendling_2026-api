@@ -39,3 +39,12 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+
+app:
+  security:
+    # Quando habilitada, os endpoints /api/** (exceto /api/auth e o Swagger)
+    # exigem um token JWT valido. Desligada apenas em testes de cadastro.
+    enabled: ${APP_SECURITY_ENABLED:true}
+  jwt:
+    secret: ${APP_JWT_SECRET:kaneko-troque-esta-chave-secreta-em-producao-32+bytes}
+    expiration-minutes: ${APP_JWT_EXP_MIN:480}

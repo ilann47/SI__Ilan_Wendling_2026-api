@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.common.web;
 
+import com.kaneko.estacionamento.common.exception.AutenticacaoException;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import java.util.LinkedHashMap;
@@ -23,6 +24,13 @@ public class ApiExceptionHandler {
     public ProblemDetail handleNaoEncontrado(RecursoNaoEncontradoException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         pd.setTitle("Recurso nao encontrado");
+        return pd;
+    }
+
+    @ExceptionHandler(AutenticacaoException.class)
+    public ProblemDetail handleAutenticacao(AutenticacaoException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        pd.setTitle("Nao autenticado");
         return pd;
     }
 
