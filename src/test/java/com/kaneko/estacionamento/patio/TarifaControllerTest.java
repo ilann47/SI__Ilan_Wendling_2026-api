@@ -1,7 +1,9 @@
 package com.kaneko.estacionamento.patio;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,8 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Teste de integracao do CRUD de Tarifa, incluindo o default de tolerancia e
- * a validacao de valores nao-negativos.
+ * Teste de integracao do CRUD de Tarifa — todos os fluxos, incluindo o default
+ * de tolerancia e a validacao de valores nao-negativos.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -25,6 +27,16 @@ class TarifaControllerTest {
 
     @Autowired
     private MockMvc mvc;
+
+    private Number criar(String descricao) throws Exception {
+        String json = "{ \"descricao\": \"" + descricao
+                + "\", \"valorHora\": 5.00, \"valorDiaria\": 30.00, \"valorMensalidade\": 250.00 }";
+        String body = mvc.perform(post("/api/tarifas")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
 
     @Test
     void criaComToleranciaPadraoEbuscaPorId() throws Exception {
@@ -42,6 +54,58 @@ class TarifaControllerTest {
         mvc.perform(get("/api/tarifas/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.valorDiaria").value(30.00));
+    }
+
+    @Test
+    void listaTarifas() throws Exception {
+        // O schema (migration V1) nasce com 1 tarifa-semente ("Tarifa padrao");
+        // a verificacao e relativa ao total previo para nao depender desse dado.
+        int antes = totalTarifas();
+        criar("Tarifa A");
+        criar("Tarifa B");
+        mvc.perform(get("/api/tarifas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(antes + 2));
+    }
+
+    private int totalTarifas() throws Exception {
+        String body = mvc.perform(get("/api/tarifas"))
+                .andReturn().getResponse().getContentAsString();
+        return ((Number) JsonPath.read(body, "$.totalElements")).intValue();
+    }
+
+    @Test
+    void atualizaTarifa() throws Exception {
+        Number id = criar("Tarifa Antiga");
+        String json = """
+                { "descricao": "Tarifa Nova", "valorHora": 7.50, "valorDiaria": 40.00,
+                  "valorMensalidade": 300.00, "toleranciaMin": 20 }
+                """;
+        mvc.perform(put("/api/tarifas/" + id)
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.descricao").value("Tarifa Nova"))
+                .andExpect(jsonPath("$.valorHora").value(7.50))
+                .andExpect(jsonPath("$.toleranciaMin").value(20));
+    }
+
+    @Test
+    void atualizaTarifaInexistenteRetorna404() throws Exception {
+        String json = """
+                { "descricao": "X", "valorHora": 1, "valorDiaria": 1, "valorMensalidade": 1 }
+                """;
+        mvc.perform(put("/api/tarifas/999999")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void excluiTarifaEdepoisRetorna404() throws Exception {
+        Number id = criar("Tarifa Temporaria");
+        mvc.perform(delete("/api/tarifas/" + id))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/tarifas/" + id))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -1,7 +1,9 @@
 package com.kaneko.estacionamento.patio;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -18,7 +20,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Teste de integracao do CRUD de Veiculo (avulso e vinculado a cliente).
+ * Teste de integracao do CRUD de Veiculo — todos os fluxos (avulso e vinculado
+ * a cliente).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -41,6 +44,15 @@ class VeiculoControllerTest {
         clienteId = clienteRepository.save(cliente).getId();
     }
 
+    private Number criar(String placa) throws Exception {
+        String json = "{ \"placa\": \"" + placa + "\" }";
+        String body = mvc.perform(post("/api/veiculos")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
+
     @Test
     void criaAvulsoNormalizandoPlaca() throws Exception {
         String json = """
@@ -61,9 +73,7 @@ class VeiculoControllerTest {
 
     @Test
     void criaVinculadoAoCliente() throws Exception {
-        String json = """
-                { "placa": "XYZ4E56", "tipo": "MOTO", "clienteId": %d }
-                """.formatted(clienteId);
+        String json = "{ \"placa\": \"XYZ4E56\", \"tipo\": \"MOTO\", \"clienteId\": " + clienteId + " }";
         mvc.perform(post("/api/veiculos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
@@ -72,22 +82,55 @@ class VeiculoControllerTest {
     }
 
     @Test
-    void rejeitaPlacaDuplicadaCom409() throws Exception {
+    void listaVeiculos() throws Exception {
+        criar("AAA1111");
+        criar("BBB2222");
+        mvc.perform(get("/api/veiculos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void atualizaVeiculo() throws Exception {
+        Number id = criar("UPD1234");
         String json = """
-                { "placa": "DUP1234" }
+                { "placa": "upd1234", "modelo": "Onix", "cor": "Prata", "tipo": "CARRO" }
                 """;
-        mvc.perform(post("/api/veiculos")
+        mvc.perform(put("/api/veiculos/" + id)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
-                .andExpect(status().isCreated());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.modelo").value("Onix"))
+                .andExpect(jsonPath("$.cor").value("Prata"));
+    }
+
+    @Test
+    void atualizaVeiculoInexistenteRetorna404() throws Exception {
+        mvc.perform(put("/api/veiculos/999999")
+                        .contentType(MediaType.APPLICATION_JSON).content("{ \"placa\": \"NEW0001\" }"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void excluiVeiculoEdepoisRetorna404() throws Exception {
+        Number id = criar("DEL1234");
+        mvc.perform(delete("/api/veiculos/" + id))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/veiculos/" + id))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rejeitaPlacaDuplicadaCom409() throws Exception {
+        criar("DUP1234");
         mvc.perform(post("/api/veiculos")
-                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                        .contentType(MediaType.APPLICATION_JSON).content("{ \"placa\": \"DUP1234\" }"))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void retorna404QuandoClienteNaoExiste() throws Exception {
         String json = """
-                { "placa": "NEW0001", "clienteId": 999999 }
+                { "placa": "NEW0009", "clienteId": 999999 }
                 """;
         mvc.perform(post("/api/veiculos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
