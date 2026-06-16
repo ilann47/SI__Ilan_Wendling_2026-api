@@ -2,9 +2,12 @@ package com.kaneko.estacionamento.conveniencia;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.conveniencia.dto.UnidadeMedidaRequest;
+import com.kaneko.estacionamento.conveniencia.dto.UnidadeMedidaResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,8 +28,11 @@ public class UnidadeMedidaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<UnidadeMedida> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<UnidadeMedidaResponse> listar(String nome, Boolean ativo, Pageable pageable) {
+        Specification<UnidadeMedida> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("nome", nome),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(UnidadeMedidaResponse::from);
     }
 
     @Transactional(readOnly = true)

@@ -79,6 +79,16 @@ class FormaPagamentoControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Pix");
+        criar("Boleto");
+        mvc.perform(get("/api/formas-pagamento").param("nome", "pix"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Pix"));
+    }
+
+    @Test
     void atualizaFormaPagamento() throws Exception {
         Number id = criar("Boletinho");
         String json = """

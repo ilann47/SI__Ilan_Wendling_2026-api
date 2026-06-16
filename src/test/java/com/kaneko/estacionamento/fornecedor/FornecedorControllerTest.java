@@ -83,6 +83,16 @@ class FornecedorControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Alpha Distribuidora", "11111111111111");
+        criar("Beta Atacado", "22222222222222");
+        mvc.perform(get("/api/fornecedores").param("nome", "alpha"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Alpha Distribuidora"));
+    }
+
+    @Test
     void atualizaFornecedor() throws Exception {
         Number id = criar("Antigo", "33333333333333");
         String json = "{ \"nome\": \"Novo Nome\", \"documento\": \"33333333333333\", \"limiteCredito\": 5000.00 }";

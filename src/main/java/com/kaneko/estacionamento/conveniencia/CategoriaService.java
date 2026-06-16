@@ -2,9 +2,12 @@ package com.kaneko.estacionamento.conveniencia;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.conveniencia.dto.CategoriaRequest;
+import com.kaneko.estacionamento.conveniencia.dto.CategoriaResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +27,11 @@ public class CategoriaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Categoria> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<CategoriaResponse> listar(String nome, Boolean ativo, Pageable pageable) {
+        Specification<Categoria> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("nome", nome),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(CategoriaResponse::from);
     }
 
     @Transactional(readOnly = true)

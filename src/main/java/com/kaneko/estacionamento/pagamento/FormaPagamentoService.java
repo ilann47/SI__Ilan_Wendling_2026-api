@@ -2,9 +2,12 @@ package com.kaneko.estacionamento.pagamento;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.pagamento.dto.FormaPagamentoRequest;
+import com.kaneko.estacionamento.pagamento.dto.FormaPagamentoResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +27,11 @@ public class FormaPagamentoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<FormaPagamento> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<FormaPagamentoResponse> listar(String nome, Boolean ativo, Pageable pageable) {
+        Specification<FormaPagamento> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("nome", nome),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(FormaPagamentoResponse::from);
     }
 
     @Transactional(readOnly = true)

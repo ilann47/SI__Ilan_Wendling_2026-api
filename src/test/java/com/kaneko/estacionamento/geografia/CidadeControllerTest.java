@@ -86,6 +86,17 @@ class CidadeControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Maringa");
+        criar("Londrina");
+
+        mvc.perform(get("/api/cidades").param("nome", "marin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Maringa"));
+    }
+
+    @Test
     void atualizaCidade() throws Exception {
         Number id = criar("Marina");
         String json = "{ \"nome\": \"Maringa\", \"ddd\": \"44\", \"estadoId\": " + estadoId + " }";

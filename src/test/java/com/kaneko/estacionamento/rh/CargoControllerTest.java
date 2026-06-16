@@ -63,6 +63,16 @@ class CargoControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Operador");
+        criar("Gerente");
+        mvc.perform(get("/api/cargos").param("nome", "geren"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Gerente"));
+    }
+
+    @Test
     void atualizaCargo() throws Exception {
         Number id = criar("Auxiliar");
         String json = "{ \"nome\": \"Auxiliar Senior\", \"salarioBase\": 2500.00, \"requerCnh\": true }";

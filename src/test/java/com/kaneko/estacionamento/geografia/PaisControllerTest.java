@@ -69,6 +69,17 @@ class PaisControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Brasil");
+        criar("Argentina");
+
+        mvc.perform(get("/api/paises").param("nome", "bras"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Brasil"));
+    }
+
+    @Test
     void atualizaPais() throws Exception {
         Number id = criar("Brasi");
         String json = """

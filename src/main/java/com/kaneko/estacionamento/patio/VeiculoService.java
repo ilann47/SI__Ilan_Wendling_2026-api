@@ -2,11 +2,14 @@ package com.kaneko.estacionamento.patio;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.patio.dto.VeiculoRequest;
+import com.kaneko.estacionamento.patio.dto.VeiculoResponse;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +31,12 @@ public class VeiculoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Veiculo> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<VeiculoResponse> listar(String placa, Long clienteId, Boolean ativo, Pageable pageable) {
+        Specification<Veiculo> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("placa", placa),
+                FiltroSpecs.fkId("cliente", clienteId),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(VeiculoResponse::from);
     }
 
     @Transactional(readOnly = true)

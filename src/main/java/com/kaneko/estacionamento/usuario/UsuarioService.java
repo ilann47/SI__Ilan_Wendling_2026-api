@@ -2,11 +2,14 @@ package com.kaneko.estacionamento.usuario;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.rh.Funcionario;
 import com.kaneko.estacionamento.rh.FuncionarioRepository;
 import com.kaneko.estacionamento.usuario.dto.UsuarioRequest;
+import com.kaneko.estacionamento.usuario.dto.UsuarioResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +34,11 @@ public class UsuarioService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Usuario> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<UsuarioResponse> listar(PerfilUsuario perfil, Boolean ativo, Pageable pageable) {
+        Specification<Usuario> filtro = FiltroSpecs.todos(
+                FiltroSpecs.igual("perfil", perfil),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(UsuarioResponse::from);
     }
 
     @Transactional(readOnly = true)

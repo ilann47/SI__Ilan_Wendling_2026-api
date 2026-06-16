@@ -79,6 +79,16 @@ class FuncionarioControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Funcionario Um", "11111111111");
+        criar("Funcionario Dois", "22222222222");
+        mvc.perform(get("/api/funcionarios").param("nome", "dois"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Funcionario Dois"));
+    }
+
+    @Test
     void atualizaFuncionario() throws Exception {
         Number id = criar("Carlos", "33333333333");
         String json = "{ \"nome\": \"Carlos Silva\", \"cpf\": \"33333333333\", \"cargoId\": " + cargoId

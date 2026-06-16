@@ -6,11 +6,14 @@ import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
 import com.kaneko.estacionamento.geografia.Pais;
 import com.kaneko.estacionamento.geografia.PaisRepository;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import com.kaneko.estacionamento.rh.dto.FuncionarioRequest;
+import com.kaneko.estacionamento.rh.dto.FuncionarioResponse;
 import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +42,12 @@ public class FuncionarioService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Funcionario> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<FuncionarioResponse> listar(String nome, Long cargoId, Boolean ativo, Pageable pageable) {
+        Specification<Funcionario> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("nome", nome),
+                FiltroSpecs.fkId("cargo", cargoId),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(FuncionarioResponse::from);
     }
 
     @Transactional(readOnly = true)

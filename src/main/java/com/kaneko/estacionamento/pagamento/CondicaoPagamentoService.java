@@ -2,12 +2,15 @@ package com.kaneko.estacionamento.pagamento;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.pagamento.dto.CondicaoPagamentoRequest;
+import com.kaneko.estacionamento.pagamento.dto.CondicaoPagamentoResponse;
 import com.kaneko.estacionamento.pagamento.dto.ParcelaRequest;
 import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,8 +38,11 @@ public class CondicaoPagamentoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CondicaoPagamento> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<CondicaoPagamentoResponse> listar(String nome, Boolean ativo, Pageable pageable) {
+        Specification<CondicaoPagamento> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("nome", nome),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(CondicaoPagamentoResponse::from);
     }
 
     @Transactional(readOnly = true)

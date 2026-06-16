@@ -69,6 +69,17 @@ class CategoriaControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Bebidas");
+        criar("Snacks");
+
+        mvc.perform(get("/api/categorias").param("nome", "bebid"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Bebidas"));
+    }
+
+    @Test
     void atualizaCategoria() throws Exception {
         Number id = criar("Bebida");
         String json = """

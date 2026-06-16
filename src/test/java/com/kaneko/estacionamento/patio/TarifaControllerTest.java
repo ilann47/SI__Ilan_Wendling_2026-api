@@ -75,6 +75,17 @@ class TarifaControllerTest {
     }
 
     @Test
+    void filtraPorDescricao() throws Exception {
+        criar("Mensalista Premium");
+        criar("Avulso Economico");
+
+        mvc.perform(get("/api/tarifas").param("descricao", "premium"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].descricao").value("Mensalista Premium"));
+    }
+
+    @Test
     void atualizaTarifa() throws Exception {
         Number id = criar("Tarifa Antiga");
         String json = """

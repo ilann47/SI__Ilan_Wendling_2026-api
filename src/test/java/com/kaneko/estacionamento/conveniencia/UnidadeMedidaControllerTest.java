@@ -70,6 +70,17 @@ class UnidadeMedidaControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Unidade", "UN");
+        criar("Litro", "L");
+
+        mvc.perform(get("/api/unidades-medida").param("nome", "unid"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Unidade"));
+    }
+
+    @Test
     void atualizaUnidade() throws Exception {
         Number id = criar("Pacot", "PCT");
         String json = """

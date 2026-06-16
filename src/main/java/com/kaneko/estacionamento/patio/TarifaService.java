@@ -1,9 +1,12 @@
 package com.kaneko.estacionamento.patio;
 
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.patio.dto.TarifaRequest;
+import com.kaneko.estacionamento.patio.dto.TarifaResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +26,11 @@ public class TarifaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Tarifa> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<TarifaResponse> listar(String descricao, Boolean ativo, Pageable pageable) {
+        Specification<Tarifa> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("descricao", descricao),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(TarifaResponse::from);
     }
 
     @Transactional(readOnly = true)

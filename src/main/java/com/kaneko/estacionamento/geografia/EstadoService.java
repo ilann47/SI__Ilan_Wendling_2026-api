@@ -2,9 +2,12 @@ package com.kaneko.estacionamento.geografia;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.geografia.dto.EstadoRequest;
+import com.kaneko.estacionamento.geografia.dto.EstadoResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,8 +30,12 @@ public class EstadoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Estado> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<EstadoResponse> listar(Long paisId, String uf, Boolean ativo, Pageable pageable) {
+        Specification<Estado> filtro = FiltroSpecs.todos(
+                FiltroSpecs.fkId("pais", paisId),
+                FiltroSpecs.contemIgnoreCase("uf", uf),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(EstadoResponse::from);
     }
 
     @Transactional(readOnly = true)

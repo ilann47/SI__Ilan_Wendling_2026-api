@@ -2,10 +2,13 @@ package com.kaneko.estacionamento.rh;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.rh.dto.CargoRequest;
+import com.kaneko.estacionamento.rh.dto.CargoResponse;
 import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +25,11 @@ public class CargoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Cargo> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<CargoResponse> listar(String nome, Boolean ativo, Pageable pageable) {
+        Specification<Cargo> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("nome", nome),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(CargoResponse::from);
     }
 
     @Transactional(readOnly = true)

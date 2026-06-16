@@ -77,6 +77,17 @@ class EstadoControllerTest {
     }
 
     @Test
+    void filtraPorUf() throws Exception {
+        criar("Parana", "PR");
+        criar("Sao Paulo", "SP");
+
+        mvc.perform(get("/api/estados").param("uf", "pr"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Parana"));
+    }
+
+    @Test
     void atualizaEstado() throws Exception {
         Number id = criar("Sao Pauo", "SP");
         String json = "{ \"nome\": \"Sao Paulo\", \"uf\": \"sp\", \"paisId\": " + paisId + " }";

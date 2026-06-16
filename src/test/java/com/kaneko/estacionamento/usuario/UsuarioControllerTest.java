@@ -59,6 +59,21 @@ class UsuarioControllerTest {
     }
 
     @Test
+    void filtraPorPerfil() throws Exception {
+        criar("admin");
+        String operador = "{ \"nome\": \"Operador\", \"login\": \"oper\","
+                + " \"senha\": \"segredo123\", \"perfil\": \"OPERADOR\" }";
+        mvc.perform(post("/api/usuarios")
+                        .contentType(MediaType.APPLICATION_JSON).content(operador))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/api/usuarios").param("perfil", "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].login").value("admin"));
+    }
+
+    @Test
     void atualizaUsuario() throws Exception {
         Number id = criar("oper");
         String json = "{ \"nome\": \"Operador Editado\", \"login\": \"oper\", \"senha\": \"novasenha1\", \"perfil\": \"OPERADOR\" }";

@@ -86,6 +86,16 @@ class CondicaoPagamentoControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("A Vista");
+        criar("30 dias");
+        mvc.perform(get("/api/condicoes-pagamento").param("nome", "vista"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("A Vista"));
+    }
+
+    @Test
     void atualizaCondicao() throws Exception {
         Number id = criar("Provisorio");
         String json = "{ \"nome\": \"Definitivo\", \"numeroParcelas\": 3, \"percentualJuros\": 2.00 }";

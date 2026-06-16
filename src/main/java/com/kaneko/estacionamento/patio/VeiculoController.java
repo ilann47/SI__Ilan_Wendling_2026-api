@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,8 +31,12 @@ public class VeiculoController {
     }
 
     @GetMapping
-    public Page<VeiculoResponse> listar(Pageable pageable) {
-        return service.listar(pageable).map(VeiculoResponse::from);
+    public Page<VeiculoResponse> listar(
+            @RequestParam(required = false) String placa,
+            @RequestParam(required = false) Long clienteId,
+            @RequestParam(required = false) Boolean ativo,
+            Pageable pageable) {
+        return service.listar(placa, clienteId, ativo, pageable);
     }
 
     @GetMapping("/{id}")

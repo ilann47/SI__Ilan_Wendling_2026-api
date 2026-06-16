@@ -2,8 +2,10 @@ package com.kaneko.estacionamento.fornecedor;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.fornecedor.dto.EmailRequest;
 import com.kaneko.estacionamento.fornecedor.dto.FornecedorRequest;
+import com.kaneko.estacionamento.fornecedor.dto.FornecedorResponse;
 import com.kaneko.estacionamento.fornecedor.dto.TelefoneRequest;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
@@ -16,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,8 +49,12 @@ public class FornecedorService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Fornecedor> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<FornecedorResponse> listar(String nome, String documento, Boolean ativo, Pageable pageable) {
+        Specification<Fornecedor> filtro = FiltroSpecs.todos(
+                FiltroSpecs.contemIgnoreCase("nome", nome),
+                FiltroSpecs.contemIgnoreCase("documento", documento),
+                FiltroSpecs.igual("ativo", ativo));
+        return repository.findAll(filtro, pageable).map(FornecedorResponse::from);
     }
 
     @Transactional(readOnly = true)

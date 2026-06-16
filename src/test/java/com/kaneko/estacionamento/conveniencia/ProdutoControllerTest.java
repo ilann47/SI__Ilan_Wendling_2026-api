@@ -89,6 +89,17 @@ class ProdutoControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Refrigerante Lata");
+        criar("Agua Mineral");
+
+        mvc.perform(get("/api/produtos").param("nome", "refrigerante"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Refrigerante Lata"));
+    }
+
+    @Test
     void atualizaProduto() throws Exception {
         Number id = criar("Produto Antigo");
         String json = "{ \"nome\": \"Produto Novo\", \"marcaId\": " + marcaId

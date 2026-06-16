@@ -91,6 +91,17 @@ class VeiculoControllerTest {
     }
 
     @Test
+    void filtraPorPlaca() throws Exception {
+        criar("AAA1111");
+        criar("BBB2222");
+
+        mvc.perform(get("/api/veiculos").param("placa", "aaa"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].placa").value("AAA1111"));
+    }
+
+    @Test
     void atualizaVeiculo() throws Exception {
         Number id = criar("UPD1234");
         String json = """

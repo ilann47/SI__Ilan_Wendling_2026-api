@@ -68,6 +68,17 @@ class MarcaControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Coca-Cola");
+        criar("Pepsi");
+
+        mvc.perform(get("/api/marcas").param("nome", "coca"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Coca-Cola"));
+    }
+
+    @Test
     void atualizaMarca() throws Exception {
         Number id = criar("Coca");
         String json = """

@@ -69,6 +69,17 @@ class ServicoControllerTest {
     }
 
     @Test
+    void filtraPorNome() throws Exception {
+        criar("Lavagem");
+        criar("Calibragem");
+
+        mvc.perform(get("/api/servicos").param("nome", "lavag"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].nome").value("Lavagem"));
+    }
+
+    @Test
     void atualizaServico() throws Exception {
         Number id = criar("Lavage");
         String json = """
