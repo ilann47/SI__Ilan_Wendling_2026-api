@@ -2,9 +2,13 @@ package com.kaneko.estacionamento.patio;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.financeiro.ContaReceber;
+import com.kaneko.estacionamento.financeiro.ContaReceberRepository;
+import com.kaneko.estacionamento.financeiro.SituacaoContaReceber;
 import com.kaneko.estacionamento.patio.dto.MensalistaRequest;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,13 +28,16 @@ public class MensalistaService {
     private final MensalistaRepository repository;
     private final ClienteRepository clienteRepository;
     private final VeiculoRepository veiculoRepository;
+    private final ContaReceberRepository contaReceberRepository;
 
     public MensalistaService(MensalistaRepository repository,
                              ClienteRepository clienteRepository,
-                             VeiculoRepository veiculoRepository) {
+                             VeiculoRepository veiculoRepository,
+                             ContaReceberRepository contaReceberRepository) {
         this.repository = repository;
         this.clienteRepository = clienteRepository;
         this.veiculoRepository = veiculoRepository;
+        this.contaReceberRepository = contaReceberRepository;
     }
 
     @Transactional(readOnly = true)
@@ -83,6 +90,34 @@ public class MensalistaService {
     @Transactional
     public void excluir(Long id) {
         repository.delete(buscar(id));
+    }
+
+    /**
+     * Gera a mensalidade (titulo a receber) de um contrato ATIVO, vinculada ao
+     * mensalista — conecta o patio ao financeiro (requisito 4.30). A competencia
+     * e controlada pela data de vencimento informada.
+     */
+    @Transactional
+    public ContaReceber gerarMensalidade(Long id, LocalDate vencimento) {
+        Mensalista mensalista = buscar(id);
+        if (mensalista.getStatus() != StatusMensalista.ATIVO) {
+            throw new ConflitoException("Apenas contratos ATIVOS podem gerar mensalidade.");
+        }
+        LocalDate emissao = LocalDate.now();
+        LocalDate venc = vencimento != null ? vencimento : emissao;
+        if (venc.isBefore(emissao)) {
+            throw new ConflitoException("A data de vencimento não pode ser anterior à emissão.");
+        }
+        ContaReceber conta = new ContaReceber();
+        conta.setCliente(mensalista.getCliente());
+        conta.setMensalista(mensalista);
+        conta.setValorOriginal(mensalista.getValorMensal());
+        conta.setValorTotal(mensalista.getValorMensal());
+        conta.setValorRecebido(BigDecimal.ZERO);
+        conta.setDataEmissao(emissao);
+        conta.setDataVencimento(venc);
+        conta.setSituacao(SituacaoContaReceber.PENDENTE);
+        return contaReceberRepository.save(conta);
     }
 
     private void aplicar(Mensalista mensalista, MensalistaRequest req, StatusMensalista status, LocalDate inicio) {

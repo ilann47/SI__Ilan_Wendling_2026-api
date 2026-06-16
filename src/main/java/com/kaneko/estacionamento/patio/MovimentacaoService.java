@@ -59,6 +59,9 @@ public class MovimentacaoService {
     @Transactional
     public Movimentacao registrarEntrada(EntradaRequest req) {
         Veiculo veiculo = buscarVeiculo(req.veiculoId());
+        if (Boolean.FALSE.equals(veiculo.getAtivo())) {
+            throw new ConflitoException("O veiculo esta inativo e nao pode entrar no patio.");
+        }
         if (repository.existsByVeiculoIdAndStatus(veiculo.getId(), StatusMovimentacao.ABERTO)) {
             throw new ConflitoException("Este veiculo ja esta no patio (ha uma movimentacao aberta).");
         }

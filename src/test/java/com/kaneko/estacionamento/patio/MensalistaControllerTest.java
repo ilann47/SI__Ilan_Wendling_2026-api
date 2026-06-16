@@ -148,6 +148,28 @@ class MensalistaControllerTest {
     }
 
     @Test
+    void geraMensalidadeParaContratoAtivo() throws Exception {
+        Number id = criar(null);
+        mvc.perform(post("/api/mensalistas/" + id + "/mensalidade").param("vencimento", "2030-12-10"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.valorTotal").value(250.00))
+                .andExpect(jsonPath("$.situacao").value("PENDENTE"))
+                .andExpect(jsonPath("$.mensalistaId").value(id))
+                .andExpect(jsonPath("$.clienteNome").value("Mensalista X"));
+
+        mvc.perform(get("/api/contas-receber"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void naoGeraMensalidadeParaContratoNaoAtivo() throws Exception {
+        Number id = criar("SUSPENSO");
+        mvc.perform(post("/api/mensalistas/" + id + "/mensalidade"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
         mvc.perform(get("/api/mensalistas/999999"))
                 .andExpect(status().isNotFound());

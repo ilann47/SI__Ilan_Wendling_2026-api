@@ -86,6 +86,16 @@ class NotaSaidaControllerTest {
     }
 
     @Test
+    void rejeitaNotaParaClienteInativo() throws Exception {
+        Cliente cliente = clienteRepository.findById(clienteId).orElseThrow();
+        cliente.setAtivo(false);
+        clienteRepository.save(cliente);
+        mvc.perform(post("/api/notas-saida")
+                        .contentType(MediaType.APPLICATION_JSON).content(corpo("VDINA", "1")))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void criaNotaPendenteComTotais() throws Exception {
         Number id = criar("VD1", "5");
         mvc.perform(get("/api/notas-saida/" + id))

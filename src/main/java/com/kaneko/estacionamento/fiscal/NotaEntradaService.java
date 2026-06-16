@@ -68,6 +68,9 @@ public class NotaEntradaService {
     public NotaEntrada criar(NotaEntradaRequest req) {
         Fornecedor fornecedor = fornecedorRepository.findById(req.fornecedorId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor", req.fornecedorId()));
+        if (Boolean.FALSE.equals(fornecedor.getAtivo())) {
+            throw new ConflitoException("O fornecedor está inativo e não pode receber notas.");
+        }
 
         NotaEntrada nota = new NotaEntrada();
         nota.setNumero(req.numero().trim());

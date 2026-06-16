@@ -90,6 +90,18 @@ class MovimentacaoControllerTest {
     }
 
     @Test
+    void rejeitaEntradaDeVeiculoInativo() throws Exception {
+        Veiculo inativo = new Veiculo();
+        inativo.setPlaca("INA0000");
+        inativo.setAtivo(false);
+        Long inativoId = veiculoRepository.save(inativo).getId();
+        mvc.perform(post("/api/movimentacoes/entrada")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"veiculoId\": " + inativoId + " }"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void fluxoEntradaSaidaAvulso() throws Exception {
         Number id = entrar(veiculoAvulsoId);
         mvc.perform(get("/api/movimentacoes/" + id))
