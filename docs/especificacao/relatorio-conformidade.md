@@ -4,7 +4,7 @@
 
 **Documento:** Relatório de Conformidade e Plano de Refatoração
 **Sistema:** Estacionamento Kaneko Ltda. (Maringá-PR) — controle de estacionamento (mensalista + avulso) com módulos de Conveniência, Fiscal e Financeiro
-**Versão do sistema auditado:** v1 (modelagem + especificação). **Atualização 2026-06-16:** o backend foi implementado (Spring Boot 4 / Java 25, 252 testes automatizados) — ver a seção **"Atualização — Status de Implementação"** ao final.
+**Versão do sistema auditado:** v1 (modelagem + especificação). **Atualização 2026-06-16:** o backend foi implementado (Spring Boot 4 / Java 25, 279 testes automatizados) — ver a seção **"Atualização — Status de Implementação"** ao final.
 **Natureza:** Auditoria de qualidade e conformidade com o modelo acadêmico de "Especificação de Requisitos por Casos de Uso" (padrão prática profissional de Sistemas de Informação)
 **Artefatos-base da auditoria:** `database/schema.sql` (schema físico validado, 825 linhas) e o conjunto de casos de uso em `docs/especificacao/05-casos-de-uso/`
 **Autor:** Arquitetura de Software / Auditoria de Qualidade
@@ -156,7 +156,7 @@ Ordem recomendada:
 
 Esta seção registra o estado do **backend efetivamente codificado** sobre as fundações validadas (schema + casos de uso), atualizando o que, na auditoria original, constava como "backend ainda não implementado".
 
-**Visão geral.** Aplicação **Spring Boot 4 / Java 25 / PostgreSQL 17** completa, organizada por funcionalidade (package-by-feature), com **252 testes de integração** verdes cobrindo todos os fluxos de cada módulo (criar, listar, buscar, 404, atualizar, excluir, e os conflitos/validações 409/400/401) e os processos de pátio, fiscais e financeiros. **As 31 tabelas do schema estão mapeadas.** O `schema.sql` foi mantido **congelado** como fonte da verdade — nenhuma alteração de DDL foi feita; o Flyway aplica-o como `V1` imutável e o Hibernate roda em `ddl-auto=validate`.
+**Visão geral.** Aplicação **Spring Boot 4 / Java 25 / PostgreSQL 17** completa, organizada por funcionalidade (package-by-feature), com **279 testes de integração** verdes cobrindo todos os fluxos de cada módulo (criar, listar, buscar, 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401) e os processos de pátio, fiscais, financeiros e de relatório. **As 31 tabelas do schema estão mapeadas.** O `schema.sql` foi mantido **congelado** como fonte da verdade — nenhuma alteração de DDL foi feita; o Flyway aplica-o como `V1` imutável e o Hibernate roda em `ddl-auto=validate`.
 
 **Estado por item do plano (Parte C):**
 
@@ -164,8 +164,13 @@ Esta seção registra o estado do **backend efetivamente codificado** sobre as f
 |---|---|---|
 | **P4 — Roadmap de implementação** | **Concluído** | Flyway V1 → entidades JPA + enums → repositories → services com RNxxx → controllers REST + OpenAPI/Swagger → operação de pátio → módulos Conveniência, Fiscal e Financeiro. |
 | **P3 — Autenticação e segurança** | **Implementado** | Spring Security + **JWT HS256** (HMAC manual, sem dependência externa) + **BCrypt** em `usuario.senha`; perfis ADMIN/OPERADOR; **RN001** efetivada (`/api/**` exige token, exceto `/api/auth`, Swagger e actuator). Configurável por `app.security.enabled`. Senha nunca é exposta nem logada. |
-| **P2 — Regras de negócio no serviço** | **Parcial** | A **existência** de todo referenciado é validada (HTTP 404 padronizado em ProblemDetail), e os processos fiscais/financeiros aplicam as regras de cálculo (rateio, parcelas, baixa, estoque com validação de saldo na venda). As validações **semânticas** adicionais de P2 (referenciado com `ativo = TRUE`; `mensalista.status = ATIVO`; coerência `mensalista_id`↔`veiculo_id`; gravação de `tarifa_id` na saída) permanecem como **evolução recomendada**, salvo onde o fluxo do pátio já as exige. |
+| **P2 — Regras de negócio no serviço** | **Implementado** | Existência de todo referenciado validada (404). O `ativo = TRUE` do referenciado é exigido nos processos (cliente na nota de saída, fornecedor na nota de entrada, veículo na entrada de pátio → 409). A entrada de pátio só considera `mensalista.status = ATIVO`, com coerência `mensalista`↔`veículo` (o contrato é localizado pelo próprio veículo) e gravação da `tarifa_id` aplicada. Os cálculos fiscais/financeiros (rateio, parcelas, baixa, estoque com validação de saldo) estão completos. |
 | **P1 — Integridade no banco** | **Não aplicado (por decisão)** | O schema foi **congelado**; as constraints P1.1–P1.3 não foram adicionadas. Como **mitigação**, a camada de serviço calcula e assegura a composição de `valor_total` (`valor_original − desconto + juros + multa`) ao gerar/lançar títulos. As constraints permanecem recomendadas para uma futura migração `V2`, quando o schema for reaberto. |
+
+**Requisitos de consulta (Seção 4) — implementados após auditoria interna (2026-06-16).** Uma auditoria do backend apontou que a camada de consulta estava incompleta; foi então fechada:
+- **Filtros de listagem (4.1–4.25):** todas as 25 listagens de cadastro ganharam filtros opcionais (por nome/documento/placa/descrição/UF, por FK e por situação/perfil) via JPA **Specification** + um helper reutilizável `FiltroSpecs` (evita o `:param IS NULL` que, no PostgreSQL, falha por não inferir o tipo do parâmetro).
+- **Relatórios gerenciais (4.26–4.30):** implementados em `/api/relatorios` — pátio atual (permanência + totalizador por tipo), faturamento do dia/período (estacionamento, vendas, serviços e recebimentos), contas a vencer (a pagar/receber em aberto, vencidos destacados), estoque mínimo e mensalistas ativos (receita recorrente).
+- **Integração pátio→financeiro:** `POST /api/mensalistas/{id}/mensalidade` gera o título a receber do contrato (req. 4.30).
 
 **Decisões de implementação relevantes (além do plano):**
 

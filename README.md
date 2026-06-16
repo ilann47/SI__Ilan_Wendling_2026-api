@@ -17,7 +17,11 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   geração de contas a pagar), de **saída** (venda: baixa de estoque com validação,
   geração de contas a receber) e de **serviço** (NFS-e com ISS).
 - **Financeiro** — contas a pagar, a receber e despesas avulsas, com baixa
-  parcial/total.
+  parcial/total. Mensalidade do mensalista gerada como conta a receber.
+- **Relatórios** (`/api/relatorios`) — pátio atual, faturamento do dia/período,
+  contas a vencer, estoque mínimo e mensalistas ativos.
+- **Filtros** — todas as listagens de cadastro aceitam filtros opcionais
+  (por nome/documento/situação etc.) como query params.
 - **Segurança** — usuários (senha BCrypt) e autenticação JWT.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
@@ -103,9 +107,9 @@ schema; a cada classe a transação sofre rollback):
 ./mvnw test
 ```
 
-São 252 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
-404, atualizar, excluir, e os conflitos/validações 409/400/401), além dos
-processos do pátio, fiscais e financeiros.
+São 279 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
+404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
+dos processos do pátio, fiscais, financeiros e dos relatórios.
 
 ## Arquitetura
 
@@ -124,6 +128,7 @@ conveniencia/    categoria, marca, unidade, serviço, produto, produto-fornecedo
 fiscal/          notas de entrada, saída e serviço (+ itens)
 financeiro/      contas a pagar, a receber e avulsas
 usuario/         cadastro de usuários
+relatorio/       relatórios gerenciais (consultas consolidadas)
 ```
 
 Cada módulo segue a fatia `Controller → Service → Repository → Entity`, com DTOs
