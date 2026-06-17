@@ -35,4 +35,7 @@ build/
 
 
 
+### Frontend tem repositorio proprio (estacionamento-web) ###
+frontend/
+
 .claude/
