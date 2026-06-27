@@ -114,7 +114,8 @@ class FuncionarioControllerTest {
         mvc.perform(delete("/api/funcionarios/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/funcionarios/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

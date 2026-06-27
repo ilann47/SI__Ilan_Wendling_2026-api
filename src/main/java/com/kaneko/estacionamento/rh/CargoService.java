@@ -62,7 +62,7 @@ public class CargoService {
 
     @Transactional
     public void excluir(Long id) {
-        repository.delete(buscar(id));
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(Cargo cargo, CargoRequest req, String nome) {

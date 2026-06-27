@@ -64,8 +64,7 @@ public class FormaPagamentoService {
 
     @Transactional
     public void excluir(Long id) {
-        FormaPagamento forma = buscar(id);
-        repository.delete(forma);
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(FormaPagamento forma, FormaPagamentoRequest req, String nome) {

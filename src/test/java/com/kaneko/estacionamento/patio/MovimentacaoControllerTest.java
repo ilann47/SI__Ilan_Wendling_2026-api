@@ -188,4 +188,21 @@ class MovimentacaoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"veiculoId\": 999999 }"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void cancelaMovimentacaoAberta() throws Exception {
+        Number id = entrar(veiculoAvulsoId);
+        mvc.perform(post("/api/movimentacoes/" + id + "/cancelamento"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADO"));
+    }
+
+    @Test
+    void naoCancelaMovimentacaoFechada() throws Exception {
+        Number id = entrar(veiculoAvulsoId);
+        mvc.perform(post("/api/movimentacoes/" + id + "/saida"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/movimentacoes/" + id + "/cancelamento"))
+                .andExpect(status().isConflict());
+    }
 }

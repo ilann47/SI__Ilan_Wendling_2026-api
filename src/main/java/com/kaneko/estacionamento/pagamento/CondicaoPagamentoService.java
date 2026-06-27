@@ -79,7 +79,7 @@ public class CondicaoPagamentoService {
 
     @Transactional
     public void excluir(Long id) {
-        repository.delete(buscar(id));
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(CondicaoPagamento condicao, CondicaoPagamentoRequest req, String nome) {

@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.common.security;
 
+import com.kaneko.estacionamento.usuario.Usuario;
+import com.kaneko.estacionamento.usuario.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,9 +27,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final String PREFIXO = "Bearer ";
 
     private final JwtService jwtService;
+    private final UsuarioRepository usuarioRepository;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, UsuarioRepository usuarioRepository) {
         this.jwtService = jwtService;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Override
@@ -38,10 +42,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 JwtService.Claims claims = jwtService.validar(header.substring(PREFIXO.length()));
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        claims.login(), null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + claims.perfil())));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                // RN001: so autentica usuario existente e ATIVO — um token de usuario
+                // inativado ou removido deixa de valer, mesmo dentro da validade.
+                boolean usuarioAtivo = usuarioRepository.findByLoginIgnoreCase(claims.login())
+                        .filter(Usuario::getAtivo)
+                        .isPresent();
+                if (usuarioAtivo) {
+                    var authentication = new UsernamePasswordAuthenticationToken(
+                            claims.login(), null,
+                            List.of(new SimpleGrantedAuthority("ROLE_" + claims.perfil())));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             } catch (RuntimeException ignored) {
                 // Token invalido: segue sem autenticacao.
             }

@@ -121,7 +121,8 @@ class CidadeControllerTest {
         mvc.perform(delete("/api/cidades/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/cidades/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

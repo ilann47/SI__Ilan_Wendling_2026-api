@@ -72,7 +72,7 @@ public class EstadoService {
 
     @Transactional
     public void excluir(Long id) {
-        repository.delete(buscar(id));
+        buscar(id).setAtivo(false);
     }
 
     private Pais buscarPais(Long paisId) {

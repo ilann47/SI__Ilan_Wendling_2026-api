@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.common.security;
 
+import com.kaneko.estacionamento.usuario.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,7 +39,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             @Value("${app.security.enabled:true}") boolean segurancaHabilitada,
-            JwtService jwtService) throws Exception {
+            JwtService jwtService,
+            UsuarioRepository usuarioRepository) throws Exception {
 
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
@@ -55,7 +57,7 @@ public class SecurityConfig {
                             // Qualquer exclusao e administrativa.
                             .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
                             .anyRequest().authenticated())
-                    .addFilterBefore(new JwtAuthFilter(jwtService),
+                    .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository),
                             UsernamePasswordAuthenticationFilter.class)
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(
                             new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));

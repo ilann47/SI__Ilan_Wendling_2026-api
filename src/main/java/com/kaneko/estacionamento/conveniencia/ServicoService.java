@@ -64,8 +64,7 @@ public class ServicoService {
 
     @Transactional
     public void excluir(Long id) {
-        Servico servico = buscar(id);
-        repository.delete(servico);
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(Servico servico, ServicoRequest req, String nome) {

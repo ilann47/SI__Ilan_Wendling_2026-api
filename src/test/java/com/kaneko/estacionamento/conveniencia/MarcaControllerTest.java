@@ -103,7 +103,8 @@ class MarcaControllerTest {
         mvc.perform(delete("/api/marcas/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/marcas/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

@@ -107,7 +107,8 @@ class UnidadeMedidaControllerTest {
         mvc.perform(delete("/api/unidades-medida/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/unidades-medida/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

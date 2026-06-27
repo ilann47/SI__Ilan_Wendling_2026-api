@@ -55,7 +55,7 @@ public class TarifaService {
 
     @Transactional
     public void excluir(Long id) {
-        repository.delete(buscar(id));
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(Tarifa tarifa, TarifaRequest req) {

@@ -117,7 +117,8 @@ class FornecedorControllerTest {
         mvc.perform(delete("/api/fornecedores/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/fornecedores/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

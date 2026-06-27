@@ -80,7 +80,7 @@ public class FuncionarioService {
 
     @Transactional
     public void excluir(Long id) {
-        repository.delete(buscar(id));
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(Funcionario f, FuncionarioRequest req, String cpf) {

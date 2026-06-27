@@ -109,6 +109,22 @@ public class MovimentacaoService {
         return repository.save(mov);
     }
 
+    /**
+     * Cancela uma movimentacao ABERTA (entrada registrada por engano). Apenas
+     * tickets ABERTOS podem ser cancelados — uma movimentacao ja FECHADA exige
+     * estorno (fora do escopo). Espelha o RF 4.18.3 (Cancelar Movimentacao).
+     */
+    @Transactional
+    public Movimentacao cancelar(Long id) {
+        Movimentacao mov = buscar(id);
+        if (mov.getStatus() != StatusMovimentacao.ABERTO) {
+            throw new ConflitoException(
+                    "Apenas uma movimentacao ABERTA pode ser cancelada.");
+        }
+        mov.setStatus(StatusMovimentacao.CANCELADO);
+        return repository.save(mov);
+    }
+
     private Veiculo buscarVeiculo(Long veiculoId) {
         return veiculoRepository.findById(veiculoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Veiculo", veiculoId));

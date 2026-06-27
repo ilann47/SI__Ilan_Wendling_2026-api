@@ -88,7 +88,9 @@ class UsuarioControllerTest {
     void excluiUsuarioEdepoisRetorna404() throws Exception {
         Number id = criar("temp");
         mvc.perform(delete("/api/usuarios/" + id)).andExpect(status().isNoContent());
-        mvc.perform(get("/api/usuarios/" + id)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/usuarios/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

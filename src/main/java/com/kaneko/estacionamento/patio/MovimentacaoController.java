@@ -53,4 +53,10 @@ public class MovimentacaoController {
     public MovimentacaoResponse saida(@PathVariable Long id) {
         return MovimentacaoResponse.from(service.registrarSaida(id));
     }
+
+    /** Cancela uma movimentacao ABERTA (entrada por engano) — RF 4.18.3. */
+    @PostMapping("/{id}/cancelamento")
+    public MovimentacaoResponse cancelar(@PathVariable Long id) {
+        return MovimentacaoResponse.from(service.cancelar(id));
+    }
 }

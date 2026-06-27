@@ -64,8 +64,7 @@ public class CategoriaService {
 
     @Transactional
     public void excluir(Long id) {
-        Categoria categoria = buscar(id);
-        repository.delete(categoria);
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(Categoria categoria, CategoriaRequest req, String nome) {

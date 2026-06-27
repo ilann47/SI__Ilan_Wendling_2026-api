@@ -70,7 +70,7 @@ public class CidadeService {
 
     @Transactional
     public void excluir(Long id) {
-        repository.delete(buscar(id));
+        buscar(id).setAtivo(false);
     }
 
     private Estado buscarEstado(Long estadoId) {

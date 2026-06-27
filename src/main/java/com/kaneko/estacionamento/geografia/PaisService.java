@@ -64,8 +64,7 @@ public class PaisService {
 
     @Transactional
     public void excluir(Long id) {
-        Pais pais = buscar(id);
-        repository.delete(pais);
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(Pais pais, PaisRequest req, String nome) {

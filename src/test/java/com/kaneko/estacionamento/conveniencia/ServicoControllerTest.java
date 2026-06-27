@@ -105,7 +105,8 @@ class ServicoControllerTest {
         mvc.perform(delete("/api/servicos/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/servicos/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

@@ -156,7 +156,7 @@ Ordem recomendada:
 
 Esta seção registra o estado do **backend efetivamente codificado** sobre as fundações validadas (schema + casos de uso), atualizando o que, na auditoria original, constava como "backend ainda não implementado".
 
-**Visão geral.** Aplicação **Spring Boot 4 / Java 25 / PostgreSQL 17** completa, organizada por funcionalidade (package-by-feature), com **279 testes de integração** verdes cobrindo todos os fluxos de cada módulo (criar, listar, buscar, 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401) e os processos de pátio, fiscais, financeiros e de relatório. **As 31 tabelas do schema estão mapeadas.** O `schema.sql` foi mantido **congelado** como fonte da verdade — nenhuma alteração de DDL foi feita; o Flyway aplica-o como `V1` imutável e o Hibernate roda em `ddl-auto=validate`.
+**Visão geral.** Aplicação **Spring Boot 4 / Java 25 / PostgreSQL 17** completa, organizada por funcionalidade (package-by-feature), com **293 testes de integração** verdes cobrindo todos os fluxos de cada módulo (criar, listar, buscar, 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401) e os processos de pátio, fiscais, financeiros e de relatório. **As 31 tabelas do schema estão mapeadas.** O `schema.sql` foi mantido **congelado** como fonte da verdade — nenhuma alteração de DDL foi feita; o Flyway aplica-o como `V1` imutável e o Hibernate roda em `ddl-auto=validate`.
 
 **Estado por item do plano (Parte C):**
 
@@ -177,6 +177,20 @@ Esta seção registra o estado do **backend efetivamente codificado** sobre as f
 - **Observabilidade** — `X-Trace-Id` de correlação por requisição (gerado/propagado, exposto no header e no MDC dos logs); erros centralizados em **ProblemDetail (RFC 7807)** com o `traceId`; handler genérico para 500 (loga sem vazar *stacktrace*); health check via actuator.
 - **Geração de títulos** — a confirmação de nota de **entrada** soma estoque + atualiza custo e gera `conta_pagar`; a de **saída** valida e baixa estoque e gera `conta_receber`; ambas distribuem o total nas parcelas da condição de pagamento (a última parcela fecha o total, evitando resíduo de arredondamento). A `nota_servico` calcula o **ISS** e não gera título (serviço pago no ato).
 - **Configuração sem segredos no código** — banco, porta, segredo/validade do JWT e o liga/desliga da segurança são parametrizados por variáveis de ambiente, com padrões de desenvolvimento.
+
+**Coerência documentação↔código (2026-06-17) — correções de divergências e declaração de pendências.** Uma revisão de coerência confrontou a documentação (RNF, casos de uso) com a implementação. Os itens abaixo foram **corrigidos no código** para alinhar com o que a especificação promete; os demais ficam **honestamente declarados** como parciais ou futuros — em vez de afirmar conformidade que o código não tem.
+
+*Divergências corrigidas (documentação ↔ código agora coerentes):*
+- **Exclusão lógica (RNF-AUD-04):** a exclusão de cadastros agora é **lógica** — `excluir()` faz `ativo = false` e a linha é preservada, em vez de `DELETE` físico. Aplica-se aos 18 cadastros que possuem o flag `ativo` (geografia, pessoas, RH, fornecedor, pagamento, veículo/tarifa, conveniência e usuário). Verificável em teste: após o `DELETE`, o `GET` retorna o registro com `ativo = false`.
+- **RN001 — usuário ativo:** o filtro JWT passou a exigir usuário **existente e `ativo = true`** a cada requisição (um token de usuário inativado/removido deixa de valer mesmo dentro da validade), não apenas a presença de um token válido.
+- **Cancelar Movimentação (RF 4.18.3 / UC350):** implementado `POST /api/movimentacoes/{id}/cancelamento` (apenas tickets `ABERTO`, para entradas registradas por engano), ativando o estado `CANCELADO` que antes existia no enum mas nunca era atribuído.
+- **Cliente inativo em contrato de mensalista (UC303/E6):** o vínculo de um cliente inativo a um contrato passa a ser bloqueado (409).
+- **Contagem de tabelas:** o texto do RNF (Seção 10.7) dizia "vinte e cinco tabelas"; corrigido para **31**, alinhado ao `schema.sql` e ao restante da documentação.
+
+*Pendências declaradas (previstas, não implementadas nesta versão):*
+- **Trilha de autor por operação (RNF-AUD-05):** a autorização por perfil identifica o responsável na sessão autenticada, mas a **persistência do autor** de cada operação (`created_by` / log de evento) **não foi implementada** — exigiria coluna nova, e o `schema.sql` está **congelado**. Recomendado para a futura `V2`.
+- **Juros/multa da condição de pagamento:** os percentuais (`percentual_juros` / `percentual_multa`) são cadastrados, mas **ainda não são aplicados** automaticamente na geração/baixa de títulos (lança-se o valor da parcela). O cálculo automático por atraso fica para evolução.
+- **Exclusão de contratos e documentos transacionais:** mensalistas, notas fiscais e contas avulsas mantêm exclusão **física** — decisão intencional (notas só podem ser excluídas enquanto `PENDENTE`/rascunho; a inativação lógica aplica-se aos **cadastros**, que carregam o flag `ativo`).
 
 A instrução de execução (pré-requisitos, variáveis, Swagger, login e testes) está no [`README.md`](../../README.md) na raiz do projeto.
 

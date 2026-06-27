@@ -65,8 +65,7 @@ public class UnidadeMedidaService {
 
     @Transactional
     public void excluir(Long id) {
-        UnidadeMedida unidade = buscar(id);
-        repository.delete(unidade);
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(UnidadeMedida unidade, UnidadeMedidaRequest req, String sigla) {

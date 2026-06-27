@@ -116,7 +116,8 @@ class TarifaControllerTest {
         mvc.perform(delete("/api/tarifas/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/tarifas/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

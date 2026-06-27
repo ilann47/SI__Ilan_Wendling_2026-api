@@ -134,8 +134,13 @@ public class MensalistaService {
     }
 
     private Cliente buscarCliente(Long clienteId) {
-        return clienteRepository.findById(clienteId)
+        Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", clienteId));
+        if (Boolean.FALSE.equals(cliente.getAtivo())) {
+            throw new ConflitoException(
+                    "O cliente esta inativo e nao pode ser vinculado a um contrato de mensalista.");
+        }
+        return cliente;
     }
 
     private Veiculo buscarVeiculo(Long veiculoId) {

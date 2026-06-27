@@ -120,7 +120,8 @@ class CondicaoPagamentoControllerTest {
         mvc.perform(delete("/api/condicoes-pagamento/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/condicoes-pagamento/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

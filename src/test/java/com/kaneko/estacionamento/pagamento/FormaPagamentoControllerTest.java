@@ -117,7 +117,8 @@ class FormaPagamentoControllerTest {
         mvc.perform(delete("/api/formas-pagamento/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/formas-pagamento/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

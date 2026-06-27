@@ -149,7 +149,8 @@ class ClienteControllerTest {
         mvc.perform(delete("/api/clientes/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/clientes/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

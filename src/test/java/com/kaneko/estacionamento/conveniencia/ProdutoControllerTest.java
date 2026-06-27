@@ -125,7 +125,8 @@ class ProdutoControllerTest {
         mvc.perform(delete("/api/produtos/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/produtos/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

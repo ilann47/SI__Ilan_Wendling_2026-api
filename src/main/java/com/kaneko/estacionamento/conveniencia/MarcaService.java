@@ -64,8 +64,7 @@ public class MarcaService {
 
     @Transactional
     public void excluir(Long id) {
-        Marca marca = buscar(id);
-        repository.delete(marca);
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(Marca marca, MarcaRequest req, String nome) {

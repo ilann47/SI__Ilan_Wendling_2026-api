@@ -105,7 +105,8 @@ class CategoriaControllerTest {
         mvc.perform(delete("/api/categorias/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/categorias/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

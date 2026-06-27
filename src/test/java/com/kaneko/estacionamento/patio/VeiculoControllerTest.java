@@ -127,7 +127,8 @@ class VeiculoControllerTest {
         mvc.perform(delete("/api/veiculos/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/veiculos/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

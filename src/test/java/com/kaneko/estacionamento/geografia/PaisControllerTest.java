@@ -105,7 +105,8 @@ class PaisControllerTest {
         mvc.perform(delete("/api/paises/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/paises/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

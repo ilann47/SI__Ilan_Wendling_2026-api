@@ -96,7 +96,8 @@ class CargoControllerTest {
         mvc.perform(delete("/api/cargos/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/cargos/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

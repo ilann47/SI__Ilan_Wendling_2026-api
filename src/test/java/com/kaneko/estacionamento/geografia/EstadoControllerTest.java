@@ -112,7 +112,8 @@ class EstadoControllerTest {
         mvc.perform(delete("/api/estados/" + id))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/estados/" + id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false));
     }
 
     @Test

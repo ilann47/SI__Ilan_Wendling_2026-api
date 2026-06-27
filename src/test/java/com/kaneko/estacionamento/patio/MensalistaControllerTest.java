@@ -181,4 +181,16 @@ class MensalistaControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{ }"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void rejeitaContratoComClienteInativo() throws Exception {
+        Cliente cliente = clienteRepository.findById(clienteId).orElseThrow();
+        cliente.setAtivo(false);
+        clienteRepository.save(cliente);
+        String json = "{ \"clienteId\": " + clienteId + ", \"veiculoId\": " + veiculoId
+                + ", \"valorMensal\": 250 }";
+        mvc.perform(post("/api/mensalistas")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isConflict());
+    }
 }

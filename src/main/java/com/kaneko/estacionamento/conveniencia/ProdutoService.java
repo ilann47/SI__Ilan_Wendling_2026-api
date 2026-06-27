@@ -76,7 +76,7 @@ public class ProdutoService {
 
     @Transactional
     public void excluir(Long id) {
-        repository.delete(buscar(id));
+        buscar(id).setAtivo(false);
     }
 
     private void aplicar(Produto p, ProdutoRequest req, String codigoBarras) {
