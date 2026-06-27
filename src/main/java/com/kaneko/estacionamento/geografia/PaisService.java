@@ -72,6 +72,8 @@ public class PaisService {
         pais.setSigla(req.sigla());
         pais.setCodigo(req.codigo());
         pais.setNacionalidade(req.nacionalidade());
+        pais.setMoeda(req.moeda());
+        pais.setDdi(req.ddi());
         if (req.ativo() != null) {
             pais.setAtivo(req.ativo());
         }

@@ -41,7 +41,7 @@ class PaisControllerTest {
     @Test
     void criaEbuscaPorId() throws Exception {
         String json = """
-                { "nome": "Brasil", "sigla": "BRA", "nacionalidade": "Brasileiro" }
+                { "nome": "Brasil", "sigla": "BRA", "nacionalidade": "Brasileiro", "moeda": "Real", "ddi": "55" }
                 """;
         String body = mvc.perform(post("/api/paises")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
@@ -55,7 +55,9 @@ class PaisControllerTest {
         mvc.perform(get("/api/paises/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Brasil"))
-                .andExpect(jsonPath("$.sigla").value("BRA"));
+                .andExpect(jsonPath("$.sigla").value("BRA"))
+                .andExpect(jsonPath("$.moeda").value("Real"))
+                .andExpect(jsonPath("$.ddi").value("55"));
     }
 
     @Test

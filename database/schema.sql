@@ -18,6 +18,8 @@ CREATE TABLE pais (
     sigla         VARCHAR(3),                       -- ISO (ex.: BRA)
     codigo        VARCHAR(5),                       -- codigo do pais
     nacionalidade VARCHAR(100),                     -- gentilico (ex.: Brasileiro)
+    moeda         VARCHAR(30),                      -- [V2] moeda corrente (nome ou codigo ISO 4217)
+    ddi           VARCHAR(5),                       -- [V2] codigo de discagem internacional (ex.: 55)
     ativo         BOOLEAN       NOT NULL DEFAULT TRUE,
     created_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),

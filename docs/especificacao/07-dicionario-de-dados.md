@@ -25,6 +25,8 @@ Para cada tabela é apresentada uma subseção contendo uma tabela descritiva co
 | sigla | VARCHAR(3) | Não | 3 | — | Sigla ISO do país (ex.: BRA) |
 | codigo | VARCHAR(5) | Não | 5 | — | Código do país |
 | nacionalidade | VARCHAR(100) | Não | 100 | — | Gentílico associado (ex.: Brasileiro) |
+| moeda | VARCHAR(30) | Não | 30 | — | Moeda corrente (nome ou código ISO 4217, ex.: Real, BRL) — adicionada na migração V2 |
+| ddi | VARCHAR(5) | Não | 5 | — | Código de discagem internacional (DDI), ex.: 55 (Brasil), 351 (Portugal) — adicionada na V2 |
 | ativo | BOOLEAN | Sim | — | `DEFAULT TRUE` | Indicador de registro ativo (exclusão lógica) |
 | created_at | TIMESTAMPTZ | Sim | — | `DEFAULT now()` | Data e hora de criação do registro |
 | updated_at | TIMESTAMPTZ | Sim | — | `DEFAULT now()` | Data e hora da última atualização |

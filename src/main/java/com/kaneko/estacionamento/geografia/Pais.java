@@ -32,4 +32,12 @@ public class Pais extends BaseEntity {
     /** Gentilico (ex.: Brasileiro). */
     @Column(name = "nacionalidade", length = 100)
     private String nacionalidade;
+
+    /** Moeda corrente (nome ou codigo ISO 4217, ex.: Real, BRL). */
+    @Column(name = "moeda", length = 30)
+    private String moeda;
+
+    /** Codigo de discagem internacional (DDI), ex.: 55 (Brasil), 351 (Portugal). */
+    @Column(name = "ddi", length = 5)
+    private String ddi;
 }

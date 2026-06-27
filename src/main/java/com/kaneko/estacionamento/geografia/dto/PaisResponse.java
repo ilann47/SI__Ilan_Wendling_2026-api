@@ -12,6 +12,8 @@ public record PaisResponse(
         String sigla,
         String codigo,
         String nacionalidade,
+        String moeda,
+        String ddi,
         Boolean ativo,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
@@ -25,6 +27,8 @@ public record PaisResponse(
                 pais.getSigla(),
                 pais.getCodigo(),
                 pais.getNacionalidade(),
+                pais.getMoeda(),
+                pais.getDdi(),
                 pais.getAtivo(),
                 pais.getCreatedAt(),
                 pais.getUpdatedAt());

@@ -24,6 +24,12 @@ public record PaisRequest(
         @Size(max = 100, message = "A nacionalidade deve ter no máximo 100 caracteres.")
         String nacionalidade,
 
+        @Size(max = 30, message = "A moeda deve ter no máximo 30 caracteres.")
+        String moeda,
+
+        @Size(max = 5, message = "O DDI deve ter no máximo 5 caracteres.")
+        String ddi,
+
         Boolean ativo
 ) {
 }
