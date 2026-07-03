@@ -49,7 +49,7 @@ class CondicaoPagamentoControllerTest {
     @Test
     void criaComParcelasSomando100() throws Exception {
         String json = """
-                { "nome": "30/60", "numeroParcelas": 2, "diasPrimeiraParcela": 30, "diasEntreParcelas": 30,
+                { "nome": "30/60", "numeroParcelas": 2,
                   "parcelas": [
                     { "numero": 1, "dias": 30, "percentual": 50.00 },
                     { "numero": 2, "dias": 60, "percentual": 50.00 }

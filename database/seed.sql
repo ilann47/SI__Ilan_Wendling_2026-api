@@ -15,10 +15,10 @@ INSERT INTO forma_pagamento (id, nome, descricao) VALUES
   (2,'Pix','Transferencia instantanea'),
   (3,'Cartao de Credito','Cartao de credito'),
   (4,'Boleto','Boleto bancario');
-INSERT INTO condicao_pagamento (id, nome, numero_parcelas, dias_primeira_parcela, dias_entre_parcelas, percentual_juros, percentual_multa, percentual_desconto) VALUES
-  (1,'A vista',1,0,0,0.00,0.00,5.00),
-  (2,'30 dias',1,30,0,0.00,2.00,0.00),
-  (3,'30/60',2,30,30,1.00,2.00,0.00);
+INSERT INTO condicao_pagamento (id, nome, numero_parcelas, percentual_juros, percentual_multa, percentual_desconto) VALUES
+  (1,'A vista',1,0.00,0.00,5.00),
+  (2,'30 dias',1,0.00,2.00,0.00),
+  (3,'30/60',2,1.00,2.00,0.00);
 -- parcelas (somam 100% por condicao)
 INSERT INTO parcela_condicao_pagamento (condicao_pagamento_id, numero, dias, percentual, forma_pagamento_id) VALUES
   (1,1,0,100.00,1),

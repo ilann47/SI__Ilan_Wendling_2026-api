@@ -345,7 +345,7 @@ Contas a pagar e a receber, formas e condições de pagamento, e despesas avulsa
 
 **Forma de Pagamento** (`forma_pagamento`): `nome` (único), `descricao` (obrigatória), `ativo` — ex.: Dinheiro, Cartão, Pix, Boleto.
 
-**Condição de Pagamento** (`condicao_pagamento`): `nome` (único), `numero_parcelas` (≥ 1), `dias_primeira_parcela`, `dias_entre_parcelas`, percentuais de `juros`/`multa`/`desconto`, `ativo`. *Sub-grid* de parcelas (`parcela_condicao_pagamento`): `numero`, `dias`, `percentual` (0–100), `forma_pagamento_id` (opcional por parcela); a soma dos percentuais das parcelas compõe 100% do título.
+**Condição de Pagamento** (`condicao_pagamento`): `nome` (único), `numero_parcelas` (≥ 1), percentuais de `juros`/`multa`/`desconto`, `ativo`. Os dias de vencimento ficam por parcela (sub-grid). *Sub-grid* de parcelas (`parcela_condicao_pagamento`): `numero`, `dias`, `percentual` (0–100), `forma_pagamento_id` (opcional por parcela); a soma dos percentuais das parcelas compõe 100% do título.
 
 ### 6.10.2 Tela Conceitual — Contas a Pagar
 

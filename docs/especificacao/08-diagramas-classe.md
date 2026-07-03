@@ -262,8 +262,6 @@ classDiagram
         +Long id
         +String nome
         +Integer numeroParcelas
-        +Integer diasPrimeiraParcela
-        +Integer diasEntreParcelas
         +BigDecimal percentualJuros
         +BigDecimal percentualMulta
         +BigDecimal percentualDesconto

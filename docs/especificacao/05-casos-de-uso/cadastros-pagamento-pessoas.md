@@ -146,8 +146,6 @@ O caso de uso é ativado quando o usuário acessa a opção "Condições de Paga
 2. O sistema apresenta o formulário de cadastro com os campos da condição:
    - Nome* (texto, máximo 100 caracteres);
    - Número de parcelas* (inteiro, maior ou igual a 1, padrão 1);
-   - Dias para a primeira parcela* (inteiro, maior ou igual a 0, padrão 0);
-   - Dias entre parcelas* (inteiro, maior ou igual a 0, padrão 0);
    - Percentual de juros* (numérico, maior ou igual a 0, padrão 0);
    - Percentual de multa* (numérico, maior ou igual a 0, padrão 0);
    - Percentual de desconto* (numérico, entre 0 e 100, padrão 0);
@@ -183,9 +181,9 @@ O caso de uso é ativado quando o usuário acessa a opção "Condições de Paga
 
 ## Fluxos de Exceção
 
-- **E1 — Campo obrigatório não preenchido:** Caso o usuário não informe um campo obrigatório da condição (Nome, Número de parcelas, Dias para a primeira parcela, Dias entre parcelas, Percentual de juros, Percentual de multa ou Percentual de desconto) ou de uma parcela (Número da parcela, Dias para o vencimento ou Percentual), o sistema interrompe a gravação e exibe a mensagem: **"O campo [nome do campo] é obrigatório."**
+- **E1 — Campo obrigatório não preenchido:** Caso o usuário não informe um campo obrigatório da condição (Nome, Número de parcelas, Percentual de juros, Percentual de multa ou Percentual de desconto) ou de uma parcela (Número da parcela, Dias para o vencimento ou Percentual), o sistema interrompe a gravação e exibe a mensagem: **"O campo [nome do campo] é obrigatório."**
 - **E2 — Nome já cadastrado:** Caso o nome informado já exista em outra condição de pagamento (violação de `uq_condicao_pagamento_nome`), o sistema interrompe a gravação e exibe a mensagem: **"Já existe uma condição de pagamento cadastrada com este nome."**
-- **E3 — Valor inválido na condição:** Caso o número de parcelas seja menor que 1, os dias informados sejam negativos, os percentuais de juros ou de multa sejam negativos, ou o percentual de desconto esteja fora do intervalo de 0 a 100 (violação de `ck_condicao_parcelas` ou `ck_condicao_percentuais`), o sistema interrompe a gravação e exibe a mensagem: **"Valor inválido informado. Verifique a quantidade de parcelas e os percentuais (desconto entre 0 e 100; demais valores não podem ser negativos)."**
+- **E3 — Valor inválido na condição:** Caso o número de parcelas seja menor que 1, os percentuais de juros ou de multa sejam negativos, ou o percentual de desconto esteja fora do intervalo de 0 a 100 (violação de `ck_condicao_parcelas` ou `ck_condicao_percentuais`), o sistema interrompe a gravação e exibe a mensagem: **"Valor inválido informado. Verifique a quantidade de parcelas e os percentuais (desconto entre 0 e 100; demais valores não podem ser negativos)."**
 - **E4 — Número de parcela duplicado:** Caso seja informado o mesmo número de parcela mais de uma vez na mesma condição (violação de `uq_parcela_condicao_numero`), o sistema interrompe a gravação e exibe a mensagem: **"Já existe uma parcela com este número nesta condição de pagamento."**
 - **E5 — Valor inválido na parcela:** Caso o número da parcela seja menor que 1, os dias sejam negativos, ou o percentual esteja fora do intervalo de 0 a 100 (violação de `ck_parcela_valores`), o sistema interrompe a gravação e exibe a mensagem: **"Valor inválido na parcela. O número deve ser maior ou igual a 1, os dias não podem ser negativos e o percentual deve estar entre 0 e 100."**
 - **E6 — Registro vinculado a outro:** Caso a condição de pagamento esteja vinculada a fornecedores, clientes, notas ou contas, o sistema impede a exclusão física e exibe a mensagem: **"Esta condição de pagamento está vinculada a outros registros e não pode ser excluída. Deseja desativá-la?"** Em caso de confirmação, o sistema realiza a exclusão lógica (`ativo = FALSE`) e exibe "Condição de pagamento desativada com sucesso."

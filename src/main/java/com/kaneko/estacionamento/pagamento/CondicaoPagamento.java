@@ -32,12 +32,6 @@ public class CondicaoPagamento extends BaseEntity {
     @Column(name = "numero_parcelas", nullable = false)
     private Integer numeroParcelas = 1;
 
-    @Column(name = "dias_primeira_parcela", nullable = false)
-    private Integer diasPrimeiraParcela = 0;
-
-    @Column(name = "dias_entre_parcelas", nullable = false)
-    private Integer diasEntreParcelas = 0;
-
     @Column(name = "percentual_juros", nullable = false, precision = 6, scale = 2)
     private BigDecimal percentualJuros = BigDecimal.ZERO;
 

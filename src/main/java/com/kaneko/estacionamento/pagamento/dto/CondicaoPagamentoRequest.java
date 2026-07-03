@@ -26,12 +26,6 @@ public record CondicaoPagamentoRequest(
         @Min(value = 1, message = "O número de parcelas deve ser maior ou igual a 1.")
         Integer numeroParcelas,
 
-        @PositiveOrZero(message = "Os dias da primeira parcela não podem ser negativos.")
-        Integer diasPrimeiraParcela,
-
-        @PositiveOrZero(message = "Os dias entre parcelas não podem ser negativos.")
-        Integer diasEntreParcelas,
-
         @PositiveOrZero(message = "O percentual de juros não pode ser negativo.")
         BigDecimal percentualJuros,
 

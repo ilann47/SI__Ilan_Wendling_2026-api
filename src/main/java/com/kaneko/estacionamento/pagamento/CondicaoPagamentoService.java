@@ -85,8 +85,6 @@ public class CondicaoPagamentoService {
     private void aplicar(CondicaoPagamento condicao, CondicaoPagamentoRequest req, String nome) {
         condicao.setNome(nome);
         condicao.setNumeroParcelas(req.numeroParcelas());
-        condicao.setDiasPrimeiraParcela(req.diasPrimeiraParcela() != null ? req.diasPrimeiraParcela() : 0);
-        condicao.setDiasEntreParcelas(req.diasEntreParcelas() != null ? req.diasEntreParcelas() : 0);
         condicao.setPercentualJuros(req.percentualJuros() != null ? req.percentualJuros() : BigDecimal.ZERO);
         condicao.setPercentualMulta(req.percentualMulta() != null ? req.percentualMulta() : BigDecimal.ZERO);
         condicao.setPercentualDesconto(req.percentualDesconto() != null ? req.percentualDesconto() : BigDecimal.ZERO);
