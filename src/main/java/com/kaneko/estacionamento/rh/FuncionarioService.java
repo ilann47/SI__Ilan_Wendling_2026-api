@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.rh;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.util.Documentos;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
 import com.kaneko.estacionamento.geografia.Pais;
@@ -58,7 +59,7 @@ public class FuncionarioService {
 
     @Transactional
     public Funcionario criar(FuncionarioRequest req) {
-        String cpf = req.cpf().trim();
+        String cpf = Documentos.soDigitos(req.cpf());
         if (repository.existsByCpf(cpf)) {
             throw new ConflitoException("Ja existe um funcionario cadastrado com este CPF.");
         }
@@ -70,7 +71,7 @@ public class FuncionarioService {
     @Transactional
     public Funcionario atualizar(Long id, FuncionarioRequest req) {
         Funcionario funcionario = buscar(id);
-        String cpf = req.cpf().trim();
+        String cpf = Documentos.soDigitos(req.cpf());
         if (repository.existsByCpfAndIdNot(cpf, id)) {
             throw new ConflitoException("Ja existe um funcionario cadastrado com este CPF.");
         }

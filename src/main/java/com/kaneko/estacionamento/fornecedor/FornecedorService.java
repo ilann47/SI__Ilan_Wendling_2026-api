@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.fornecedor;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.util.Documentos;
 import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.fornecedor.dto.EmailRequest;
 import com.kaneko.estacionamento.fornecedor.dto.FornecedorRequest;
@@ -65,7 +66,7 @@ public class FornecedorService {
 
     @Transactional
     public Fornecedor criar(FornecedorRequest req) {
-        String documento = req.documento().trim();
+        String documento = Documentos.soDigitos(req.documento());
         if (repository.existsByDocumento(documento)) {
             throw new ConflitoException("Ja existe um fornecedor cadastrado com este documento.");
         }
@@ -77,7 +78,7 @@ public class FornecedorService {
     @Transactional
     public Fornecedor atualizar(Long id, FornecedorRequest req) {
         Fornecedor fornecedor = buscar(id);
-        String documento = req.documento().trim();
+        String documento = Documentos.soDigitos(req.documento());
         if (repository.existsByDocumentoAndIdNot(documento, id)) {
             throw new ConflitoException("Ja existe um fornecedor cadastrado com este documento.");
         }

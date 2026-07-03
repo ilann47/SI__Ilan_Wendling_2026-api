@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.pessoas;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.util.Documentos;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
 import com.kaneko.estacionamento.geografia.Pais;
@@ -60,7 +61,7 @@ public class ClienteService {
 
     @Transactional
     public Cliente criar(ClienteRequest req) {
-        String documento = req.documento().trim();
+        String documento = Documentos.soDigitos(req.documento());
         if (repository.existsByDocumento(documento)) {
             throw new ConflitoException("Ja existe um cliente cadastrado com este documento.");
         }
@@ -72,7 +73,7 @@ public class ClienteService {
     @Transactional
     public Cliente atualizar(Long id, ClienteRequest req) {
         Cliente cliente = buscar(id);
-        String documento = req.documento().trim();
+        String documento = Documentos.soDigitos(req.documento());
         if (repository.existsByDocumentoAndIdNot(documento, id)) {
             throw new ConflitoException("Ja existe um cliente cadastrado com este documento.");
         }
