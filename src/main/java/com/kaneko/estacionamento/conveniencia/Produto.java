@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -47,6 +48,9 @@ public class Produto extends BaseEntity {
     @Column(name = "valor_compra", nullable = false, precision = 15, scale = 2)
     private BigDecimal valorCompra = BigDecimal.ZERO;
 
+    @Column(name = "custo", nullable = false, precision = 15, scale = 2)
+    private BigDecimal custo = BigDecimal.ZERO;
+
     @Column(name = "valor_venda", nullable = false, precision = 15, scale = 2)
     private BigDecimal valorVenda = BigDecimal.ZERO;
 
@@ -64,4 +68,20 @@ public class Produto extends BaseEntity {
 
     @Column(name = "observacao", length = 255)
     private String observacao;
+
+    /**
+     * Recalcula a margem de lucro a partir do custo e do valor de venda:
+     * {@code lucro% = (venda - custo) / custo * 100}. Fica zero enquanto nao
+     * houver custo (produto ainda sem entrada).
+     */
+    public void recalcularLucro() {
+        if (custo != null && custo.signum() > 0 && valorVenda != null) {
+            this.percentualLucro = valorVenda.subtract(custo)
+                    .divide(custo, 6, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"))
+                    .setScale(2, RoundingMode.HALF_UP);
+        } else {
+            this.percentualLucro = BigDecimal.ZERO;
+        }
+    }
 }

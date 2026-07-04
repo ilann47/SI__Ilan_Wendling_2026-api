@@ -31,21 +31,21 @@ INSERT INTO cargo (id, nome, descricao, salario_base, carga_horaria, requer_cnh)
   (1,'Gerente','Responsavel pela operacao',5000.00,220,FALSE),
   (2,'Operador de Patio','Registra entradas e saidas',2000.00,220,TRUE),
   (3,'Caixa','Recebe pagamentos',1800.00,220,FALSE);
-INSERT INTO funcionario (id, nome, cpf, telefone, email, cidade_id, nacionalidade_id, cargo_id, data_nascimento, sexo, data_admissao, salario) VALUES
-  (1,'Carlos Pereira','111.111.111-11','45999990001','carlos@kaneko.com',2,1,1,DATE '1985-04-12','MASCULINO',DATE '2024-01-15',5000.00),
-  (2,'Joao Mendes','222.222.222-22','45999990002','joao@kaneko.com',1,1,2,DATE '1990-08-20','MASCULINO',DATE '2024-03-10',2200.00),
-  (3,'Ana Souza','333.333.333-33','45999990003','ana@kaneko.com',2,1,3,DATE '1995-11-03','FEMININO',DATE '2025-02-01',2000.00);
+INSERT INTO funcionario (id, nome, cpf, telefone, email, cidade_id, cargo_id, data_nascimento, sexo, data_admissao, salario) VALUES
+  (1,'Carlos Pereira','111.111.111-11','45999990001','carlos@kaneko.com',2,1,DATE '1985-04-12','MASCULINO',DATE '2024-01-15',5000.00),
+  (2,'Joao Mendes','222.222.222-22','45999990002','joao@kaneko.com',1,2,DATE '1990-08-20','MASCULINO',DATE '2024-03-10',2200.00),
+  (3,'Ana Souza','333.333.333-33','45999990003','ana@kaneko.com',2,3,DATE '1995-11-03','FEMININO',DATE '2025-02-01',2000.00);
 
 -- ---------- FORNECEDOR (com condicao + limite) ----------
-INSERT INTO fornecedor (id, nome, nome_fantasia, documento, cidade_id, nacionalidade_id, condicao_pagamento_id, limite_credito) VALUES
-  (1,'Bebidas Cataratas Ltda','Cataratas Bebidas','11.111.111/0001-11',2,1,2,5000.00),
-  (2,'Snacks do Oeste ME','Oeste Snacks','22.222.222/0001-22',3,1,3,3000.00);
+INSERT INTO fornecedor (id, nome, nome_fantasia, documento, cidade_id, condicao_pagamento_id, limite_credito) VALUES
+  (1,'Bebidas Cataratas Ltda','Cataratas Bebidas','11.111.111/0001-11',2,2,5000.00),
+  (2,'Snacks do Oeste ME','Oeste Snacks','22.222.222/0001-22',3,3,3000.00);
 
 -- ---------- CLIENTE (com condicao + limite) ----------
-INSERT INTO cliente (id, nome, tipo, documento, telefone, email, endereco, numero, bairro, cep, cidade_id, nacionalidade_id, condicao_pagamento_id, data_nascimento, sexo, limite_credito) VALUES
-  (1,'Maria Silva','FISICA','444.444.444-44','45988880001','maria@email.com','Rua das Flores','100','Centro','85890-000',2,1,1,DATE '1988-06-15','FEMININO',1000.00),
-  (2,'Tech Solucoes Ltda','JURIDICA','33.333.333/0001-33','45988880002','adm@techsol.com','Av. Brasil','2000','Centro','85851-000',4,1,3,NULL,NULL,5000.00),
-  (3,'Jose Santos','FISICA','555.555.555-55','45988880003','jose@email.com','Rua XV','50','Sao Cristovao','85870-000',1,1,1,DATE '1979-02-28','MASCULINO',500.00);
+INSERT INTO cliente (id, nome, tipo, documento, telefone, email, endereco, numero, bairro, cep, cidade_id, condicao_pagamento_id, data_nascimento, sexo, limite_credito) VALUES
+  (1,'Maria Silva','FISICA','444.444.444-44','45988880001','maria@email.com','Rua das Flores','100','Centro','85890-000',2,1,DATE '1988-06-15','FEMININO',1000.00),
+  (2,'Tech Solucoes Ltda','JURIDICA','33.333.333/0001-33','45988880002','adm@techsol.com','Av. Brasil','2000','Centro','85851-000',4,3,NULL,NULL,5000.00),
+  (3,'Jose Santos','FISICA','555.555.555-55','45988880003','jose@email.com','Rua XV','50','Sao Cristovao','85870-000',1,1,DATE '1979-02-28','MASCULINO',500.00);
 
 -- ---------- CADASTROS DE APOIO (produto/servico) ----------
 INSERT INTO categoria (id, nome, descricao) VALUES (1,'Bebidas','Bebidas em geral'),(2,'Snacks','Salgadinhos e doces'),(3,'Limpeza','Produtos de limpeza');
@@ -57,11 +57,11 @@ INSERT INTO servico (id, nome, descricao, valor_padrao) VALUES
   (3,'Lavagem Simples','Lavagem externa do veiculo',30.00);
 
 -- ---------- PRODUTO (conveniencia) ----------
-INSERT INTO produto (id, nome, codigo_barras, marca_id, unidade_medida_id, categoria_id, valor_compra, valor_venda, percentual_lucro, quantidade, quantidade_minima) VALUES
-  (1,'Coca-Cola Lata 350ml','7894900011517',1,1,1,2.50,5.00,100.00,120,24),
-  (2,'Agua Mineral 500ml','7891000051234',3,1,1,1.00,2.50,150.00,200,48),
-  (3,'Salgadinho Pacote 100g','7892840812345',2,4,2,3.00,6.00,100.00,60,12),
-  (4,'Detergente 500ml','7891234567890',3,2,3,2.00,4.50,125.00,30,6);
+INSERT INTO produto (id, nome, codigo_barras, marca_id, unidade_medida_id, categoria_id, valor_compra, custo, valor_venda, percentual_lucro, quantidade, quantidade_minima) VALUES
+  (1,'Coca-Cola Lata 350ml','7894900011517',1,1,1,2.50,2.50,5.00,100.00,120,24),
+  (2,'Agua Mineral 500ml','7891000051234',3,1,1,1.00,1.00,2.50,150.00,200,48),
+  (3,'Salgadinho Pacote 100g','7892840812345',2,4,2,3.00,3.00,6.00,100.00,60,12),
+  (4,'Detergente 500ml','7891234567890',3,2,3,2.00,2.00,4.50,125.00,30,6);
 
 -- ---------- TARIFA (id=1 'Tarifa padrao' ja veio do schema) ----------
 INSERT INTO tarifa (id, descricao, valor_hora, valor_diaria, tolerancia_min, valor_mensalidade) VALUES (2,'Tarifa Moto',7.00,35.00,15,180.00);

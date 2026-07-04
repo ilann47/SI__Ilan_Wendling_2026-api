@@ -20,6 +20,6 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long>,
     boolean existsByCpfAndIdNot(String cpf, Long id);
 
     @Override
-    @EntityGraph(attributePaths = {"cargo", "cidade", "nacionalidade"})
+    @EntityGraph(attributePaths = {"cargo", "cidade"})
     Optional<Funcionario> findById(Long id);
 }

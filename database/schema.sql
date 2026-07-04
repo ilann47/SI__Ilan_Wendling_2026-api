@@ -97,7 +97,6 @@ CREATE TABLE funcionario (
     bairro                VARCHAR(60),
     cep                   VARCHAR(9),
     cidade_id             BIGINT,
-    nacionalidade_id      BIGINT,                       -- FK pais
     cargo_id              BIGINT        NOT NULL,
     cnh                   VARCHAR(20),
     data_validade_cnh     DATE,
@@ -110,7 +109,6 @@ CREATE TABLE funcionario (
     updated_at            TIMESTAMPTZ   NOT NULL DEFAULT now(),
     CONSTRAINT fk_funcionario_cidade        FOREIGN KEY (cidade_id)        REFERENCES cidade (id) ON DELETE RESTRICT,
     CONSTRAINT fk_funcionario_cargo         FOREIGN KEY (cargo_id)         REFERENCES cargo (id)  ON DELETE RESTRICT,
-    CONSTRAINT fk_funcionario_nacionalidade FOREIGN KEY (nacionalidade_id) REFERENCES pais (id)   ON DELETE RESTRICT,
     CONSTRAINT uq_funcionario_cpf      UNIQUE (cpf),
     CONSTRAINT ck_funcionario_salario  CHECK (salario IS NULL OR salario >= 0),
     CONSTRAINT ck_funcionario_tipo     CHECK (tipo IN ('FISICA','JURIDICA')),
@@ -119,7 +117,6 @@ CREATE TABLE funcionario (
 );
 CREATE INDEX ix_funcionario_cidade        ON funcionario (cidade_id);
 CREATE INDEX ix_funcionario_cargo         ON funcionario (cargo_id);
-CREATE INDEX ix_funcionario_nacionalidade ON funcionario (nacionalidade_id);
 
 -- =====================================================================
 -- FORMA_PAGAMENTO
@@ -189,7 +186,6 @@ CREATE TABLE fornecedor (
     bairro         VARCHAR(60),
     cep            VARCHAR(9),
     cidade_id             BIGINT,
-    nacionalidade_id      BIGINT,                   -- FK pais
     condicao_pagamento_id BIGINT,
     limite_credito        NUMERIC(15,2) NOT NULL DEFAULT 0,
     observacao            VARCHAR(255),
@@ -197,14 +193,12 @@ CREATE TABLE fornecedor (
     created_at            TIMESTAMPTZ   NOT NULL DEFAULT now(),
     updated_at            TIMESTAMPTZ   NOT NULL DEFAULT now(),
     CONSTRAINT fk_fornecedor_cidade        FOREIGN KEY (cidade_id)             REFERENCES cidade (id)             ON DELETE RESTRICT,
-    CONSTRAINT fk_fornecedor_nacionalidade FOREIGN KEY (nacionalidade_id)      REFERENCES pais (id)               ON DELETE RESTRICT,
     CONSTRAINT fk_fornecedor_condicao      FOREIGN KEY (condicao_pagamento_id) REFERENCES condicao_pagamento (id) ON DELETE RESTRICT,
     CONSTRAINT uq_fornecedor_documento UNIQUE (documento),
     CONSTRAINT ck_fornecedor_limite    CHECK (limite_credito >= 0),
     CONSTRAINT ck_fornecedor_tipo      CHECK (tipo IN ('FISICA','JURIDICA'))
 );
 CREATE INDEX ix_fornecedor_cidade        ON fornecedor (cidade_id);
-CREATE INDEX ix_fornecedor_nacionalidade ON fornecedor (nacionalidade_id);
 CREATE INDEX ix_fornecedor_condicao      ON fornecedor (condicao_pagamento_id);
 
 -- =====================================================================
@@ -228,7 +222,6 @@ CREATE TABLE cliente (
     bairro      VARCHAR(60),
     cep         VARCHAR(9),
     cidade_id             BIGINT,
-    nacionalidade_id      BIGINT,                  -- FK pais
     condicao_pagamento_id BIGINT,
     limite_credito        NUMERIC(15,2) NOT NULL DEFAULT 0,
     observacao            VARCHAR(255),
@@ -237,7 +230,6 @@ CREATE TABLE cliente (
     updated_at            TIMESTAMPTZ   NOT NULL DEFAULT now(),
     CONSTRAINT uq_cliente_documento  UNIQUE (documento),
     CONSTRAINT fk_cliente_cidade        FOREIGN KEY (cidade_id)             REFERENCES cidade (id)             ON DELETE RESTRICT,
-    CONSTRAINT fk_cliente_nacionalidade FOREIGN KEY (nacionalidade_id)      REFERENCES pais (id)               ON DELETE RESTRICT,
     CONSTRAINT fk_cliente_condicao      FOREIGN KEY (condicao_pagamento_id) REFERENCES condicao_pagamento (id) ON DELETE RESTRICT,
     CONSTRAINT ck_cliente_limite     CHECK (limite_credito >= 0),
     CONSTRAINT ck_cliente_tipo       CHECK (tipo IN ('FISICA','JURIDICA')),
@@ -245,7 +237,6 @@ CREATE TABLE cliente (
     CONSTRAINT ck_cliente_civil      CHECK (estado_civil IS NULL OR estado_civil IN ('SOLTEIRO','CASADO','SEPARADO','DIVORCIADO','VIUVO','OUTRO'))
 );
 CREATE INDEX ix_cliente_cidade        ON cliente (cidade_id);
-CREATE INDEX ix_cliente_nacionalidade ON cliente (nacionalidade_id);
 CREATE INDEX ix_cliente_condicao      ON cliente (condicao_pagamento_id);
 
 -- =====================================================================
@@ -406,10 +397,11 @@ CREATE TABLE produto (
     marca_id          BIGINT        NOT NULL,
     unidade_medida_id BIGINT        NOT NULL,
     categoria_id      BIGINT,
-    valor_compra      NUMERIC(15,2) NOT NULL DEFAULT 0,
+    valor_compra      NUMERIC(15,2) NOT NULL DEFAULT 0,   -- preco de compra bruto (Nota de Entrada)
+    custo             NUMERIC(15,2) NOT NULL DEFAULT 0,   -- preco de custo com rateio (Nota de Entrada)
     valor_venda       NUMERIC(15,2) NOT NULL DEFAULT 0,
-    percentual_lucro  NUMERIC(10,2) NOT NULL DEFAULT 0,   -- margem-alvo (pode > 100%)
-    quantidade        NUMERIC(15,3) NOT NULL DEFAULT 0,   -- estoque atual (aceita fracao p/ KG/L)
+    percentual_lucro  NUMERIC(10,2) NOT NULL DEFAULT 0,   -- margem derivada: (venda-custo)/custo
+    quantidade        NUMERIC(15,3) NOT NULL DEFAULT 0,   -- estoque atual (movimentado por notas)
     quantidade_minima NUMERIC(15,3) NOT NULL DEFAULT 1,   -- estoque minimo
     descricao         VARCHAR(255),
     observacao        VARCHAR(255),
@@ -420,7 +412,7 @@ CREATE TABLE produto (
     CONSTRAINT fk_produto_unidade   FOREIGN KEY (unidade_medida_id) REFERENCES unidade_medida (id) ON DELETE RESTRICT,
     CONSTRAINT fk_produto_categoria FOREIGN KEY (categoria_id)      REFERENCES categoria (id)      ON DELETE RESTRICT,
     CONSTRAINT uq_produto_codigo_barras UNIQUE (codigo_barras),
-    CONSTRAINT ck_produto_valores   CHECK (valor_compra >= 0 AND valor_venda >= 0 AND percentual_lucro >= 0 AND quantidade >= 0 AND quantidade_minima >= 0)
+    CONSTRAINT ck_produto_valores   CHECK (valor_compra >= 0 AND custo >= 0 AND valor_venda >= 0 AND quantidade >= 0 AND quantidade_minima >= 0)
 );
 CREATE INDEX ix_produto_marca     ON produto (marca_id);
 CREATE INDEX ix_produto_unidade   ON produto (unidade_medida_id);

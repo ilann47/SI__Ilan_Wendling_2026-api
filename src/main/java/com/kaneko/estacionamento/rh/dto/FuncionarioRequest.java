@@ -42,7 +42,6 @@ public record FuncionarioRequest(
         @Size(max = 9) String cep,
 
         Long cidadeId,
-        Long nacionalidadeId,
 
         @NotNull(message = "O cargo é obrigatório.")
         Long cargoId,

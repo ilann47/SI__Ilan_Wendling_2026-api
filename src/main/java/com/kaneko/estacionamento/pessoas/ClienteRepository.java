@@ -20,6 +20,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long>,
     boolean existsByDocumentoAndIdNot(String documento, Long id);
 
     @Override
-    @EntityGraph(attributePaths = {"cidade", "nacionalidade", "condicaoPagamento"})
+    @EntityGraph(attributePaths = {"cidade", "condicaoPagamento"})
     Optional<Cliente> findById(Long id);
 }

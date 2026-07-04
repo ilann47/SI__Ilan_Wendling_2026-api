@@ -5,8 +5,6 @@ import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.util.Documentos;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
-import com.kaneko.estacionamento.geografia.Pais;
-import com.kaneko.estacionamento.geografia.PaisRepository;
 import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
@@ -31,16 +29,13 @@ public class ClienteService {
 
     private final ClienteRepository repository;
     private final CidadeRepository cidadeRepository;
-    private final PaisRepository paisRepository;
     private final CondicaoPagamentoRepository condicaoPagamentoRepository;
 
     public ClienteService(ClienteRepository repository,
                           CidadeRepository cidadeRepository,
-                          PaisRepository paisRepository,
                           CondicaoPagamentoRepository condicaoPagamentoRepository) {
         this.repository = repository;
         this.cidadeRepository = cidadeRepository;
-        this.paisRepository = paisRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
     }
 
@@ -103,7 +98,6 @@ public class ClienteService {
         cliente.setBairro(req.bairro());
         cliente.setCep(req.cep());
         cliente.setCidade(req.cidadeId() != null ? buscarCidade(req.cidadeId()) : null);
-        cliente.setNacionalidade(req.nacionalidadeId() != null ? buscarPais(req.nacionalidadeId()) : null);
         cliente.setCondicaoPagamento(req.condicaoPagamentoId() != null ? buscarCondicao(req.condicaoPagamentoId()) : null);
         cliente.setLimiteCredito(req.limiteCredito() != null ? req.limiteCredito() : BigDecimal.ZERO);
         cliente.setObservacao(req.observacao());
@@ -115,11 +109,6 @@ public class ClienteService {
     private Cidade buscarCidade(Long cidadeId) {
         return cidadeRepository.findById(cidadeId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cidade", cidadeId));
-    }
-
-    private Pais buscarPais(Long paisId) {
-        return paisRepository.findById(paisId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Pais", paisId));
     }
 
     private CondicaoPagamento buscarCondicao(Long condicaoPagamentoId) {

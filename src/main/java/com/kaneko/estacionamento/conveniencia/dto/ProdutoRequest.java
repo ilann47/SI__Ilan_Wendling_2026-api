@@ -27,17 +27,8 @@ public record ProdutoRequest(
 
         Long categoriaId,
 
-        @PositiveOrZero(message = "O valor de compra não pode ser negativo.")
-        BigDecimal valorCompra,
-
         @PositiveOrZero(message = "O valor de venda não pode ser negativo.")
         BigDecimal valorVenda,
-
-        @PositiveOrZero(message = "O percentual de lucro não pode ser negativo.")
-        BigDecimal percentualLucro,
-
-        @PositiveOrZero(message = "A quantidade não pode ser negativa.")
-        BigDecimal quantidade,
 
         @PositiveOrZero(message = "A quantidade mínima não pode ser negativa.")
         BigDecimal quantidadeMinima,

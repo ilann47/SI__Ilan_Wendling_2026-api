@@ -151,9 +151,11 @@ public class NotaEntradaService {
         for (ItemNotaEntrada item : nota.getItens()) {
             Produto produto = item.getProduto();
             produto.setQuantidade(produto.getQuantidade().add(item.getQuantidade()));
+            produto.setValorCompra(item.getValorUnitario());
             if (item.getCustoPrecoFinal().signum() > 0) {
-                produto.setValorCompra(item.getCustoPrecoFinal());
+                produto.setCusto(item.getCustoPrecoFinal());
             }
+            produto.recalcularLucro();
             produtoRepository.save(produto);
         }
         gerarTitulos(nota);

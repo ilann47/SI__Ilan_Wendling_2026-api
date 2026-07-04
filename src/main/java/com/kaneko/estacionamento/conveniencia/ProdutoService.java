@@ -86,11 +86,11 @@ public class ProdutoService {
         p.setMarca(buscarMarca(req.marcaId()));
         p.setUnidadeMedida(buscarUnidade(req.unidadeMedidaId()));
         p.setCategoria(req.categoriaId() != null ? buscarCategoria(req.categoriaId()) : null);
-        p.setValorCompra(req.valorCompra() != null ? req.valorCompra() : BigDecimal.ZERO);
         p.setValorVenda(req.valorVenda() != null ? req.valorVenda() : BigDecimal.ZERO);
-        p.setPercentualLucro(req.percentualLucro() != null ? req.percentualLucro() : BigDecimal.ZERO);
-        p.setQuantidade(req.quantidade() != null ? req.quantidade() : BigDecimal.ZERO);
         p.setQuantidadeMinima(req.quantidadeMinima() != null ? req.quantidadeMinima() : BigDecimal.ONE);
+        // Valor de compra, custo e estoque sao mantidos pela Nota de Entrada/Saida,
+        // nao pelo cadastro. O lucro e derivado do custo e do valor de venda.
+        p.recalcularLucro();
         p.setDescricao(req.descricao());
         p.setObservacao(req.observacao());
         if (req.ativo() != null) {

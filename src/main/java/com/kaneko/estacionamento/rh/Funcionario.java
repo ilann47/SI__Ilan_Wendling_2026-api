@@ -2,7 +2,6 @@ package com.kaneko.estacionamento.rh;
 
 import com.kaneko.estacionamento.common.BaseEntity;
 import com.kaneko.estacionamento.geografia.Cidade;
-import com.kaneko.estacionamento.geografia.Pais;
 import com.kaneko.estacionamento.pessoas.EstadoCivil;
 import com.kaneko.estacionamento.pessoas.Sexo;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
@@ -83,10 +82,6 @@ public class Funcionario extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cidade_id")
     private Cidade cidade;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "nacionalidade_id")
-    private Pais nacionalidade;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cargo_id", nullable = false)

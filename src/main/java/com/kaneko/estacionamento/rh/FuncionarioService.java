@@ -5,8 +5,6 @@ import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.util.Documentos;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
-import com.kaneko.estacionamento.geografia.Pais;
-import com.kaneko.estacionamento.geografia.PaisRepository;
 import com.kaneko.estacionamento.common.web.FiltroSpecs;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import com.kaneko.estacionamento.rh.dto.FuncionarioRequest;
@@ -30,16 +28,13 @@ public class FuncionarioService {
     private final FuncionarioRepository repository;
     private final CargoRepository cargoRepository;
     private final CidadeRepository cidadeRepository;
-    private final PaisRepository paisRepository;
 
     public FuncionarioService(FuncionarioRepository repository,
                               CargoRepository cargoRepository,
-                              CidadeRepository cidadeRepository,
-                              PaisRepository paisRepository) {
+                              CidadeRepository cidadeRepository) {
         this.repository = repository;
         this.cargoRepository = cargoRepository;
         this.cidadeRepository = cidadeRepository;
-        this.paisRepository = paisRepository;
     }
 
     @Transactional(readOnly = true)
@@ -101,7 +96,6 @@ public class FuncionarioService {
         f.setBairro(req.bairro());
         f.setCep(req.cep());
         f.setCidade(req.cidadeId() != null ? buscarCidade(req.cidadeId()) : null);
-        f.setNacionalidade(req.nacionalidadeId() != null ? buscarPais(req.nacionalidadeId()) : null);
         f.setCargo(buscarCargo(req.cargoId()));
         f.setCnh(req.cnh());
         f.setDataValidadeCnh(req.dataValidadeCnh());
@@ -124,8 +118,4 @@ public class FuncionarioService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cidade", cidadeId));
     }
 
-    private Pais buscarPais(Long paisId) {
-        return paisRepository.findById(paisId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Pais", paisId));
-    }
 }

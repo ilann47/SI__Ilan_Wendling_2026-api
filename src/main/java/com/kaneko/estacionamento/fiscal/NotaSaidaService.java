@@ -121,7 +121,7 @@ public class NotaSaidaService {
                 throw new ConflitoException("O desconto do item não pode exceder o seu valor.");
             }
             item.setValorTotal(totalItem);
-            item.setCustoPrecoFinal(produto.getValorCompra());
+            item.setCustoPrecoFinal(produto.getCusto());
             nota.addItem(item);
             valorProdutos = valorProdutos.add(totalItem);
         }
