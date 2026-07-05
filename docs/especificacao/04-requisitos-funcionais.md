@@ -482,11 +482,65 @@ O sistema deve emitir um relatório dos contratos de mensalista com situação `
 
 ---
 
+## Cadastros do Módulo de Logística
+
+Esta subseção reúne os requisitos de manutenção dos cadastros do **Módulo de Logística**, responsável por registrar as transportadoras que realizam o frete das compras (abastecimento da conveniência) e a sua frota de veículos de carga. A cadeia modelada é **Fornecedor → Transportadora → (N:N) → Veículo de Frota**. Os requisitos, embora numerados na sequência dos processos e relatórios (4.31 a 4.33) por terem sido incorporados posteriormente, são cadastros CRUD e seguem o mesmo padrão de manutenção (Listar, Inserir, Alterar, Excluir) das seções 4.1 a 4.17.
+
+## 4.31 Manter Cadastro de Transportadora
+
+Entidade que representa as empresas de transporte responsáveis pelo frete das compras. Cada fornecedor pode indicar a sua transportadora padrão (`fornecedor.transportadora_id`).
+
+### 4.31.1 Listar Transportadoras
+O sistema deve permitir listar as transportadoras, exibindo nome (razão social), documento (CNPJ/CPF), cidade e situação, com filtro por nome, por documento e por situação.
+
+### 4.31.2 Inserir Transportadora
+O sistema deve permitir cadastrar uma transportadora informando, no mínimo, **nome** (razão social) e **documento** (obrigatórios), além de nome fantasia, tipo de pessoa (`FISICA`/`JURIDICA`, padrão `JURIDICA`), RG/IE, telefone, e-mail, endereço completo, cidade, condição de pagamento e observação. O documento deve ser único (restrição `uq_transportadora_documento`) e é normalizado para conter somente dígitos.
+
+### 4.31.3 Alterar Transportadora
+O sistema deve permitir editar os dados de uma transportadora, mantendo a unicidade do documento e a integridade dos vínculos com cidade e condição de pagamento.
+
+### 4.31.4 Excluir Transportadora
+O sistema deve permitir excluir (inativar) uma transportadora. A exclusão física deve ser bloqueada quando houver fornecedores que a referenciem (`fk_fornecedor_transportadora`, `ON DELETE RESTRICT`); os vínculos de frota associados são removidos em cascata (`ON DELETE CASCADE`).
+
+## 4.32 Manter Cadastro de Veículo de Frota
+
+Entidade que representa os veículos de carga das transportadoras. É distinta do veículo do pátio (`veiculo`), que é o automóvel estacionado pelo cliente.
+
+### 4.32.1 Listar Veículos de Frota
+O sistema deve permitir listar os veículos de frota, exibindo placa, modelo, marca, ano, capacidade e situação, com filtro por placa, por marca e por situação.
+
+### 4.32.2 Inserir Veículo de Frota
+O sistema deve permitir cadastrar um veículo de frota informando a **placa** (obrigatória e única, normalizada em maiúsculas), além de modelo, marca, ano (≥ 1900), capacidade de carga (≥ 0) e observação. A placa deve ser única (restrição `uq_veiculo_frota_placa`); ano e capacidade respeitam as restrições `ck_veiculo_frota_ano` e `ck_veiculo_frota_capacidade`.
+
+### 4.32.3 Alterar Veículo de Frota
+O sistema deve permitir editar os dados de um veículo de frota, mantendo a unicidade da placa.
+
+### 4.32.4 Excluir Veículo de Frota
+O sistema deve permitir excluir (inativar) um veículo de frota. A exclusão física deve ser bloqueada quando houver vínculos de frota que o referenciem (`fk_tvf_veiculo`, `ON DELETE RESTRICT`).
+
+## 4.33 Manter Frota da Transportadora
+
+Vínculo N:N entre transportadora e veículo de frota (`transportadora_veiculo_frota`), representando a composição da frota de cada transportadora.
+
+### 4.33.1 Listar Vínculos de Frota
+O sistema deve permitir listar os vínculos de frota, exibindo a transportadora, a placa do veículo e a situação.
+
+### 4.33.2 Inserir Vínculo de Frota
+O sistema deve permitir vincular um **veículo de frota** a uma **transportadora** (ambos obrigatórios). Não é permitido vincular o mesmo veículo mais de uma vez à mesma transportadora (restrição `uq_transp_veiculo_frota`).
+
+### 4.33.3 Alterar Vínculo de Frota
+O sistema deve permitir alterar a transportadora e/ou o veículo de um vínculo, respeitando a unicidade do par.
+
+### 4.33.4 Excluir Vínculo de Frota
+O sistema deve permitir excluir (inativar) um vínculo de frota, preservando o histórico por meio da exclusão lógica.
+
+---
+
 ## Resumo de Rastreabilidade
 
 | Grupo | Itens | Faixa de RF |
 |-------|-------|-------------|
-| Manter Cadastros | 17 cadastros (País, Estado, Cidade, Cargo, Funcionário, Usuário, Forma de Pagamento, Condição de Pagamento, Fornecedor, Cliente, Veículo, Tarifa, Categoria, Marca, Unidade de Medida, Serviço, Produto) | 4.1 a 4.17 |
+| Manter Cadastros | 20 cadastros (País, Estado, Cidade, Cargo, Funcionário, Usuário, Forma de Pagamento, Condição de Pagamento, Fornecedor, Cliente, Veículo, Tarifa, Categoria, Marca, Unidade de Medida, Serviço, Produto, Transportadora, Veículo de Frota, Frota da Transportadora) | 4.1 a 4.17 e 4.31 a 4.33 |
 | Processos de Negócio | 8 processos | 4.18 a 4.25 |
 | Relatórios | 5 relatórios | 4.26 a 4.30 |
 

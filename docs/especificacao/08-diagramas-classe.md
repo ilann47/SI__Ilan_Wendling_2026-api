@@ -2,7 +2,7 @@
 
 # 8. Diagramas de Classe (UML)
 
-Esta seção apresenta o modelo de classes do sistema **Estacionamento Kaneko**, derivado diretamente do esquema relacional (`database/schema.sql`, 31 tabelas), que originará as entidades JPA da camada de domínio. Cada tabela é representada por uma classe em notação UML, com atributos tipados no estilo Java/JPA (`Long`, `String`, `BigDecimal`, `Integer`, `LocalDate`, `LocalDateTime`, `Boolean`) e enumerações modeladas como classes `<<enumeration>>`.
+Esta seção apresenta o modelo de classes do sistema **Estacionamento Kaneko**, derivado diretamente do esquema relacional (`database/schema.sql`, 34 tabelas), que originará as entidades JPA da camada de domínio. Cada tabela é representada por uma classe em notação UML, com atributos tipados no estilo Java/JPA (`Long`, `String`, `BigDecimal`, `Integer`, `LocalDate`, `LocalDateTime`, `Boolean`) e enumerações modeladas como classes `<<enumeration>>`.
 
 As associações refletem as chaves estrangeiras do banco, com rótulos de cardinalidade. Adotam-se as convenções:
 
@@ -669,7 +669,60 @@ classDiagram
 
 ---
 
-## 8.9 Observações de Mapeamento Objeto-Relacional
+## 8.9 Módulo de Logística
+
+Modelo estático do módulo de logística (abastecimento da conveniência): a `Transportadora` e o `VeiculoFrota`, associados em N:N pelo `TransportadoraVeiculoFrota` (a frota), com o `Fornecedor` referenciando a sua transportadora padrão de frete.
+
+```mermaid
+classDiagram
+    class Transportadora {
+        +Long id
+        +String nome
+        +String nomeFantasia
+        +TipoPessoa tipo
+        +String documento
+        +String rgInscricaoEstadual
+        +String telefone
+        +String email
+        +String endereco
+        +String numero
+        +String complemento
+        +String bairro
+        +String cep
+        +String observacao
+        +Boolean ativo
+        +LocalDateTime criadoEm
+        +LocalDateTime atualizadoEm
+    }
+    class VeiculoFrota {
+        +Long id
+        +String placa
+        +String modelo
+        +String marca
+        +Integer ano
+        +BigDecimal capacidade
+        +String observacao
+        +Boolean ativo
+        +LocalDateTime criadoEm
+        +LocalDateTime atualizadoEm
+    }
+    class TransportadoraVeiculoFrota {
+        +Long id
+        +Boolean ativo
+        +LocalDateTime criadoEm
+        +LocalDateTime atualizadoEm
+    }
+
+    Transportadora "*" --> "0..1" Cidade : localizada em
+    Transportadora "*" --> "0..1" CondicaoPagamento : usa
+    TransportadoraVeiculoFrota "*" --> "1" Transportadora : de
+    TransportadoraVeiculoFrota "*" --> "1" VeiculoFrota : refere
+    Fornecedor "*" --> "0..1" Transportadora : frete por
+```
+
+Observa-se que `VeiculoFrota` é uma classe **distinta** de `Veiculo` (Seção 8.4 — pátio): o primeiro representa o veículo de carga da transportadora; o segundo, o automóvel estacionado pelo cliente. Não há associação entre ambos.
+
+## 8.10 Observações de Mapeamento Objeto-Relacional
 
 - **Auditoria temporal:** `created_at` / `updated_at` mapeiam para `LocalDateTime criadoEm` / `atualizadoEm` (`TIMESTAMPTZ` no banco), tipicamente concentrados numa superclasse `@MappedSuperclass` com `@CreationTimestamp` / `@UpdateTimestamp`.
 - **Enumerações:** os campos `VARCHAR` restritos por `CHECK` no schema são mapeados como `@Enumerated(EnumType.STRING)`, preservando os valores textuais (ex.: `status`, `situacao`, `tipo`, `perfil`).
@@ -678,12 +731,13 @@ classDiagram
 - **Composição:** itens de nota (`item_nota_entrada`, `item_nota_saida`) e contatos de fornecedor (`fornecedor_email`, `fornecedor_telefone`) têm `ON DELETE CASCADE`, justificando a composição UML (`*--`) e `cascade = ALL, orphanRemoval = true`.
 - **Regras de coerência:** restrições como "no máximo 1 contrato ATIVO por veículo", "no máximo 1 movimentação ABERTA por veículo" e a exclusividade de origem em `nota_servico` / `conta_receber` são invariantes de domínio, validadas na camada de serviço além dos índices parciais e `CHECK` do banco.
 
-## 8.10 Módulos relacionados
+## 8.11 Módulos relacionados
 
 [[03-der]] · [[07-dicionario-de-dados]] · [[04-requisitos-funcionais]] · [[02-analise-negocio]]
 
-## 8.11 Histórico
+## 8.12 Histórico
 
 | Data | Ação |
 |------|------|
 | 2026-06-15 | Criação da Seção 8 — Diagramas de Classe (UML) em Mermaid, 8 diagramas por módulo aterrados nas 31 tabelas de `database/schema.sql`. |
+| 2026-07-03 | Inclusão da Seção 8.9 — Módulo de Logística (`Transportadora`, `VeiculoFrota`, `TransportadoraVeiculoFrota`) e da associação `Fornecedor → Transportadora`. |

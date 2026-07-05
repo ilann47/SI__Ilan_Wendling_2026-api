@@ -23,7 +23,7 @@ O modelo de referência (Documento de Visão + Especificação de Requisitos por
 | 2 | Análise do Negócio (regras de negócio, processos, atores) | **Sim** | `docs/especificacao/02-analise-negocio.md` | Descreve o negócio do estacionamento, os processos de pátio e os atores (ADMIN/OPERADOR). Origem das regras RNxxx referenciadas nos casos de uso. |
 | 3 | Diagrama Entidade-Relacionamento (DER) | **Sim** | `docs/especificacao/03-der.md` | DER aprovado, coerente com o `schema.sql`. Cobre Geografia, RH, Pagamento, Pessoas, Pátio, Conveniência, Fiscal e Financeiro. |
 | 4 | Lista de Requisitos Funcionais | **Sim** | `docs/especificacao/04-requisitos-funcionais.md` | Enumera os RFs (CRUDs, operação de pátio, consultas e relatórios). Define a política de exclusão lógica (`ativo = false`) reutilizada na Seção 6. |
-| 5 | Casos de Uso (especificação detalhada) | **Sim** | `docs/especificacao/05-casos-de-uso/` (6 arquivos: `cadastros-geografia-rh.md`, `cadastros-pagamento-pessoas.md`, `cadastros-conveniencia.md`, `estacionamento-patio.md`, `processos-fiscais.md`, `processos-financeiros.md`) | Seção mais extensa. Casos de uso com fluxo principal, alternativos e de exceção. A RN001 ("acesso somente a usuário autenticado") consta nos seis arquivos. Esta auditoria crítica dos casos de uso é a origem dos achados da Parte C. |
+| 5 | Casos de Uso (especificação detalhada) | **Sim** | `docs/especificacao/05-casos-de-uso/` (7 arquivos: `cadastros-geografia-rh.md`, `cadastros-pagamento-pessoas.md`, `cadastros-conveniencia.md`, `estacionamento-patio.md`, `processos-fiscais.md`, `processos-financeiros.md`, `logistica.md`) | Seção mais extensa. Casos de uso com fluxo principal, alternativos e de exceção. A RN001 ("acesso somente a usuário autenticado") consta nos seis arquivos. Esta auditoria crítica dos casos de uso é a origem dos achados da Parte C. |
 | 6 | Protótipos (telas / interface) | **Sim (com divergência declarada — ver Parte B.1)** | `docs/especificacao/06-prototipos.md` | Atendida por **descrições conceituais de tela** mapeadas para **endpoints REST** (Swagger/OpenAPI), pois a v1 não possui telas próprias. A própria seção 6.1 documenta a divergência. Cada campo de tela é aterrado em coluna real do `schema.sql`. |
 | 7 | Dicionário de Dados | **Sim** | `docs/especificacao/07-dicionario-de-dados.md` | Descreve tabelas, colunas, tipos e restrições, em correspondência direta com o `schema.sql`. |
 | 8 | Diagramas de Classe (UML) | **Sim** | `docs/especificacao/08-diagramas-classe.md` | Modelo de classes/entidades e enums, base para o mapeamento JPA previsto no roadmap (Parte C, P4). |
@@ -58,11 +58,11 @@ As divergências a seguir são **escolhas conscientes de projeto**, não lacunas
 
 **Justificativa.** É um projeto **acadêmico**. A empresa fictícia fornece contexto realista e coeso (cidade, regime fiscal municipal de ISS, porte de operação) sem implicar dados ou requisitos de uma organização real, mantendo o documento autossuficiente para fins didáticos.
 
-### B.4 Escopo — sem multifilial; documentos fiscais como registros internos (sem SEFAZ); sem transportadora
+### B.4 Escopo — sem multifilial; documentos fiscais como registros internos (sem SEFAZ); logística sem CT-e
 
-**Divergência.** O sistema é **monofilial** (não há entidade de filial nem segregação multifilial). As notas fiscais — **NF-e** (`nota_entrada`/`nota_saida`) e **NFS-e** (`nota_servico`, com ISS) — são modeladas como **documentos fiscais internos**: registram número, série, modelo, valores e situação, **sem integração de transmissão à SEFAZ** (não há geração/assinatura de XML, comunicação com *webservices* fiscais, nem retorno de protocolo). Não há **módulo de transportadora** (frete é representado apenas como `tipo_frete` CIF/FOB/SEM e valores rateáveis na nota, sem cadastro de transportadora nem conhecimento de transporte).
+**Divergência.** O sistema é **monofilial** (não há entidade de filial nem segregação multifilial). As notas fiscais — **NF-e** (`nota_entrada`/`nota_saida`) e **NFS-e** (`nota_servico`, com ISS) — são modeladas como **documentos fiscais internos**: registram número, série, modelo, valores e situação, **sem integração de transmissão à SEFAZ** (não há geração/assinatura de XML, comunicação com *webservices* fiscais, nem retorno de protocolo). O **frete** é modelado em duas camadas: (i) na nota, pelo `tipo_frete` (CIF/FOB/SEM) e pelos valores rateáveis; e (ii) pelo **Módulo de Logística** (`transportadora`, `veiculo_frota` e o vínculo N:N `transportadora_veiculo_frota`), que registra a transportadora responsável e a sua frota, com o fornecedor apontando para a transportadora padrão (`fornecedor.transportadora_id`). Não há, contudo, emissão de **Conhecimento de Transporte Eletrônico (CT-e)** nem integração fiscal do transporte.
 
-**Justificativa.** O objetivo acadêmico é exercitar **modelagem fiscal e financeira coerente** (rateio de frete/seguro/despesas, condições e parcelas de pagamento, contas a pagar/receber, ISS sobre serviço), e não a **integração regulatória** com a SEFAZ, que exige certificados digitais, ambientes de homologação e conformidade legal fora do escopo de tempo e do propósito didático. A ausência de multifilial e de transportadora reduz a superfície do sistema ao essencial do caso de estudo (um estacionamento com conveniência), preservando profundidade onde ela é pedagogicamente relevante.
+**Justificativa.** O objetivo acadêmico é exercitar **modelagem fiscal e financeira coerente** (rateio de frete/seguro/despesas, condições e parcelas de pagamento, contas a pagar/receber, ISS sobre serviço) e a **modelagem da cadeia de abastecimento** (fornecedor → transportadora → frota), e não a **integração regulatória** com a SEFAZ, que exige certificados digitais, ambientes de homologação e conformidade legal fora do escopo de tempo e do propósito didático. A ausência de multifilial e de CT-e reduz a superfície do sistema ao essencial do caso de estudo (um estacionamento com conveniência), preservando profundidade onde ela é pedagogicamente relevante.
 
 ---
 
@@ -193,6 +193,18 @@ Esta seção registra o estado do **backend efetivamente codificado** sobre as f
 - **Exclusão de contratos e documentos transacionais:** mensalistas, notas fiscais e contas avulsas mantêm exclusão **física** — decisão intencional (notas só podem ser excluídas enquanto `PENDENTE`/rascunho; a inativação lógica aplica-se aos **cadastros**, que carregam o flag `ativo`).
 
 A instrução de execução (pré-requisitos, variáveis, Swagger, login e testes) está no [`README.md`](../../README.md) na raiz do projeto.
+
+---
+
+## Atualização — Evolução do Schema e Módulo de Logística (2026-07-03)
+
+Após o congelamento inicial, o schema foi **reaberto** para evoluções incrementais versionadas por Flyway (migrações `V2` a `V6`), acompanhadas em toda a documentação. As mudanças com impacto neste relatório e no restante da especificação são:
+
+- **V4 — Remoção de `nacionalidade_id`.** O campo `nacionalidade_id` (FK → `pais`) foi **removido** de `funcionario`, `fornecedor` e `cliente`, por ser redundante: o país já é alcançável pela cadeia **Cidade → Estado → País**. O DER (Seção 3) e o Dicionário (Seção 7) foram atualizados; a contagem de tabelas permanece, pois a remoção foi de colunas, não de entidades.
+- **V5 — Custo do produto e lucro derivado.** O `produto` passou a distinguir o **preço de compra** (`valor_compra`, bruto) do **preço de custo** (`custo`, com rateio de frete/seguro), ambos mantidos pela Nota de Entrada e somente leitura no cadastro. O `percentual_lucro` tornou-se **derivado** — `(venda − custo) / custo` — podendo ser **negativo** (prejuízo), razão pela qual saiu do `CHECK ck_produto_valores`. O estoque (`quantidade`) permanece movimentado apenas pelas notas de entrada/saída.
+- **V6 — Módulo de Logística.** Foram acrescentadas três entidades — `transportadora`, `veiculo_frota` e o vínculo N:N `transportadora_veiculo_frota` — além da FK `fornecedor.transportadora_id`, elevando o total para **34 tabelas**. A especificação ganhou o arquivo de casos de uso `05-casos-de-uso/logistica.md` (bloco UC601–UC603), os requisitos funcionais 4.31–4.33, e as respectivas entradas no DER, no Dicionário e nos Diagramas de Classe. O `veiculo_frota` (veículo de carga) é **distinto** do `veiculo` do pátio (carro do cliente).
+
+Cobertura de testes automatizados atualizada para **318 testes de integração** verdes (Spring Boot 4 / Java 25 / PostgreSQL 17), incluindo os cadastros do módulo de logística.
 
 ---
 

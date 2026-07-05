@@ -2,7 +2,7 @@
 
 # 7. Dicionário de Dados
 
-Este capítulo apresenta o dicionário de dados completo do sistema **Estacionamento Kaneko**, descrevendo de forma detalhada todas as 31 tabelas que compõem o esquema físico do banco de dados PostgreSQL 17 (banco `estacionamento_kaneko`). As definições aqui registradas foram extraídas diretamente do arquivo de DDL `database/schema.sql`, que constitui a fonte autoritativa do modelo e que dará origem à migração Flyway V1 no início da implementação.
+Este capítulo apresenta o dicionário de dados completo do sistema **Estacionamento Kaneko**, descrevendo de forma detalhada todas as 34 tabelas que compõem o esquema físico do banco de dados PostgreSQL 17 (banco `estacionamento_kaneko`). As definições aqui registradas foram extraídas diretamente do arquivo de DDL `database/schema.sql`, que constitui a fonte autoritativa do modelo e que dará origem à migração Flyway V1 no início da implementação.
 
 Para cada tabela é apresentada uma subseção contendo uma tabela descritiva com as colunas **Campo**, **Tipo**, **Obrigatório**, **Tamanho**, **Regra de validação** e **Observações**. As convenções adotadas nesta documentação são as seguintes:
 
@@ -95,7 +95,6 @@ Para cada tabela é apresentada uma subseção contendo uma tabela descritiva co
 | bairro | VARCHAR(60) | Não | 60 | — | Bairro |
 | cep | VARCHAR(9) | Não | 9 | — | CEP |
 | cidade_id | BIGINT | Não | — | FK → cidade (id) `ON DELETE RESTRICT` | Cidade do funcionário |
-| nacionalidade_id | BIGINT | Não | — | FK → pais (id) `ON DELETE RESTRICT` | País de nacionalidade |
 | cargo_id | BIGINT | Sim | — | `NOT NULL`; FK → cargo (id) `ON DELETE RESTRICT` | Cargo exercido pelo funcionário |
 | cnh | VARCHAR(20) | Não | 20 | — | Número da Carteira Nacional de Habilitação |
 | data_validade_cnh | DATE | Não | — | — | Data de validade da CNH |
@@ -170,8 +169,8 @@ Para cada tabela é apresentada uma subseção contendo uma tabela descritiva co
 | bairro | VARCHAR(60) | Não | 60 | — | Bairro |
 | cep | VARCHAR(9) | Não | 9 | — | CEP |
 | cidade_id | BIGINT | Não | — | FK → cidade (id) `ON DELETE RESTRICT` | Cidade do fornecedor |
-| nacionalidade_id | BIGINT | Não | — | FK → pais (id) `ON DELETE RESTRICT` | País de nacionalidade |
 | condicao_pagamento_id | BIGINT | Não | — | FK → condicao_pagamento (id) `ON DELETE RESTRICT` | Condição de pagamento padrão |
+| transportadora_id | BIGINT | Não | — | FK → transportadora (id) `ON DELETE RESTRICT` | Transportadora padrão do frete |
 | limite_credito | NUMERIC(15,2) | Sim | 15,2 | `DEFAULT 0`; CHECK `limite_credito >= 0` (ck_fornecedor_limite) | Limite de crédito |
 | observacao | VARCHAR(255) | Não | 255 | — | Observações gerais |
 | ativo | BOOLEAN | Sim | — | `DEFAULT TRUE` | Indicador de registro ativo |
@@ -203,7 +202,6 @@ Para cada tabela é apresentada uma subseção contendo uma tabela descritiva co
 | bairro | VARCHAR(60) | Não | 60 | — | Bairro |
 | cep | VARCHAR(9) | Não | 9 | — | CEP |
 | cidade_id | BIGINT | Não | — | FK → cidade (id) `ON DELETE RESTRICT` | Cidade do cliente |
-| nacionalidade_id | BIGINT | Não | — | FK → pais (id) `ON DELETE RESTRICT` | País de nacionalidade |
 | condicao_pagamento_id | BIGINT | Não | — | FK → condicao_pagamento (id) `ON DELETE RESTRICT` | Condição de pagamento padrão |
 | limite_credito | NUMERIC(15,2) | Sim | 15,2 | `DEFAULT 0`; CHECK `limite_credito >= 0` (ck_cliente_limite) | Limite de crédito |
 | observacao | VARCHAR(255) | Não | 255 | — | Observações gerais |
@@ -337,9 +335,10 @@ Regras de coerência adicionais: `ck_mov_tipo_coerencia` exige que, quando `tipo
 | marca_id | BIGINT | Sim | — | `NOT NULL`; FK → marca (id) `ON DELETE RESTRICT` | Marca do produto |
 | unidade_medida_id | BIGINT | Sim | — | `NOT NULL`; FK → unidade_medida (id) `ON DELETE RESTRICT` | Unidade de medida |
 | categoria_id | BIGINT | Não | — | FK → categoria (id) `ON DELETE RESTRICT` | Categoria do produto |
-| valor_compra | NUMERIC(15,2) | Sim | 15,2 | `DEFAULT 0`; CHECK `valor_compra >= 0` (ck_produto_valores) | Valor de compra |
-| valor_venda | NUMERIC(15,2) | Sim | 15,2 | `DEFAULT 0`; CHECK `valor_venda >= 0` (ck_produto_valores) | Valor de venda |
-| percentual_lucro | NUMERIC(10,2) | Sim | 10,2 | `DEFAULT 0`; CHECK `percentual_lucro >= 0` (ck_produto_valores) | Margem-alvo de lucro (pode ser superior a 100%) |
+| valor_compra | NUMERIC(15,2) | Sim | 15,2 | `DEFAULT 0`; CHECK `valor_compra >= 0` (ck_produto_valores) | Preço de compra bruto; somente leitura no cadastro, atualizado pela Nota de Entrada |
+| custo | NUMERIC(15,2) | Sim | 15,2 | `DEFAULT 0`; CHECK `custo >= 0` (ck_produto_valores) | Preço de custo (com rateio de frete/seguro); atualizado pela Nota de Entrada |
+| valor_venda | NUMERIC(15,2) | Sim | 15,2 | `DEFAULT 0`; CHECK `valor_venda >= 0` (ck_produto_valores) | Valor de venda (editável) |
+| percentual_lucro | NUMERIC(10,2) | Sim | 10,2 | `DEFAULT 0` | Margem derivada: (venda − custo) / custo; somente leitura, pode ser negativa (prejuízo) |
 | quantidade | NUMERIC(15,3) | Sim | 15,3 | `DEFAULT 0`; CHECK `quantidade >= 0` (ck_produto_valores) | Estoque atual (aceita fração para KG/L) |
 | quantidade_minima | NUMERIC(15,3) | Sim | 15,3 | `DEFAULT 1`; CHECK `quantidade_minima >= 0` (ck_produto_valores) | Estoque mínimo |
 | descricao | VARCHAR(255) | Não | 255 | — | Descrição do produto |
@@ -615,6 +614,62 @@ Regra de baixa adicional (`ck_contas_pagar_avulsa_baixa`): quando `situacao = 'P
 
 ---
 
-## 7.11. Observações Finais
+## 7.11. Logística
 
-Todas as 31 tabelas descritas neste dicionário de dados adotam, como chave primária, uma coluna `id` do tipo `BIGINT` gerada por identidade. As relações de integridade referencial empregam predominantemente a regra `ON DELETE RESTRICT`, impedindo a exclusão de registros-pai que possuam dependentes; as exceções são as tabelas de itens (`item_nota_entrada`, `item_nota_saida`), os contatos do fornecedor (`fornecedor_email`, `fornecedor_telefone`) e o detalhamento de parcelas (`parcela_condicao_pagamento`, esta com `ON DELETE CASCADE` em relação à condição), que utilizam `ON DELETE CASCADE`, além da coluna `forma_pagamento_id` de `parcela_condicao_pagamento`, que adota `ON DELETE SET NULL`. As restrições de verificação (`CHECK`) garantem a consistência de domínios (enumerações de status, tipo, sexo, estado civil e modalidade de frete), a não negatividade de valores monetários e quantitativos, a coerência temporal entre datas e a integridade das regras de baixa de títulos financeiros. Os índices únicos parciais reforçam regras de negócio específicas, como a existência de no máximo um contrato ativo por veículo, uma movimentação aberta por veículo e um contato principal por fornecedor.
+### transportadora
+
+| Campo | Tipo | Obrigatório | Tamanho | Regra de validação | Observações |
+|---|---|---|---|---|---|
+| id | BIGINT | Sim | — | PK; `GENERATED BY DEFAULT AS IDENTITY` | Identificador único da transportadora |
+| nome | VARCHAR(150) | Sim | 150 | `NOT NULL` | Razão social |
+| nome_fantasia | VARCHAR(120) | Não | 120 | — | Nome fantasia |
+| tipo | VARCHAR(20) | Sim | 20 | `DEFAULT 'JURIDICA'`; CHECK `tipo IN ('FISICA','JURIDICA')` (ck_transportadora_tipo) | Tipo de pessoa |
+| documento | VARCHAR(20) | Sim | 20 | `NOT NULL`; `UNIQUE` (uq_transportadora_documento) | CNPJ/CPF; normalizado para só-dígitos; não admite duplicidade |
+| rg_inscricao_estadual | VARCHAR(20) | Não | 20 | — | RG ou inscrição estadual |
+| telefone | VARCHAR(20) | Não | 20 | — | Telefone de contato |
+| email | VARCHAR(120) | Não | 120 | — | E-mail de contato |
+| endereco | VARCHAR(120) | Não | 120 | — | Logradouro |
+| numero | VARCHAR(10) | Não | 10 | — | Número do endereço |
+| complemento | VARCHAR(100) | Não | 100 | — | Complemento do endereço |
+| bairro | VARCHAR(60) | Não | 60 | — | Bairro |
+| cep | VARCHAR(9) | Não | 9 | — | CEP |
+| cidade_id | BIGINT | Não | — | FK → cidade (id) `ON DELETE RESTRICT` | Cidade da transportadora |
+| condicao_pagamento_id | BIGINT | Não | — | FK → condicao_pagamento (id) `ON DELETE RESTRICT` | Condição de pagamento padrão |
+| observacao | VARCHAR(255) | Não | 255 | — | Observações gerais |
+| ativo | BOOLEAN | Sim | — | `DEFAULT TRUE` | Indicador de registro ativo |
+| created_at | TIMESTAMPTZ | Sim | — | `DEFAULT now()` | Data e hora de criação do registro |
+| updated_at | TIMESTAMPTZ | Sim | — | `DEFAULT now()` | Data e hora da última atualização |
+
+### veiculo_frota
+
+| Campo | Tipo | Obrigatório | Tamanho | Regra de validação | Observações |
+|---|---|---|---|---|---|
+| id | BIGINT | Sim | — | PK; `GENERATED BY DEFAULT AS IDENTITY` | Identificador único do veículo de frota |
+| placa | VARCHAR(10) | Sim | 10 | `NOT NULL`; `UNIQUE` (uq_veiculo_frota_placa) | Placa; normalizada em maiúsculas; não admite duplicidade |
+| modelo | VARCHAR(50) | Não | 50 | — | Modelo do veículo |
+| marca | VARCHAR(50) | Não | 50 | — | Marca do veículo |
+| ano | INTEGER | Não | — | CHECK `ano IS NULL OR ano >= 1900` (ck_veiculo_frota_ano) | Ano de fabricação |
+| capacidade | NUMERIC(10,2) | Não | 10,2 | CHECK `capacidade IS NULL OR capacidade >= 0` (ck_veiculo_frota_capacidade) | Capacidade de carga |
+| observacao | VARCHAR(255) | Não | 255 | — | Observações gerais |
+| ativo | BOOLEAN | Sim | — | `DEFAULT TRUE` | Indicador de registro ativo |
+| created_at | TIMESTAMPTZ | Sim | — | `DEFAULT now()` | Data e hora de criação do registro |
+| updated_at | TIMESTAMPTZ | Sim | — | `DEFAULT now()` | Data e hora da última atualização |
+
+### transportadora_veiculo_frota
+
+| Campo | Tipo | Obrigatório | Tamanho | Regra de validação | Observações |
+|---|---|---|---|---|---|
+| id | BIGINT | Sim | — | PK; `GENERATED BY DEFAULT AS IDENTITY` | Identificador único do vínculo |
+| transportadora_id | BIGINT | Sim | — | `NOT NULL`; FK → transportadora (id) `ON DELETE CASCADE` | Transportadora do vínculo |
+| veiculo_frota_id | BIGINT | Sim | — | `NOT NULL`; FK → veiculo_frota (id) `ON DELETE RESTRICT` | Veículo de frota do vínculo |
+| ativo | BOOLEAN | Sim | — | `DEFAULT TRUE` | Indicador de registro ativo |
+| created_at | TIMESTAMPTZ | Sim | — | `DEFAULT now()` | Data e hora de criação do registro |
+| updated_at | TIMESTAMPTZ | Sim | — | `DEFAULT now()` | Data e hora da última atualização |
+
+Restrição de unicidade do par: `uq_transp_veiculo_frota (transportadora_id, veiculo_frota_id)`.
+
+---
+
+## 7.12. Observações Finais
+
+Todas as 34 tabelas descritas neste dicionário de dados adotam, como chave primária, uma coluna `id` do tipo `BIGINT` gerada por identidade. As relações de integridade referencial empregam predominantemente a regra `ON DELETE RESTRICT`, impedindo a exclusão de registros-pai que possuam dependentes; as exceções são as tabelas de itens (`item_nota_entrada`, `item_nota_saida`), os contatos do fornecedor (`fornecedor_email`, `fornecedor_telefone`) e o detalhamento de parcelas (`parcela_condicao_pagamento`, esta com `ON DELETE CASCADE` em relação à condição), que utilizam `ON DELETE CASCADE`, além da coluna `forma_pagamento_id` de `parcela_condicao_pagamento`, que adota `ON DELETE SET NULL`. As restrições de verificação (`CHECK`) garantem a consistência de domínios (enumerações de status, tipo, sexo, estado civil e modalidade de frete), a não negatividade de valores monetários e quantitativos, a coerência temporal entre datas e a integridade das regras de baixa de títulos financeiros. Os índices únicos parciais reforçam regras de negócio específicas, como a existência de no máximo um contrato ativo por veículo, uma movimentação aberta por veículo e um contato principal por fornecedor.

@@ -390,7 +390,7 @@ sequenceDiagram
 
 ## 9.8. Fluxo 7 — Cadastro Genérico com Exclusão Lógica
 
-Representa o padrão comum a todos os cadastros de apoio (`cliente`, `fornecedor`, `produto`, `tarifa`, `categoria`, `marca`, etc.), que herdam o atributo `ativo BOOLEAN`. A exclusão **nunca** remove o registro fisicamente: realiza-se *soft delete* via `ativo = FALSE`, preservando a integridade referencial (`ON DELETE RESTRICT`) e o histórico. O diagrama ilustra cadastro/atualização e a exclusão lógica.
+Representa o padrão comum a todos os cadastros de apoio (`cliente`, `fornecedor`, `produto`, `tarifa`, `categoria`, `marca`, `transportadora`, `veiculo_frota`, etc.), que herdam o atributo `ativo BOOLEAN`. A exclusão **nunca** remove o registro fisicamente: realiza-se *soft delete* via `ativo = FALSE`, preservando a integridade referencial (`ON DELETE RESTRICT`) e o histórico. O diagrama ilustra cadastro/atualização e a exclusão lógica. Os cadastros do **Módulo de Logística** — `transportadora` e `veiculo_frota` — bem como o vínculo N:N `transportadora_veiculo_frota` (a frota) seguem exatamente este mesmo fluxo genérico, com chave natural única `uq_transportadora_documento`, `uq_veiculo_frota_placa` e `uq_transp_veiculo_frota`, respectivamente.
 
 ```mermaid
 sequenceDiagram
