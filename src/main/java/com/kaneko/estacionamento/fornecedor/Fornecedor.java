@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.fornecedor;
 
 import com.kaneko.estacionamento.common.BaseEntity;
 import com.kaneko.estacionamento.geografia.Cidade;
+import com.kaneko.estacionamento.logistica.Transportadora;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import jakarta.persistence.CascadeType;
@@ -75,6 +76,10 @@ public class Fornecedor extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "condicao_pagamento_id")
     private CondicaoPagamento condicaoPagamento;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transportadora_id")
+    private Transportadora transportadora;
 
     @Column(name = "limite_credito", nullable = false, precision = 15, scale = 2)
     private BigDecimal limiteCredito = BigDecimal.ZERO;

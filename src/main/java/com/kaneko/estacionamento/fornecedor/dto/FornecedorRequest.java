@@ -35,6 +35,7 @@ public record FornecedorRequest(
 
         Long cidadeId,
         Long condicaoPagamentoId,
+        Long transportadoraId,
 
         @PositiveOrZero(message = "O limite de crédito não pode ser negativo.")
         BigDecimal limiteCredito,

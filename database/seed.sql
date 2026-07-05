@@ -63,6 +63,19 @@ INSERT INTO produto (id, nome, codigo_barras, marca_id, unidade_medida_id, categ
   (3,'Salgadinho Pacote 100g','7892840812345',2,4,2,3.00,3.00,6.00,100.00,60,12),
   (4,'Detergente 500ml','7891234567890',3,2,3,2.00,2.00,4.50,125.00,30,6);
 
+-- ---------- LOGISTICA (transportadora + frota N:N + fornecedor->transportadora) ----------
+INSERT INTO transportadora (id, nome, nome_fantasia, tipo, documento, telefone, email, cidade_id, condicao_pagamento_id) VALUES
+  (1,'Rapido Oeste Transportes Ltda','Rapido Oeste','JURIDICA','44555666000177','4530301010','contato@rapidooeste.com',2,2),
+  (2,'TransCataratas ME','TransCataratas','JURIDICA','55666777000188','4530302020','frete@transcataratas.com',3,3);
+INSERT INTO veiculo_frota (id, placa, modelo, marca, ano, capacidade) VALUES
+  (1,'ABC1D23','Sprinter','Mercedes-Benz',2020,1500.00),
+  (2,'EFG4H56','Daily','Iveco',2019,3500.00),
+  (3,'IJK7L89','Delivery','VW',2021,4000.00);
+INSERT INTO transportadora_veiculo_frota (id, transportadora_id, veiculo_frota_id) VALUES
+  (1,1,1),(2,1,2),(3,2,3);
+UPDATE fornecedor SET transportadora_id = 1 WHERE id = 1;
+UPDATE fornecedor SET transportadora_id = 2 WHERE id = 2;
+
 -- ---------- TARIFA (id=1 'Tarifa padrao' ja veio do schema) ----------
 INSERT INTO tarifa (id, descricao, valor_hora, valor_diaria, tolerancia_min, valor_mensalidade) VALUES (2,'Tarifa Moto',7.00,35.00,15,180.00);
 

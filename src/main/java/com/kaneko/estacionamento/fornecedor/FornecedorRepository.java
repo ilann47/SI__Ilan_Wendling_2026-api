@@ -18,6 +18,6 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Long>,
     boolean existsByDocumentoAndIdNot(String documento, Long id);
 
     @Override
-    @EntityGraph(attributePaths = {"cidade", "condicaoPagamento", "emails", "telefones"})
+    @EntityGraph(attributePaths = {"cidade", "condicaoPagamento", "transportadora", "emails", "telefones"})
     Optional<Fornecedor> findById(Long id);
 }

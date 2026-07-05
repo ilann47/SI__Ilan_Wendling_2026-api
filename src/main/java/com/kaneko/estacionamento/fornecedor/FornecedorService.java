@@ -10,6 +10,8 @@ import com.kaneko.estacionamento.fornecedor.dto.FornecedorResponse;
 import com.kaneko.estacionamento.fornecedor.dto.TelefoneRequest;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
+import com.kaneko.estacionamento.logistica.Transportadora;
+import com.kaneko.estacionamento.logistica.TransportadoraRepository;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
@@ -35,13 +37,16 @@ public class FornecedorService {
     private final FornecedorRepository repository;
     private final CidadeRepository cidadeRepository;
     private final CondicaoPagamentoRepository condicaoPagamentoRepository;
+    private final TransportadoraRepository transportadoraRepository;
 
     public FornecedorService(FornecedorRepository repository,
                              CidadeRepository cidadeRepository,
-                             CondicaoPagamentoRepository condicaoPagamentoRepository) {
+                             CondicaoPagamentoRepository condicaoPagamentoRepository,
+                             TransportadoraRepository transportadoraRepository) {
         this.repository = repository;
         this.cidadeRepository = cidadeRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
+        this.transportadoraRepository = transportadoraRepository;
     }
 
     @Transactional(readOnly = true)
@@ -100,6 +105,7 @@ public class FornecedorService {
         f.setCep(req.cep());
         f.setCidade(req.cidadeId() != null ? buscarCidade(req.cidadeId()) : null);
         f.setCondicaoPagamento(req.condicaoPagamentoId() != null ? buscarCondicao(req.condicaoPagamentoId()) : null);
+        f.setTransportadora(req.transportadoraId() != null ? buscarTransportadora(req.transportadoraId()) : null);
         f.setLimiteCredito(req.limiteCredito() != null ? req.limiteCredito() : BigDecimal.ZERO);
         f.setObservacao(req.observacao());
         if (req.ativo() != null) {
@@ -155,5 +161,10 @@ public class FornecedorService {
     private CondicaoPagamento buscarCondicao(Long id) {
         return condicaoPagamentoRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", id));
+    }
+
+    private Transportadora buscarTransportadora(Long id) {
+        return transportadoraRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Transportadora", id));
     }
 }
