@@ -23,7 +23,7 @@ Convenções adotadas neste documento:
 - **RN005:** O campo Código, quando informado, é limitado a 5 caracteres.
 - **RN006:** O campo Nacionalidade (gentílico, ex.: Brasileiro), quando informado, é limitado a 100 caracteres.
 - **RN007:** Todo país é cadastrado, por padrão, como Ativo.
-- **RN008:** A exclusão física de um país é vedada quando existirem Estados, Funcionários (nacionalidade) ou demais registros a ele vinculados (restrição `ON DELETE RESTRICT`). Nesse caso, o sistema oferece a inativação (exclusão lógica) do registro.
+- **RN008:** A exclusão física de um país é vedada quando existirem Estados a ele vinculados (restrição `ON DELETE RESTRICT`). Nesse caso, o sistema oferece a inativação (exclusão lógica) do registro.
 
 ## Nome do Caso de Uso
 
@@ -369,7 +369,7 @@ O caso de uso é ativado quando o usuário seleciona a opção "Cargo" no menu d
 - **RN006:** O campo Sexo, quando informado, é restrito aos valores "Masculino", "Feminino" ou "Outro" (verificação `ck_funcionario_sexo`).
 - **RN007:** O campo Estado Civil, quando informado, é restrito aos valores "Solteiro", "Casado", "Separado", "Divorciado", "Viúvo" ou "Outro" (verificação `ck_funcionario_civil`).
 - **RN008:** O campo Salário, quando informado, é numérico com até 10 dígitos e 2 casas decimais e não pode ser negativo (verificação `ck_funcionario_salario`).
-- **RN009:** Os campos Cidade e Nacionalidade (país), quando informados, devem referenciar registros previamente cadastrados (chaves estrangeiras `fk_funcionario_cidade` e `fk_funcionario_nacionalidade`).
+- **RN009:** O campo Cidade, quando informado, deve referenciar um registro previamente cadastrado (chave estrangeira `fk_funcionario_cidade`).
 - **RN010:** A Data de Admissão é obrigatória; na ausência de valor informado, assume a data corrente.
 - **RN011:** Aplicam-se os limites de tamanho dos demais campos textuais: Apelido (60), RG/Inscrição Estadual (20), Telefone (20), E-mail (120), Endereço (120), Número (10), Complemento (100), Bairro (60), CEP (9), CNH (20) e Observação (255).
 - **RN012:** Todo funcionário é cadastrado, por padrão, como Ativo.
@@ -427,7 +427,6 @@ O caso de uso é ativado quando o usuário seleciona a opção "Funcionário" no
    - Bairro (até 60 caracteres)
    - CEP (até 9 caracteres)
    - Cidade (seleção de cidade cadastrada)
-   - Nacionalidade (seleção de país cadastrado)
    - Cargo * (seleção de cargo cadastrado)
    - CNH (até 20 caracteres)
    - Data de Validade da CNH (data)

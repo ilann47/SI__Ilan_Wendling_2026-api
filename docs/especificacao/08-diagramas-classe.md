@@ -16,7 +16,7 @@ Para legibilidade, os mapeamentos `LocalDateTime criadoEm` / `atualizadoEm` (col
 
 ## 8.1 Módulo Geografia
 
-Hierarquia de localização (País → Estado → Cidade), referenciada por Funcionário, Fornecedor e Cliente para composição de endereço e nacionalidade.
+Hierarquia de localização (País → Estado → Cidade), referenciada por Funcionário, Fornecedor e Cliente para composição de endereço.
 
 ```mermaid
 classDiagram
@@ -56,7 +56,7 @@ classDiagram
 
 ## 8.2 Módulo RH e Usuário
 
-Cargo define a função; Funcionário é a pessoa contratada (com endereço e nacionalidade); Usuário é a credencial de acesso, vinculada opcionalmente a um Funcionário (1:1).
+Cargo define a função; Funcionário é a pessoa contratada (com endereço); Usuário é a credencial de acesso, vinculada opcionalmente a um Funcionário (1:1).
 
 ```mermaid
 classDiagram
@@ -137,7 +137,6 @@ classDiagram
 
     Funcionario "*" --> "1" Cargo : ocupa
     Funcionario "*" --> "0..1" Cidade : reside em
-    Funcionario "*" --> "0..1" Pais : tem nacionalidade
     Usuario "0..1" --> "0..1" Funcionario : autentica
     Funcionario ..> TipoPessoa
     Funcionario ..> Sexo
@@ -231,10 +230,8 @@ classDiagram
     }
 
     Cliente "*" --> "0..1" Cidade : reside em
-    Cliente "*" --> "0..1" Pais : tem nacionalidade
     Cliente "*" --> "0..1" CondicaoPagamento : usa
     Fornecedor "*" --> "0..1" Cidade : reside em
-    Fornecedor "*" --> "0..1" Pais : tem nacionalidade
     Fornecedor "*" --> "0..1" CondicaoPagamento : usa
     Fornecedor "1" *-- "*" FornecedorEmail : possui
     Fornecedor "1" *-- "*" FornecedorTelefone : possui

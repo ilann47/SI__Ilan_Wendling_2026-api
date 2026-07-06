@@ -23,7 +23,7 @@ Esta subseção reúne os requisitos de manutenção (operações CRUD: Listar, 
 
 ## 4.1 Manter Cadastro de País
 
-Entidade responsável por armazenar os países utilizados como nacionalidade de pessoas (funcionários, clientes e fornecedores) e como raiz da hierarquia geográfica (País → Estado → Cidade).
+Entidade responsável por armazenar os países que formam a raiz da hierarquia geográfica (País → Estado → Cidade); cada país registra também o seu gentílico (nacionalidade).
 
 ### 4.1.1 Listar Países
 O sistema deve permitir listar os países cadastrados, exibindo nome, sigla, código e nacionalidade (gentílico), com filtro por nome e por situação (ativo/inativo) e ordenação por nome.
@@ -101,10 +101,10 @@ Entidade que representa os colaboradores do estacionamento, com dados pessoais, 
 O sistema deve permitir listar os funcionários, exibindo nome, CPF, cargo, telefone e situação, com filtro por nome, por cargo e por situação (ativo/inativo).
 
 ### 4.5.2 Inserir Funcionário
-O sistema deve permitir cadastrar um funcionário informando, no mínimo, **nome**, **CPF** e **cargo** (obrigatórios), além dos dados complementares (tipo pessoa, RG/IE, data de nascimento, sexo, estado civil, contatos, endereço completo, cidade, nacionalidade, CNH e validade, datas de admissão/demissão, salário e observação). O CPF deve ser único (restrição `uq_funcionario_cpf`); o salário, quando informado, não pode ser negativo; os domínios de tipo, sexo e estado civil são validados (restrições `ck_funcionario_*`).
+O sistema deve permitir cadastrar um funcionário informando, no mínimo, **nome**, **CPF** e **cargo** (obrigatórios), além dos dados complementares (tipo pessoa, RG/IE, data de nascimento, sexo, estado civil, contatos, endereço completo, cidade, CNH e validade, datas de admissão/demissão, salário e observação). O CPF deve ser único (restrição `uq_funcionario_cpf`); o salário, quando informado, não pode ser negativo; os domínios de tipo, sexo e estado civil são validados (restrições `ck_funcionario_*`).
 
 ### 4.5.3 Alterar Funcionário
-O sistema deve permitir editar os dados de um funcionário, mantendo a unicidade do CPF e a integridade dos vínculos com cargo, cidade e nacionalidade.
+O sistema deve permitir editar os dados de um funcionário, mantendo a unicidade do CPF e a integridade dos vínculos com cargo e cidade.
 
 ### 4.5.4 Excluir Funcionário
 O sistema deve permitir excluir (inativar/demitir) um funcionário. A exclusão física deve ser bloqueada quando houver usuário vinculado (`ON DELETE RESTRICT`). Recomenda-se o registro da data de demissão e a inativação, em vez da exclusão física.
@@ -155,7 +155,7 @@ Entidade que define os planos de parcelamento (número de parcelas, prazos e per
 O sistema deve permitir listar as condições de pagamento, exibindo nome, número de parcelas, prazos e percentuais aplicados, com filtro por nome e por situação.
 
 ### 4.8.2 Inserir Condição de Pagamento
-O sistema deve permitir cadastrar uma condição de pagamento informando **nome** (obrigatório e único), número de parcelas, dias para a primeira parcela, dias entre parcelas e os percentuais de juros, multa e desconto. Opcionalmente, deve permitir detalhar cada parcela (número, dias para vencimento, percentual do total e forma de pagamento específica), exigindo que a soma dos percentuais seja coerente (100%). As restrições `ck_condicao_parcelas`, `ck_condicao_percentuais` e `ck_parcela_valores` devem ser respeitadas (valores não negativos; desconto e percentual de parcela entre 0 e 100).
+O sistema deve permitir cadastrar uma condição de pagamento informando **nome** (obrigatório e único), número de parcelas e os percentuais de juros, multa e desconto. Opcionalmente, deve permitir detalhar cada parcela (número, dias para vencimento, percentual do total e forma de pagamento específica), exigindo que a soma dos percentuais seja coerente (100%). As restrições `ck_condicao_parcelas`, `ck_condicao_percentuais` e `ck_parcela_valores` devem ser respeitadas (valores não negativos; desconto e percentual de parcela entre 0 e 100).
 
 ### 4.8.3 Alterar Condição de Pagamento
 O sistema deve permitir editar os parâmetros de uma condição de pagamento e suas parcelas, mantendo a unicidade do nome e a consistência dos percentuais.
@@ -173,7 +173,7 @@ Entidade que representa os fornecedores de produtos e serviços, com dados cadas
 O sistema deve permitir listar os fornecedores, exibindo razão social/nome fantasia, documento (CNPJ/CPF), cidade e situação, com filtro por nome, por documento e por situação.
 
 ### 4.9.2 Inserir Fornecedor
-O sistema deve permitir cadastrar um fornecedor informando, no mínimo, **nome** (razão social) e **documento** (obrigatórios), além de nome fantasia, apelido, tipo de pessoa (`FISICA`/`JURIDICA`, padrão `JURIDICA`), RG/IE, endereço completo, cidade, nacionalidade, condição de pagamento, limite de crédito e observação. O documento deve ser único (restrição `uq_fornecedor_documento`) e o limite de crédito não pode ser negativo. Deve ser possível cadastrar múltiplos e-mails e telefones (com tipo e indicador de principal), admitindo no máximo um contato principal de cada tipo (`uq_fornecedor_email_principal`, `uq_fornecedor_telefone_principal`).
+O sistema deve permitir cadastrar um fornecedor informando, no mínimo, **nome** (razão social) e **documento** (obrigatórios), além de nome fantasia, apelido, tipo de pessoa (`FISICA`/`JURIDICA`, padrão `JURIDICA`), RG/IE, endereço completo, cidade, condição de pagamento, limite de crédito e observação. O documento deve ser único (restrição `uq_fornecedor_documento`) e o limite de crédito não pode ser negativo. Deve ser possível cadastrar múltiplos e-mails e telefones (com tipo e indicador de principal), admitindo no máximo um contato principal de cada tipo (`uq_fornecedor_email_principal`, `uq_fornecedor_telefone_principal`).
 
 ### 4.9.3 Alterar Fornecedor
 O sistema deve permitir editar os dados de um fornecedor e gerenciar seus contatos (incluir, alterar e remover e-mails/telefones), mantendo a unicidade do documento.
@@ -191,10 +191,10 @@ Entidade que representa os clientes do estacionamento (donos de planos mensalist
 O sistema deve permitir listar os clientes, exibindo nome, documento (CPF/CNPJ), telefone, cidade e situação, com filtro por nome, por documento e por situação.
 
 ### 4.10.2 Inserir Cliente
-O sistema deve permitir cadastrar um cliente informando, no mínimo, **nome** e **documento** (obrigatórios), além de apelido, tipo de pessoa (`FISICA`/`JURIDICA`, padrão `FISICA`), RG/IE, data de nascimento, sexo, estado civil, contatos, endereço completo, cidade, nacionalidade, condição de pagamento, limite de crédito e observação. O documento deve ser único (restrição `uq_cliente_documento`); o limite de crédito não pode ser negativo; os domínios de tipo, sexo e estado civil são validados (restrições `ck_cliente_*`).
+O sistema deve permitir cadastrar um cliente informando, no mínimo, **nome** e **documento** (obrigatórios), além de apelido, tipo de pessoa (`FISICA`/`JURIDICA`, padrão `FISICA`), RG/IE, data de nascimento, sexo, estado civil, contatos, endereço completo, cidade, condição de pagamento, limite de crédito e observação. O documento deve ser único (restrição `uq_cliente_documento`); o limite de crédito não pode ser negativo; os domínios de tipo, sexo e estado civil são validados (restrições `ck_cliente_*`).
 
 ### 4.10.3 Alterar Cliente
-O sistema deve permitir editar os dados de um cliente, mantendo a unicidade do documento e a integridade dos vínculos com cidade, nacionalidade e condição de pagamento.
+O sistema deve permitir editar os dados de um cliente, mantendo a unicidade do documento e a integridade dos vínculos com cidade e condição de pagamento.
 
 ### 4.10.4 Excluir Cliente
 O sistema deve permitir excluir (inativar) um cliente. A exclusão física deve ser bloqueada quando houver veículos, mensalistas, notas de saída/serviço ou contas a receber vinculados (`ON DELETE RESTRICT`).

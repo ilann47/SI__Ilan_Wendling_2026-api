@@ -344,7 +344,7 @@ A tabela abaixo consolida as 34 entidades, indicando chave primária, chaves est
 
 | # | Entidade | PK | Chaves Estrangeiras (FK) | Uniques / Restrições principais | Descrição |
 |---|----------|----|--------------------------|----------------------------------|-----------|
-| 1 | **pais** | id | — | `uq_pais_nome` (nome) | País de origem, base da hierarquia geográfica e da nacionalidade de pessoas. |
+| 1 | **pais** | id | — | `uq_pais_nome` (nome) | País, raiz da hierarquia geográfica (País → Estado → Cidade); registra o gentílico (nacionalidade). |
 | 2 | **estado** | id | pais_id → pais | `uq_estado_uf_pais` (pais_id, uf) | Unidade federativa, com UF e vínculo ao país. |
 | 3 | **cidade** | id | estado_id → estado | `uq_cidade_nome_estado` (estado_id, nome) | Município, com DDD e código IBGE, vinculado ao estado. |
 | 4 | **cargo** | id | — | `uq_cargo_nome` (nome); `ck_cargo_valores` (salário e carga ≥ 0) | Função exercida pelo funcionário, com salário-base e exigência de CNH. |

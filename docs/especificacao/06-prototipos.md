@@ -2,11 +2,11 @@
 
 # 6. Protótipos
 
-## 6.1 Nota sobre a Natureza dos Protótipos (Divergência Documentada)
+## 6.1 Nota sobre os Protótipos
 
-> **Divergência em relação ao modelo acadêmico tradicional.** O modelo de "Especificação de Requisitos por Casos de Uso" prevê, nesta seção, a apresentação de **protótipos de telas** (mockups, wireframes ou capturas de uma interface gráfica). O sistema **Estacionamento Kaneko** na sua versão 1 (v1), entretanto, **não possui telas próprias**: a entrega da v1 é um **backend Spring Boot 4 (Java 25)** que expõe a sua funcionalidade exclusivamente como uma **API REST**, cuja interface de exploração e teste é a documentação interativa **Swagger / OpenAPI** (springdoc), disponível em `/{contexto}/swagger-ui.html`.
+> **Evolução da interface.** A entrega inicial (v1) foi um **backend Spring Boot 4 (Java 25)** exposto como **API REST**, documentada via **Swagger / OpenAPI** (springdoc, em `/{contexto}/swagger-ui.html`). Posteriormente foi implementada uma **interface web** — uma *Single Page Application* em **React + TypeScript + Material UI (MUI)** — que consome essa API. Por essa razão, este capítulo apresenta **capturas reais das telas** (Seção 6.1.3) e, em seguida, a **descrição conceitual** de cada tela, mapeada para os endpoints REST que a sustentam — preservando a rastreabilidade **campo → coluna → endpoint** exigida pelo modelo.
 
-Por essa razão, os "protótipos" apresentados neste capítulo **não são imagens de telas**, mas sim **descrições conceituais de tela** — a especificação textual de *como uma tela deveria se comportar* (propósito, campos exibidos, ações disponíveis) — sistematicamente **mapeada para os endpoints REST** que a sustentariam. Cada protótipo conceitual cumpre, portanto, duas funções:
+Além das capturas reais (Seção 6.1.3), cada protótipo traz uma **descrição conceitual** da tela — a especificação textual de *como a tela se comporta* (propósito, campos exibidos, ações disponíveis) — sistematicamente **mapeada para os endpoints REST** que a sustentam. Cada descrição cumpre, portanto, duas funções:
 
 1. **Função de projeto de interface (UX):** descreve a tela que um futuro front-end (web ou mobile, previsto apenas para versões posteriores) deverá implementar, indicando o propósito, os campos exibidos e as ações disponíveis. Os campos descritos estão **aterrados no esquema físico** (`database/schema.sql`): cada campo de tela corresponde a uma coluna real de uma tabela, e cada validação de tela reflete uma restrição `NOT NULL`, `UNIQUE` ou `CHECK` do banco.
 2. **Função de contrato técnico (API):** para cada ação de tela (listar, abrir, salvar, excluir, gerar relatório), indica-se o **endpoint REST correspondente** — método HTTP, caminho e um resumo do *payload* (corpo da requisição ou parâmetros), no formato `MÉTODO /api/recurso`.
@@ -45,6 +45,40 @@ Os protótipos estão agrupados conforme os módulos do sistema:
 - **6.10 Módulo Financeiro** — Formas e Condições de Pagamento, Contas a Pagar, Contas a Receber, Contas a Pagar Avulsa.
 
 Para evitar repetição exaustiva, as telas de **cadastro de apoio** (que seguem rigorosamente o CRUD-padrão da tabela acima) são descritas de forma sintética, enquanto as telas que carregam **regras de negócio relevantes** (Movimentação, Mensalista, Notas, Contas) recebem descrição detalhada. Cada protótipo cobre, conforme aplicável, os estados de **Listagem, Cadastro/Inserir, Edição, Exclusão** e, ao final de cada módulo, os **Relatórios**.
+
+### 6.1.3 Capturas de Tela (Interface Real)
+
+As imagens a seguir são **capturas reais** da interface web em execução (SPA React/MUI sobre a API), demonstrando os estados de **Listagem** e **Cadastro** exigidos pelo modelo. Todas as telas de cadastro seguem o mesmo padrão visual (grade paginada + formulário em diálogo).
+
+**Login** — porta de entrada única; autenticação por usuário e senha (JWT).
+
+![Tela de login](prototipos/01-login.png)
+
+**Dashboard** — painel-resumo da operação (indicadores do pátio e do dia).
+
+![Dashboard operacional](prototipos/02-dashboard.png)
+
+**Pátio** — operação diária de entrada e saída de veículos.
+
+![Operação de pátio](prototipos/03-patio.png)
+
+**Listagem (Cliente).** Grade paginada no servidor, com a coluna **ID**, a barra de **filtros** (incluindo busca por **ID**, nome, documento e situação), o indicador de situação e as ações por linha (editar/excluir). Este é o estado *Listagem* que o modelo exige, comum a todos os cadastros.
+
+![Listagem de clientes](prototipos/04-listagem-clientes.png)
+
+**Cadastro (Cliente).** Formulário de inserção/edição em diálogo, com validação de campos (CPF/CNPJ com máscara e dígito verificador), seletores de referência (cidade, condição de pagamento) com cadastro rápido aninhado e entrada em caixa alta automática. Este é o estado *Cadastro/Inserir* do modelo.
+
+![Cadastro de cliente](prototipos/05-cadastro-cliente.png)
+
+**Relatórios** — consolidação gerencial (pátio atual, faturamento do dia, contas a vencer, estoque mínimo e mensalistas ativos).
+
+![Relatórios gerenciais](prototipos/06-relatorios.png)
+
+**Listagem (Transportadora — Módulo de Logística)** — exemplo de cadastro do módulo de logística, no mesmo padrão de listagem.
+
+![Listagem de transportadoras](prototipos/07-listagem-transportadoras.png)
+
+As seções conceituais a seguir (6.2 em diante) detalham, tela a tela e campo a campo, o comportamento e o contrato REST de cada uma.
 
 ---
 
@@ -106,7 +140,7 @@ Para evitar repetição exaustiva, as telas de **cadastro de apoio** (que seguem
 
 ## 6.4 Módulo Geografia
 
-Hierarquia **País → Estado → Cidade**, base para a nacionalidade e o endereço de pessoas. As três telas seguem o CRUD-padrão (6.1.1), com exclusão **lógica** (`ativo`) e bloqueio de exclusão física por `ON DELETE RESTRICT`.
+Hierarquia **País → Estado → Cidade**, base para o endereço de pessoas. As três telas seguem o CRUD-padrão (6.1.1), com exclusão **lógica** (`ativo`) e bloqueio de exclusão física por `ON DELETE RESTRICT`.
 
 ### 6.4.1 Telas Conceituais
 
@@ -140,7 +174,7 @@ Cobre **Cargo**, **Funcionário** e **Usuário** (acesso ao sistema). O cadastro
 
 **Cargo.** *Listagem*: nome, salário-base, carga horária e exigência de CNH (`requer_cnh`). *Cadastro/Edição*: `nome` (único — `uq_cargo_nome`), `descricao`, `salario_base` (≥ 0), `carga_horaria` (≥ 0), `requer_cnh`, `ativo`. *Exclusão* lógica; física bloqueada se houver funcionários no cargo.
 
-**Funcionário.** *Listagem*: nome, CPF, cargo, situação. Filtros por nome, cargo e situação. *Cadastro/Edição* (formulário extenso): dados pessoais — `nome`, `apelido`, `tipo` (FISICA/JURIDICA), `cpf` (único — `uq_funcionario_cpf`), `rg_inscricao_estadual`, `data_nascimento`, `sexo`, `estado_civil`; contato — `telefone`, `email`; endereço — `endereco`, `numero`, `complemento`, `bairro`, `cep`, `cidade_id` (seletor); vínculo — `nacionalidade_id` (país), `cargo_id` (obrigatório); CNH — `cnh`, `data_validade_cnh` (exigível quando o cargo tem `requer_cnh = true`); contrato — `data_admissao`, `data_demissao`, `salario` (≥ 0); `observacao`, `ativo`. *Exclusão* lógica (inativação / demissão via `data_demissao`); física bloqueada se houver usuário vinculado.
+**Funcionário.** *Listagem*: nome, CPF, cargo, situação. Filtros por nome, cargo e situação. *Cadastro/Edição* (formulário extenso): dados pessoais — `nome`, `apelido`, `tipo` (FISICA/JURIDICA), `cpf` (único — `uq_funcionario_cpf`), `rg_inscricao_estadual`, `data_nascimento`, `sexo`, `estado_civil`; contato — `telefone`, `email`; endereço — `endereco`, `numero`, `complemento`, `bairro`, `cep`, `cidade_id` (seletor); vínculo — `cargo_id` (obrigatório); CNH — `cnh`, `data_validade_cnh` (exigível quando o cargo tem `requer_cnh = true`); contrato — `data_admissao`, `data_demissao`, `salario` (≥ 0); `observacao`, `ativo`. *Exclusão* lógica (inativação / demissão via `data_demissao`); física bloqueada se houver usuário vinculado.
 
 **Usuário.** *Listagem*: nome, login, perfil, situação. *Cadastro/Edição*: `nome`, `login` (único, *case-insensitive*), `senha` (somente na criação/redefinição; armazenada como *hash*), `email` (único quando informado), `funcionario_id` (vínculo opcional 1:1 — `uq_usuario_funcionario`), `perfil` (`ADMIN`/`OPERADOR`), `ativo`. A senha **nunca** é exibida em listagens ou detalhes.
 
@@ -152,7 +186,7 @@ Cobre **Cargo**, **Funcionário** e **Usuário** (acesso ao sistema). O cadastro
 | Funcionário | `GET /api/funcionarios` | `GET /api/funcionarios/{id}` | `POST /api/funcionarios` | `PUT /api/funcionarios/{id}` | `DELETE /api/funcionarios/{id}` |
 | Usuário | `GET /api/usuarios` | `GET /api/usuarios/{id}` | `POST /api/usuarios` | `PUT /api/usuarios/{id}` | `DELETE /api/usuarios/{id}` |
 
-*Payloads:* Cargo `{ nome, descricao?, salarioBase, cargaHoraria?, requerCnh, ativo? }`; Funcionário `{ nome, tipo, cpf, cargoId, cidadeId?, nacionalidadeId?, dataAdmissao, salario?, ... }`; Usuário `{ nome, login, senha, email?, funcionarioId?, perfil, ativo? }`. Operação adicional: `PUT /api/usuarios/{id}/senha` (redefinir senha) com `{ senhaAtual?, novaSenha }`.
+*Payloads:* Cargo `{ nome, descricao?, salarioBase, cargaHoraria?, requerCnh, ativo? }`; Funcionário `{ nome, tipo, cpf, cargoId, cidadeId?, dataAdmissao, salario?, ... }`; Usuário `{ nome, login, senha, email?, funcionarioId?, perfil, ativo? }`. Operação adicional: `PUT /api/usuarios/{id}/senha` (redefinir senha) com `{ senhaAtual?, novaSenha }`.
 
 ### 6.5.3 Relatórios — RH
 
@@ -167,9 +201,9 @@ Cobre **Cliente** (dono de plano mensalista e/ou comprador na conveniência) e *
 
 ### 6.6.1 Telas Conceituais
 
-**Cliente.** *Listagem*: nome, documento (CPF/CNPJ), telefone, situação; filtros por nome, documento e situação. *Cadastro/Edição*: `nome`, `apelido`, `tipo` (FISICA/JURIDICA), `documento` (único — `uq_cliente_documento`), `rg_inscricao_estadual`, `data_nascimento`, `sexo`, `estado_civil`, contato (`telefone`, `email`), endereço (`endereco`, `numero`, `complemento`, `bairro`, `cep`, `cidade_id`), `nacionalidade_id`, `condicao_pagamento_id` (seletor), `limite_credito` (≥ 0), `observacao`, `ativo`. *Exclusão* lógica; física bloqueada se houver veículos, mensalistas, notas de saída/serviço ou contas a receber vinculados (`ON DELETE RESTRICT`).
+**Cliente.** *Listagem*: nome, documento (CPF/CNPJ), telefone, situação; filtros por nome, documento e situação. *Cadastro/Edição*: `nome`, `apelido`, `tipo` (FISICA/JURIDICA), `documento` (único — `uq_cliente_documento`), `rg_inscricao_estadual`, `data_nascimento`, `sexo`, `estado_civil`, contato (`telefone`, `email`), endereço (`endereco`, `numero`, `complemento`, `bairro`, `cep`, `cidade_id`), `condicao_pagamento_id` (seletor), `limite_credito` (≥ 0), `observacao`, `ativo`. *Exclusão* lógica; física bloqueada se houver veículos, mensalistas, notas de saída/serviço ou contas a receber vinculados (`ON DELETE RESTRICT`).
 
-**Fornecedor.** *Listagem*: razão social, nome fantasia, documento, situação. *Cadastro/Edição*: `nome` (razão social), `nome_fantasia`, `apelido`, `tipo` (default JURIDICA), `documento` (único — `uq_fornecedor_documento`), `rg_inscricao_estadual`, endereço, `cidade_id`, `nacionalidade_id`, `condicao_pagamento_id`, `limite_credito`, `observacao`, `ativo`. A tela inclui **sub-grids** para contatos:
+**Fornecedor.** *Listagem*: razão social, nome fantasia, documento, situação. *Cadastro/Edição*: `nome` (razão social), `nome_fantasia`, `apelido`, `tipo` (default JURIDICA), `documento` (único — `uq_fornecedor_documento`), `rg_inscricao_estadual`, endereço, `cidade_id`, `condicao_pagamento_id`, `transportadora_id`, `limite_credito`, `observacao`, `ativo`. A tela inclui **sub-grids** para contatos:
 - **E-mails** (`fornecedor_email`): `email`, `tipo` (COMERCIAL/FINANCEIRO/COMPRAS/VENDAS/SUPORTE), `principal` (apenas um por fornecedor — `uq_fornecedor_email_principal`).
 - **Telefones** (`fornecedor_telefone`): `telefone`, `tipo` (COMERCIAL/RESIDENCIAL/CELULAR/FAX/WHATSAPP), `principal` (único — `uq_fornecedor_telefone_principal`).
 
@@ -184,7 +218,7 @@ Os contatos seguem `ON DELETE CASCADE`: excluir o fornecedor remove seus e-mails
 | E-mails do fornecedor | `GET /api/fornecedores/{id}/emails` | — | `POST /api/fornecedores/{id}/emails` | `PUT /api/fornecedores/{id}/emails/{emailId}` | `DELETE /api/fornecedores/{id}/emails/{emailId}` |
 | Telefones do fornecedor | `GET /api/fornecedores/{id}/telefones` | — | `POST /api/fornecedores/{id}/telefones` | `PUT /api/fornecedores/{id}/telefones/{telId}` | `DELETE /api/fornecedores/{id}/telefones/{telId}` |
 
-*Payloads:* Cliente `{ nome, tipo, documento, cidadeId?, nacionalidadeId?, condicaoPagamentoId?, limiteCredito?, ... }`; Fornecedor `{ nome, nomeFantasia?, tipo, documento, condicaoPagamentoId?, limiteCredito?, emails:[{email,tipo,principal}], telefones:[{telefone,tipo,principal}] }`.
+*Payloads:* Cliente `{ nome, tipo, documento, cidadeId?, condicaoPagamentoId?, limiteCredito?, ... }`; Fornecedor `{ nome, nomeFantasia?, tipo, documento, condicaoPagamentoId?, limiteCredito?, emails:[{email,tipo,principal}], telefones:[{telefone,tipo,principal}] }`.
 
 ### 6.6.3 Relatórios — Pessoas
 

@@ -99,7 +99,7 @@ O caso de uso é ativado quando o usuário acessa a opção "Formas de Pagamento
 - **RN001:** O acesso ao caso de uso é permitido somente a usuário autenticado e ativo no sistema (`usuario.ativo = TRUE`).
 - **RN002:** O nome da condição de pagamento é obrigatório, possui no máximo 100 caracteres e deve ser único em todo o sistema (`uq_condicao_pagamento_nome`).
 - **RN003:** O número de parcelas é obrigatório e deve ser maior ou igual a 1 (`ck_condicao_parcelas`). O valor padrão é 1.
-- **RN004:** Os dias para a primeira parcela e os dias entre parcelas são obrigatórios e devem ser maiores ou iguais a 0 (`ck_condicao_parcelas`). O valor padrão de ambos é 0.
+- **RN004:** O prazo de vencimento é definido individualmente por parcela, pelo campo `dias` de `parcela_condicao_pagamento` (dias a partir da data de emissão da nota). A condição de pagamento **não** possui campos de prazo no cabeçalho.
 - **RN005:** Os percentuais de juros e de multa são obrigatórios e devem ser maiores ou iguais a 0 (`ck_condicao_percentuais`). O percentual de desconto é obrigatório e deve estar entre 0 e 100, inclusive (`ck_condicao_percentuais`).
 - **RN006:** Uma condição de pagamento possui zero ou mais parcelas detalhadas em `parcela_condicao_pagamento`. Cada parcela exige um número sequencial (`numero`, maior ou igual a 1), os dias até o vencimento (`dias`, maior ou igual a 0) e o percentual do valor total (`percentual`, entre 0 e 100), conforme `ck_parcela_valores`.
 - **RN007:** O número sequencial de cada parcela deve ser único dentro da mesma condição de pagamento (`uq_parcela_condicao_numero`). Não é permitido repetir o mesmo número de parcela na mesma condição.
@@ -199,7 +199,7 @@ O caso de uso é ativado quando o usuário acessa a opção "Condições de Paga
 - **RN003:** O documento (CNPJ/CPF) é obrigatório, possui no máximo 20 caracteres e deve ser único em todo o sistema (`uq_fornecedor_documento`). Não é permitido cadastrar dois fornecedores com o mesmo documento.
 - **RN004:** O tipo é obrigatório e deve assumir um dos valores "FISICA" ou "JURIDICA" (`ck_fornecedor_tipo`). O valor padrão é "JURIDICA".
 - **RN005:** O limite de crédito é obrigatório, deve ser maior ou igual a 0 (`ck_fornecedor_limite`) e tem valor padrão 0.
-- **RN006:** A cidade (`cidade_id`), a nacionalidade (`nacionalidade_id`, país) e a condição de pagamento (`condicao_pagamento_id`), quando informadas, devem referenciar registros existentes (`fk_fornecedor_cidade`, `fk_fornecedor_nacionalidade`, `fk_fornecedor_condicao`, todas `ON DELETE RESTRICT` — as chaves estrangeiras garantem apenas a integridade referencial, isto é, a existência do registro referenciado). A exigência de que esses registros estejam **ativos** é regra de aplicação, validada pelo serviço, pois o schema não possui CHECK ou gatilho que rejeite referências a registros inativos.
+- **RN006:** A cidade (`cidade_id`) e a condição de pagamento (`condicao_pagamento_id`), quando informadas, devem referenciar registros existentes (`fk_fornecedor_cidade`, `fk_fornecedor_condicao`, ambas `ON DELETE RESTRICT` — as chaves estrangeiras garantem apenas a integridade referencial, isto é, a existência do registro referenciado). A exigência de que esses registros estejam **ativos** é regra de aplicação, validada pelo serviço, pois o schema não possui CHECK ou gatilho que rejeite referências a registros inativos.
 - **RN007:** Um fornecedor pode possuir múltiplos e-mails (`fornecedor_email`) e múltiplos telefones (`fornecedor_telefone`). Em cada lista, no máximo um contato pode ser marcado como principal (`uq_fornecedor_email_principal` e `uq_fornecedor_telefone_principal`).
 - **RN008:** Cada e-mail de contato exige o endereço de e-mail (obrigatório, máximo 120 caracteres) e, quando informado, o tipo deve ser um dos valores "COMERCIAL", "FINANCEIRO", "COMPRAS", "VENDAS" ou "SUPORTE" (`ck_fornecedor_email_tipo`).
 - **RN009:** Cada telefone de contato exige o número (obrigatório, máximo 20 caracteres) e, quando informado, o tipo deve ser um dos valores "COMERCIAL", "RESIDENCIAL", "CELULAR", "FAX" ou "WHATSAPP" (`ck_fornecedor_telefone_tipo`).
@@ -216,7 +216,7 @@ Operador, Administrador.
 
 ## Pré-Condição
 
-O usuário deve estar autenticado e ativo no sistema. Para associar localização, nacionalidade ou condição de pagamento, devem existir os respectivos registros (cidade, país e condição de pagamento) cadastrados e ativos.
+O usuário deve estar autenticado e ativo no sistema. Para associar localização ou condição de pagamento, devem existir os respectivos registros (cidade e condição de pagamento) cadastrados e ativos.
 
 ## Pós-Condição
 
@@ -254,7 +254,6 @@ O caso de uso é ativado quando o usuário acessa a opção "Fornecedores" no me
    - Bairro (texto, máximo 60 caracteres);
    - CEP (texto, máximo 9 caracteres);
    - Cidade (seleção, opcional);
-   - Nacionalidade / País (seleção, opcional);
    - Condição de pagamento (seleção, opcional);
    - Limite de crédito* (numérico, maior ou igual a 0, padrão 0);
    - Observação (texto, máximo 255 caracteres);
@@ -299,7 +298,7 @@ O caso de uso é ativado quando o usuário acessa a opção "Fornecedores" no me
 - **E2 — Documento já cadastrado:** Caso o documento informado já exista em outro fornecedor (violação de `uq_fornecedor_documento`), o sistema interrompe a gravação e exibe a mensagem: **"Já existe um fornecedor cadastrado com este documento."**
 - **E3 — Valor inválido:** Caso o tipo informado seja diferente de "FISICA" ou "JURIDICA" (`ck_fornecedor_tipo`), o limite de crédito seja negativo (`ck_fornecedor_limite`), ou o tipo de um e-mail ou telefone esteja fora dos valores permitidos (`ck_fornecedor_email_tipo`, `ck_fornecedor_telefone_tipo`), o sistema interrompe a gravação e exibe a mensagem: **"Valor inválido informado. Verifique o tipo do fornecedor, o limite de crédito e os tipos de contato."**
 - **E4 — Mais de um contato principal:** Caso seja marcado mais de um e-mail como principal, ou mais de um telefone como principal (violação de `uq_fornecedor_email_principal` ou `uq_fornecedor_telefone_principal`), o sistema interrompe a gravação e exibe a mensagem: **"Apenas um e-mail e um telefone podem ser marcados como principal."**
-- **E5 — Referência inexistente ou inativa:** Caso a cidade, a nacionalidade (país) ou a condição de pagamento informada não exista, as chaves estrangeiras (`fk_fornecedor_cidade`, `fk_fornecedor_nacionalidade`, `fk_fornecedor_condicao`) impedem a gravação; caso o registro exista mas esteja inativo, a validação de aplicação interrompe a operação (o banco não rejeita referências a registros inativos). Em ambos os casos o sistema exibe a mensagem: **"O registro relacionado informado não foi encontrado ou está inativo."**
+- **E5 — Referência inexistente ou inativa:** Caso a cidade ou a condição de pagamento informada não exista, as chaves estrangeiras (`fk_fornecedor_cidade`, `fk_fornecedor_condicao`) impedem a gravação; caso o registro exista mas esteja inativo, a validação de aplicação interrompe a operação (o banco não rejeita referências a registros inativos). Em ambos os casos o sistema exibe a mensagem: **"O registro relacionado informado não foi encontrado ou está inativo."**
 - **E6 — Registro vinculado a outro:** Caso o fornecedor esteja vinculado a notas de entrada, contas a pagar, contas a pagar avulsas ou ao relacionamento produto x fornecedor, o sistema impede a exclusão física e exibe a mensagem: **"Este fornecedor está vinculado a outros registros e não pode ser excluído. Deseja desativá-lo?"** Em caso de confirmação, o sistema realiza a exclusão lógica (`ativo = FALSE`) e exibe "Fornecedor desativado com sucesso."
 
 ---
@@ -315,7 +314,7 @@ O caso de uso é ativado quando o usuário acessa a opção "Fornecedores" no me
 - **RN005:** Quando informado, o sexo deve ser um dos valores "MASCULINO", "FEMININO" ou "OUTRO" (`ck_cliente_sexo`).
 - **RN006:** Quando informado, o estado civil deve ser um dos valores "SOLTEIRO", "CASADO", "SEPARADO", "DIVORCIADO", "VIUVO" ou "OUTRO" (`ck_cliente_civil`).
 - **RN007:** O limite de crédito é obrigatório, deve ser maior ou igual a 0 (`ck_cliente_limite`) e tem valor padrão 0.
-- **RN008:** A cidade (`cidade_id`), a nacionalidade (`nacionalidade_id`, país) e a condição de pagamento (`condicao_pagamento_id`), quando informadas, devem referenciar registros existentes (`fk_cliente_cidade`, `fk_cliente_nacionalidade`, `fk_cliente_condicao`, todas `ON DELETE RESTRICT` — as chaves estrangeiras garantem apenas a integridade referencial, isto é, a existência do registro referenciado). A exigência de que esses registros estejam **ativos** é regra de aplicação, validada pelo serviço, pois o schema não possui CHECK ou gatilho que rejeite referências a registros inativos.
+- **RN008:** A cidade (`cidade_id`) e a condição de pagamento (`condicao_pagamento_id`), quando informadas, devem referenciar registros existentes (`fk_cliente_cidade`, `fk_cliente_condicao`, ambas `ON DELETE RESTRICT` — as chaves estrangeiras garantem apenas a integridade referencial, isto é, a existência do registro referenciado). A exigência de que esses registros estejam **ativos** é regra de aplicação, validada pelo serviço, pois o schema não possui CHECK ou gatilho que rejeite referências a registros inativos.
 - **RN009:** O cliente não pode ser excluído fisicamente quando estiver vinculado a veículos, contratos de mensalista, notas de saída, notas de serviço ou contas a receber, em razão das restrições `ON DELETE RESTRICT`. Nesse caso, deve ser realizada a exclusão lógica (`ativo = FALSE`).
 
 ## Nome do Caso de Uso
@@ -328,7 +327,7 @@ Operador, Administrador.
 
 ## Pré-Condição
 
-O usuário deve estar autenticado e ativo no sistema. Para associar localização, nacionalidade ou condição de pagamento, devem existir os respectivos registros (cidade, país e condição de pagamento) cadastrados e ativos.
+O usuário deve estar autenticado e ativo no sistema. Para associar localização ou condição de pagamento, devem existir os respectivos registros (cidade e condição de pagamento) cadastrados e ativos.
 
 ## Pós-Condição
 
@@ -370,7 +369,6 @@ O caso de uso é ativado quando o usuário acessa a opção "Clientes" no menu d
    - Bairro (texto, máximo 60 caracteres);
    - CEP (texto, máximo 9 caracteres);
    - Cidade (seleção, opcional);
-   - Nacionalidade / País (seleção, opcional);
    - Condição de pagamento (seleção, opcional);
    - Limite de crédito* (numérico, maior ou igual a 0, padrão 0);
    - Observação (texto, máximo 255 caracteres);
@@ -403,7 +401,7 @@ O caso de uso é ativado quando o usuário acessa a opção "Clientes" no menu d
 - **E1 — Campo obrigatório não preenchido:** Caso o usuário não informe um campo obrigatório (Nome, Tipo, Documento ou Limite de crédito), o sistema interrompe a gravação e exibe a mensagem: **"O campo [nome do campo] é obrigatório."**
 - **E2 — Documento já cadastrado:** Caso o documento informado já exista em outro cliente (violação de `uq_cliente_documento`), o sistema interrompe a gravação e exibe a mensagem: **"Já existe um cliente cadastrado com este documento."**
 - **E3 — Valor inválido:** Caso o tipo informado seja diferente de "FISICA" ou "JURIDICA" (`ck_cliente_tipo`), o sexo seja diferente dos valores permitidos (`ck_cliente_sexo`), o estado civil seja diferente dos valores permitidos (`ck_cliente_civil`), ou o limite de crédito seja negativo (`ck_cliente_limite`), o sistema interrompe a gravação e exibe a mensagem: **"Valor inválido informado. Verifique o tipo, o sexo, o estado civil e o limite de crédito."**
-- **E4 — Referência inexistente ou inativa:** Caso a cidade, a nacionalidade (país) ou a condição de pagamento informada não exista, as chaves estrangeiras (`fk_cliente_cidade`, `fk_cliente_nacionalidade`, `fk_cliente_condicao`) impedem a gravação; caso o registro exista mas esteja inativo, a validação de aplicação interrompe a operação (o banco não rejeita referências a registros inativos). Em ambos os casos o sistema exibe a mensagem: **"O registro relacionado informado não foi encontrado ou está inativo."**
+- **E4 — Referência inexistente ou inativa:** Caso a cidade ou a condição de pagamento informada não exista, as chaves estrangeiras (`fk_cliente_cidade`, `fk_cliente_condicao`) impedem a gravação; caso o registro exista mas esteja inativo, a validação de aplicação interrompe a operação (o banco não rejeita referências a registros inativos). Em ambos os casos o sistema exibe a mensagem: **"O registro relacionado informado não foi encontrado ou está inativo."**
 - **E5 — Registro vinculado a outro:** Caso o cliente esteja vinculado a veículos, contratos de mensalista, notas de saída, notas de serviço ou contas a receber, o sistema impede a exclusão física e exibe a mensagem: **"Este cliente está vinculado a outros registros e não pode ser excluído. Deseja desativá-lo?"** Em caso de confirmação, o sistema realiza a exclusão lógica (`ativo = FALSE`) e exibe "Cliente desativado com sucesso."
 
 ---
