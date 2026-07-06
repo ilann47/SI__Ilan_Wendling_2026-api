@@ -14,6 +14,8 @@ Para legibilidade, os mapeamentos `LocalDateTime criadoEm` / `atualizadoEm` (col
 
 ---
 
+> 🖼️ **Diagrama completo (todos os módulos, alta resolução):** [`diagramas/completo.png`](diagramas/completo.png) — 14684×7854 px.
+
 ## 8.1 Módulo Geografia
 
 Hierarquia de localização (País → Estado → Cidade), referenciada por Funcionário, Fornecedor e Cliente para composição de endereço.
@@ -51,6 +53,8 @@ classDiagram
     Estado "*" --> "1" Pais : pertence a
     Cidade "*" --> "1" Estado : pertence a
 ```
+
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-1-geografia.png`](diagramas/8-1-geografia.png)
 
 ---
 
@@ -143,6 +147,8 @@ classDiagram
     Funcionario ..> EstadoCivil
     Usuario ..> PerfilUsuario
 ```
+
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-2-rh-usuario.png`](diagramas/8-2-rh-usuario.png)
 
 ---
 
@@ -239,6 +245,8 @@ classDiagram
     FornecedorTelefone ..> TipoTelefone
 ```
 
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-3-pessoas.png`](diagramas/8-3-pessoas.png)
+
 ---
 
 ## 8.4 Módulo Pagamento
@@ -278,6 +286,8 @@ classDiagram
     CondicaoPagamento "1" *-- "*" ParcelaCondicaoPagamento : detalha
     ParcelaCondicaoPagamento "*" --> "0..1" FormaPagamento : usa
 ```
+
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-4-pagamento.png`](diagramas/8-4-pagamento.png)
 
 ---
 
@@ -363,6 +373,8 @@ classDiagram
     Movimentacao ..> StatusMovimentacao
 ```
 
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-5-patio.png`](diagramas/8-5-patio.png)
+
 ---
 
 ## 8.6 Módulo Conveniência
@@ -434,6 +446,8 @@ classDiagram
     ProdutoFornecedor "*" --> "1" Produto : refere
     ProdutoFornecedor "*" --> "1" Fornecedor : refere
 ```
+
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-6-conveniencia.png`](diagramas/8-6-conveniencia.png)
 
 ---
 
@@ -567,6 +581,8 @@ classDiagram
     NotaServico ..> SituacaoNotaServico
 ```
 
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-7-fiscal.png`](diagramas/8-7-fiscal.png)
+
 ---
 
 ## 8.8 Módulo Financeiro
@@ -664,6 +680,8 @@ classDiagram
     ContasPagarAvulsa ..> SituacaoContaPagar
 ```
 
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-8-financeiro.png`](diagramas/8-8-financeiro.png)
+
 ---
 
 ## 8.9 Módulo de Logística
@@ -717,6 +735,8 @@ classDiagram
     Fornecedor "*" --> "0..1" Transportadora : frete por
 ```
 
+> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-9-logistica.png`](diagramas/8-9-logistica.png)
+
 Observa-se que `VeiculoFrota` é uma classe **distinta** de `Veiculo` (Seção 8.4 — pátio): o primeiro representa o veículo de carga da transportadora; o segundo, o automóvel estacionado pelo cliente. Não há associação entre ambos.
 
 ## 8.10 Observações de Mapeamento Objeto-Relacional
@@ -738,3 +758,4 @@ Observa-se que `VeiculoFrota` é uma classe **distinta** de `Veiculo` (Seção 8
 |------|------|
 | 2026-06-15 | Criação da Seção 8 — Diagramas de Classe (UML) em Mermaid, 8 diagramas por módulo aterrados nas 31 tabelas de `database/schema.sql`. |
 | 2026-07-03 | Inclusão da Seção 8.9 — Módulo de Logística (`Transportadora`, `VeiculoFrota`, `TransportadoraVeiculoFrota`) e da associação `Fornecedor → Transportadora`. |
+| 2026-07-06 | Renderização dos 9 diagramas por módulo + 1 diagrama completo em PNG de alta resolução (`diagramas/`), com links a partir de cada bloco Mermaid. |
