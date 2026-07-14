@@ -17,6 +17,9 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
     /** Ha movimentacao com o status informado para o veiculo? (regra 1 ABERTA por veiculo). */
     boolean existsByVeiculoIdAndStatus(Long veiculoId, StatusMovimentacao status);
 
+    /** Ocupacao de um patio: quantas movimentacoes estao com o status informado (ABERTO). */
+    long countByPatioIdAndStatus(Long patioId, StatusMovimentacao status);
+
     /** Patio atual: movimentacoes abertas, ordenadas pela entrada (relatorio 4.26). */
     @EntityGraph(attributePaths = {"veiculo", "mensalista"})
     List<Movimentacao> findByStatusOrderByDataEntradaAsc(StatusMovimentacao status);

@@ -41,6 +41,11 @@ public class Movimentacao extends AuditableEntity {
     @JoinColumn(name = "tarifa_id")
     private Tarifa tarifa;
 
+    /** Patio onde a movimentacao ocorre (base da ocupacao por patio). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patio_id")
+    private Patio patio;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false, length = 20)
     private TipoMovimentacao tipo;
