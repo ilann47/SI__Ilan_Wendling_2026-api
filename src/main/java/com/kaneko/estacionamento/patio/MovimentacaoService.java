@@ -28,15 +28,18 @@ public class MovimentacaoService {
     private final VeiculoRepository veiculoRepository;
     private final MensalistaRepository mensalistaRepository;
     private final TarifaRepository tarifaRepository;
+    private final PatioRepository patioRepository;
 
     public MovimentacaoService(MovimentacaoRepository repository,
                                VeiculoRepository veiculoRepository,
                                MensalistaRepository mensalistaRepository,
-                               TarifaRepository tarifaRepository) {
+                               TarifaRepository tarifaRepository,
+                               PatioRepository patioRepository) {
         this.repository = repository;
         this.veiculoRepository = veiculoRepository;
         this.mensalistaRepository = mensalistaRepository;
         this.tarifaRepository = tarifaRepository;
+        this.patioRepository = patioRepository;
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +73,10 @@ public class MovimentacaoService {
         mov.setVeiculo(veiculo);
         mov.setDataEntrada(OffsetDateTime.now());
         mov.setStatus(StatusMovimentacao.ABERTO);
+        if (req.patioId() != null) {
+            mov.setPatio(patioRepository.findById(req.patioId())
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Patio", req.patioId())));
+        }
 
         Optional<Mensalista> contrato =
                 mensalistaRepository.findFirstByVeiculoIdAndStatus(veiculo.getId(), StatusMensalista.ATIVO);
