@@ -49,6 +49,9 @@ public class SecurityConfig {
             http.authorizeHttpRequests(auth -> auth
                             .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html",
                                     "/v3/api-docs/**", "/actuator/**").permitAll()
+                            // Fundacao multiempresa: ate o RBAC contextual da Historia 3,
+                            // provisionamento e consulta de tenants sao exclusivos do ADMIN legado.
+                            .requestMatchers("/api/v1/organizations/**").hasRole("ADMIN")
                             // Gestao de usuarios e exclusivamente administrativa.
                             .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                             // Manutencao de tarifa (preco) e administrativa.

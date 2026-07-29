@@ -244,3 +244,19 @@ Os documentos originais continuam descrevendo o sistema implementado. Os documen
 7. Não existem eventos, pedidos, reservas, credenciais, check-in ou equipamentos no código atual.
 
 Nenhuma dessas divergências foi corrigida nesta atualização documental; elas foram explicitadas e ordenadas no roadmap.
+
+---
+
+## Atualização — História 1: Organização/Tenant (2026-07-29)
+
+A primeira entrega da fundação enterprise passou a estar implementada no código, sem antecipar Membership, RBAC contextual, auditoria, outbox, instalações ou eventos.
+
+- Migration `V8__organizacao_tenant.sql` cria `organizacao`, com documento normalizado, constraints, índice único funcional e versionamento otimista.
+- O agregado `Organizacao` possui os estados `PROVISIONANDO`, `ATIVA`, `SUSPENSA` e `ENCERRADA`; o provisionamento conclui em `ATIVA` dentro do mesmo caso de uso e `ENCERRADA` é terminal.
+- Moeda usa código ISO 4217; fuso usa identificador IANA; região representa uma subdivisão ISO 3166-2.
+- Foram publicados exclusivamente `POST /api/v1/organizations`, `GET /api/v1/organizations/{id}` e `PATCH /api/v1/organizations/{id}`.
+- `ETag` deriva somente de `@Version`; PATCH exige `If-Match`, com `428` quando ausente e `412` quando divergente.
+- Documento, ID, versão e status não são alteráveis pelo PATCH.
+- Até a História 3, os endpoints são restritos ao perfil legado `ADMIN`.
+- Nenhum dado legado foi associado automaticamente e nenhum `organizacao_id` foi antecipado em pátio ou usuário.
+- A suíte automatizada passou de 318 para 332 testes, sem regressão nos testes preexistentes.

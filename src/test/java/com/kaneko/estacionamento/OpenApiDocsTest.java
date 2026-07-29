@@ -26,6 +26,12 @@ class OpenApiDocsTest {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.openapi").exists())
-                .andExpect(jsonPath("$.paths['/api/paises']").exists());
+                .andExpect(jsonPath("$.paths['/api/paises']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations'].get").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].patch").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].put").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].delete").doesNotExist());
     }
 }

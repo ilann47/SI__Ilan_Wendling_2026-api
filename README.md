@@ -23,6 +23,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
 - **Filtros** — todas as listagens de cadastro aceitam filtros opcionais
   (por nome/documento/situação etc.) como query params.
 - **Segurança** — usuários (senha BCrypt) e autenticação JWT.
+- **Organizações** (`/api/v1/organizations`) — fundação multiempresa com
+  documento empresarial, moeda, fuso, região, plano e concorrência otimista.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
 
@@ -42,9 +44,10 @@ CREATE DATABASE estacionamento_kaneko;
 CREATE DATABASE estacionamento_kaneko_test;
 ```
 
-O schema é versionado e aplicado automaticamente pelo **Flyway** na subida
-(`src/main/resources/db/migration/V1__init_schema.sql`). O Hibernate roda em
-`ddl-auto=validate` — apenas confere o mapeamento contra o schema, nunca o altera.
+O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V8`). O
+Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
+schema, nunca o altera.
 
 ## Variáveis de ambiente
 
@@ -107,7 +110,7 @@ schema; a cada classe a transação sofre rollback):
 ./mvnw test
 ```
 
-São 279 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
+São 332 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
 dos processos do pátio, fiscais, financeiros e dos relatórios.
 
@@ -128,6 +131,7 @@ conveniencia/    categoria, marca, unidade, serviço, produto, produto-fornecedo
 fiscal/          notas de entrada, saída e serviço (+ itens)
 financeiro/      contas a pagar, a receber e avulsas
 usuario/         cadastro de usuários
+organizacao/     tenant empresarial, lifecycle, ETag e If-Match
 relatorio/       relatórios gerenciais (consultas consolidadas)
 ```
 

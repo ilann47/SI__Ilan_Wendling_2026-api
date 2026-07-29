@@ -1,0 +1,9 @@
+{
+  "nodes": [
+    {"id": "core", "type": "file", "file": "core.md", "x": 0, "y": 0, "width": 360, "height": 220},
+    {"id": "organizacoes", "type": "file", "file": "organizacoes.md", "x": 500, "y": 0, "width": 360, "height": 220}
+  ],
+  "edges": [
+    {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"}
+  ]
+}

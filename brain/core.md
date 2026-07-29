@@ -1,0 +1,42 @@
+> Links: [[organizacoes]]
+
+# Core do Estacionamento Kaneko
+
+## Fonte oficial
+
+A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/README.md), especialmente nos documentos 11 a 20. O `brain` registra somente o estado implementado e as relações entre módulos; ele não redefine a arquitetura aprovada.
+
+## Arquitetura
+
+- Monólito modular em Spring Boot 4 e Java 25.
+- Organização package-by-feature.
+- PostgreSQL 17 com migrations Flyway incrementais.
+- Hibernate configurado com `ddl-auto=validate`.
+- APIs TARGET sob `/api/v1`, preservando as rotas legadas `/api`.
+- Problem Details e `X-Trace-Id` como contrato de erros e correlação.
+
+## Infraestrutura
+
+- Banco relacional: PostgreSQL.
+- Persistência: Spring Data JPA/Hibernate.
+- Segurança atual: JWT HS256 e perfis legados `ADMIN`/`OPERADOR`.
+- Documentação de API: springdoc OpenAPI.
+- Testes de integração contra banco PostgreSQL separado.
+
+## Padrões globais
+
+- Controllers chamam services, nunca repositories.
+- A transação começa no application service.
+- Cada módulo possui suas entidades, repositories, DTOs e endpoints.
+- Regras críticas possuem defesa na aplicação e constraints no PostgreSQL.
+- Funcionalidades enterprise são introduzidas incrementalmente e sem quebrar APIs legadas.
+
+## Módulos implementados na evolução enterprise
+
+- [[organizacoes]] — fundação do tenant empresarial.
+
+## Histórico
+
+| Data | Ação |
+|---|---|
+| 2026-07-29 | Inicialização do brain e registro da História 1 de Organizações. |
