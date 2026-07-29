@@ -1,4 +1,4 @@
-> Links: [[01-introducao]] · [[03-der]] · [[relatorio-conformidade]]
+> Links: [[01-introducao]] · [[03-der]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[20-roadmap-produto]] · [[relatorio-conformidade]]
 
 # Especificação de Requisitos — Sistema Estacionamento Kaneko
 
@@ -53,3 +53,29 @@ A especificação adota, de forma consciente, algumas divergências em relação
 2. **Autenticação modelada, não implementada.** O módulo de autenticação/login foi **modelado** (tabela `usuario`, perfis `ADMIN` e `OPERADOR`), porém **não é implementado** no v1.
 3. **Empresa fictícia.** O Estacionamento Kaneko é uma empresa fictícia, criada exclusivamente para fins acadêmicos.
 4. **Escopo reduzido.** O sistema não contempla operação **multifilial** nem **integração fiscal** de transmissão à SEFAZ (as notas são registros internos). O **frete** é modelado: além do tipo (CIF/FOB) e dos valores rateáveis na nota, o sistema possui o **Módulo de Logística** (transportadora, veículo de frota e a frota N:N), com o fornecedor apontando para a sua transportadora padrão — sem, contudo, emissão de conhecimento de transporte eletrônico (CT-e).
+
+---
+
+## Arquitetura de Produto Enterprise (visão evolutiva)
+
+Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especificação do comportamento **AS-IS**. A arquitetura definitiva de evolução, com foco inicial em eventos e preservação dos módulos existentes, está nos documentos 11 a 20:
+
+| # | Documento | Conteúdo |
+|---|---|---|
+| 11 | [Visão de Produto Enterprise](11-visao-produto-enterprise.md) | Propósito, visão, público, SaaS/on-premise, multiempresa, multipátio, multievento e princípios. |
+| 12 | [Domínio e Context Map](12-dominio-ddd.md) | Linguagem ubíqua, bounded contexts, agregados, value objects, invariantes, serviços e dependências. |
+| 13 | [Event Storming](13-event-storming.md) | Comandos, eventos de domínio, policies e process managers. |
+| 14 | [Modelagem Completa do Domínio](14-modelagem-dominio.md) | Entidades atuais e futuras, atributos, estados, relacionamentos, validações e auditoria. |
+| 15 | [Máquinas de Estados](15-maquinas-de-estados.md) | Estados, transições, atores, regras e efeitos colaterais. |
+| 16 | [Casos de Uso da Plataforma](16-casos-de-uso-plataforma.md) | Eventos, vendas, credenciais, acesso, ERP, equipamentos e integrações. |
+| 17 | [Arquitetura de APIs](17-apis-enterprise.md) | Contratos REST, payloads, respostas, status, idempotência, versionamento e eventos públicos. |
+| 18 | [Permissões e RBAC](18-permissoes-rbac.md) | Papéis, permissões, escopos, ABAC e segregação de funções. |
+| 19 | [Equipamentos e Integrações](19-equipamentos-integracoes.md) | Portas canônicas, Edge, contingência, ACL, webhooks, retries e telemetria. |
+| 20 | [Roadmap do Produto](20-roadmap-produto.md) | Fundação, dez fases, riscos, impactos, NFRs e plano de evolução. |
+
+### Regra de prevalência
+
+- Para saber o que o software **faz hoje**, prevalecem código, migrations e documentos AS-IS.
+- Para orientar novas decisões e implementações, prevalecem os documentos 11 a 20.
+- Uma capacidade TARGET não deve ser apresentada como implementada até ser incorporada ao código, testes e documentação AS-IS.
+- Nenhuma evolução elimina funcionalidades existentes sem plano explícito de compatibilidade e migração.

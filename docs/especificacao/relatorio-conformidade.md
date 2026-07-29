@@ -209,3 +209,38 @@ Cobertura de testes automatizados atualizada para **318 testes de integração**
 ---
 
 *Fim do Relatório de Conformidade — Estacionamento Kaneko (v1).*
+
+---
+
+## Atualização — Arquitetura de Produto Enterprise (2026-07-29)
+
+Foi adicionada uma camada documental evolutiva, sem alteração de código, migrations, APIs ou comportamento em produção. Os documentos `11` a `20` definem a arquitetura-alvo para os próximos ciclos do produto, com foco inicial em eventos e preservação integral dos módulos existentes.
+
+### Artefatos adicionados
+
+- `11-visao-produto-enterprise.md` — visão, implantação e princípios;
+- `12-dominio-ddd.md` — linguagem ubíqua, 21 bounded contexts e context map;
+- `13-event-storming.md` — comandos, eventos, policies e process managers;
+- `14-modelagem-dominio.md` — catálogo AS-IS/EVOLUÇÃO/TARGET de entidades e value objects;
+- `15-maquinas-de-estados.md` — transições e efeitos;
+- `16-casos-de-uso-plataforma.md` — UC701 a UC730;
+- `17-apis-enterprise.md` — APIs `/api/v1`, payloads, erros, idempotência e eventos públicos;
+- `18-permissoes-rbac.md` — RBAC/ABAC, alçadas e segregação;
+- `19-equipamentos-integracoes.md` — abstrações de hardware, Edge e ACLs;
+- `20-roadmap-produto.md` — fundação, fases 1 a 10, NFRs e plano de evolução.
+
+### Regra de conformidade
+
+Os documentos originais continuam descrevendo o sistema implementado. Os documentos enterprise são normativos para evolução, mas suas entidades e capacidades marcadas `TARGET` não são consideradas implementadas. Toda futura mudança de código deverá atualizar tanto a documentação AS-IS afetada quanto a decisão TARGET correspondente.
+
+### Divergências arquiteturais registradas
+
+1. O projeto atual não possui organização/tenant; a arquitetura-alvo o torna obrigatório.
+2. O pacote `patio` atual reúne responsabilidades que serão separadas por contexto.
+3. Pátio opcional e ocupação por simples contagem não atendem inventário comercial.
+4. O módulo atual de pagamento é cadastral, não um ledger transacional de gateway.
+5. Não existem eventos de domínio, outbox, inbox ou idempotência na implementação atual.
+6. `ADMIN/OPERADOR` não atende às alçadas enterprise.
+7. Não existem eventos, pedidos, reservas, credenciais, check-in ou equipamentos no código atual.
+
+Nenhuma dessas divergências foi corrigida nesta atualização documental; elas foram explicitadas e ordenadas no roadmap.
