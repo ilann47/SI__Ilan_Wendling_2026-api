@@ -47,6 +47,12 @@ public class ProdutoEstacionamento extends AuditableEntity {
     private OffsetDateTime fimAcesso;
     @Column(nullable = false)
     private Integer quota;
+    @Column(name = "quantidade_reservada", nullable = false)
+    private Integer quantidadeReservada = 0;
+    @Column(name = "quantidade_vendida", nullable = false)
+    private Integer quantidadeVendida = 0;
+    @Column(name = "quantidade_bloqueada", nullable = false)
+    private Integer quantidadeBloqueada = 0;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private StatusProdutoEstacionamento status;
@@ -111,6 +117,29 @@ public class ProdutoEstacionamento extends AuditableEntity {
                     "Somente produto em rascunho pode ser publicado.");
         }
         status = StatusProdutoEstacionamento.PUBLICADO;
+    }
+
+    public void reservar(int quantidade, int limiteComercial) {
+        if (status != StatusProdutoEstacionamento.PUBLICADO) {
+            throw new IllegalStateException("Somente produto publicado pode reservar saldo.");
+        }
+        if (quantidade < 1 || limiteComercial < 1) {
+            throw new IllegalArgumentException("Quantidade e limite comercial devem ser positivos.");
+        }
+        int limite = Math.min(quota, limiteComercial);
+        long comprometido = (long) quantidadeReservada + quantidadeVendida
+                + quantidadeBloqueada + quantidade;
+        if (comprometido > limite) {
+            throw new IllegalArgumentException("Nao ha quantidade disponivel para a reserva.");
+        }
+        quantidadeReservada += quantidade;
+    }
+
+    public void liberarReserva(int quantidade) {
+        if (quantidade < 1 || quantidade > quantidadeReservada) {
+            throw new IllegalStateException("O saldo reservado nao pode ficar negativo.");
+        }
+        quantidadeReservada -= quantidade;
     }
 
     static void validarDados(

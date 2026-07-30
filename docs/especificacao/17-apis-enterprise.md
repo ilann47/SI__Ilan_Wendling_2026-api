@@ -88,7 +88,10 @@
 }
 ```
 
-Resposta inclui `id`, `status`, `expiresAt`, `unitPrice`, `currency`, `quantity` e `version`. Disponibilidade consultada é indicativa; somente a criação atômica do hold garante quantidade.
+**Situação implementada:** a resposta inclui `id`, evento/produto, lote, canal,
+`status`, `expiresAt`, `unitPrice`, `currency`, `quantity` e `version`.
+Disponibilidade consultada é indicativa; somente o commit da criação atômica do
+hold garante quantidade. Nesta etapa, o ator autenticado é proprietário do hold.
 
 ### Pedido
 
@@ -172,9 +175,9 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /parking-products/{id}/publication` | AS-IS: confirmação + `If-Match` | `200 Product`, `ETag` | `pricing:manage`; produto em rascunho com ao menos um lote; ausência de versão retorna `428`, versão divergente `412`; auditoria e outbox atômicas |
 | `POST /parking-products/{id}/price-tiers` | AS-IS: nome, preço, moeda, período, quantidade, prioridade + `Idempotency-Key`; tenant implícito | `201 Tier`, `Location`, `ETag` | `pricing:manage`; produto em rascunho; moeda da organização; quantidade ≤ quota; sobreposição somente com prioridades distintas; replay equivalente devolve o lote original |
 | `GET /events/{id}/availability` | AS-IS: filtro opcional de categoria; tenant implícito | produtos, lote/preço vigente, saldo projetado e instante de cálculo | exige contexto ativo e evento publicado ou com vendas abertas; maior prioridade numérica vence; não garante hold; filtro por canal permanece TARGET |
-| `POST /inventory-holds` | produto, quantidade, canal | `201 Hold` | atômico; idempotência |
-| `POST /inventory-holds/{id}/release` | motivo | `200 Hold` | uma liberação |
-| `GET /inventory-holds/{id}` | id | `200 Hold` | comprador/canal ou operação |
+| `POST /inventory-holds` | AS-IS: produto, quantidade, canal, buyerReference + `Idempotency-Key` | `201 Hold`, `Location`, `ETag` | `inventory:hold`; evento com vendas abertas; produto/lote vigentes; lock pessimista; idempotência; auditoria/outbox |
+| `POST /inventory-holds/{id}/release` | AS-IS: motivo | `200 Hold`, `ETag` | proprietário autenticado; devolve saldo uma vez; reserva expirada é materializada |
+| `GET /inventory-holds/{id}` | AS-IS: id | `200 Hold`, `ETag` | proprietário autenticado; materializa expiração vencida; outro ator/tenant recebe `404` |
 
 ## 17.6 Pedidos, pagamentos e credenciais
 

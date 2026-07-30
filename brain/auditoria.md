@@ -80,3 +80,4 @@ imutabilidade física no PostgreSQL.
 | 2026-07-30 | Produto de estacionamento passa a auditar criação de lote e publicação. |
 | 2026-07-30 | Evento passa a auditar a publicação e suas versões inicial/final. |
 | 2026-07-30 | Evento passa a auditar a abertura imediata de vendas e sua versão. |
+| 2026-07-30 | Reserva de inventário passa a auditar criação, expiração e liberação. |

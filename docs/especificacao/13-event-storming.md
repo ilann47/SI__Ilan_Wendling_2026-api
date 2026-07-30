@@ -29,7 +29,9 @@ transições de configuração/publicação e grava `EventoConfigurado` e
 `VendasDoEventoAbertas` junto da auditoria. Abertura futura permanece TARGET
 até existir scheduler confiável.
 A leitura de disponibilidade projeta produtos publicados e lotes vigentes, mas
-não produz evento porque não altera nem bloqueia inventário.
+não produz evento porque não altera nem bloqueia inventário. UC709 implementa
+`ReservarInventario → InventarioReservado`; liberação e expiração gravam
+`InventarioLiberado`, e a expiração também grava `ReservaExpirada`.
 
 ```mermaid
 flowchart TD

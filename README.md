@@ -44,6 +44,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   imediata e versionada para `VENDAS_ABERTAS`, com auditoria e outbox atômica.
 - **Disponibilidade** (`GET /api/v1/events/{id}/availability`) — projeção
   tenant-aware por categoria, lote vigente e prioridade, sem garantir reserva.
+- **Hold de inventário** (`/api/v1/inventory-holds`) — reserva temporária,
+  idempotente e atômica, com expiração automática e liberação exata do saldo.
 - **Alocação de pátios** — associação temporal multipátio por evento, com
   capacidades operacional/vendável/reservada, prevenção transacional de
   sobrealocação, idempotência, auditoria e concorrência otimista.
@@ -95,6 +97,9 @@ Todas têm um valor padrão de desenvolvimento (nada é obrigatório para rodar 
 | `APP_JWT_EXP_MIN`      | `480`                           | Validade do token, em minutos               |
 | `APP_JWT_ISSUER`       | `estacionamento-kaneko`         | Emissor esperado nos novos tokens           |
 | `APP_JWT_AUDIENCE`     | `estacionamento-kaneko-api`     | Audiência esperada nos novos tokens          |
+| `APP_INVENTORY_HOLD_MINUTES` | `15`                    | Duração de um hold de inventário              |
+| `APP_INVENTORY_EXPIRATION_ENABLED` | `true`              | Habilita o job interno de expiração           |
+| `APP_INVENTORY_EXPIRATION_SWEEP_MS` | `30000`             | Intervalo do job de expiração, em ms          |
 
 ## Como executar
 
@@ -148,7 +153,7 @@ schema; a cada classe a transação sofre rollback):
 ./mvnw test
 ```
 
-São 426 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
+São 436 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
 dos processos do pátio, fiscais, financeiros e dos relatórios.
 

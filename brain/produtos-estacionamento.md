@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[disponibilidade]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[disponibilidade]] · [[reservas-inventario]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Produtos de Estacionamento
 
@@ -54,8 +54,9 @@ POST /api/v1/parking-products/{produtoId}/price-tiers + Idempotency-Key
 ## Estrutura de Dados (DTOs, Entidades)
 
 `ProdutoEstacionamento` possui organização, evento, alocação, nome, categoria,
-direito, janela de acesso, quota, estado, benefícios/restrições normalizados,
-versão e timestamps. O FK composto impede cruzamento de tenant ou evento.
+direito, janela de acesso, quota, contadores reservado/vendido/bloqueado,
+estado, benefícios/restrições normalizados, versão e timestamps. O FK composto
+impede cruzamento de tenant ou evento.
 
 `LotePreco` possui produto, organização, nome, preço decimal, moeda, janela
 comercial, quantidade, prioridade, versão e timestamps. A janela define a
@@ -98,6 +99,8 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
 - Publicação é comando explícito, requer lote e usa exclusivamente `@Version`
   como precondição e origem do `ETag`.
 - Auditoria e outbox participam da mesma transação da mudança para `PUBLICADO`.
+- [[reservas-inventario]] bloqueia o produto e altera seu contador reservado;
+  a versão JPA e constraints defendem o saldo contra concorrência e corrupção.
 
 ## Módulos relacionados
 
@@ -110,6 +113,7 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
 - [[idempotencia]]
 - [[outbox]]
 - [[disponibilidade]]
+- [[reservas-inventario]]
 
 ## Histórico (data + ação)
 
@@ -119,3 +123,4 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
 | 2026-07-30 | Implementa UC708 com lote de preço temporal e quantitativo. |
 | 2026-07-30 | Implementa publicação versionada do produto com auditoria e outbox. |
 | 2026-07-30 | Fornece produto e lote vigentes à projeção de [[disponibilidade]]. |
+| 2026-07-30 | Passa a manter contadores protegidos para UC709. |

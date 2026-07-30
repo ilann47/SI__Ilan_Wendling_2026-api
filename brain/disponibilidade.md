@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[rbac]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[rbac]]
 
 # Disponibilidade
 
@@ -9,10 +9,9 @@ confundir consulta com reserva de inventário.
 
 ## Contexto
 
-A primeira entrega ainda não possui hold, vendido ou bloqueado. Por isso o saldo
-projetado é o menor valor entre a quota do produto e a quantidade do lote vigente.
-Esse contrato será reduzido pelos contadores de UC709 sem mudar a semântica de
-que uma leitura nunca protege a última vaga.
+O saldo projetado subtrai os contadores reservado, vendido e bloqueado do menor
+valor entre quota e quantidade do lote vigente. [[reservas-inventario]] atualiza
+o reservado atomicamente; a leitura continua sem proteger a última vaga.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -24,7 +23,7 @@ GET /api/v1/events/{eventoId}/availability?category=VIP
   -> projeção direta de produtos PUBLICADO
   -> consulta única de lotes vigentes por todos os produtos
   -> maior prioridade numérica; menor ID desempata
-  -> min(quota, quantidade do lote)
+  -> max(0, min(quota, quantidade do lote) - comprometido)
   -> 200 + asOf + guaranteesHold=false + itens
 ```
 
@@ -75,9 +74,11 @@ de categoria, lote vigente, prioridade determinística, saldo e OpenAPI.
 - [[inventario]]
 - [[produtos-estacionamento]]
 - [[rbac]]
+- [[reservas-inventario]]
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-30 | Implementa projeção tenant-aware de disponibilidade da primeira entrega. |
+| 2026-07-30 | Passa a reduzir o saldo pelos contadores de inventário de UC709. |

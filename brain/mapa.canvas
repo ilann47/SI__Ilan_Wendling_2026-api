@@ -12,7 +12,8 @@
     {"id": "outbox", "type": "file", "file": "outbox.md", "x": 2500, "y": 0, "width": 360, "height": 220},
     {"id": "inventario", "type": "file", "file": "inventario.md", "x": 2500, "y": 320, "width": 360, "height": 220},
     {"id": "produtos-estacionamento", "type": "file", "file": "produtos-estacionamento.md", "x": 3000, "y": 320, "width": 360, "height": 220},
-    {"id": "disponibilidade", "type": "file", "file": "disponibilidade.md", "x": 3500, "y": 320, "width": 360, "height": 220}
+    {"id": "disponibilidade", "type": "file", "file": "disponibilidade.md", "x": 3500, "y": 320, "width": 360, "height": 220},
+    {"id": "reservas-inventario", "type": "file", "file": "reservas-inventario.md", "x": 3500, "y": 0, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -49,6 +50,11 @@
     {"id": "eventos-disponibilidade", "fromNode": "eventos", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "publicado/vendas abertas"},
     {"id": "inventario-disponibilidade", "fromNode": "inventario", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "quota projetada"},
     {"id": "produtos-disponibilidade", "fromNode": "produtos-estacionamento", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "lote vigente"},
-    {"id": "rbac-disponibilidade", "fromNode": "rbac", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "tenant ativo"}
+    {"id": "rbac-disponibilidade", "fromNode": "rbac", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "tenant ativo"},
+    {"id": "produtos-reservas", "fromNode": "produtos-estacionamento", "fromSide": "right", "toNode": "reservas-inventario", "toSide": "left", "label": "saldo e preço"},
+    {"id": "eventos-reservas", "fromNode": "eventos", "fromSide": "right", "toNode": "reservas-inventario", "toSide": "left", "label": "vendas abertas"},
+    {"id": "reservas-disponibilidade", "fromNode": "reservas-inventario", "fromSide": "bottom", "toNode": "disponibilidade", "toSide": "top", "label": "reservado"},
+    {"id": "reservas-outbox", "fromNode": "reservas-inventario", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "reservado/expirado/liberado"},
+    {"id": "rbac-reservas", "fromNode": "rbac", "fromSide": "right", "toNode": "reservas-inventario", "toSide": "left", "label": "inventory:hold"}
   ]
 }

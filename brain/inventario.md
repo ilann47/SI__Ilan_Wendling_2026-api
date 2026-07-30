@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[instalacoes]] · [[produtos-estacionamento]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[instalacoes]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Inventário
 
@@ -16,7 +16,8 @@ UC707 acrescenta [[produtos-estacionamento]], cuja soma de quotas não pode
 ultrapassar a capacidade vendável da alocação.
 UC708 acrescenta lotes comerciais; cada lote respeita a quota do produto e
 prioridades distintas resolvem períodos sobrepostos sem ambiguidade.
-[[disponibilidade]] projeta a quota e o lote vigente sem reservar capacidade.
+[[disponibilidade]] projeta a quota e o lote vigente. UC709 acrescenta
+[[reservas-inventario]], que compromete e devolve saldo sob lock do produto.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -45,6 +46,7 @@ PATCH /api/v1/parking-allocations/{id} + If-Match
   a versão exata do agregado em `If-Match`.
 - `GET /api/v1/events/{eventoId}/availability`: consulta saldo comercial
   projetado; não cria hold.
+- `POST /api/v1/inventory-holds`: garante saldo temporário de forma atômica.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -68,7 +70,7 @@ e ainda não possui dispatcher ou consumidor.
 ## Testes (curl ou equivalente)
 
 Há testes de domínio, API, RBAC, tenant, idempotência, compartilhamento do
-saldo, sobrealocação, ETag, auditoria, outbox e constraints PostgreSQL.
+saldo, sobrealocação, ETag, auditoria, outbox, expiração e concorrência real no PostgreSQL.
 
 ## Decisões Técnicas
 
@@ -93,6 +95,7 @@ saldo, sobrealocação, ETag, auditoria, outbox e constraints PostgreSQL.
 - [[outbox]]
 - [[produtos-estacionamento]]
 - [[disponibilidade]]
+- [[reservas-inventario]]
 
 ## Histórico (data + ação)
 
@@ -102,3 +105,4 @@ saldo, sobrealocação, ETag, auditoria, outbox e constraints PostgreSQL.
 | 2026-07-30 | Protege a capacidade vendável contra soma excessiva de quotas de produtos. |
 | 2026-07-30 | Vincula lotes de preço à quota do produto e impede períodos ambíguos. |
 | 2026-07-30 | Expõe disponibilidade projetada sem consumir inventário. |
+| 2026-07-30 | Implementa UC709 e serializa o consumo temporário por produto. |

@@ -55,6 +55,11 @@ stateDiagram-v2
 
 ## 15.3 Reserva de inventário
 
+**Situação implementada:** UC709 cria em `MANTIDA`, libera explicitamente para
+`LIBERADA` e expira para `EXPIRADA` por job ou verificação transacional. Somente
+`MANTIDA` consome o contador reservado. `CONFIRMADA` permanece para a história
+de pedido/pagamento.
+
 ```mermaid
 stateDiagram-v2
   [*] --> MANTIDA

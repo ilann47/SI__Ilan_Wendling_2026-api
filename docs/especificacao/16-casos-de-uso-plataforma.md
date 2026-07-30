@@ -134,6 +134,13 @@ Publicação e abertura de vendas não habilitam acesso.
 
 ## UC709 — Reservar vaga/inventário
 
+**Situação implementada:** `POST /api/v1/inventory-holds` exige tenant ativo,
+`inventory:hold` e `Idempotency-Key`. O serviço bloqueia o produto, exige evento
+em `VENDAS_ABERTAS`, seleciona o lote vigente de maior prioridade, incrementa o
+saldo reservado e persiste hold, auditoria e `InventarioReservado` atomicamente.
+O prazo padrão provisório é 15 minutos, configurável. Consulta, liberação e
+expiração estão disponíveis; confirmação aguarda UC710.
+
 **Objetivo:** garantir temporariamente capacidade durante a compra.  
 **Atores:** Cliente, Caixa, Integração.  
 **Pré-condições:** vendas abertas, produto vendável e quantidade disponível.

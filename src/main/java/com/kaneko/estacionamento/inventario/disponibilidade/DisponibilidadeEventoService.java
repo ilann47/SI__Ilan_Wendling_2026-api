@@ -73,7 +73,10 @@ public class DisponibilidadeEventoService {
 
     private static ItemDisponibilidadeResponse item(
             ProdutoDisponibilidadeView produto, LotePreco lote) {
-        int disponivel = Math.min(produto.getQuota(), lote.getQuantidade());
+        int comprometido = produto.getQuantidadeReservada()
+                + produto.getQuantidadeVendida() + produto.getQuantidadeBloqueada();
+        int disponivel = Math.max(
+                0, Math.min(produto.getQuota(), lote.getQuantidade()) - comprometido);
         return new ItemDisponibilidadeResponse(
                 produto.getProdutoId(), produto.getAlocacaoId(), produto.getNome(),
                 produto.getCategoria(), produto.getDireito(), produto.getInicioAcesso(),

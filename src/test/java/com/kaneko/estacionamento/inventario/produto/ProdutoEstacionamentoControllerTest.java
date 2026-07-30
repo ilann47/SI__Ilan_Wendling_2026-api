@@ -12,6 +12,7 @@ import com.kaneko.estacionamento.auditoria.RegistroAuditoriaRepository;
 import com.kaneko.estacionamento.common.security.JwtService;
 import com.kaneko.estacionamento.common.outbox.EventoOutboxRepository;
 import com.kaneko.estacionamento.evento.EventoService;
+import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
 import com.kaneko.estacionamento.geografia.CidadeService;
@@ -24,6 +25,7 @@ import com.kaneko.estacionamento.instalacoes.InstalacoesService;
 import com.kaneko.estacionamento.instalacoes.dto.CriarPatioInstalacaoRequest;
 import com.kaneko.estacionamento.inventario.alocacao.AlocacaoPatioEventoService;
 import com.kaneko.estacionamento.inventario.alocacao.dto.CriarAlocacaoPatioEventoRequest;
+import com.kaneko.estacionamento.inventario.reserva.ReservaInventarioService;
 import com.kaneko.estacionamento.organizacao.OrganizacaoService;
 import com.kaneko.estacionamento.organizacao.dto.CriarOrganizacaoRequest;
 import com.kaneko.estacionamento.organizacao.venue.VenueService;
@@ -32,6 +34,7 @@ import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
 import com.kaneko.estacionamento.usuario.UsuarioService;
 import com.kaneko.estacionamento.usuario.dto.UsuarioRequest;
+import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +42,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +64,9 @@ class ProdutoEstacionamentoControllerTest {
     @Autowired JwtService jwt;
     @Autowired RegistroAuditoriaRepository auditorias;
     @Autowired EventoOutboxRepository outbox;
+    @Autowired ReservaInventarioService reservas;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired EntityManager entityManager;
 
     private Usuario admin;
     private Long organizacaoId;
@@ -442,6 +449,145 @@ class ProdutoEstacionamentoControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void criaHoldComSnapshotIdempotenciaAuditoriaOutboxESaldoProjetado() throws Exception {
+        Long produtoId = prepararVendaAberta(5, 3);
+        String payload = payloadHold(produtoId, 2, "cart-1");
+
+        String primeiro = criarHold(tokenContextual, "hold-1", payload, status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(header().string("ETag", "\"0\""))
+                .andExpect(jsonPath("$.parkingProductId").value(produtoId))
+                .andExpect(jsonPath("$.eventId").value(eventoId))
+                .andExpect(jsonPath("$.quantity").value(2))
+                .andExpect(jsonPath("$.channel").value("DIRECT_WEB"))
+                .andExpect(jsonPath("$.buyerReference").value("cart-1"))
+                .andExpect(jsonPath("$.unitPrice").value(45.00))
+                .andExpect(jsonPath("$.currency").value("BRL"))
+                .andExpect(jsonPath("$.status").value("MANTIDA"))
+                .andExpect(jsonPath("$.expiresAt").exists())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(primeiro, "$.id").longValue();
+
+        String repetido = criarHold(tokenContextual, "hold-1", payload, status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(repetido, "$.id").longValue()).isEqualTo(holdId);
+        criarHold(tokenContextual, "hold-1", payloadHold(produtoId, 1, "cart-1"),
+                status().isConflict());
+
+        mvc.perform(get("/api/v1/inventory-holds/{id}", holdId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("MANTIDA"));
+        mvc.perform(get("/api/v1/events/{id}/availability", eventoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAvailable").value(1));
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("RESERVA_INVENTARIO_CRIADA");
+            assertThat(auditoria.getRecursoId()).isEqualTo(holdId);
+        });
+        assertThat(outbox.findAll()).anySatisfy(evento -> {
+            assertThat(evento.getEventType()).isEqualTo("InventarioReservado");
+            assertThat(evento.getAggregateId()).isEqualTo(holdId);
+        });
+    }
+
+    @Test
+    void liberaHoldExatamenteUmaVezERestauraDisponibilidade() throws Exception {
+        Long produtoId = prepararVendaAberta(2, 2);
+        String body = criarHold(tokenContextual, "hold-release",
+                        payloadHold(produtoId, 2, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(body, "$.id").longValue();
+
+        liberarHold(tokenContextual, holdId, "DESISTENCIA", status().isOk())
+                .andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.status").value("LIBERADA"))
+                .andExpect(jsonPath("$.finalizationReason").value("DESISTENCIA"));
+        liberarHold(tokenContextual, holdId, "REPLAY", status().isOk())
+                .andExpect(header().string("ETag", "\"1\""));
+        mvc.perform(get("/api/v1/events/{id}/availability", eventoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAvailable").value(2));
+        assertThat(outbox.findAll().stream()
+                .filter(e -> e.getAggregateId().equals(holdId))
+                .filter(e -> e.getEventType().equals("InventarioLiberado"))
+                .count()).isEqualTo(1);
+    }
+
+    @Test
+    void expiraHoldVencidoDevolvendoSaldoEPublicandoDoisFatos() throws Exception {
+        Long produtoId = prepararVendaAberta(1, 1);
+        String body = criarHold(tokenContextual, "hold-expire",
+                        payloadHold(produtoId, 1, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(body, "$.id").longValue();
+        jdbc.update("""
+                update reserva_inventario
+                set created_at = now() - interval '1 hour',
+                    expira_em = now() - interval '1 minute'
+                where id = ?
+                """, holdId);
+        entityManager.clear();
+
+        assertThat(reservas.expirarVencidas(100)).isEqualTo(1);
+        mvc.perform(get("/api/v1/inventory-holds/{id}", holdId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRADA"));
+        mvc.perform(get("/api/v1/events/{id}/availability", eventoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAvailable").value(1));
+        assertThat(outbox.findAll().stream()
+                .filter(e -> e.getAggregateId().equals(holdId))
+                .map(e -> e.getEventType()).toList())
+                .contains("ReservaExpirada", "InventarioLiberado");
+    }
+
+    @Test
+    void holdExigeVendasAbertasProdutoVigenteQuantidadeEContratoValidos() throws Exception {
+        Long produtoId = prepararProdutoPublicado(2, 2, false);
+        criarHold(tokenContextual, "hold-closed", payloadHold(produtoId, 1, null),
+                status().isConflict());
+        eventos.abrirVendas(
+                organizacaoId, eventoId, 2L, new AbrirVendasEventoRequest(null));
+        criarHold(tokenContextual, "hold-excess", payloadHold(produtoId, 3, null),
+                status().isConflict());
+        criarHold(tokenContextual, "hold-field",
+                payloadHold(produtoId, 1, null).replace("{", "{\"status\":\"MANTIDA\","),
+                status().isBadRequest());
+    }
+
+    @Test
+    void holdRespeitaPapelEPropriedadeDoAtor() throws Exception {
+        Long produtoId = prepararVendaAberta(3, 3);
+        String body = criarHold(tokenContextual, "hold-owner",
+                        payloadHold(produtoId, 1, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(body, "$.id").longValue();
+
+        Usuario organizador = usuario("hold_organizador", PerfilUsuario.OPERADOR);
+        long organizadorMembership = criarMembership(organizador.getId(), tokenContextual);
+        concederPapel(organizadorMembership, "ORGANIZADOR");
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+        mvc.perform(get("/api/v1/inventory-holds/{id}", holdId)
+                        .header("Authorization", tokenOrganizador))
+                .andExpect(status().isNotFound());
+        criarHold(tokenOrganizador, "hold-organizador", payloadHold(produtoId, 1, null),
+                status().isCreated());
+
+        Usuario membro = usuario("hold_membro", PerfilUsuario.OPERADOR);
+        criarMembership(membro.getId(), tokenContextual);
+        String tokenMembro = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
+        criarHold(tokenMembro, "hold-negado", payloadHold(produtoId, 1, null),
+                status().isForbidden());
+    }
+
     private org.springframework.test.web.servlet.ResultActions publicarProduto(
             String token, Long produtoId, String ifMatch,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -449,6 +595,54 @@ class ProdutoEstacionamentoControllerTest {
                         .header("Authorization", token).header("If-Match", ifMatch)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"confirmed\":true}"))
                 .andExpect(esperado);
+    }
+
+    private Long prepararVendaAberta(int quota, int quantidadeLote) throws Exception {
+        return prepararProdutoPublicado(quota, quantidadeLote, true);
+    }
+
+    private Long prepararProdutoPublicado(
+            int quota, int quantidadeLote, boolean abrirVendas) throws Exception {
+        Long produtoId = criarProdutoBase(
+                "Produto Hold " + quota + " " + quantidadeLote,
+                "produto-hold-" + quota + "-" + quantidadeLote, quota);
+        OffsetDateTime agora = OffsetDateTime.now().withNano(0);
+        criarLote(tokenContextual, produtoId, "lote-hold-" + produtoId,
+                payloadLote("Lote Hold", "45", "BRL", quantidadeLote, 1,
+                        agora.minusDays(1).toString(), agora.plusDays(1).toString()),
+                status().isCreated());
+        publicarProduto(tokenContextual, produtoId, "\"0\"", status().isOk());
+        eventos.publicar(
+                organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
+        if (abrirVendas) {
+            eventos.abrirVendas(
+                    organizacaoId, eventoId, 2L, new AbrirVendasEventoRequest(null));
+        }
+        return produtoId;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions criarHold(
+            String token, String chave, String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/inventory-holds")
+                        .header("Authorization", token).header("Idempotency-Key", chave)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions liberarHold(
+            String token, long holdId, String motivo,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/inventory-holds/{id}/release", holdId)
+                        .header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"" + motivo + "\"}"))
+                .andExpect(esperado);
+    }
+
+    private static String payloadHold(Long produtoId, int quantidade, String referencia) {
+        String buyer = referencia == null ? "" : ",\"buyerReference\":\"" + referencia + "\"";
+        return "{\"parkingProductId\":" + produtoId + ",\"quantity\":" + quantidade
+                + ",\"channel\":\"DIRECT_WEB\"" + buyer + "}";
     }
 
     private Long criarProdutoBase(String nome, String chave, int quota) throws Exception {

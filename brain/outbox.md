@@ -1,4 +1,4 @@
-> Links: [[core]] · [[eventos]] · [[organizacoes]]
+> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[reservas-inventario]]
 
 # Outbox
 
@@ -11,8 +11,9 @@ futura não dependa de efeitos em memória ou de chamada externa na transação.
 
 A fundação persiste `EventoCriado`, `EventoConfigurado`, `EventoPublicado`,
 `VendasDoEventoAbertas`, `CapacidadeAlocadaAoEvento` e
-`ProdutoEstacionamentoPublicado`. Dispatcher, retry, dead-letter lógico e
-consumidores serão implementados quando existir o primeiro efeito entre contextos.
+`ProdutoEstacionamentoPublicado`, além de `InventarioReservado`,
+`ReservaExpirada` e `InventarioLiberado`. Dispatcher, retry, dead-letter lógico
+e consumidores serão implementados quando existir o primeiro efeito entre contextos.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -61,6 +62,7 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 - [[eventos]]
 - [[inventario]]
 - [[produtos-estacionamento]]
+- [[reservas-inventario]]
 
 ## Histórico (data + ação)
 
@@ -71,3 +73,4 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 | 2026-07-30 | Persiste ProdutoEstacionamentoPublicado atomicamente com a publicação. |
 | 2026-07-30 | Persiste EventoConfigurado e EventoPublicado nas transições versionadas. |
 | 2026-07-30 | Persiste VendasDoEventoAbertas na abertura comercial versionada. |
+| 2026-07-30 | Persiste reserva, expiração e liberação de inventário atomicamente. |

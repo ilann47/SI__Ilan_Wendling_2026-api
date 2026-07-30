@@ -174,8 +174,9 @@ alocação. `LotePreco` define preço, moeda, quantidade, período e prioridade;
   explícito de publicação do produto valida preço configurado, versão
   concorrente, auditoria e outbox antes da transição para `PUBLICADO`. A
   projeção de disponibilidade seleciona o lote vigente de maior prioridade e
-  limita o saldo pela quota do produto, deixando explícito que a consulta não
-  cria hold. Reserva de inventário permanece TARGET.
+  limita o saldo pela quota do produto. UC709 materializa `ReservaInventario`
+  com snapshot de preço, expiração e liberação única; o lock pessimista do
+  produto serializa os contadores e a consulta permanece apenas indicativa.
 
 - **Objetivo:** transformar capacidade em ofertas sem sobrevenda.
 - **Agregados:** `AlocacaoCapacidade`, `ProdutoEstacionamento`, `PoliticaPreco`, `ReservaInventario`.

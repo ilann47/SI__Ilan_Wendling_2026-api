@@ -11,4 +11,7 @@ public interface ProdutoDisponibilidadeView {
     OffsetDateTime getInicioAcesso();
     OffsetDateTime getFimAcesso();
     Integer getQuota();
+    Integer getQuantidadeReservada();
+    Integer getQuantidadeVendida();
+    Integer getQuantidadeBloqueada();
 }

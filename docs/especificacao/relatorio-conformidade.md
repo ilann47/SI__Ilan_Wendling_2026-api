@@ -504,3 +504,30 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Nenhuma migration ou permissão nova foi antecipada; a transição reutiliza
   `events:publish` de Gestor/Admin da organização.
 - A suíte passa de 425 para 426 testes sem regressões.
+
+---
+
+## Atualização — Reserva de inventário / UC709 (2026-07-30)
+
+- A migration `V20__reserva_inventario.sql` cria `reserva_inventario`, adiciona
+  contadores reservado/vendido/bloqueado ao produto e protege no PostgreSQL a
+  invariante `reservado + vendido + bloqueado <= quota`.
+- `POST /api/v1/inventory-holds` exige `inventory:hold`, tenant ativo e chave
+  idempotente; somente evento `VENDAS_ABERTAS`, produto publicado e lote vigente
+  podem reservar.
+- O produto é bloqueado pessimisticamente antes de calcular o saldo. Um teste
+  com duas transações reais pela última vaga prova uma única reserva vencedora.
+- O hold congela lote, preço e moeda, nasce `MANTIDA` e usa prazo padrão
+  provisório/configurável de 15 minutos.
+- `GET /api/v1/inventory-holds/{id}` e
+  `POST /api/v1/inventory-holds/{id}/release` respeitam tenant e proprietário;
+  liberação e expiração devolvem saldo exatamente uma vez.
+- Um job interno processa vencimentos em lotes; consulta e nova reserva também
+  materializam expirações relevantes usando a ordem de locks produto → reserva.
+- Criação, expiração e liberação são auditadas. `InventarioReservado`,
+  `ReservaExpirada` e `InventarioLiberado` entram na outbox transacional.
+- A disponibilidade passa a subtrair os contadores comprometidos, mas continua
+  com `guaranteesHold=false`.
+- Confirmação como vendido, pedido, pagamento e identidade pública de cliente,
+  caixa ou integração não foram antecipados.
+- A suíte passa de 426 para 436 testes sem regressões.

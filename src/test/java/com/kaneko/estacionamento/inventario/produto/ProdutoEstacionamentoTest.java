@@ -57,4 +57,23 @@ class ProdutoEstacionamentoTest {
         assertThat(produto.getStatus()).isEqualTo(StatusProdutoEstacionamento.PUBLICADO);
         assertThatIllegalStateException().isThrownBy(produto::publicar);
     }
+
+    @Test
+    void reservaELiberaSaldoSemUltrapassarLimiteComercial() {
+        var produto = ProdutoEstacionamento.criar(
+                1L, 2L, 3L, "Produto", CategoriaProduto.COMUM,
+                DireitoProduto.ESTACIONAMENTO_EVENTO,
+                OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
+                OffsetDateTime.parse("2026-10-11T01:00:00-03:00"),
+                10, List.of(), List.of());
+        produto.publicar();
+
+        produto.reservar(2, 3);
+        assertThat(produto.getQuantidadeReservada()).isEqualTo(2);
+        assertThatIllegalArgumentException().isThrownBy(() -> produto.reservar(2, 3));
+
+        produto.liberarReserva(2);
+        assertThat(produto.getQuantidadeReservada()).isZero();
+        assertThatIllegalStateException().isThrownBy(() -> produto.liberarReserva(1));
+    }
 }

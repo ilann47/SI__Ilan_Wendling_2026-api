@@ -125,6 +125,11 @@ preservando a aprovação definida na matriz de operações. A mesma permissão
 protege a abertura explícita de vendas, pois ela aprova a exposição comercial
 do catálogo já publicado.
 
+`inventory:hold` está implementada para `ADMIN_ORGANIZACAO`, `GESTOR` e
+`ORGANIZADOR`. Até a entrada das identidades próprias de Cliente, Caixa e
+Integração, o hold pertence ao usuário autenticado e não pode ser consultado ou
+liberado por outro ator, mesmo no mesmo tenant.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

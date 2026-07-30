@@ -36,3 +36,6 @@ app:
     audience: estacionamento-kaneko-api
   bootstrap-admin:
     enabled: false
+  inventory:
+    hold-duration-minutes: 15
+    expiration-enabled: false

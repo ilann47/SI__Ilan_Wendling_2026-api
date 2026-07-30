@@ -154,6 +154,18 @@ class ProdutoEstacionamentoConstraintTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    void bancoImpedeSaldoNegativoOuAcimaDaQuota() {
+        Long produtoId = inserir(
+                organizacaoId, eventoId, alocacaoId, "Produto Saldo Protegido", 1, "PUBLICADO");
+
+        assertThatThrownBy(() -> jdbc.update("""
+                update produto_estacionamento
+                set quantidade_reservada = 2
+                where id = ?
+                """, produtoId)).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     private Long inserir(Long orgId, Long eventId, Long allocationId,
                          String nome, int quota, String status) {
         return jdbc.queryForObject(sqlInsercao() + " RETURNING id", Long.class,

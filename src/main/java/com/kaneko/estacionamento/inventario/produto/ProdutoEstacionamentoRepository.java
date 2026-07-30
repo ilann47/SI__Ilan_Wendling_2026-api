@@ -20,7 +20,9 @@ public interface ProdutoEstacionamentoRepository
             select p.id as produtoId, p.alocacaoId as alocacaoId,
                    p.nome as nome, p.categoria as categoria, p.direito as direito,
                    p.inicioAcesso as inicioAcesso, p.fimAcesso as fimAcesso,
-                   p.quota as quota
+                   p.quota as quota, p.quantidadeReservada as quantidadeReservada,
+                   p.quantidadeVendida as quantidadeVendida,
+                   p.quantidadeBloqueada as quantidadeBloqueada
             from ProdutoEstacionamento p
             where p.eventoId = :eventoId
               and p.organizacaoId = :organizacaoId

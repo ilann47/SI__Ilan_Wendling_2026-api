@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[idempotencia]] · [[outbox]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[idempotencia]] · [[outbox]]
 
 # Core do Estacionamento Kaneko
 
@@ -43,6 +43,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[inventario]] — alocação temporal da capacidade dos pátios aos eventos.
 - [[produtos-estacionamento]] — ofertas, quotas e lotes de preço comerciais.
 - [[disponibilidade]] — projeção read-only do catálogo vendável vigente.
+- [[reservas-inventario]] — hold temporal e atômico da capacidade vendável.
 - [[idempotencia]] — execução única de comandos críticos por tenant e identidade.
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
 
@@ -64,3 +65,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro de UC702 com publicação versionada e checklist de prontidão. |
 | 2026-07-30 | Registro da consulta de disponibilidade sem garantia de hold. |
 | 2026-07-30 | Registro da abertura imediata e versionada de vendas do evento. |
+| 2026-07-30 | Registro de UC709 com reserva atômica, expiração e liberação de saldo. |
