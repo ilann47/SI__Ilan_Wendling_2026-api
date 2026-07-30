@@ -145,8 +145,9 @@ de capacidade permanecem nas histórias próprias.
 
 **Situação implementada:** a criação do agregado `Evento` está disponível em
 `RASCUNHO`, com ownership direto, venue visível, período/fuso, versão,
-idempotência, auditoria e `EventoCriado` persistido em outbox. Configuração,
-alocação, publicação e demais transições permanecem nas histórias seguintes.
+idempotência, auditoria e `EventoCriado` persistido em outbox. A alocação
+temporal multipátio já é implementada no BC06; configuração, publicação e
+demais transições permanecem nas histórias seguintes.
 
 - **Objetivo:** controlar identidade, agenda, participantes, políticas e ciclo operacional do evento.
 - **Agregado:** `Evento`.
@@ -158,6 +159,12 @@ alocação, publicação e demais transições permanecem nas histórias seguint
 - **Dependências:** `Organizacoes`, `Instalacoes`, `RHEscalas`.
 
 ### BC06 — Comercial, Preços e Inventário
+
+**Situação implementada:** `AlocacaoPatioEvento` compromete capacidade
+operacional, vendável e reservada de um pátio ativo para uma janela do evento.
+O saldo simultâneo é protegido por lock pessimista no pátio, validação
+transacional e constraints tenant-aware. Produtos, lotes, reserva de inventário
+e projeções de disponibilidade permanecem TARGET.
 
 - **Objetivo:** transformar capacidade em ofertas sem sobrevenda.
 - **Agregados:** `AlocacaoCapacidade`, `ProdutoEstacionamento`, `PoliticaPreco`, `ReservaInventario`.

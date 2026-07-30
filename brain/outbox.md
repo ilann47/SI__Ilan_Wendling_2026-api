@@ -57,9 +57,11 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 - [[core]]
 - [[organizacoes]]
 - [[eventos]]
+- [[inventario]]
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-30 | Persiste EventoCriado atomicamente com o agregado Evento. |
+| 2026-07-30 | Persiste CapacidadeAlocadaAoEvento atomicamente com a alocação. |

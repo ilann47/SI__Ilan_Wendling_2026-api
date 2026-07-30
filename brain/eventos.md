@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[venues]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[venues]] · [[inventario]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Eventos
 
@@ -9,9 +9,10 @@ tenant, sem misturar inventário, pedidos, pagamentos ou acesso no agregado.
 
 ## Contexto
 
-A História 7 implementa exclusivamente UC701. O evento nasce em `RASCUNHO` e
-nenhuma transição posterior é exposta. Alocação de pátios, oferta, inventário,
-produtos e publicação continuam nas histórias seguintes.
+A História 7 implementa UC701. O evento nasce em `RASCUNHO` e nenhuma transição
+posterior é exposta. A História 8 permite que [[inventario]] associe pátios ao
+evento sem transferir essa responsabilidade para o agregado; oferta, produtos e
+publicação continuam nas histórias seguintes.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -72,9 +73,11 @@ outbox, OpenAPI e constraints PostgreSQL para período, estado e FK composta.
 - [[auditoria]]
 - [[idempotencia]]
 - [[outbox]]
+- [[inventario]]
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-30 | Implementa UC701 com criação tenant-aware, idempotência e EventoCriado. |
+| 2026-07-30 | Passa a fornecer evento configurável para a alocação temporal de pátios em [[inventario]]. |

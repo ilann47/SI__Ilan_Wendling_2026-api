@@ -109,6 +109,11 @@ Com o módulo de Eventos, `events:create` passa a integrar
 papéis usam escopo organizacional; escopos por evento só passam a existir após o
 agregado estar criado e o contrato de participantes ser implementado.
 
+`inventory:manage` está implementada para `ADMIN_ORGANIZACAO` e `GESTOR` e
+protege criação e alteração de `AlocacaoPatioEvento`. `ORGANIZADOR` não recebe
+essa permissão nesta etapa, preservando a responsabilidade do Gestor sobre a
+capacidade compartilhada dos pátios.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

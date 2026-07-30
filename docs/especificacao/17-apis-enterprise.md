@@ -166,8 +166,8 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 
 | Método e rota | Payload/Parâmetros | Resposta | Regras |
 |---|---|---|---|
-| `POST /events/{id}/parking-allocations` | pátio, período, capacidades | `201 Allocation` | conflito e hierarquia de capacidade |
-| `PATCH /parking-allocations/{id}` | capacidades + versão | `200` | não reduzir abaixo do comprometido |
+| `POST /events/{id}/parking-allocations` | AS-IS: pátio, período, capacidades + `Idempotency-Key`; tenant implícito | `201 Allocation`, `Location`, `ETag` | `inventory:manage`; evento configurável, pátio ativo, janela intersecta evento, hierarquia e saldo simultâneo válidos; replay equivalente devolve a alocação original |
+| `PATCH /parking-allocations/{id}` | AS-IS: capacidades + `If-Match` | `200 Allocation`, `ETag` | `inventory:manage`; lista fechada de campos; não reduzir abaixo da hierarquia nem sobrealocar o pátio; versão divergente retorna `412` |
 | `POST /events/{id}/parking-products` | categoria, alocação, direito, quota | `201 Product` | produto em rascunho |
 | `POST /parking-products/{id}/publication` | confirmação | `200` | configuração completa |
 | `POST /parking-products/{id}/price-tiers` | preço, moeda, período, quantidade | `201 Tier` | sem ambiguidade |

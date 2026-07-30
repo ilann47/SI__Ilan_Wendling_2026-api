@@ -369,3 +369,26 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Somente a criação foi exposta; configuração, alocação e publicação não foram
   antecipadas.
 - A suíte passou de 373 para 383 testes sem regressões.
+
+---
+
+## Atualização — História 8: Alocação Evento–Pátio (2026-07-30)
+
+- A migration `V16__alocacao_patio_evento.sql` cria a associação tenant-aware
+  entre evento e pátio, constraints de período/capacidade e a permissão
+  `inventory:manage` para `ADMIN_ORGANIZACAO` e `GESTOR`.
+- `POST /api/v1/events/{id}/parking-allocations` é idempotente, aceita somente
+  evento configurável e pátio ativo do tenant, exige interseção temporal e
+  retorna `Location` e `ETag`.
+- A soma das capacidades operacionais de alocações simultâneas é serializada
+  por lock pessimista no pátio e não pode exceder a capacidade operacional
+  física configurada para ele.
+- O PostgreSQL também impede relações entre tenants, duplicidade evento–pátio,
+  período invertido e hierarquia de capacidades inválida.
+- `PATCH /api/v1/parking-allocations/{id}` altera exclusivamente as três
+  capacidades e exige `If-Match`; versão divergente retorna `412`.
+- Criação e alteração são auditadas; a criação persiste
+  `CapacidadeAlocadaAoEvento` na outbox da mesma transação.
+- Produtos, consumo de inventário, quotas, override e publicação não foram
+  antecipados.
+- A suíte passou de 383 para 393 testes sem regressões.

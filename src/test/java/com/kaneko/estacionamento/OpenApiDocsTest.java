@@ -48,6 +48,9 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/v1/venues'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/venues'].get").doesNotExist())
                 .andExpect(jsonPath("$.paths['/api/v1/events'].post").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/events'].get").doesNotExist());
+                .andExpect(jsonPath("$.paths['/api/v1/events'].get").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/events/{eventoId}/parking-allocations'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/parking-allocations/{alocacaoId}'].patch").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/parking-allocations/{alocacaoId}'].delete").doesNotExist());
     }
 }

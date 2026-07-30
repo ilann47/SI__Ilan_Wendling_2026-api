@@ -14,9 +14,10 @@ Todo evento deve conter `eventId`, `eventType`, `occurredAt`, `organizationId`, 
 
 ## 13.2 Fluxo principal de eventos
 
-**Situação implementada:** o primeiro passo `CriarEvento → EventoCriado` é
-atômico e grava o fato na outbox PostgreSQL. Não existe dispatcher ou consumidor
-nesta história; os passos seguintes continuam TARGET.
+**Situação implementada:** `CriarEvento → EventoCriado` e
+`AlocarCapacidade → CapacidadeAlocadaAoEvento` são atômicos e gravam seus fatos
+na outbox PostgreSQL. Não existe dispatcher ou consumidor nesta etapa; os
+passos seguintes continuam TARGET.
 
 ```mermaid
 flowchart TD

@@ -57,9 +57,11 @@ e rejeitam payload diferente.
 - [[core]]
 - [[organizacoes]]
 - [[eventos]]
+- [[inventario]]
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-30 | Implementa fundação PostgreSQL usada pela criação de Evento. |
+| 2026-07-30 | Reutiliza a fundação na criação de `AlocacaoPatioEvento`. |

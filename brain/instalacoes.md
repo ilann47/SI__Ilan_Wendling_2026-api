@@ -68,7 +68,8 @@ constraints diretas no PostgreSQL e isolamento da API legada.
 
 - [[core]]
 - [[organizacoes]]
-- [[venues]] — localização administrativa do evento; associação física com pátio ainda não exposta.
+- [[venues]] — localização administrativa do evento.
+- [[inventario]] — bloqueia e compromete o saldo operacional do pátio por janela temporal.
 - [[rbac]]
 - [[auditoria]]
 
@@ -77,3 +78,4 @@ constraints diretas no PostgreSQL e isolamento da API legada.
 | Data | Ação |
 |---|---|
 | 2026-07-29 | Implementa criação tenant-aware de pátio e compatibilidade isolada com `/api/patios`. |
+| 2026-07-30 | Expõe lock pessimista tenant-aware para serializar alocações concorrentes do pátio. |
