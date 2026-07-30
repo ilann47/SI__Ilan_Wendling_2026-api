@@ -49,6 +49,10 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
 - **Pedidos** (`POST /api/v1/orders`) — contrato comercial idempotente criado a
   partir do hold do próprio ator, com snapshots, total derivado e expiração
   automática enquanto aguarda pagamento.
+- **Confirmação manual conciliável**
+  (`POST /api/v1/orders/{id}/manual-confirmation`) — exceção administrativa
+  versionada e idempotente que exige evidência, confirma o inventário e registra
+  pendência de conciliação sem simular aprovação de gateway.
 - **Alocação de pátios** — associação temporal multipátio por evento, com
   capacidades operacional/vendável/reservada, prevenção transacional de
   sobrealocação, idempotência, auditoria e concorrência otimista.

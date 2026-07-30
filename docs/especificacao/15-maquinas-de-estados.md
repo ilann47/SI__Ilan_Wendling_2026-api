@@ -90,6 +90,7 @@ stateDiagram-v2
   CRIADO --> AGUARDANDO_PAGAMENTO: solicitar pagamento
   CRIADO --> CONFIRMADO: cortesia autorizada
   AGUARDANDO_PAGAMENTO --> CONFIRMADO: pagamento aprovado e inventário confirmado
+  AGUARDANDO_PAGAMENTO --> CONFIRMADO: confirmação manual conciliável
   CRIADO --> EXPIRADO: prazo
   AGUARDANDO_PAGAMENTO --> EXPIRADO: prazo
   CONFIRMADO --> ATENDIDO: credencial emitida
@@ -135,6 +136,9 @@ stateDiagram-v2
 
 - Gateway/policy altera estados técnicos; operador não marca aprovação arbitrariamente.
 - Confirmação manual exige permissão extraordinária, evidência e posterior conciliação.
+- **AS-IS:** a confirmação manual versionada confirma o hold e o pedido na mesma
+  transação e registra `PENDENTE_CONCILIACAO`; não altera a máquina de pagamento
+  nem fabrica uma aprovação de provedor.
 - Captura total ou parcial nunca supera autorização.
 - Reembolso acumulado nunca supera captura.
 - Webhook duplicado não repete evento de negócio.

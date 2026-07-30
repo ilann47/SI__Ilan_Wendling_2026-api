@@ -142,6 +142,15 @@ public class ProdutoEstacionamento extends AuditableEntity {
         quantidadeReservada -= quantidade;
     }
 
+    public void confirmarReserva(int quantidade) {
+        if (quantidade < 1 || quantidade > quantidadeReservada) {
+            throw new IllegalStateException(
+                    "A quantidade confirmada deve estar integralmente reservada.");
+        }
+        quantidadeReservada -= quantidade;
+        quantidadeVendida += quantidade;
+    }
+
     static void validarDados(
             String nome, CategoriaProduto categoria, DireitoProduto direito,
             OffsetDateTime inicioAcesso, OffsetDateTime fimAcesso, Integer quota,

@@ -71,7 +71,9 @@ proteção do último administrador.
 - [[eventos]] — criação exige `events:create`; Gestor e Organizador integram o catálogo.
 - [[inventario]] — alocações exigem `inventory:manage`, concedida a Administrador da Organização e Gestor.
 - [[produtos-estacionamento]] — criação exige `pricing:manage`, concedida também ao Organizador.
-- [[pedidos]] — criação e leitura própria exigem `orders:create`, concedida a Administrador, Gestor e Organizador.
+- [[pedidos]] — criação e leitura própria exigem `orders:create`, concedida a
+  Administrador, Gestor e Organizador; `orders:manual-confirm` é restrita a
+  Administrador e Gestor.
 
 ## Histórico (data + ação)
 

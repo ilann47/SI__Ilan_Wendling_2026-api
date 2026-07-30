@@ -5,13 +5,16 @@
 ## Objetivo
 
 Materializar a intenção comercial do comprador com snapshots e total
-reprodutíveis, sem antecipar pagamento, credencial ou acesso.
+reprodutíveis e permitir a confirmação manual excepcional, sem antecipar
+gateway, credencial ou acesso.
 
 ## Contexto
 
 UC710 está implementada até `AGUARDANDO_PAGAMENTO`. O ator autenticado usa
 somente seu próprio hold `MANTIDA`; cliente público, caixa e parceiro terão
-identidades próprias em histórias posteriores.
+identidades próprias em histórias posteriores. Admin e Gestor podem confirmar
+um pedido excepcionalmente mediante evidência, deixando-o pendente de
+conciliação financeira.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -29,12 +32,22 @@ POST /api/v1/orders + Idempotency-Key
 job de expiração
   -> pedidos vencidos sob lock
   -> EXPIRADO + auditoria + PedidoExpirado
+
+POST /api/v1/orders/{id}/manual-confirmation + If-Match + Idempotency-Key
+  -> JWT contextual + orders:manual-confirm
+  -> lock pedido -> lock produto -> lock hold
+  -> hold CONFIRMADA + reservado convertido em vendido
+  -> evidência PENDENTE_CONCILIACAO + pedido CONFIRMADO
+  -> auditoria + InventarioConfirmado + PedidoConfirmado + idempotência
+  -> 202 + ETag
 ```
 
 ## Endpoints (se houver)
 
 - `POST /api/v1/orders`: cria pedido idempotente a partir de um hold próprio.
 - `GET /api/v1/orders/{orderId}`: consulta somente pedido do ator autenticado.
+- `POST /api/v1/orders/{orderId}/manual-confirmation`: confirmação excepcional
+  por Admin/Gestor, com versão esperada, evidência e chave idempotente.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -46,7 +59,9 @@ categoria, direito, janela, quantidade, preço e moeda.
 ## Integrações externas (se houver)
 
 Não há gateway nesta entrega. `PedidoCriado`, `PedidoAguardandoPagamento` e
-`PedidoExpirado` são persistidos pela [[outbox]].
+`PedidoExpirado`, `InventarioConfirmado` e `PedidoConfirmado` são persistidos
+pela [[outbox]]. A confirmação manual não publica `PagamentoAprovado`, porque
+não representa retorno de um provedor.
 
 ## Tratamento de Erros
 
@@ -55,12 +70,15 @@ Não há gateway nesta entrega. `PedidoCriado`, `PedidoAguardandoPagamento` e
 - `404`: hold/pedido invisível, de outro tenant ou de outro ator.
 - `409`: hold vencido, liberado, reutilizado, canal divergente ou replay com
   payload diferente.
+- `412`: versão do pedido divergente na confirmação manual.
+- `428`: `If-Match` ausente na confirmação manual.
 
 ## Testes (curl ou equivalente)
 
 Há testes de domínio, API, snapshots, total, idempotência, RBAC, ownership,
-campos controlados, canal, hold terminal, expiração, auditoria, outbox, OpenAPI,
-Flyway e Hibernate validate.
+campos controlados, canal, hold terminal, expiração, confirmação manual,
+concorrência pela confirmação, auditoria, outbox, OpenAPI, Flyway e Hibernate
+validate.
 
 ## Decisões Técnicas
 
@@ -71,6 +89,10 @@ Flyway e Hibernate validate.
   `Long`.
 - A criação não confirma nem libera o hold. O contador permanece reservado até
   pagamento posterior ou expiração/liberação pelo módulo de inventário.
+- A confirmação manual é uma exceção operacional: exige meio, referência de
+  evidência e motivo, preserva o ator e nasce `PENDENTE_CONCILIACAO`.
+- A transação serializa pedido, produto e hold; somente uma requisição pode
+  converter o contador reservado em vendido.
 - O documento é persistido normalizado e retornado somente mascarado.
 
 ## Módulos relacionados
@@ -90,3 +112,4 @@ Flyway e Hibernate validate.
 | Data | Ação |
 |---|---|
 | 2026-07-30 | Implementa UC710 até pedido aguardando pagamento e expiração automática. |
+| 2026-07-30 | Implementa confirmação manual versionada, idempotente e pendente de conciliação. |

@@ -225,6 +225,43 @@ public class ReservaInventarioService {
                 reserva.getPrecoUnitario(), reserva.getMoeda(), reserva.getExpiraEm());
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public ReservaInventarioResponse confirmarParaPedido(
+            Long organizacaoId, Long reservaId, Long eventoId) {
+        ReservaInventario visivel = reservas.findByIdAndOrganizacaoId(
+                        reservaId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Reserva de inventario", reservaId));
+        if (!visivel.getEventoId().equals(eventoId)) {
+            throw new RecursoNaoEncontradoException(
+                    "Reserva de inventario", reservaId);
+        }
+        ProdutoEstacionamento produto = produtos.findByIdAndOrganizacaoIdForUpdate(
+                        visivel.getProdutoId(), organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Produto de estacionamento", visivel.getProdutoId()));
+        ReservaInventario reserva = reservas.findByIdAndOrganizacaoIdForUpdate(
+                        reservaId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Reserva de inventario", reservaId));
+        OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
+        if (reserva.getStatus() != StatusReservaInventario.MANTIDA
+                || !agora.toInstant().isBefore(reserva.getExpiraEm().toInstant())) {
+            throw new ConflitoException(
+                    "A reserva nao pode ser confirmada porque nao esta mantida ou venceu.");
+        }
+        Map<String, Object> anterior = snapshot(reserva);
+        Long versaoAnterior = reserva.getVersion();
+        reserva.confirmar(agora);
+        produto.confirmarReserva(reserva.getQuantidade());
+        reservas.flush();
+        produtos.flush();
+        registrarTransicao(
+                reserva, produto, "RESERVA_INVENTARIO_CONFIRMADA",
+                "InventarioConfirmado", anterior, versaoAnterior);
+        return ReservaInventarioResponse.from(reserva);
+    }
+
     @Transactional
     public int expirarVencidas(int limite) {
         if (limite < 1 || limite > 1000) {

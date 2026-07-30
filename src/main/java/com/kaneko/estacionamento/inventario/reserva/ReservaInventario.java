@@ -102,6 +102,20 @@ public class ReservaInventario extends AuditableEntity {
         return true;
     }
 
+    public boolean confirmar(OffsetDateTime instante) {
+        if (status == StatusReservaInventario.CONFIRMADA) {
+            return false;
+        }
+        if (status != StatusReservaInventario.MANTIDA) {
+            throw new IllegalStateException("Somente reserva mantida pode ser confirmada.");
+        }
+        if (instante == null || !instante.toInstant().isBefore(expiraEm.toInstant())) {
+            throw new IllegalStateException("Reserva vencida nao pode ser confirmada.");
+        }
+        concluir(StatusReservaInventario.CONFIRMADA, "PEDIDO_CONFIRMADO", instante);
+        return true;
+    }
+
     public boolean expirar(OffsetDateTime instante) {
         if (status == StatusReservaInventario.EXPIRADA) {
             return false;

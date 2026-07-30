@@ -182,6 +182,11 @@ InventarioReservado
 
 Compensações: pagamento recusado mantém o pedido até a política expirar; expiração libera inventário; pagamento aprovado sem confirmação de inventário cria divergência crítica e impede emissão automática.
 
+**AS-IS excepcional:** a confirmação manual autorizada percorre diretamente
+`InventarioConfirmado → PedidoConfirmado`, preserva evidência em estado
+`PENDENTE_CONCILIACAO` e não publica `PagamentoAprovado`. O fluxo canônico acima
+continua TARGET para integrações com provedores.
+
 ### PM02 — Cancelamento e reembolso
 
 ```text

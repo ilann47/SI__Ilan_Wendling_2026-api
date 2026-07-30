@@ -40,4 +40,18 @@ class ReservaInventarioTest {
                 1L, 2L, 3L, 4L, 0, "direct-web", null, "key",
                 9L, BigDecimal.ONE, "BRL", agora));
     }
+
+    @Test
+    void confirmaHoldMantidoAntesDoPrazoUmaUnicaVez() {
+        OffsetDateTime agora = OffsetDateTime.parse("2099-07-30T12:00:00Z");
+        ReservaInventario reserva = ReservaInventario.criar(
+                1L, 2L, 3L, 4L, 1, "DIRECT_WEB", null, "key-confirm",
+                9L, BigDecimal.TEN, "BRL", agora.plusMinutes(15));
+
+        assertThat(reserva.confirmar(agora.plusMinutes(1))).isTrue();
+        assertThat(reserva.getStatus()).isEqualTo(StatusReservaInventario.CONFIRMADA);
+        assertThat(reserva.confirmar(agora.plusMinutes(2))).isFalse();
+        assertThatIllegalStateException().isThrownBy(
+                () -> reserva.liberar("DESISTENCIA", agora.plusMinutes(3)));
+    }
 }

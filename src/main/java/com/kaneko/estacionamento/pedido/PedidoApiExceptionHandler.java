@@ -16,8 +16,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class PedidoApiExceptionHandler {
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ProblemDetail handleCabecalhoObrigatorio(MissingRequestHeaderException ex) {
+        if ("If-Match".equalsIgnoreCase(ex.getHeaderName())) {
+            return problem(HttpStatus.PRECONDITION_REQUIRED,
+                    "Pre-condicao obrigatoria",
+                    "O cabecalho If-Match com a versao esperada e obrigatorio.");
+        }
         return problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
                 "O cabecalho " + ex.getHeaderName() + " e obrigatorio.");
+    }
+
+    @ExceptionHandler(VersaoPedidoDivergenteException.class)
+    public ProblemDetail handleVersaoDivergente(VersaoPedidoDivergenteException ex) {
+        return problem(HttpStatus.PRECONDITION_FAILED, "Versao desatualizada",
+                "O pedido foi alterado por outra operacao. Consulte-o novamente.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

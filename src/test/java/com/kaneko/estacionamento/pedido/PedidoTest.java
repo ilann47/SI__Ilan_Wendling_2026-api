@@ -47,4 +47,25 @@ class PedidoTest {
         assertThat(pedido.getStatus()).isEqualTo(StatusPedido.EXPIRADO);
         assertThat(pedido.getFinalizadoEm()).isEqualTo(expiraEm);
     }
+
+    @Test
+    void confirmaSomentePedidoAguardandoPagamento() {
+        Pedido pedido = pedidoAguardandoPagamento();
+
+        pedido.confirmar();
+
+        assertThat(pedido.getStatus()).isEqualTo(StatusPedido.CONFIRMADO);
+        assertThatIllegalStateException().isThrownBy(pedido::confirmar);
+    }
+
+    private static Pedido pedidoAguardandoPagamento() {
+        Pedido pedido = Pedido.criar(
+                1L, 2L, 3L, 4L, "PED-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                "DIRECT_WEB", "Comprador", "comprador@example.com", null,
+                null, OffsetDateTime.parse("2099-07-30T12:15:00Z"));
+        pedido.adicionarItem(ItemPedido.criar(
+                pedido, 5L, "Estacionamento", 1, new BigDecimal("10"), "BRL"));
+        pedido.aguardarPagamento();
+        return pedido;
+    }
 }

@@ -15,6 +15,8 @@ public interface ReservaInventarioRepository extends JpaRepository<ReservaInvent
     Optional<ReservaInventario> findByIdAndOrganizacaoIdAndAtorId(
             Long id, Long organizacaoId, Long atorId);
 
+    Optional<ReservaInventario> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select r from ReservaInventario r
@@ -50,4 +52,12 @@ public interface ReservaInventarioRepository extends JpaRepository<ReservaInvent
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from ReservaInventario r where r.id = :id")
     Optional<ReservaInventario> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select r from ReservaInventario r
+            where r.id = :id and r.organizacaoId = :organizacaoId
+            """)
+    Optional<ReservaInventario> findByIdAndOrganizacaoIdForUpdate(
+            @Param("id") Long id, @Param("organizacaoId") Long organizacaoId);
 }

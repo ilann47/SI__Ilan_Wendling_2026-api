@@ -163,9 +163,12 @@ idempotente para uma reserva `MANTIDA` do próprio ator e do tenant ativo. O
 serviço valida o canal, congela os snapshots comerciais, calcula o total, grava
 `PedidoCriado` e avança para `AGUARDANDO_PAGAMENTO` com
 `PedidoAguardandoPagamento`. `GET /api/v1/orders/{id}` respeita ownership. Um
-job expira pedidos vencidos e publica `PedidoExpirado`. Iniciar pagamento,
-confirmar inventário/pedido e solicitar credencial ainda não estão
-implementados e permanecem nas histórias seguintes.
+job expira pedidos vencidos e publica `PedidoExpirado`.
+`POST /api/v1/orders/{id}/manual-confirmation` implementa o caminho alternativo
+de pagamento manual: exige Admin/Gestor, `If-Match`, `Idempotency-Key`, meio,
+referência de evidência e motivo; confirma inventário e pedido atomicamente e
+registra pendência de conciliação. Iniciar pagamento por gateway e solicitar
+credencial ainda não estão implementados e permanecem nas histórias seguintes.
 
 **Objetivo:** criar pedido e concluir o compromisso comercial.  
 **Atores:** Cliente, Caixa, Parceiro.  

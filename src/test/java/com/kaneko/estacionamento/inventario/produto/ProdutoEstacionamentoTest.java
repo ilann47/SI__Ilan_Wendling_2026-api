@@ -76,4 +76,23 @@ class ProdutoEstacionamentoTest {
         assertThat(produto.getQuantidadeReservada()).isZero();
         assertThatIllegalStateException().isThrownBy(() -> produto.liberarReserva(1));
     }
+
+    @Test
+    void converteQuantidadeReservadaEmVendidaSemAlterarComprometido() {
+        var produto = ProdutoEstacionamento.criar(
+                1L, 2L, 3L, "Produto", CategoriaProduto.COMUM,
+                DireitoProduto.ESTACIONAMENTO_EVENTO,
+                OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
+                OffsetDateTime.parse("2026-10-11T01:00:00-03:00"),
+                10, List.of(), List.of());
+        produto.publicar();
+        produto.reservar(2, 10);
+
+        produto.confirmarReserva(2);
+
+        assertThat(produto.getQuantidadeReservada()).isZero();
+        assertThat(produto.getQuantidadeVendida()).isEqualTo(2);
+        assertThatIllegalStateException().isThrownBy(
+                () -> produto.confirmarReserva(1));
+    }
 }

@@ -10,9 +10,10 @@ sobrevenda mesmo quando requisições disputam a última vaga.
 ## Contexto
 
 UC709 materializa `ReservaInventario` somente para eventos em
-`VENDAS_ABERTAS`. O hold agora fornece snapshot imutável para [[pedidos]], mas
-confirmação como vendido e pagamento permanecem fora deste módulo. O prazo
-padrão provisório é 15 minutos e pode ser configurado.
+`VENDAS_ABERTAS`. O hold fornece snapshot imutável para [[pedidos]] e pode ser
+confirmado atomicamente por um pedido elegível, convertendo reservado em
+vendido. Pagamento permanece fora deste módulo. O prazo padrão provisório é 15
+minutos e pode ser configurado.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -31,6 +32,11 @@ release/job/consulta vencida
   -> lock produto -> lock reserva
   -> transição terminal + devolução exata do contador
   -> auditoria + outbox
+
+confirmação de pedido
+  -> lock produto -> lock reserva MANTIDA e vigente
+  -> CONFIRMADA + reservado decrementado + vendido incrementado
+  -> auditoria + InventarioConfirmado
 ```
 
 ## Endpoints (se houver)
@@ -48,8 +54,9 @@ contadores reservado, vendido e bloqueado, todos defendidos por constraints.
 
 ## Integrações externas (se houver)
 
-Não há broker ou gateway. `InventarioReservado`, `ReservaExpirada` e
-`InventarioLiberado` são gravados na [[outbox]] da transação.
+Não há broker ou gateway. `InventarioReservado`, `ReservaExpirada`,
+`InventarioLiberado` e `InventarioConfirmado` são gravados na [[outbox]] da
+transação.
 
 ## Tratamento de Erros
 
@@ -61,7 +68,8 @@ Não há broker ou gateway. `InventarioReservado`, `ReservaExpirada` e
 ## Testes (curl ou equivalente)
 
 Há testes de domínio, API, RBAC, ownership, idempotência, expiração, liberação,
-saldo projetado, constraints e duas transações concorrentes pela última vaga.
+confirmação, saldo projetado, constraints e transações concorrentes pela última
+vaga e pela confirmação do mesmo pedido.
 
 ## Decisões Técnicas
 
@@ -70,6 +78,8 @@ saldo projetado, constraints e duas transações concorrentes pela última vaga.
 - A disponibilidade é indicativa; somente o commit do hold garante quantidade.
 - Expiração usa job interno em lotes de 100 e também é aplicada ao consultar ou
   reservar, sempre na ordem de locks produto → reserva.
+- Confirmação usa a mesma ordem produto → reserva e altera os contadores uma
+  única vez; hold confirmado é terminal.
 - O prazo de 15 minutos é premissa operacional configurável até definição de negócio.
 - Nesta etapa, Admin, Gestor e Organizador autenticados representam os canais;
   identidade pública de cliente/caixa/integração permanece no backlog próprio.
@@ -93,3 +103,4 @@ saldo projetado, constraints e duas transações concorrentes pela última vaga.
 | Data | Ação |
 |---|---|
 | 2026-07-30 | Implementa UC709 com hold atômico, expiração e liberação única. |
+| 2026-07-30 | Converte hold confirmado de reservado para vendido na transação do pedido. |

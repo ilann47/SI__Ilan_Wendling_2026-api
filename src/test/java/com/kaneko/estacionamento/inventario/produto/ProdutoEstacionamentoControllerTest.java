@@ -757,6 +757,88 @@ class ProdutoEstacionamentoControllerTest {
                 """, pedidoId)).isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    void confirmaPedidoManualmenteConvertendoReservaEmVendaUmaVez() throws Exception {
+        long pedidoId = criarPedidoPersistido("manual-confirm");
+        Long holdId = jdbc.queryForObject(
+                "select reserva_inventario_id from pedido where id = ?",
+                Long.class, pedidoId);
+        Long produtoId = jdbc.queryForObject(
+                "select produto_id from reserva_inventario where id = ?",
+                Long.class, holdId);
+        String payload = payloadConfirmacaoManual("DINHEIRO", "RECIBO-2026-001");
+
+        confirmarManualmente(tokenContextual, pedidoId, "\"1\"", "manual-1",
+                        payload, status().isAccepted())
+                .andExpect(header().string("ETag", "\"2\""))
+                .andExpect(jsonPath("$.status").value("CONFIRMADO"))
+                .andExpect(jsonPath("$.version").value(2));
+        confirmarManualmente(tokenContextual, pedidoId, "\"1\"", "manual-1",
+                        payload, status().isAccepted())
+                .andExpect(header().string("ETag", "\"2\""));
+        confirmarManualmente(tokenContextual, pedidoId, "\"2\"", "manual-1",
+                payloadConfirmacaoManual("PIX_MANUAL", "PIX-OUTRO"),
+                status().isConflict());
+        confirmarManualmente(tokenContextual, pedidoId, "\"1\"", "manual-2",
+                payload, status().isPreconditionFailed());
+
+        mvc.perform(get("/api/v1/inventory-holds/{id}", holdId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMADA"))
+                .andExpect(header().string("ETag", "\"1\""));
+        assertThat(jdbc.queryForObject("""
+                select quantidade_reservada from produto_estacionamento where id = ?
+                """, Integer.class, produtoId)).isZero();
+        assertThat(jdbc.queryForObject("""
+                select quantidade_vendida from produto_estacionamento where id = ?
+                """, Integer.class, produtoId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+                select status_conciliacao from confirmacao_manual_pedido where pedido_id = ?
+                """, String.class, pedidoId)).isEqualTo("PENDENTE_CONCILIACAO");
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao())
+                    .isEqualTo("PEDIDO_CONFIRMADO_MANUALMENTE");
+            assertThat(auditoria.getRecursoId()).isEqualTo(pedidoId);
+        });
+        assertThat(outbox.findAll()).anySatisfy(evento -> {
+            assertThat(evento.getEventType()).isEqualTo("PedidoConfirmado");
+            assertThat(evento.getAggregateType()).isEqualTo("PEDIDO");
+            assertThat(evento.getAggregateId()).isEqualTo(pedidoId);
+        });
+    }
+
+    @Test
+    void confirmacaoManualExigePrecondicaoPermissaoEPedidoVigente() throws Exception {
+        long pedidoId = criarPedidoPersistido("manual-rules");
+        String payload = payloadConfirmacaoManual("DINHEIRO", "RECIBO-RULES");
+
+        mvc.perform(post("/api/v1/orders/{id}/manual-confirmation", pedidoId)
+                        .header("Authorization", tokenContextual)
+                        .header("Idempotency-Key", "manual-no-version")
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isPreconditionRequired());
+        confirmarManualmente(tokenContextual, pedidoId, "\"1\"", "manual-field",
+                payload.replaceFirst("\\{", "{\"status\":\"CONFIRMADO\","),
+                status().isBadRequest());
+
+        Usuario organizador = usuario("manual_organizador", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(organizador.getId(), tokenContextual);
+        concederPapel(membershipId, "ORGANIZADOR");
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+        confirmarManualmente(tokenOrganizador, pedidoId, "\"1\"", "manual-denied",
+                payload, status().isForbidden());
+
+        jdbc.update("""
+                update pedido set created_at = now() - interval '1 hour',
+                    expira_em = now() - interval '1 minute' where id = ?
+                """, pedidoId);
+        entityManager.clear();
+        confirmarManualmente(tokenContextual, pedidoId, "\"1\"", "manual-expired",
+                payload, status().isConflict());
+    }
+
     private org.springframework.test.web.servlet.ResultActions publicarProduto(
             String token, Long produtoId, String ifMatch,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -818,6 +900,23 @@ class ProdutoEstacionamentoControllerTest {
                         payloadPedido(holdId, "DIRECT_WEB"), status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.<Number>read(orderBody, "$.id").longValue();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions confirmarManualmente(
+            String token, long pedidoId, String ifMatch, String chave, String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/orders/{id}/manual-confirmation", pedidoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .header("Idempotency-Key", chave)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
+    private static String payloadConfirmacaoManual(String meio, String evidencia) {
+        return """
+                {"paymentMethod":"%s","evidenceReference":"%s",
+                 "reason":"RECEBIMENTO_PRESENCIAL_COMPROVADO"}
+                """.formatted(meio, evidencia);
     }
 
     private static String payloadPedido(long holdId, String canal) {

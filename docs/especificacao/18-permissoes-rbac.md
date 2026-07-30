@@ -135,6 +135,11 @@ pedido somente pode usar hold e ser consultado pelo próprio usuário
 autenticado; leitura administrativa, cliente público e escopos de caixa ou
 parceiro permanecem no backlog de identidade contextual.
 
+`orders:manual-confirm` está implementada somente para `ADMIN_ORGANIZACAO` e
+`GESTOR`. A permissão não é concedida ao `ORGANIZADOR`, exige evidência e cria
+pendência de conciliação; ela não permite alterar valor, itens ou documento do
+pedido.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

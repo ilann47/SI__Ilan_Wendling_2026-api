@@ -122,6 +122,14 @@ public class Pedido extends AuditableEntity {
         status = StatusPedido.AGUARDANDO_PAGAMENTO;
     }
 
+    public void confirmar() {
+        if (status != StatusPedido.AGUARDANDO_PAGAMENTO) {
+            throw new IllegalStateException(
+                    "Somente pedido aguardando pagamento pode ser confirmado.");
+        }
+        status = StatusPedido.CONFIRMADO;
+    }
+
     public boolean expirar(OffsetDateTime instante) {
         if (status == StatusPedido.EXPIRADO) return false;
         if (status != StatusPedido.CRIADO && status != StatusPedido.AGUARDANDO_PAGAMENTO) {

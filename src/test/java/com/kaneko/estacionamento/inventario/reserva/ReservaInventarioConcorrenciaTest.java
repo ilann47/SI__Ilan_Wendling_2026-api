@@ -31,6 +31,12 @@ import com.kaneko.estacionamento.organizacao.OrganizacaoService;
 import com.kaneko.estacionamento.organizacao.dto.CriarOrganizacaoRequest;
 import com.kaneko.estacionamento.organizacao.venue.VenueService;
 import com.kaneko.estacionamento.organizacao.venue.dto.CriarVenueRequest;
+import com.kaneko.estacionamento.pedido.PedidoService;
+import com.kaneko.estacionamento.pedido.VersaoPedidoDivergenteException;
+import com.kaneko.estacionamento.pedido.dto.CompradorPedidoRequest;
+import com.kaneko.estacionamento.pedido.dto.ConfirmarPedidoManualmenteRequest;
+import com.kaneko.estacionamento.pedido.dto.CriarPedidoRequest;
+import com.kaneko.estacionamento.pedido.dto.PedidoResponse;
 import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
 import com.kaneko.estacionamento.usuario.UsuarioService;
@@ -64,6 +70,7 @@ class ReservaInventarioConcorrenciaTest {
     @Autowired ProdutoEstacionamentoService produtos;
     @Autowired LotePrecoService lotes;
     @Autowired ReservaInventarioService reservas;
+    @Autowired PedidoService pedidos;
     @Autowired JdbcTemplate jdbc;
     @MockitoBean AuditoriaService auditoria;
     @MockitoBean OutboxService outbox;
@@ -152,6 +159,45 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    @Test
+    void apenasUmaConfirmacaoConverteAReservaEmVenda() throws Exception {
+        Long reservaId = reservas.criar(
+                organizacaoId, usuarioId, "hold-confirm-concorrente",
+                new CriarReservaInventarioRequest(
+                        produtoId, 1, "DIRECT_WEB", "buyer-concorrente")).id();
+        PedidoResponse pedido = pedidos.criar(
+                organizacaoId, usuarioId, "order-confirm-concorrente",
+                new CriarPedidoRequest(
+                        reservaId,
+                        new CompradorPedidoRequest(
+                                "Comprador Concorrente", "buyer@example.com", null),
+                        null, "DIRECT_WEB"));
+        CountDownLatch inicio = new CountDownLatch(1);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<Object> primeira = executor.submit(
+                    () -> confirmar(inicio, pedido.id(), "confirm-a"));
+            Future<Object> segunda = executor.submit(
+                    () -> confirmar(inicio, pedido.id(), "confirm-b"));
+            inicio.countDown();
+
+            List<Object> resultados = List.of(primeira.get(), segunda.get());
+            assertThat(resultados.stream().filter(r -> r instanceof PedidoResponse).count())
+                    .isEqualTo(1);
+            assertThat(resultados.stream()
+                    .filter(r -> r instanceof VersaoPedidoDivergenteException).count())
+                    .isEqualTo(1);
+            assertThat(jdbc.queryForObject("""
+                    select quantidade_reservada from produto_estacionamento where id = ?
+                    """, Integer.class, produtoId)).isZero();
+            assertThat(jdbc.queryForObject("""
+                    select quantidade_vendida from produto_estacionamento where id = ?
+                    """, Integer.class, produtoId)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("""
+                    select count(*) from confirmacao_manual_pedido where pedido_id = ?
+                    """, Integer.class, pedido.id())).isEqualTo(1);
+        }
+    }
+
     private Object reservar(CountDownLatch inicio, String chave) {
         try {
             inicio.await();
@@ -164,10 +210,27 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    private Object confirmar(CountDownLatch inicio, Long pedidoId, String chave) {
+        try {
+            inicio.await();
+            return pedidos.confirmarManualmente(
+                    organizacaoId, usuarioId, pedidoId, 1L, chave,
+                    new ConfirmarPedidoManualmenteRequest(
+                            "DINHEIRO", "RECIBO-" + chave,
+                            "RECEBIMENTO_PRESENCIAL"));
+        } catch (Exception ex) {
+            return ex;
+        }
+    }
+
     @AfterEach
     void limparDadosCommitados() {
         if (organizacaoId == null) return;
         jdbc.update("delete from requisicao_idempotente where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from confirmacao_manual_pedido where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from item_pedido where pedido_id in (select id from pedido where organizacao_id = ?)", organizacaoId);
+        jdbc.update("delete from comprador_pedido where pedido_id in (select id from pedido where organizacao_id = ?)", organizacaoId);
+        jdbc.update("delete from pedido where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from reserva_inventario where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from lote_preco where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from produto_estacionamento where organizacao_id = ?", organizacaoId);

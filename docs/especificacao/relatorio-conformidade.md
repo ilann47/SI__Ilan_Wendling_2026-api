@@ -553,3 +553,25 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Pagamento, confirmação do inventário, credencial e check-in não foram
   antecipados.
 - A suíte passa de 436 para 444 testes sem regressões.
+
+---
+
+## Atualização — Confirmação manual conciliável (2026-07-30)
+
+- A migration `V22__confirmacao_manual_pedido.sql` cria a evidência tenant-aware
+  `confirmacao_manual_pedido`, única por pedido, com ator e estado inicial
+  `PENDENTE_CONCILIACAO`.
+- `POST /api/v1/orders/{id}/manual-confirmation` exige
+  `orders:manual-confirm`, `If-Match`, `Idempotency-Key`, meio, referência de
+  evidência e motivo. Somente Admin e Gestor recebem a permissão.
+- Pedido, produto e hold são bloqueados em ordem estável. A confirmação converte
+  exatamente uma vez o contador reservado em vendido e avança pedido e hold
+  para `CONFIRMADO`/`CONFIRMADA` na mesma transação.
+- Replays idênticos retornam o resultado persistido; payload divergente retorna
+  conflito e versão divergente retorna `412`.
+- `InventarioConfirmado` e `PedidoConfirmado` entram na outbox. Não há
+  `PagamentoAprovado`, pois a evidência manual ainda requer conciliação e não
+  simula resposta de gateway.
+- Testes cobrem domínio, API, RBAC, precondição, idempotência, expiração,
+  auditoria/outbox e duas transações concorrentes sobre o mesmo pedido.
+- A suíte passa de 444 para 450 testes sem regressões.

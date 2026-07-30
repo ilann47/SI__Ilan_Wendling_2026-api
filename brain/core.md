@@ -68,3 +68,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro da abertura imediata e versionada de vendas do evento. |
 | 2026-07-30 | Registro de UC709 com reserva atômica, expiração e liberação de saldo. |
 | 2026-07-30 | Registro de UC710 até pedido aguardando pagamento e expiração. |
+| 2026-07-30 | Registro da confirmação manual conciliável de pedido e inventário. |

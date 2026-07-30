@@ -100,6 +100,8 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
   como precondição e origem do `ETag`.
 - Auditoria e outbox participam da mesma transação da mudança para `PUBLICADO`.
 - [[reservas-inventario]] bloqueia o produto e altera seu contador reservado;
+  a confirmação converte o mesmo saldo de reservado para vendido sem alterar a
+  soma comprometida.
   a versão JPA e constraints defendem o saldo contra concorrência e corrupção.
 
 ## Módulos relacionados
@@ -122,5 +124,6 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
 | 2026-07-30 | Implementa UC707 com criação idempotente de produto em rascunho. |
 | 2026-07-30 | Implementa UC708 com lote de preço temporal e quantitativo. |
 | 2026-07-30 | Implementa publicação versionada do produto com auditoria e outbox. |
+| 2026-07-30 | Protege a conversão atômica do contador reservado em vendido. |
 | 2026-07-30 | Fornece produto e lote vigentes à projeção de [[disponibilidade]]. |
 | 2026-07-30 | Passa a manter contadores protegidos para UC709. |

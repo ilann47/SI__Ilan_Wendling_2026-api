@@ -186,7 +186,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /orders` | AS-IS: inventoryHoldId, buyer, vehiclePlate, channel + `Idempotency-Key` | `201 Order`, `Location`, `ETag` | `orders:create`; hold mantido do próprio ator; canal coerente; snapshots e total derivados; idempotência, auditoria e outbox |
 | `GET /orders/{id}` | AS-IS: id | `200 Order`, `ETag` | tenant e proprietário autenticado com `orders:create`; outro ator/tenant recebe `404` |
 | `GET /orders` | cursor, evento, estado, canal | página por cursor | escopo e filtros publicados |
-| `POST /orders/{id}/manual-confirmation` | meio/evidência/motivo | `202` | permissão excepcional e conciliação |
+| `POST /orders/{id}/manual-confirmation` | AS-IS: paymentMethod, evidenceReference, reason + `If-Match` + `Idempotency-Key` | `202 Order` + `ETag` | `orders:manual-confirm`; Admin/Gestor; pedido aguardando e hold vigente; converte reservado em vendido; evidência `PENDENTE_CONCILIACAO`; auditoria/outbox/idempotência; não publica aprovação de gateway |
 | `POST /orders/{id}/cancellation` | motivo | `202 CancellationProcess` | política e estado |
 | `POST /orders/{id}/payments` | método, provider, return URLs | `201/202 Payment` | sem cartão bruto; idempotência |
 | `GET /payments/{id}` | id | `200 Payment` | cliente próprio ou financeiro |

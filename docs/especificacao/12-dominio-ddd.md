@@ -192,8 +192,10 @@ alocação. `LotePreco` define preço, moeda, quantidade, período e prioridade;
 **Situação implementada:** UC710 está materializada até
 `AGUARDANDO_PAGAMENTO`: o pedido nasce de uma reserva `MANTIDA` pertencente ao
 ator autenticado, congela comprador, veículo, produto, lote, janela, preço e
-moeda, deriva o total e expira automaticamente. Confirmação, cancelamento e
-atendimento permanecem dependentes das histórias de pagamento e credencial.
+moeda, deriva o total e expira automaticamente. Uma confirmação manual
+excepcional pode confirmar inventário e pedido mediante permissão, evidência e
+conciliação posterior; ela não representa `PagamentoAprovado`. O fluxo canônico
+de gateway, cancelamento e atendimento permanece nas histórias próprias.
 
 - **Objetivo:** representar intenção e contrato comercial com o comprador.
 - **Agregado:** `Pedido`.

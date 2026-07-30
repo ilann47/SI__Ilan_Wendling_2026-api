@@ -75,3 +75,4 @@ e rejeitam payload diferente.
 | 2026-07-30 | Reutiliza a fundação na criação de `LotePreco`. |
 | 2026-07-30 | Reutiliza a fundação no hold atômico de inventário. |
 | 2026-07-30 | Reutiliza a fundação na criação de pedido por hold. |
+| 2026-07-30 | Protege confirmação manual de pedido contra replay e payload divergente. |
