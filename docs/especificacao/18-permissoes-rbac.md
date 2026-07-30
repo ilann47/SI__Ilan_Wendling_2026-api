@@ -130,6 +130,11 @@ do catálogo já publicado.
 Integração, o hold pertence ao usuário autenticado e não pode ser consultado ou
 liberado por outro ator, mesmo no mesmo tenant.
 
+`orders:create` está implementada para os mesmos três papéis. Nesta etapa, o
+pedido somente pode usar hold e ser consultado pelo próprio usuário
+autenticado; leitura administrativa, cliente público e escopos de caixa ou
+parceiro permanecem no backlog de identidade contextual.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

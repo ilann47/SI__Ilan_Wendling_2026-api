@@ -189,6 +189,12 @@ alocação. `LotePreco` define preço, moeda, quantidade, período e prioridade;
 
 ### BC07 — Pedidos
 
+**Situação implementada:** UC710 está materializada até
+`AGUARDANDO_PAGAMENTO`: o pedido nasce de uma reserva `MANTIDA` pertencente ao
+ator autenticado, congela comprador, veículo, produto, lote, janela, preço e
+moeda, deriva o total e expira automaticamente. Confirmação, cancelamento e
+atendimento permanecem dependentes das histórias de pagamento e credencial.
+
 - **Objetivo:** representar intenção e contrato comercial com o comprador.
 - **Agregado:** `Pedido`.
 - **Entidades:** `ItemPedido`, `Desconto`, `Comprador`, `OrigemPedido`.

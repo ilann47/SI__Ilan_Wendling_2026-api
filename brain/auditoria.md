@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[eventos]]
+> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[eventos]] · [[pedidos]]
 
 # Auditoria
 
@@ -68,6 +68,7 @@ imutabilidade física no PostgreSQL.
 - [[instalacoes]] — publica `PATIO_CRIADO` com snapshot explícito de capacidade.
 - [[venues]] — publica `UNIDADE_CRIADA` com snapshot explícito de localização.
 - [[eventos]] — registra `EVENTO_CRIADO` com referência direta ao evento.
+- [[pedidos]] — registra criação e expiração com valores e estados explícitos.
 
 ## Histórico (data + ação)
 
@@ -81,3 +82,4 @@ imutabilidade física no PostgreSQL.
 | 2026-07-30 | Evento passa a auditar a publicação e suas versões inicial/final. |
 | 2026-07-30 | Evento passa a auditar a abertura imediata de vendas e sua versão. |
 | 2026-07-30 | Reserva de inventário passa a auditar criação, expiração e liberação. |
+| 2026-07-30 | Pedido passa a auditar criação e expiração financeira. |

@@ -183,8 +183,8 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 
 | Método e rota | Payload/Parâmetros | Resposta | Regras |
 |---|---|---|---|
-| `POST /orders` | hold, comprador, placa, canal | `201 Order` | hold mantido; idempotência |
-| `GET /orders/{id}` | id | `200 Order` | proprietário ou papel autorizado |
+| `POST /orders` | AS-IS: inventoryHoldId, buyer, vehiclePlate, channel + `Idempotency-Key` | `201 Order`, `Location`, `ETag` | `orders:create`; hold mantido do próprio ator; canal coerente; snapshots e total derivados; idempotência, auditoria e outbox |
+| `GET /orders/{id}` | AS-IS: id | `200 Order`, `ETag` | tenant e proprietário autenticado com `orders:create`; outro ator/tenant recebe `404` |
 | `GET /orders` | cursor, evento, estado, canal | página por cursor | escopo e filtros publicados |
 | `POST /orders/{id}/manual-confirmation` | meio/evidência/motivo | `202` | permissão excepcional e conciliação |
 | `POST /orders/{id}/cancellation` | motivo | `202 CancellationProcess` | política e estado |

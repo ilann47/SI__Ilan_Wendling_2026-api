@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[disponibilidade]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[disponibilidade]] · [[pedidos]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Reservas de Inventário
 
@@ -10,8 +10,9 @@ sobrevenda mesmo quando requisições disputam a última vaga.
 ## Contexto
 
 UC709 materializa `ReservaInventario` somente para eventos em
-`VENDAS_ABERTAS`. Pedido, confirmação como vendido e pagamento permanecem fora
-desta história. O prazo padrão provisório é 15 minutos e pode ser configurado.
+`VENDAS_ABERTAS`. O hold agora fornece snapshot imutável para [[pedidos]], mas
+confirmação como vendido e pagamento permanecem fora deste módulo. O prazo
+padrão provisório é 15 minutos e pode ser configurado.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -81,6 +82,7 @@ saldo projetado, constraints e duas transações concorrentes pela última vaga.
 - [[inventario]]
 - [[produtos-estacionamento]]
 - [[disponibilidade]]
+- [[pedidos]]
 - [[rbac]]
 - [[auditoria]]
 - [[idempotencia]]

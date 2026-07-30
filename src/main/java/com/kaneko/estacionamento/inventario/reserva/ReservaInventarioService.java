@@ -33,6 +33,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -197,6 +198,31 @@ public class ReservaInventarioService {
                 reserva, produto, "RESERVA_INVENTARIO_LIBERADA", "InventarioLiberado",
                 anterior, versaoAnterior);
         return ReservaInventarioResponse.from(reserva);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public ReservaParaPedido obterMantidaParaPedido(
+            Long organizacaoId, Long atorId, Long reservaId) {
+        ReservaInventario reserva = reservas.findDoAtorForUpdate(
+                        reservaId, organizacaoId, atorId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Reserva de inventario", reservaId));
+        OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
+        if (reserva.getStatus() != StatusReservaInventario.MANTIDA
+                || !agora.toInstant().isBefore(reserva.getExpiraEm().toInstant())) {
+            throw new ConflitoException(
+                    "A reserva de inventario nao esta mantida ou ja expirou.");
+        }
+        ProdutoEstacionamento produto = produtos.findByIdAndOrganizacaoId(
+                        reserva.getProdutoId(), organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Produto de estacionamento", reserva.getProdutoId()));
+        return new ReservaParaPedido(
+                reserva.getId(), reserva.getEventoId(), produto.getId(),
+                produto.getAlocacaoId(), reserva.getLotePrecoId(), produto.getNome(),
+                produto.getCategoria(), produto.getDireito(), produto.getInicioAcesso(),
+                produto.getFimAcesso(), reserva.getQuantidade(), reserva.getCanal(),
+                reserva.getPrecoUnitario(), reserva.getMoeda(), reserva.getExpiraEm());
     }
 
     @Transactional

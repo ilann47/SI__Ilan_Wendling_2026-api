@@ -100,6 +100,11 @@ flowchart TD
 
 ## 13.4 Catálogo — Pedido, pagamento e credencial
 
+**Situação implementada:** `PedidoCriado`, `PedidoAguardandoPagamento` e
+`PedidoExpirado` são gravados na outbox pela implementação atual. O primeiro
+comando não inicia gateway nem confirma inventário; esses fatos permanecem no
+fluxo TARGET posterior.
+
 | Evento | Disparador | Regras executadas | Entidades afetadas | Seguimento |
 |---|---|---|---|---|
 | `PedidoCriado` | Cliente, caixa ou parceiro | Idempotência, reserva válida, snapshots e total | Pedido | `PedidoAguardandoPagamento`, `PedidoConfirmado` para cortesia |

@@ -79,6 +79,11 @@ stateDiagram-v2
 
 ## 15.4 Pedido
 
+**Situação implementada:** a criação percorre `CRIADO → AGUARDANDO_PAGAMENTO`
+na mesma transação, sem expor o estado intermediário ao cliente. Um job interno
+materializa `EXPIRADO` quando o prazo herdado do hold termina. As demais
+transições continuam TARGET e não são aceitas pela API atual.
+
 ```mermaid
 stateDiagram-v2
   [*] --> CRIADO

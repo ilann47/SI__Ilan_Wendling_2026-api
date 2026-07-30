@@ -46,6 +46,9 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   tenant-aware por categoria, lote vigente e prioridade, sem garantir reserva.
 - **Hold de inventário** (`/api/v1/inventory-holds`) — reserva temporária,
   idempotente e atômica, com expiração automática e liberação exata do saldo.
+- **Pedidos** (`POST /api/v1/orders`) — contrato comercial idempotente criado a
+  partir do hold do próprio ator, com snapshots, total derivado e expiração
+  automática enquanto aguarda pagamento.
 - **Alocação de pátios** — associação temporal multipátio por evento, com
   capacidades operacional/vendável/reservada, prevenção transacional de
   sobrealocação, idempotência, auditoria e concorrência otimista.

@@ -531,3 +531,25 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Confirmação como vendido, pedido, pagamento e identidade pública de cliente,
   caixa ou integração não foram antecipados.
 - A suíte passa de 426 para 436 testes sem regressões.
+
+---
+
+## Atualização — Pedido em espera / UC710 parcial (2026-07-30)
+
+- A migration `V21__pedido_estacionamento.sql` cria `pedido`,
+  `comprador_pedido` e `item_pedido` com FKs tenant/ator/evento, unicidade por
+  hold e número, snapshots imutáveis e constraints de estado e valores.
+- `POST /api/v1/orders` exige `orders:create`, tenant ativo,
+  `Idempotency-Key` e hold `MANTIDA` pertencente ao ator. Canal divergente,
+  reserva vencida/liberada ou reutilizada são rejeitados.
+- A criação percorre `CRIADO → AGUARDANDO_PAGAMENTO` atomicamente, congela os
+  dados comerciais e deriva subtotal e total sem aceitar campos controlados.
+- `GET /api/v1/orders/{id}` aplica tenant e ownership; documento do comprador é
+  devolvido mascarado.
+- `PedidoCriado`, `PedidoAguardandoPagamento` e `PedidoExpirado` entram na
+  outbox; criação e expiração também são auditadas.
+- Um job interno expira pedidos aguardando pagamento no prazo do hold. O hold
+  continua reservado; sua própria expiração é a autoridade que devolve saldo.
+- Pagamento, confirmação do inventário, credencial e check-in não foram
+  antecipados.
+- A suíte passa de 436 para 444 testes sem regressões.

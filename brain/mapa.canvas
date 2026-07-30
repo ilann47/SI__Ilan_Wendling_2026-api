@@ -13,7 +13,8 @@
     {"id": "inventario", "type": "file", "file": "inventario.md", "x": 2500, "y": 320, "width": 360, "height": 220},
     {"id": "produtos-estacionamento", "type": "file", "file": "produtos-estacionamento.md", "x": 3000, "y": 320, "width": 360, "height": 220},
     {"id": "disponibilidade", "type": "file", "file": "disponibilidade.md", "x": 3500, "y": 320, "width": 360, "height": 220},
-    {"id": "reservas-inventario", "type": "file", "file": "reservas-inventario.md", "x": 3500, "y": 0, "width": 360, "height": 220}
+    {"id": "reservas-inventario", "type": "file", "file": "reservas-inventario.md", "x": 3500, "y": 0, "width": 360, "height": 220},
+    {"id": "pedidos", "type": "file", "file": "pedidos.md", "x": 4000, "y": 0, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -55,6 +56,9 @@
     {"id": "eventos-reservas", "fromNode": "eventos", "fromSide": "right", "toNode": "reservas-inventario", "toSide": "left", "label": "vendas abertas"},
     {"id": "reservas-disponibilidade", "fromNode": "reservas-inventario", "fromSide": "bottom", "toNode": "disponibilidade", "toSide": "top", "label": "reservado"},
     {"id": "reservas-outbox", "fromNode": "reservas-inventario", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "reservado/expirado/liberado"},
-    {"id": "rbac-reservas", "fromNode": "rbac", "fromSide": "right", "toNode": "reservas-inventario", "toSide": "left", "label": "inventory:hold"}
+    {"id": "rbac-reservas", "fromNode": "rbac", "fromSide": "right", "toNode": "reservas-inventario", "toSide": "left", "label": "inventory:hold"},
+    {"id": "reservas-pedidos", "fromNode": "reservas-inventario", "fromSide": "right", "toNode": "pedidos", "toSide": "left", "label": "hold mantido + snapshot"},
+    {"id": "pedidos-outbox", "fromNode": "pedidos", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "criado/aguardando/expirado"},
+    {"id": "rbac-pedidos", "fromNode": "rbac", "fromSide": "right", "toNode": "pedidos", "toSide": "left", "label": "orders:create"}
   ]
 }

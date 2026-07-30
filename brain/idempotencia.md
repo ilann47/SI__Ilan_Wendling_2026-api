@@ -1,4 +1,4 @@
-> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[reservas-inventario]]
+> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[reservas-inventario]] · [[pedidos]]
 
 # Idempotência
 
@@ -10,8 +10,8 @@ o resultado original, sem aceitar a mesma chave para intenções diferentes.
 ## Contexto
 
 A fundação entra com UC701 e é deliberadamente genérica. O primeiro consumidor
-é [[eventos]]; alocações, produtos, lotes e [[reservas-inventario]] aderem em
-suas respectivas histórias.
+é [[eventos]]; alocações, produtos, lotes, [[reservas-inventario]] e [[pedidos]]
+aderem em suas respectivas histórias.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -26,7 +26,8 @@ tenant + ator + operação + chave
 ## Endpoints (se houver)
 
 Não possui endpoint próprio. Comandos de criação críticos, inclusive
-`POST /api/v1/inventory-holds`, exigem `Idempotency-Key`.
+`POST /api/v1/inventory-holds` e `POST /api/v1/orders`, exigem
+`Idempotency-Key`.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -61,6 +62,8 @@ e rejeitam payload diferente.
 - [[eventos]]
 - [[inventario]]
 - [[produtos-estacionamento]]
+- [[reservas-inventario]]
+- [[pedidos]]
 
 ## Histórico (data + ação)
 
@@ -71,3 +74,4 @@ e rejeitam payload diferente.
 | 2026-07-30 | Reutiliza a fundação na criação de `ProdutoEstacionamento`. |
 | 2026-07-30 | Reutiliza a fundação na criação de `LotePreco`. |
 | 2026-07-30 | Reutiliza a fundação no hold atômico de inventário. |
+| 2026-07-30 | Reutiliza a fundação na criação de pedido por hold. |

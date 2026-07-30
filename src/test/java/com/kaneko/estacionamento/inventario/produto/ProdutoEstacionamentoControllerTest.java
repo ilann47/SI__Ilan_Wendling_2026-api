@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.inventario.produto;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -30,6 +31,7 @@ import com.kaneko.estacionamento.organizacao.OrganizacaoService;
 import com.kaneko.estacionamento.organizacao.dto.CriarOrganizacaoRequest;
 import com.kaneko.estacionamento.organizacao.venue.VenueService;
 import com.kaneko.estacionamento.organizacao.venue.dto.CriarVenueRequest;
+import com.kaneko.estacionamento.pedido.PedidoService;
 import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
 import com.kaneko.estacionamento.usuario.UsuarioService;
@@ -43,6 +45,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,6 +68,7 @@ class ProdutoEstacionamentoControllerTest {
     @Autowired RegistroAuditoriaRepository auditorias;
     @Autowired EventoOutboxRepository outbox;
     @Autowired ReservaInventarioService reservas;
+    @Autowired PedidoService pedidos;
     @Autowired JdbcTemplate jdbc;
     @Autowired EntityManager entityManager;
 
@@ -588,6 +592,171 @@ class ProdutoEstacionamentoControllerTest {
                 status().isForbidden());
     }
 
+    @Test
+    void criaPedidoComSnapshotTotalIdempotenciaAuditoriaEOutbox() throws Exception {
+        Long produtoId = prepararVendaAberta(4, 4);
+        String holdBody = criarHold(tokenContextual, "hold-order-1",
+                        payloadHold(produtoId, 2, "checkout-1"), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(holdBody, "$.id").longValue();
+        String payload = payloadPedido(holdId, "DIRECT_WEB");
+
+        String primeiro = criarPedido(tokenContextual, "order-1", payload,
+                        status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.inventoryHoldId").value(holdId))
+                .andExpect(jsonPath("$.eventId").value(eventoId))
+                .andExpect(jsonPath("$.number").value(
+                        org.hamcrest.Matchers.matchesPattern("PED-[A-F0-9]{32}")))
+                .andExpect(jsonPath("$.status").value("AGUARDANDO_PAGAMENTO"))
+                .andExpect(jsonPath("$.vehiclePlate").value("ABC1D23"))
+                .andExpect(jsonPath("$.buyer.email").value("comprador@example.com"))
+                .andExpect(jsonPath("$.buyer.maskedDocument").value("*******8909"))
+                .andExpect(jsonPath("$.items[0].parkingProductId").value(produtoId))
+                .andExpect(jsonPath("$.items[0].parkingAllocationId").value(alocacaoId))
+                .andExpect(jsonPath("$.items[0].quantity").value(2))
+                .andExpect(jsonPath("$.items[0].unitPrice").value(45.00))
+                .andExpect(jsonPath("$.subtotal").value(90.00))
+                .andExpect(jsonPath("$.total").value(90.00))
+                .andExpect(jsonPath("$.currency").value("BRL"))
+                .andReturn().getResponse().getContentAsString();
+        long pedidoId = JsonPath.<Number>read(primeiro, "$.id").longValue();
+
+        String repetido = criarPedido(tokenContextual, "order-1", payload,
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(repetido, "$.id").longValue())
+                .isEqualTo(pedidoId);
+        criarPedido(tokenContextual, "order-1",
+                payload.replace("Comprador Kaneko", "Outro Comprador"),
+                status().isConflict());
+        mvc.perform(get("/api/v1/orders/{id}", pedidoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(pedidoId));
+
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("PEDIDO_CRIADO");
+            assertThat(auditoria.getRecursoId()).isEqualTo(pedidoId);
+            assertThat(auditoria.getEventoId()).isEqualTo(eventoId);
+        });
+        assertThat(outbox.findAll().stream()
+                .filter(e -> e.getAggregateId().equals(pedidoId))
+                .map(e -> e.getEventType()).toList())
+                .containsExactlyInAnyOrder("PedidoCriado", "PedidoAguardandoPagamento");
+    }
+
+    @Test
+    void pedidoRejeitaHoldLiberadoCanalDivergenteECampoControlado() throws Exception {
+        Long produtoId = prepararVendaAberta(3, 3);
+        String holdBody = criarHold(tokenContextual, "hold-order-invalid",
+                        payloadHold(produtoId, 1, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(holdBody, "$.id").longValue();
+
+        criarPedido(tokenContextual, "order-channel",
+                payloadPedido(holdId, "BOX_OFFICE"), status().isConflict());
+        criarPedido(tokenContextual, "order-field",
+                payloadPedido(holdId, "DIRECT_WEB")
+                        .replaceFirst("\\{", "{\"status\":\"CONFIRMADO\","),
+                status().isBadRequest());
+        liberarHold(tokenContextual, holdId, "DESISTENCIA", status().isOk());
+        criarPedido(tokenContextual, "order-released",
+                payloadPedido(holdId, "DIRECT_WEB"), status().isConflict());
+    }
+
+    @Test
+    void pedidoRespeitaPapelEPropriedadeDoAtor() throws Exception {
+        Long produtoId = prepararVendaAberta(3, 3);
+        String holdBody = criarHold(tokenContextual, "hold-order-owner",
+                        payloadHold(produtoId, 1, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(holdBody, "$.id").longValue();
+        String orderBody = criarPedido(tokenContextual, "order-owner",
+                        payloadPedido(holdId, "DIRECT_WEB"), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long pedidoId = JsonPath.<Number>read(orderBody, "$.id").longValue();
+
+        Usuario organizador = usuario("order_organizador", PerfilUsuario.OPERADOR);
+        long organizadorMembership = criarMembership(
+                organizador.getId(), tokenContextual);
+        concederPapel(organizadorMembership, "ORGANIZADOR");
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+        mvc.perform(get("/api/v1/orders/{id}", pedidoId)
+                        .header("Authorization", tokenOrganizador))
+                .andExpect(status().isNotFound());
+
+        Usuario membro = usuario("order_membro", PerfilUsuario.OPERADOR);
+        criarMembership(membro.getId(), tokenContextual);
+        String tokenMembro = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
+        criarPedido(tokenMembro, "order-denied",
+                payloadPedido(holdId, "DIRECT_WEB"), status().isForbidden());
+    }
+
+    @Test
+    void expiraPedidoAguardandoPagamentoComAuditoriaEOutbox() throws Exception {
+        Long produtoId = prepararVendaAberta(1, 1);
+        String holdBody = criarHold(tokenContextual, "hold-order-expire",
+                        payloadHold(produtoId, 1, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(holdBody, "$.id").longValue();
+        String orderBody = criarPedido(tokenContextual, "order-expire",
+                        payloadPedido(holdId, "DIRECT_WEB"), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long pedidoId = JsonPath.<Number>read(orderBody, "$.id").longValue();
+        jdbc.update("""
+                update pedido
+                set created_at = now() - interval '1 hour',
+                    expira_em = now() - interval '1 minute'
+                where id = ?
+                """, pedidoId);
+        entityManager.clear();
+
+        assertThat(pedidos.expirarVencidos(100)).isEqualTo(1);
+        mvc.perform(get("/api/v1/orders/{id}", pedidoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRADO"))
+                .andExpect(jsonPath("$.finalizedAt").exists());
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("PEDIDO_EXPIRADO");
+            assertThat(auditoria.getRecursoId()).isEqualTo(pedidoId);
+        });
+        assertThat(outbox.findAll()).anySatisfy(evento -> {
+            assertThat(evento.getEventType()).isEqualTo("PedidoExpirado");
+            assertThat(evento.getAggregateId()).isEqualTo(pedidoId);
+        });
+    }
+
+    @Test
+    void bancoImpedeSegundoPedidoParaOMesmoHold() throws Exception {
+        long pedidoId = criarPedidoPersistido("constraint-hold");
+
+        assertThatThrownBy(() -> jdbc.update("""
+                insert into pedido (
+                    organizacao_id, evento_id, reserva_inventario_id, ator_id,
+                    numero, canal, placa_veiculo, status, subtotal, desconto,
+                    taxa, total, moeda, expira_em, finalizado_em, version)
+                select organizacao_id, evento_id, reserva_inventario_id, ator_id,
+                    'PED-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', canal, placa_veiculo,
+                    status, subtotal, desconto, taxa, total, moeda, expira_em,
+                    finalizado_em, 0
+                from pedido where id = ?
+                """, pedidoId)).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void bancoImpedeTotalDivergenteDosComponentes() throws Exception {
+        long pedidoId = criarPedidoPersistido("constraint-total");
+
+        assertThatThrownBy(() -> jdbc.update("""
+                update pedido set total = total + 1 where id = ?
+                """, pedidoId)).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     private org.springframework.test.web.servlet.ResultActions publicarProduto(
             String token, Long produtoId, String ifMatch,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -628,6 +797,36 @@ class ProdutoEstacionamentoControllerTest {
                         .header("Authorization", token).header("Idempotency-Key", chave)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions criarPedido(
+            String token, String chave, String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/orders")
+                        .header("Authorization", token).header("Idempotency-Key", chave)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
+    private long criarPedidoPersistido(String sufixo) throws Exception {
+        Long produtoId = prepararVendaAberta(1, 1);
+        String holdBody = criarHold(tokenContextual, "hold-order-" + sufixo,
+                        payloadHold(produtoId, 1, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(holdBody, "$.id").longValue();
+        String orderBody = criarPedido(tokenContextual, "order-" + sufixo,
+                        payloadPedido(holdId, "DIRECT_WEB"), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.<Number>read(orderBody, "$.id").longValue();
+    }
+
+    private static String payloadPedido(long holdId, String canal) {
+        return """
+                {"inventoryHoldId":%d,
+                 "buyer":{"name":"Comprador Kaneko","email":"COMPRADOR@example.com",
+                          "document":"123.456.789-09"},
+                 "vehiclePlate":"ABC-1D23","channel":"%s"}
+                """.formatted(holdId, canal);
     }
 
     private org.springframework.test.web.servlet.ResultActions liberarHold(

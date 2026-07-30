@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[membership]] · [[eventos]]
+> Links: [[core]] · [[organizacoes]] · [[membership]] · [[eventos]] · [[pedidos]]
 
 # RBAC Contextual
 
@@ -11,8 +11,9 @@ permissão e escopo, sem confiar no perfil legado ou em IDs enviados pelo client
 
 A implementação atual usa exclusivamente o escopo `ORGANIZACAO`. O papel de
 sistema `ADMIN_ORGANIZACAO` reúne `organizations:admin`, `users:invite`,
-`roles:grant`, `roles:revoke`, `facilities:manage` e `events:create`. Os papéis
-`GESTOR` e `ORGANIZADOR` recebem `events:create`; escopo por evento permanece futuro.
+`roles:grant`, `roles:revoke`, `facilities:manage`, `events:create` e as demais
+permissões de gestão já migradas. `orders:create` integra Administrador, Gestor
+e Organizador; escopo por evento permanece futuro.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -70,6 +71,7 @@ proteção do último administrador.
 - [[eventos]] — criação exige `events:create`; Gestor e Organizador integram o catálogo.
 - [[inventario]] — alocações exigem `inventory:manage`, concedida a Administrador da Organização e Gestor.
 - [[produtos-estacionamento]] — criação exige `pricing:manage`, concedida também ao Organizador.
+- [[pedidos]] — criação e leitura própria exigem `orders:create`, concedida a Administrador, Gestor e Organizador.
 
 ## Histórico (data + ação)
 
@@ -81,3 +83,4 @@ proteção do último administrador.
 | 2026-07-30 | Catálogo recebe Gestor, Organizador e `events:create`. |
 | 2026-07-30 | Catálogo recebe `inventory:manage` para Administrador da Organização e Gestor. |
 | 2026-07-30 | Catálogo recebe `pricing:manage` para Administrador, Gestor e Organizador. |
+| 2026-07-30 | Catálogo recebe `orders:create` para Administrador, Gestor e Organizador. |
