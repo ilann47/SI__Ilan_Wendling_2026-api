@@ -25,7 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * ({@code DELETE}) e a manutencao de tarifas (preco). As demais rotas exigem
  * apenas autenticacao, liberando o OPERADOR para a operacao do dia a dia (pátio,
  * vendas, baixas, consultas). O perfil chega como autoridade {@code ROLE_<perfil>}
- * no token (ver {@link JwtAuthFilter}).
+ * a partir do perfil atual do {@code Usuario} persistido (ver {@link JwtAuthFilter}).
  */
 @Configuration
 public class SecurityConfig {
@@ -40,7 +40,8 @@ public class SecurityConfig {
             HttpSecurity http,
             @Value("${app.security.enabled:true}") boolean segurancaHabilitada,
             JwtService jwtService,
-            UsuarioRepository usuarioRepository) throws Exception {
+            UsuarioRepository usuarioRepository,
+            ContextoAutenticadoService contextoService) throws Exception {
 
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
@@ -60,7 +61,7 @@ public class SecurityConfig {
                             // Qualquer exclusao e administrativa.
                             .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
                             .anyRequest().authenticated())
-                    .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository),
+                    .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository, contextoService),
                             UsernamePasswordAuthenticationFilter.class)
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(
                             new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));

@@ -1,4 +1,4 @@
-> Links: [[organizacoes]]
+> Links: [[organizacoes]] · [[membership]]
 
 # Core do Estacionamento Kaneko
 
@@ -34,9 +34,11 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 ## Módulos implementados na evolução enterprise
 
 - [[organizacoes]] — fundação do tenant empresarial.
+- [[membership]] — vínculo da identidade global, descoberta e contexto de tenant.
 
 ## Histórico
 
 | Data | Ação |
 |---|---|
 | 2026-07-29 | Inicialização do brain e registro da História 1 de Organizações. |
+| 2026-07-29 | Registro da História 2 de Membership e JWT contextual. |

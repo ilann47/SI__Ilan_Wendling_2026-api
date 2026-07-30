@@ -2,10 +2,12 @@ package com.kaneko.estacionamento.common.security;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kaneko.estacionamento.usuario.Usuario;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,17 +26,24 @@ public class JwtService {
 
     private final byte[] secret;
     private final long expiracaoSegundos;
+    private final String issuer;
+    private final String audience;
     private final ObjectMapper mapper = new ObjectMapper();
     private final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
     private final Base64.Decoder decoder = Base64.getUrlDecoder();
 
-    public JwtService(@Value("${app.jwt.secret}") String secret,
-                      @Value("${app.jwt.expiration-minutes:480}") long expiracaoMinutos) {
+    public JwtService(
+            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.expiration-minutes:480}") long expiracaoMinutos,
+            @Value("${app.jwt.issuer:estacionamento-kaneko}") String issuer,
+            @Value("${app.jwt.audience:estacionamento-kaneko-api}") String audience) {
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
         this.expiracaoSegundos = expiracaoMinutos * 60L;
+        this.issuer = issuer;
+        this.audience = audience;
     }
 
-    /** Gera um token com o login no subject e o perfil como claim. */
+    /** Emite o formato legado, usado durante a janela de compatibilidade. */
     public String gerarToken(String login, String perfil) {
         long agora = System.currentTimeMillis() / 1000L;
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -42,7 +51,42 @@ public class JwtService {
         payload.put("perfil", perfil);
         payload.put("iat", agora);
         payload.put("exp", agora + expiracaoSegundos);
+        return gerar(payload);
+    }
 
+    /** Emite um token novo sem tenant, mantendo o contrato de login existente. */
+    public String gerarToken(Usuario usuario) {
+        Map<String, Object> payload = payloadBase(
+                usuario.getLogin(), usuario.getId(), usuario.getPerfil().name());
+        return gerar(payload);
+    }
+
+    /** Emite contexto organizacional somente apos validacao server-side. */
+    public String gerarTokenContextual(
+            UsuarioAutenticado usuario, ContextoOrganizacao contexto) {
+        Map<String, Object> payload = payloadBase(
+                usuario.login(), usuario.userId(), usuario.perfilLegado().name());
+        payload.put("org_id", contexto.organizacaoId());
+        payload.put("membership_id", contexto.membershipId());
+        payload.put("membership_version", contexto.membershipVersion());
+        return gerar(payload);
+    }
+
+    private Map<String, Object> payloadBase(String login, Long usuarioId, String perfil) {
+        long agora = System.currentTimeMillis() / 1000L;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("iss", issuer);
+        payload.put("aud", audience);
+        payload.put("sub", login);
+        payload.put("user_id", usuarioId);
+        payload.put("perfil", perfil);
+        payload.put("jti", UUID.randomUUID().toString());
+        payload.put("iat", agora);
+        payload.put("exp", agora + expiracaoSegundos);
+        return payload;
+    }
+
+    private String gerar(Map<String, Object> payload) {
         String header = encoder.encodeToString(HEADER_JSON.getBytes(StandardCharsets.UTF_8));
         String corpo;
         try {
@@ -67,16 +111,50 @@ public class JwtService {
         }
         try {
             JsonNode payload = mapper.readTree(decoder.decode(partes[1]));
-            long exp = payload.path("exp").asLong();
+            long exp = payload.path("exp").asLong(-1);
             if (System.currentTimeMillis() / 1000L >= exp) {
                 throw new TokenInvalidoException("Token expirado.");
             }
-            return new Claims(payload.path("sub").asText(), payload.path("perfil").asText());
+            String login = payload.path("sub").asText();
+            if (login.isBlank()) {
+                throw new TokenInvalidoException("Subject ausente.");
+            }
+            validarClaimPadraoQuandoPresente(payload, "iss", issuer);
+            validarClaimPadraoQuandoPresente(payload, "aud", audience);
+            return new Claims(
+                    login,
+                    payload.path("perfil").asText(),
+                    longOpcional(payload, "user_id"),
+                    longOpcional(payload, "org_id"),
+                    longOpcional(payload, "membership_id"),
+                    longOpcional(payload, "membership_version"),
+                    textoOpcional(payload, "jti"),
+                    textoOpcional(payload, "iss"),
+                    textoOpcional(payload, "aud"),
+                    payload.path("iat").asLong(0),
+                    exp);
         } catch (TokenInvalidoException e) {
             throw e;
         } catch (Exception e) {
             throw new TokenInvalidoException("Conteúdo do token inválido.");
         }
+    }
+
+    private static void validarClaimPadraoQuandoPresente(
+            JsonNode payload, String claim, String esperado) {
+        if (payload.has(claim) && !esperado.equals(payload.path(claim).asText())) {
+            throw new TokenInvalidoException("Claim " + claim + " invalida.");
+        }
+    }
+
+    private static Long longOpcional(JsonNode payload, String claim) {
+        JsonNode valor = payload.get(claim);
+        return valor == null || valor.isNull() ? null : valor.longValue();
+    }
+
+    private static String textoOpcional(JsonNode payload, String claim) {
+        JsonNode valor = payload.get(claim);
+        return valor == null || valor.isNull() ? null : valor.asText();
     }
 
     private byte[] hmac(String conteudo) {
@@ -101,7 +179,26 @@ public class JwtService {
     }
 
     /** Dados extraidos de um token valido. */
-    public record Claims(String login, String perfil) {
+    public record Claims(
+            String login,
+            String perfil,
+            Long usuarioId,
+            Long organizacaoId,
+            Long membershipId,
+            Long membershipVersion,
+            String jti,
+            String issuer,
+            String audience,
+            long emitidoEm,
+            long expiraEm) {
+
+        public boolean possuiAlgumClaimDeContexto() {
+            return organizacaoId != null || membershipId != null || membershipVersion != null;
+        }
+
+        public boolean possuiContextoCompleto() {
+            return organizacaoId != null && membershipId != null && membershipVersion != null;
+        }
     }
 
     /** Sinaliza um token ausente, malformado, adulterado ou expirado. */

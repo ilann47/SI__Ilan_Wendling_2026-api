@@ -25,6 +25,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
 - **Segurança** — usuários (senha BCrypt) e autenticação JWT.
 - **Organizações** (`/api/v1/organizations`) — fundação multiempresa com
   documento empresarial, moeda, fuso, região, plano e concorrência otimista.
+- **Membership** — vínculo temporal entre o `Usuario` global e organizações,
+  seleção server-side do tenant ativo e emissão de JWT contextual revogável por versão.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
 
@@ -45,7 +47,7 @@ CREATE DATABASE estacionamento_kaneko_test;
 ```
 
 O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
-migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V8`). O
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V9`). O
 Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
 schema, nunca o altera.
 
@@ -64,6 +66,8 @@ Todas têm um valor padrão de desenvolvimento (nada é obrigatório para rodar 
 | `APP_SECURITY_ENABLED` | `true`                          | Exige JWT em `/api/**`                       |
 | `APP_JWT_SECRET`       | *(chave de dev — troque!)*      | Segredo HMAC do JWT (≥ 32 bytes em produção) |
 | `APP_JWT_EXP_MIN`      | `480`                           | Validade do token, em minutos               |
+| `APP_JWT_ISSUER`       | `estacionamento-kaneko`         | Emissor esperado nos novos tokens           |
+| `APP_JWT_AUDIENCE`     | `estacionamento-kaneko-api`     | Audiência esperada nos novos tokens          |
 
 ## Como executar
 
@@ -98,6 +102,13 @@ Com a segurança ligada, os endpoints `/api/**` exigem um token JWT (exceto
 3. Envie o token nas demais chamadas: `Authorization: Bearer <token>` (ou use o
    botão **Authorize** no Swagger).
 
+O login continua emitindo um token sem tenant. O usuário consulta seus vínculos
+ativos em `GET /api/v1/me/organizations` e seleciona uma organização com
+`POST /api/v1/me/active-organization`, enviando somente `organizationId`. A API
+devolve um novo JWT com `org_id`, `membership_id` e `membership_version`; headers
+não alteram esse contexto. Suspensão, reativação ou encerramento da Membership
+invalidam imediatamente os tokens contextuais anteriores.
+
 > Para explorar a API sem token em ambiente local, suba com
 > `APP_SECURITY_ENABLED=false`.
 
@@ -110,7 +121,7 @@ schema; a cada classe a transação sofre rollback):
 ./mvnw test
 ```
 
-São 332 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
+São 348 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
 dos processos do pátio, fiscais, financeiros e dos relatórios.
 
@@ -132,6 +143,7 @@ fiscal/          notas de entrada, saída e serviço (+ itens)
 financeiro/      contas a pagar, a receber e avulsas
 usuario/         cadastro de usuários
 organizacao/     tenant empresarial, lifecycle, ETag e If-Match
+membership/      vínculo usuário–organização, contexto autenticado e JWT contextual
 relatorio/       relatórios gerenciais (consultas consolidadas)
 ```
 

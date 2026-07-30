@@ -260,3 +260,29 @@ A primeira entrega da fundação enterprise passou a estar implementada no códi
 - Até a História 3, os endpoints são restritos ao perfil legado `ADMIN`.
 - Nenhum dado legado foi associado automaticamente e nenhum `organizacao_id` foi antecipado em pátio ou usuário.
 - A suíte automatizada passou de 318 para 332 testes, sem regressão nos testes preexistentes.
+
+---
+
+## Atualização — História 2: Membership e contexto organizacional (2026-07-29)
+
+O vínculo entre a identidade global e o tenant passou a estar implementado sem
+alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo.
+
+- Migration `V9__membership_organizacao_usuario.sql` cria `membro_organizacao`,
+  com FKs restritivas, checks de estado e datas, versão otimista e índice único
+  parcial que impede dois vínculos correntes e preserva o histórico encerrado.
+- `MembroOrganizacao` nasce em `ATIVO`, permite `ATIVO ↔ SUSPENSO` e termina em
+  `ENCERRADO`; cada mudança incrementa a versão JPA.
+- A administração temporária por `ROLE_ADMIN` expõe POST, GET e PATCH de
+  Membership; PATCH exige `If-Match` e usa `ETag` derivado exclusivamente de `@Version`.
+- `GET /api/v1/me`, `GET /api/v1/me/organizations` e
+  `POST /api/v1/me/active-organization` implementam descoberta e seleção de tenant.
+- A seleção recebe somente `organizationId`; Membership, estado, perfil e versão
+  são resolvidos no servidor. A listagem usa projeção direta e retorna apenas
+  Membership e organização ativas.
+- O login preserva compatibilidade, enquanto os novos tokens incluem claims
+  padronizadas. O token contextual contém `org_id`, `membership_id` e
+  `membership_version`; vínculo inválido ou desatualizado resulta em `401`.
+- O perfil atual do `Usuario` no banco define a authority, inclusive para tokens
+  legados; não é possível trocar tenant por header.
+- A suíte automatizada passou de 332 para 348 testes, preservando os anteriores.

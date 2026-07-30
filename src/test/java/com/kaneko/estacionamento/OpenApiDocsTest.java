@@ -32,6 +32,13 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].patch").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].put").doesNotExist())
-                .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].delete").doesNotExist());
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{id}'].delete").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{organizationId}/memberships'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{organizationId}/memberships'].get").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{organizationId}/memberships/{membershipId}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/organizations/{organizationId}/memberships/{membershipId}'].patch").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/me'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/me/organizations'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/me/active-organization'].post").exists());
     }
 }

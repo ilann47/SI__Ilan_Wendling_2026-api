@@ -40,6 +40,7 @@
 | `409` | invariante, estado ou idempotência conflitante |
 | `412` | versão `If-Match` desatualizada |
 | `422` | comando válido recusado por regra de negócio |
+| `428` | mutação que exige `If-Match` sem a precondição |
 | `429` | limite de uso |
 | `503` | dependência crítica indisponível sem contingência |
 
@@ -129,6 +130,12 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /organizations` | dados empresariais, região, plano | `201 Organization` | Admin plataforma; idempotência |
 | `GET /organizations/{id}` | id | `200 Organization` | Admin plataforma/organização no próprio escopo |
 | `PATCH /organizations/{id}` | campos aditivos + `If-Match` | `200` | Admin organização; campos de propriedade imutáveis |
+| `POST /organizations/{organizationId}/memberships` | somente `userId` | `201 Membership` + `Location`/`ETag` | AS-IS: `ROLE_ADMIN`; usuário e organização ativos; vínculo nasce ativo |
+| `GET /organizations/{organizationId}/memberships/{membershipId}` | IDs no path | `200 Membership` + `ETag` | AS-IS: `ROLE_ADMIN`; vínculo deve pertencer à organização informada |
+| `PATCH /organizations/{organizationId}/memberships/{membershipId}` | somente status + `If-Match` | `200 Membership` + `ETag` | AS-IS: `ROLE_ADMIN`; `ATIVO ↔ SUSPENSO`, ou encerramento terminal |
+| `GET /me` | token | identidade e organização ativa opcional | qualquer autenticado; contexto presente é revalidado no banco |
+| `GET /me/organizations` | token | organizações acessíveis | projeção direta; somente Membership e organização ativas |
+| `POST /me/active-organization` | somente `organizationId` | novo JWT contextual | Membership, estado, perfil e versão resolvidos pelo servidor |
 | `POST /venues` | organização implícita, nome, endereço, fuso | `201 Venue` | Admin/Gestor |
 | `POST /users/invitations` | email, papel, escopo, validade | `202 Invitation` | Admin/Gestor com capacidade de delegação |
 | `PUT /users/{id}/role-assignments/{assignmentId}` | papel, escopo, vigência | `200 Assignment` | Admin; não pode conceder além da própria alçada |

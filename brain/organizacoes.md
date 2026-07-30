@@ -1,10 +1,10 @@
-> Links: [[core]]
+> Links: [[core]] · [[membership]]
 
 # Organizações
 
 ## Objetivo
 
-Representar o tenant empresarial proprietário dos dados da plataforma. Nesta história, o módulo entrega o cadastro e o lifecycle interno de `Organizacao`; a resolução do tenant autenticado será adicionada somente com Membership.
+Representar o tenant empresarial proprietário dos dados da plataforma. O módulo entrega o cadastro e o lifecycle interno de `Organizacao`; [[membership]] resolve quais organizações ativas uma identidade global pode acessar.
 
 ## Contexto
 
@@ -60,12 +60,12 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 - Região significa subdivisão operacional/regulatória ISO 3166-2, como `BR-PR`.
 - Moeda é armazenada em maiúsculas após validação ISO 4217.
 - A proteção temporária usa `ROLE_ADMIN` até o RBAC contextual da História 3.
-- Não há Membership, auditoria, outbox ou ownership de pátio antecipados.
+- Membership referencia a organização por ID, sem antecipar auditoria, outbox ou ownership de pátio.
 
 ## Módulos relacionados
 
 - [[core]]
-- Membership — próxima história, ainda não implementada.
+- [[membership]] — vínculos ativos habilitam descoberta e emissão de contexto organizacional.
 - Instalações — receberá ownership da organização em sua etapa própria.
 
 ## Histórico
@@ -73,3 +73,4 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 | Data | Ação |
 |---|---|
 | 2026-07-29 | Implementação inicial do agregado, migration V8 e três endpoints `/api/v1`. |
+| 2026-07-29 | Integração de leitura com Membership ativa, sem alterar o contrato administrativo da organização. |

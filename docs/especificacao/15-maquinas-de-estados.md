@@ -286,3 +286,21 @@ stateDiagram-v2
 ```
 
 Fontes obrigatórias: inventário, pedidos, pagamentos, reembolsos, credenciais, acessos, movimentações, caixas, documentos fiscais, contas e repasses.
+
+## 15.15 Membership de organização
+
+```mermaid
+stateDiagram-v2
+  [*] --> ATIVO: vínculo administrativo
+  ATIVO --> SUSPENSO: suspender
+  SUSPENSO --> ATIVO: reativar
+  ATIVO --> ENCERRADO: encerrar
+  SUSPENSO --> ENCERRADO: encerrar
+  ENCERRADO --> [*]
+```
+
+`ENCERRADO` é terminal: um vínculo posterior cria outro registro e preserva o
+histórico. Suspensão, reativação e encerramento incrementam `@Version`, de modo
+que qualquer JWT contextual emitido com a versão anterior deixa de autenticar.
+O estado `PENDENTE` somente será introduzido quando convite, aceite e expiração
+forem implementados.

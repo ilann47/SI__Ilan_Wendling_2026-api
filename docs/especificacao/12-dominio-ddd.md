@@ -103,11 +103,11 @@ flowchart LR
 ### BC02 — Identidade, Acesso e Auditoria
 
 - **Objetivo:** autenticar identidades e autorizar ações por permissão e escopo.
-- **Agregados:** `Usuario`, `Papel`, `AtribuicaoAcesso`.
+- **Agregados:** `Usuario`, `MembroOrganizacao`, `Papel`, `AtribuicaoAcesso`.
 - **Entidades:** `Sessao`, `Permissao`, `Escopo`, `ConviteUsuario`, `RegistroAuditoria`.
 - **Value Objects:** `Identidade`, `HashSenha`, `EscopoAcesso`, `ConjuntoPermissoes`.
 - **Serviços:** `Autorizador`, `ResolvedorPermissoes`, `RegistradorAuditoria`.
-- **Invariantes:** usuário ativo; escopo pertencente ao tenant; permissão efetiva é interseção entre papel, escopo, vigência e estado; auditoria não editável.
+- **Invariantes:** usuário é identidade global; no máximo uma Membership corrente por usuário/organização; contexto autenticado exige organização e Membership ativas na mesma versão do token; escopo pertencente ao tenant; permissão efetiva é interseção entre papel, escopo, vigência e estado; auditoria não editável.
 - **Eventos:** `UsuarioConvidado`, `UsuarioAtivado`, `PapelAtribuido`, `AcessoRevogado`, `LoginRealizado`, `OperacaoSensivelAuditada`.
 - **Dependências:** `Organizacoes`; fornece autorização para todos.
 

@@ -42,7 +42,7 @@ public class AuthController {
         if (!passwordEncoder.matches(req.senha(), usuario.getSenha())) {
             throw new AutenticacaoException("Login ou senha inválidos.");
         }
-        String token = jwtService.gerarToken(usuario.getLogin(), usuario.getPerfil().name());
+        String token = jwtService.gerarToken(usuario);
         return new LoginResponse(token, "Bearer", usuario.getLogin(), usuario.getPerfil());
     }
 }

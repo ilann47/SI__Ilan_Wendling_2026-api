@@ -16,9 +16,10 @@
 
 | Entidade | Situação e responsabilidade | Atributos principais | Relacionamentos | Estados/validações | Histórico e auditoria |
 |---|---|---|---|---|---|
-| `Organizacao` | TARGET; tenant e proprietário dos dados | documento, razão social, nome, moeda, fuso, plano, configurações | 1:N unidades, usuários, pátios, eventos | `PROVISIONANDO/ATIVA/SUSPENSA/ENCERRADA`; documento único; fuso/moeda obrigatórios | provisionamento, suspensão, mudança de plano e configuração |
+| `Organizacao` | AS-IS/EVOLUÇÃO; tenant e proprietário dos dados | documento, razão social, nome, moeda, fuso, região, plano | 1:N memberships; futuramente unidades, pátios e eventos | `PROVISIONANDO/ATIVA/SUSPENSA/ENCERRADA`; documento único; fuso/moeda obrigatórios | timestamps e versão otimista; auditoria detalhada futura |
 | `UnidadeOperacional` | TARGET; unidade/venue administrativo | nome, tipo, endereço, contatos, timezone | N:1 organização; 1:N pátios | ativa/inativa; endereço e organização válidos | alterações de local e status |
-| `Usuario` | AS-IS/EVOLUÇÃO; identidade autenticável | nome, login, hash, email, status, MFA | N:1 organização; N:N atribuições; 0:1 funcionário | convidado/ativo/bloqueado/inativo; login único no tenant | login, falhas, bloqueios, redefinições e concessões |
+| `Usuario` | AS-IS/EVOLUÇÃO; identidade autenticável global | nome, login, hash, email, ativo, perfil legado | N:N organizações por `MembroOrganizacao`; futuramente N:N atribuições e 0:1 funcionário | ativo/inativo; login global único; MFA e estados ampliados futuros | inativação lógica; sessões e concessões detalhadas futuras |
+| `MembroOrganizacao` | AS-IS/EVOLUÇÃO; vínculo temporal entre identidade global e tenant | organizacaoId, usuarioId, status, origem, entrouEm, suspensoEm, encerradoEm, version | N:1 organização; N:1 usuário | `ATIVO/SUSPENSO/ENCERRADO`; no máximo um vínculo corrente por par; encerrado é terminal | histórico preservado; versão invalida JWT contextual anterior |
 | `Papel` | TARGET; conjunto nomeado de permissões | código, nome, permissões, tipo | N:N atribuições | código imutável; permissões conhecidas | alterações versionadas |
 | `AtribuicaoAcesso` | TARGET; papel em escopo e vigência | usuarioId, papelId, tipoEscopo, escopoId, início/fim | N:1 usuário/papel | escopo pertence ao tenant; vigência coerente | concedente, revogador e motivo |
 | `SessaoAutenticacao` | TARGET; ciclo da sessão | jti, client, device, emitidaEm, expiraEm, revogadaEm | N:1 usuário | token rotacionável e revogável | IP reduzido/mascarado, dispositivo e revogação |
