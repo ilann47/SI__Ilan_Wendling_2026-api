@@ -105,6 +105,14 @@ public class ProdutoEstacionamento extends AuditableEntity {
         return Collections.unmodifiableList(restricoes);
     }
 
+    public void publicar() {
+        if (status != StatusProdutoEstacionamento.RASCUNHO) {
+            throw new IllegalStateException(
+                    "Somente produto em rascunho pode ser publicado.");
+        }
+        status = StatusProdutoEstacionamento.PUBLICADO;
+    }
+
     static void validarDados(
             String nome, CategoriaProduto categoria, DireitoProduto direito,
             OffsetDateTime inicioAcesso, OffsetDateTime fimAcesso, Integer quota,

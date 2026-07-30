@@ -115,8 +115,9 @@ essa permissão nesta etapa, preservando a responsabilidade do Gestor sobre a
 capacidade compartilhada dos pátios.
 
 `pricing:manage` está implementada para `ADMIN_ORGANIZACAO`, `GESTOR` e
-`ORGANIZADOR` e protege a criação de `ProdutoEstacionamento`. Ela não concede
-alteração da capacidade física ou operacional da alocação.
+`ORGANIZADOR` e protege a criação e a publicação de `ProdutoEstacionamento`,
+além da criação de `LotePreco`. Ela não concede alteração da capacidade física
+ou operacional da alocação.
 
 ## 18.5 Regras ABAC complementares
 

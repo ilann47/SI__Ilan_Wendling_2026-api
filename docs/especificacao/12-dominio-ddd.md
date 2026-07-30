@@ -166,8 +166,11 @@ O saldo simultâneo é protegido por lock pessimista no pátio, validação
 transacional e constraints tenant-aware. `ProdutoEstacionamento` materializa a
 oferta em rascunho e compromete quota da capacidade vendável sob lock da
 alocação. `LotePreco` define preço, moeda, quantidade, período e prioridade;
-o lock do produto e a defesa no banco impedem sobreposição ambígua. Publicação,
-reserva de inventário e projeções de disponibilidade permanecem TARGET.
+  o lock do produto e a defesa no banco impedem sobreposição ambígua. Publicação
+  do evento, reserva de inventário e projeções de disponibilidade permanecem
+  TARGET. O comando explícito de publicação do produto já valida preço
+  configurado, versão concorrente, auditoria e outbox antes da transição para
+  `PUBLICADO`.
 
 - **Objetivo:** transformar capacidade em ofertas sem sobrevenda.
 - **Agregados:** `AlocacaoCapacidade`, `ProdutoEstacionamento`, `PoliticaPreco`, `ReservaInventario`.

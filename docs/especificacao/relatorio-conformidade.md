@@ -435,3 +435,18 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - A criação é auditada; snapshot de preço em reserva/pedido permanece para as
   histórias comerciais posteriores.
 - A suíte passou de 406 para 416 testes sem regressões.
+
+---
+
+## Atualização — Publicação de produto (2026-07-30)
+
+- `POST /api/v1/parking-products/{id}/publication` exige confirmação explícita
+  e `If-Match`, retornando o produto publicado e seu novo `ETag`.
+- A transição `RASCUNHO → PUBLICADO` somente ocorre quando existe ao menos um
+  lote de preço; produto já publicado ou sem preço é rejeitado.
+- O lock pessimista e a comparação com a versão JPA impedem publicação
+  concorrente ou replay com versão obsoleta; ausência de versão retorna `428`
+  e divergência retorna `412`.
+- Auditoria e `ProdutoEstacionamentoPublicado` na outbox são persistidos na
+  mesma transação do agregado.
+- A suíte passou de 416 para 419 testes sem regressões.

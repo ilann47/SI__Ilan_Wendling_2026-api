@@ -12,8 +12,9 @@
 
 ## 15.2 Evento
 
-**Situação implementada:** somente a entrada em `RASCUNHO` pelo comando de
-criação está ativa. Nenhuma transição seguinte é exposta nesta história.
+**Situação implementada:** o evento ainda entra em `RASCUNHO`; a publicação do
+produto associado já executa `RASCUNHO → PUBLICADO` em comando explícito,
+protegido por versão. As transições do evento entram na história seguinte.
 
 ```mermaid
 stateDiagram-v2

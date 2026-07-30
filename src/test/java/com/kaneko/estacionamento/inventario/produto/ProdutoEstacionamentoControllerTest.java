@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.kaneko.estacionamento.auditoria.RegistroAuditoriaRepository;
 import com.kaneko.estacionamento.common.security.JwtService;
+import com.kaneko.estacionamento.common.outbox.EventoOutboxRepository;
 import com.kaneko.estacionamento.evento.EventoService;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.geografia.CidadeService;
@@ -56,6 +57,7 @@ class ProdutoEstacionamentoControllerTest {
     @Autowired AlocacaoPatioEventoService alocacoes;
     @Autowired JwtService jwt;
     @Autowired RegistroAuditoriaRepository auditorias;
+    @Autowired EventoOutboxRepository outbox;
 
     private Usuario admin;
     private Long organizacaoId;
@@ -339,6 +341,60 @@ class ProdutoEstacionamentoControllerTest {
                 payloadLote("Outro Tenant", "10", "BRL", 10, 1,
                         "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
                 status().isNotFound());
+    }
+
+    @Test
+    void publicaProdutoCompletoComAuditoriaEOutbox() throws Exception {
+        Long produtoId = criarProdutoBase("Produto Publicavel", "produto-publicavel", 20);
+        criarLote(tokenContextual, produtoId, "lote-publicavel",
+                payloadLote("Lote Publicavel", "50", "BRL", 20, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isCreated());
+
+        publicarProduto(tokenContextual, produtoId, "\"0\"", status().isOk())
+                .andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.status").value("PUBLICADO"))
+                .andExpect(jsonPath("$.version").value(1));
+
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("PRODUTO_ESTACIONAMENTO_PUBLICADO");
+            assertThat(auditoria.getRecursoId()).isEqualTo(produtoId);
+        });
+        assertThat(outbox.findAll()).anySatisfy(evento -> {
+            assertThat(evento.getEventType()).isEqualTo("ProdutoEstacionamentoPublicado");
+            assertThat(evento.getAggregateId()).isEqualTo(produtoId);
+            assertThat(evento.getAggregateVersion()).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void impedePublicacaoSemLoteEProtegeVersao() throws Exception {
+        Long semLote = criarProdutoBase("Produto Sem Lote", "produto-sem-lote", 10);
+        publicarProduto(tokenContextual, semLote, "\"0\"", status().isConflict());
+
+        Long produtoId = criarProdutoBase("Produto Versao", "produto-versao", 10);
+        criarLote(tokenContextual, produtoId, "lote-versao",
+                payloadLote("Lote Versao", "10", "BRL", 10, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isCreated());
+        mvc.perform(post("/api/v1/parking-products/{id}/publication", produtoId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"confirmed\":true}"))
+                .andExpect(status().isPreconditionRequired());
+        publicarProduto(tokenContextual, produtoId, "\"99\"",
+                status().isPreconditionFailed());
+        publicarProduto(tokenContextual, produtoId, "\"0\"", status().isOk());
+        publicarProduto(tokenContextual, produtoId, "\"0\"",
+                status().isPreconditionFailed());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions publicarProduto(
+            String token, Long produtoId, String ifMatch,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/parking-products/{id}/publication", produtoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"confirmed\":true}"))
+                .andExpect(esperado);
     }
 
     private Long criarProdutoBase(String nome, String chave, int quota) throws Exception {

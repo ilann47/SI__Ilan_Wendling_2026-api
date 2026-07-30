@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.inventario.produto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -40,5 +41,20 @@ class ProdutoEstacionamentoTest {
                 1L, 2L, 3L, "Produto", CategoriaProduto.COMUM,
                 DireitoProduto.ESTACIONAMENTO_EVENTO, inicio, inicio.plusHours(1),
                 1, List.of("codigo invalido"), List.of()));
+    }
+
+    @Test
+    void publicaSomenteUmaVezAPartirDoRascunho() {
+        var produto = ProdutoEstacionamento.criar(
+                1L, 2L, 3L, "Produto", CategoriaProduto.COMUM,
+                DireitoProduto.ESTACIONAMENTO_EVENTO,
+                OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
+                OffsetDateTime.parse("2026-10-11T01:00:00-03:00"),
+                10, List.of(), List.of());
+
+        produto.publicar();
+
+        assertThat(produto.getStatus()).isEqualTo(StatusProdutoEstacionamento.PUBLICADO);
+        assertThatIllegalStateException().isThrownBy(produto::publicar);
     }
 }

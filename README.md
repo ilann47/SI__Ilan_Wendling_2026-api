@@ -46,6 +46,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   quota, benefícios/restrições, idempotência e proteção do saldo vendável.
 - **Lotes de preço** (`POST /api/v1/parking-products/{id}/price-tiers`) — preço,
   moeda, janela comercial, quantidade e prioridade determinística por produto.
+- **Publicação de produto** (`POST /api/v1/parking-products/{id}/publication`) —
+  valida lote, versão esperada e publica o fato pela outbox transacional.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
 

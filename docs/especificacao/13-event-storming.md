@@ -20,8 +20,8 @@ na outbox PostgreSQL. Não existe dispatcher ou consumidor nesta etapa; os
 passos seguintes continuam TARGET. A criação de `ProdutoEstacionamento` em
 rascunho e de seus lotes de preço já existe. A janela do lote determina quando
 ele é selecionável e prioridades diferentes tornam sobreposições determinísticas.
-`ProdutoEstacionamentoPublicado` somente será produzido pelo comando explícito
-de publicação.
+O comando explícito de publicação já produz `ProdutoEstacionamentoPublicado`
+atomicamente após validar lote e versão do produto.
 
 ```mermaid
 flowchart TD

@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface LotePrecoRepository extends JpaRepository<LotePreco, Long> {
 
+    boolean existsByProdutoId(Long produtoId);
+
     Optional<LotePreco> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
     @Query("""

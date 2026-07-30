@@ -6,6 +6,8 @@ import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
+import com.kaneko.estacionamento.common.outbox.OutboxService;
+import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
 import com.kaneko.estacionamento.evento.Evento;
 import com.kaneko.estacionamento.evento.EventoRepository;
 import com.kaneko.estacionamento.evento.StatusEvento;
@@ -13,6 +15,7 @@ import com.kaneko.estacionamento.inventario.alocacao.AlocacaoPatioEvento;
 import com.kaneko.estacionamento.inventario.alocacao.AlocacaoPatioEventoRepository;
 import com.kaneko.estacionamento.inventario.produto.dto.CriarProdutoEstacionamentoRequest;
 import com.kaneko.estacionamento.inventario.produto.dto.ProdutoEstacionamentoResponse;
+import com.kaneko.estacionamento.inventario.produto.dto.PublicarProdutoRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -34,18 +37,23 @@ public class ProdutoEstacionamentoService {
     private final ProdutoEstacionamentoRepository produtos;
     private final EventoRepository eventos;
     private final AlocacaoPatioEventoRepository alocacoes;
+    private final LotePrecoRepository lotes;
     private final IdempotenciaRepository idempotencia;
     private final AuditoriaService auditoria;
+    private final OutboxService outbox;
 
     public ProdutoEstacionamentoService(
             ProdutoEstacionamentoRepository produtos, EventoRepository eventos,
-            AlocacaoPatioEventoRepository alocacoes, IdempotenciaRepository idempotencia,
-            AuditoriaService auditoria) {
+            AlocacaoPatioEventoRepository alocacoes, LotePrecoRepository lotes,
+            IdempotenciaRepository idempotencia, AuditoriaService auditoria,
+            OutboxService outbox) {
         this.produtos = produtos;
         this.eventos = eventos;
         this.alocacoes = alocacoes;
+        this.lotes = lotes;
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
+        this.outbox = outbox;
     }
 
     @Transactional
@@ -98,6 +106,44 @@ public class ProdutoEstacionamentoService {
         idempotencia.registrar(
                 organizacaoId, atorId, OPERACAO_CRIAR, chave,
                 requestHash, RECURSO, produto.getId());
+        return ProdutoEstacionamentoResponse.from(produto);
+    }
+
+    @Transactional
+    public ProdutoEstacionamentoResponse publicar(
+            Long organizacaoId, Long produtoId, long versaoEsperada,
+            PublicarProdutoRequest request) {
+        if (request == null || !Boolean.TRUE.equals(request.confirmed())) {
+            throw new IllegalArgumentException("A confirmacao da publicacao e obrigatoria.");
+        }
+        ProdutoEstacionamento produto = produtos.findByIdAndOrganizacaoIdForUpdate(
+                        produtoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Produto de estacionamento", produtoId));
+        if (!produto.getVersion().equals(versaoEsperada)) {
+            throw new VersaoProdutoDivergenteException();
+        }
+        if (!lotes.existsByProdutoId(produtoId)) {
+            throw new ConflitoException(
+                    "O produto precisa possuir ao menos um lote de preco para ser publicado.");
+        }
+        Map<String, Object> anterior = snapshot(produto);
+        Long versaoAnterior = produto.getVersion();
+        produto.publicar();
+        produtos.flush();
+        Map<String, Object> posterior = snapshot(produto);
+        Long patioId = alocacoes.findByIdAndOrganizacaoId(
+                        produto.getAlocacaoId(), organizacaoId)
+                .map(AlocacaoPatioEvento::getPatioId)
+                .orElse(null);
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                organizacaoId, "PRODUTO_ESTACIONAMENTO_PUBLICADO", RECURSO,
+                produto.getId(), produto.getEventoId(), patioId, null,
+                anterior, posterior, versaoAnterior, produto.getVersion(),
+                ClasseRetencaoAuditoria.CONFIGURACAO));
+        outbox.publicar(new PublicarEventoOutboxCommand(
+                "ProdutoEstacionamentoPublicado", organizacaoId, RECURSO,
+                produto.getId(), produto.getVersion(), null, 1, posterior));
         return ProdutoEstacionamentoResponse.from(produto);
     }
 

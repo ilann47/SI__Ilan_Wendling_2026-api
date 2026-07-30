@@ -1,18 +1,18 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[rbac]] · [[auditoria]] · [[idempotencia]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Produtos de Estacionamento
 
 ## Objetivo
 
-Materializar a oferta vendável de estacionamento para evento e comprometer uma
-quota da capacidade comercial de uma alocação, sem introduzir preço ou venda.
+Materializar e publicar a oferta vendável de estacionamento para evento,
+comprometendo uma quota da capacidade comercial e configurando seu preço.
 
 ## Contexto
 
 UC707 define `ProdutoEstacionamento` como a oferta de direito. “Oferta” não é
 uma entidade adicional: criar ambas duplicaria responsabilidade e contrariaria
-o DDD oficial. O produto nasce em `RASCUNHO`; UC708 permite configurar lotes
-antes do comando posterior de publicação.
+o DDD oficial. O produto nasce em `RASCUNHO`; UC708 configura lotes antes do
+comando explícito de publicação.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -25,6 +25,15 @@ POST /api/v1/events/{eventoId}/parking-products + Idempotency-Key
   -> ProdutoEstacionamentoRepository -> PostgreSQL V17
   -> AuditoriaService + resultado idempotente
   -> 201 + Location + ETag
+
+POST /api/v1/parking-products/{produtoId}/publication + If-Match
+  -> JWT contextual + pricing:manage
+  -> ProdutoEstacionamentoService
+  -> produto tenant-aware em RASCUNHO com lock pessimista
+  -> versão esperada + ao menos um lote de preço
+  -> transição para PUBLICADO
+  -> AuditoriaService + OutboxService na mesma transação
+  -> 200 + ETag
 
 POST /api/v1/parking-products/{produtoId}/price-tiers + Idempotency-Key
   -> JWT contextual + pricing:manage
@@ -40,6 +49,7 @@ POST /api/v1/parking-products/{produtoId}/price-tiers + Idempotency-Key
 
 - `POST /api/v1/events/{eventoId}/parking-products`: cria produto em rascunho.
 - `POST /api/v1/parking-products/{produtoId}/price-tiers`: cria lote de preço.
+- `POST /api/v1/parking-products/{produtoId}/publication`: publica produto.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -53,8 +63,8 @@ ativação/agendamento; não existe estado adicional de lote na baseline.
 
 ## Integrações externas (se houver)
 
-Não há. As criações de produto e lote não publicam outbox; o fato aprovado é o
-da publicação futura.
+Não há chamada externa. A publicação grava `ProdutoEstacionamentoPublicado` na
+outbox PostgreSQL, sem antecipar dispatcher ou broker.
 
 ## Tratamento de Erros
 
@@ -62,13 +72,15 @@ da publicação futura.
 - `403`: contexto sem `pricing:manage`.
 - `404`: evento ou alocação invisível no tenant/evento.
 - `409`: idempotência divergente, nome duplicado, quota excedida ou período
-  ambíguo na mesma prioridade.
+  ambíguo na mesma prioridade; publicação sem lote ou transição inválida.
+- `428`: publicação sem `If-Match`.
+- `412`: versão esperada divergente ou conflito otimista.
 
 ## Testes (curl ou equivalente)
 
 Há testes de domínio, API, RBAC, tenancy, idempotência, quota cumulativa,
-preço gratuito, moeda, sobreposição determinística, auditoria, OpenAPI e
-constraints PostgreSQL.
+preço gratuito, moeda, sobreposição determinística, publicação, concorrência,
+auditoria, outbox, OpenAPI e constraints PostgreSQL.
 
 ## Decisões Técnicas
 
@@ -83,6 +95,9 @@ constraints PostgreSQL.
   PostgreSQL rejeitam sobreposição na mesma prioridade.
 - Sobreposição com prioridades diferentes é válida e fornece seleção
   determinística; a janela comercial representa o agendamento.
+- Publicação é comando explícito, requer lote e usa exclusivamente `@Version`
+  como precondição e origem do `ETag`.
+- Auditoria e outbox participam da mesma transação da mudança para `PUBLICADO`.
 
 ## Módulos relacionados
 
@@ -93,6 +108,7 @@ constraints PostgreSQL.
 - [[rbac]]
 - [[auditoria]]
 - [[idempotencia]]
+- [[outbox]]
 
 ## Histórico (data + ação)
 
@@ -100,3 +116,4 @@ constraints PostgreSQL.
 |---|---|
 | 2026-07-30 | Implementa UC707 com criação idempotente de produto em rascunho. |
 | 2026-07-30 | Implementa UC708 com lote de preço temporal e quantitativo. |
+| 2026-07-30 | Implementa publicação versionada do produto com auditoria e outbox. |

@@ -54,7 +54,7 @@
 
 | Entidade | Situação e responsabilidade | Atributos principais | Relacionamentos | Estados/validações | Histórico e auditoria |
 |---|---|---|---|---|---|
-| `ProdutoEstacionamento` | AS-IS/EVOLUÇÃO; oferta de direito | nome, categoria, direito, alocação, janela, quota, benefícios e restrições por códigos explícitos | N:1 evento/alocação no mesmo tenant; 1:N lotes | nasce `RASCUNHO`; janela contida na alocação; soma de quotas ≤ vendável; demais estados reservados ao contrato | criação idempotente, auditada e versionada; publicação e mudanças permanecem nas histórias seguintes |
+| `ProdutoEstacionamento` | AS-IS/EVOLUÇÃO; oferta de direito | nome, categoria, direito, alocação, janela, quota, benefícios e restrições por códigos explícitos | N:1 evento/alocação no mesmo tenant; 1:N lotes | nasce `RASCUNHO`; janela contida na alocação; soma de quotas ≤ vendável; publica somente com lote e versão atual | criação e publicação auditadas/versionadas; publicação grava `ProdutoEstacionamentoPublicado` na outbox |
 | `LotePreco` | AS-IS/EVOLUÇÃO; preço temporal/quantitativo | nome, preço, moeda, início/fim, quantidade, prioridade | N:1 produto no mesmo tenant | preço ≥ 0; moeda da organização; quantidade ≤ quota; período coerente; sobreposição na mesma prioridade é proibida | criação idempotente, auditada e versionada; janela determina agendamento; snapshot permanece futuro |
 | `QuotaCanal` | TARGET; inventário por canal | canal, quantidade, período | N:1 produto/alocação | soma de quotas ≤ vendável | transferência de quota auditada |
 | `ReservaInventario` | TARGET; hold temporário | produto, quantidade, canal, expiraEm, idempotencyKey | N:1 produto; 0:1 pedido | `MANTIDA/CONFIRMADA/EXPIRADA/LIBERADA`; transição atômica | origem, expiração e confirmação |

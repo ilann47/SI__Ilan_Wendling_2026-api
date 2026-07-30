@@ -9,7 +9,8 @@ futura não dependa de efeitos em memória ou de chamada externa na transação.
 
 ## Contexto
 
-A fundação nasce com `EventoCriado`. Dispatcher, retry, dead-letter lógico e
+A fundação persiste `EventoCriado`, `CapacidadeAlocadaAoEvento` e
+`ProdutoEstacionamentoPublicado`. Dispatcher, retry, dead-letter lógico e
 consumidores serão implementados quando existir o primeiro efeito entre contextos.
 
 ## Fluxo (camadas da arquitetura)
@@ -58,6 +59,7 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 - [[organizacoes]]
 - [[eventos]]
 - [[inventario]]
+- [[produtos-estacionamento]]
 
 ## Histórico (data + ação)
 
@@ -65,3 +67,4 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 |---|---|
 | 2026-07-30 | Persiste EventoCriado atomicamente com o agregado Evento. |
 | 2026-07-30 | Persiste CapacidadeAlocadaAoEvento atomicamente com a alocação. |
+| 2026-07-30 | Persiste ProdutoEstacionamentoPublicado atomicamente com a publicação. |
