@@ -14,6 +14,8 @@ vários pátios e um pátio pode atender eventos simultâneos enquanto a soma da
 capacidade operacional comprometida não exceder seu limite operacional.
 UC707 acrescenta [[produtos-estacionamento]], cuja soma de quotas não pode
 ultrapassar a capacidade vendável da alocação.
+UC708 acrescenta lotes comerciais; cada lote respeita a quota do produto e
+prioridades distintas resolvem períodos sobrepostos sem ambiguidade.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -94,3 +96,4 @@ saldo, sobrealocação, ETag, auditoria, outbox e constraints PostgreSQL.
 |---|---|
 | 2026-07-30 | Implementa UC706 com alocação temporal e prevenção de sobrealocação. |
 | 2026-07-30 | Protege a capacidade vendável contra soma excessiva de quotas de produtos. |
+| 2026-07-30 | Vincula lotes de preço à quota do produto e impede períodos ambíguos. |

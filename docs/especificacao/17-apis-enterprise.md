@@ -170,7 +170,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `PATCH /parking-allocations/{id}` | AS-IS: capacidades + `If-Match` | `200 Allocation`, `ETag` | `inventory:manage`; lista fechada de campos; não reduzir abaixo da hierarquia nem sobrealocar o pátio; versão divergente retorna `412` |
 | `POST /events/{id}/parking-products` | AS-IS: nome, categoria, alocação, direito, janela, quota, benefícios/restrições + `Idempotency-Key`; tenant implícito | `201 Product`, `Location`, `ETag` | `pricing:manage`; evento configurável; alocação do evento/tenant; janela contida; soma de quotas não excede vendável; produto nasce em rascunho |
 | `POST /parking-products/{id}/publication` | confirmação | `200` | configuração completa |
-| `POST /parking-products/{id}/price-tiers` | preço, moeda, período, quantidade | `201 Tier` | sem ambiguidade |
+| `POST /parking-products/{id}/price-tiers` | AS-IS: nome, preço, moeda, período, quantidade, prioridade + `Idempotency-Key`; tenant implícito | `201 Tier`, `Location`, `ETag` | `pricing:manage`; produto em rascunho; moeda da organização; quantidade ≤ quota; sobreposição somente com prioridades distintas; replay equivalente devolve o lote original |
 | `GET /events/{id}/availability` | filtros de canal/categoria | projeção de disponibilidade | não garante hold |
 | `POST /inventory-holds` | produto, quantidade, canal | `201 Hold` | atômico; idempotência |
 | `POST /inventory-holds/{id}/release` | motivo | `200 Hold` | uma liberação |

@@ -116,9 +116,61 @@ class ProdutoEstacionamentoConstraintTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
-    private void inserir(Long orgId, Long eventId, Long allocationId,
+    @Test
+    void bancoImpedeLoteVinculadoAOutroTenant() {
+        Long produtoId = inserir(
+                organizacaoId, eventoId, alocacaoId, "Produto Lote Tenant", 10, "RASCUNHO");
+        Long outraOrganizacao = organizacoes.criar(new CriarOrganizacaoRequest(
+                "45.723.174/0001-10", "Outro Tenant Lote Constraint Ltda", null,
+                "BRL", "America/Sao_Paulo", "BR-SP", "ENTERPRISE")).id();
+
+        assertThatThrownBy(() -> inserirLote(
+                outraOrganizacao, produtoId, "Lote Cruzado", "10.00", "BRL",
+                "2026-08-01T03:00:00Z", "2026-09-01T03:00:00Z", 10, 1))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void bancoImpedeValorQuantidadeEPeriodoInvalidosDoLote() {
+        Long produtoId = inserir(
+                organizacaoId, eventoId, alocacaoId, "Produto Lote Invalido", 10, "RASCUNHO");
+
+        assertThatThrownBy(() -> inserirLote(
+                organizacaoId, produtoId, "Lote Invalido", "-0.01", "BRL",
+                "2026-09-01T03:00:00Z", "2026-08-01T03:00:00Z", 0, -1))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void bancoImpedeSobreposicaoDeLotesComMesmaPrioridade() {
+        Long produtoId = inserir(
+                organizacaoId, eventoId, alocacaoId, "Produto Lote Sobreposto", 10, "RASCUNHO");
+        inserirLote(organizacaoId, produtoId, "Lote Base", "10.00", "BRL",
+                "2026-08-01T03:00:00Z", "2026-09-01T03:00:00Z", 10, 5);
+
+        assertThatThrownBy(() -> inserirLote(
+                organizacaoId, produtoId, "Lote Ambiguo", "20.00", "BRL",
+                "2026-08-15T03:00:00Z", "2026-09-15T03:00:00Z", 10, 5))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private Long inserir(Long orgId, Long eventId, Long allocationId,
                          String nome, int quota, String status) {
-        jdbc.update(sqlInsercao(), orgId, eventId, allocationId, nome, quota, status);
+        return jdbc.queryForObject(sqlInsercao() + " RETURNING id", Long.class,
+                orgId, eventId, allocationId, nome, quota, status);
+    }
+
+    private void inserirLote(
+            Long orgId, Long produtoId, String nome, String preco, String moeda,
+            String inicio, String fim, int quantidade, int prioridade) {
+        jdbc.update("""
+                INSERT INTO lote_preco (
+                    organizacao_id, produto_id, nome, preco, moeda,
+                    inicio_venda, fim_venda, quantidade, prioridade)
+                VALUES (?, ?, ?, CAST(? AS NUMERIC), ?, CAST(? AS TIMESTAMPTZ),
+                    CAST(? AS TIMESTAMPTZ), ?, ?)
+                """, orgId, produtoId, nome, preco, moeda,
+                inicio, fim, quantidade, prioridade);
     }
 
     private static String sqlInsercao() {

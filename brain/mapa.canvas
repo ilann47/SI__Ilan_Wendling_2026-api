@@ -42,7 +42,7 @@
     {"id": "inventario-produtos", "fromNode": "inventario", "fromSide": "right", "toNode": "produtos-estacionamento", "toSide": "left", "label": "quota vendável"},
     {"id": "eventos-produtos", "fromNode": "eventos", "fromSide": "right", "toNode": "produtos-estacionamento", "toSide": "left", "label": "oferta do evento"},
     {"id": "rbac-produtos", "fromNode": "rbac", "fromSide": "right", "toNode": "produtos-estacionamento", "toSide": "left", "label": "pricing:manage"},
-    {"id": "produtos-auditoria", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "PRODUTO_CRIADO"},
+    {"id": "produtos-auditoria", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "PRODUTO/LOTE_CRIADO"},
     {"id": "produtos-idempotencia", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "idempotencia", "toSide": "right", "label": "execução única"}
   ]
 }

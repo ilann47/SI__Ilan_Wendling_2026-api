@@ -165,8 +165,9 @@ operacional, vendável e reservada de um pátio ativo para uma janela do evento.
 O saldo simultâneo é protegido por lock pessimista no pátio, validação
 transacional e constraints tenant-aware. `ProdutoEstacionamento` materializa a
 oferta em rascunho e compromete quota da capacidade vendável sob lock da
-alocação. Lotes, publicação, reserva de inventário e projeções de disponibilidade
-permanecem TARGET.
+alocação. `LotePreco` define preço, moeda, quantidade, período e prioridade;
+o lock do produto e a defesa no banco impedem sobreposição ambígua. Publicação,
+reserva de inventário e projeções de disponibilidade permanecem TARGET.
 
 - **Objetivo:** transformar capacidade em ofertas sem sobrevenda.
 - **Agregados:** `AlocacaoCapacidade`, `ProdutoEstacionamento`, `PoliticaPreco`, `ReservaInventario`.

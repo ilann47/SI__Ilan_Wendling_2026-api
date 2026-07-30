@@ -414,3 +414,24 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Compatibilidade das categorias com setores físicos permanece pendente porque
   setor/categoria física ainda não está implementado na primeira entrega.
 - A suíte passou de 393 para 406 testes sem regressões.
+
+---
+
+## Atualização — Lote de preço / UC708 (2026-07-30)
+
+- A migration `V18__lote_preco.sql` cria `lote_preco` com FK composta
+  produto/tenant, índices, unicidade de nome normalizado, checks monetários e
+  trigger contra sobreposição ambígua na mesma prioridade.
+- `POST /api/v1/parking-products/{id}/price-tiers` cria o lote de forma
+  idempotente, tenant-aware e protegida por `pricing:manage`, retornando
+  `Location` e `ETag`.
+- O produto é bloqueado pessimisticamente durante a validação, serializando
+  criações concorrentes; a aplicação e o PostgreSQL rejeitam períodos
+  conflitantes com a mesma prioridade.
+- A janela comercial representa ativação imediata ou agendada, sem introduzir
+  uma máquina de estados de lote ausente da baseline.
+- Valor zero suporta cortesia controlada; valores negativos, moeda divergente
+  da organização e quantidade superior à quota do produto são rejeitados.
+- A criação é auditada; snapshot de preço em reserva/pedido permanece para as
+  histórias comerciais posteriores.
+- A suíte passou de 406 para 416 testes sem regressões.

@@ -18,8 +18,10 @@ Todo evento deve conter `eventId`, `eventType`, `occurredAt`, `organizationId`, 
 `AlocarCapacidade → CapacidadeAlocadaAoEvento` são atômicos e gravam seus fatos
 na outbox PostgreSQL. Não existe dispatcher ou consumidor nesta etapa; os
 passos seguintes continuam TARGET. A criação de `ProdutoEstacionamento` em
-rascunho já existe, mas `ProdutoEstacionamentoPublicado` somente será produzido
-pelo comando explícito de publicação.
+rascunho e de seus lotes de preço já existe. A janela do lote determina quando
+ele é selecionável e prioridades diferentes tornam sobreposições determinísticas.
+`ProdutoEstacionamentoPublicado` somente será produzido pelo comando explícito
+de publicação.
 
 ```mermaid
 flowchart TD

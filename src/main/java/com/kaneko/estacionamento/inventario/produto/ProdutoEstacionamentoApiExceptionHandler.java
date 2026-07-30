@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = ProdutoEstacionamentoController.class)
+@RestControllerAdvice(assignableTypes = {
+        ProdutoEstacionamentoController.class, LotePrecoController.class
+})
 public class ProdutoEstacionamentoApiExceptionHandler {
 
     @ExceptionHandler(MissingRequestHeaderException.class)

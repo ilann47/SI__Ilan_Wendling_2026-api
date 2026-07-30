@@ -225,6 +225,149 @@ class ProdutoEstacionamentoControllerTest {
                 status().isBadRequest());
     }
 
+    @Test
+    void criaLoteDePrecoGratuitoComAuditoria() throws Exception {
+        Long produtoId = criarProdutoBase("Produto com Lote", "produto-com-lote", 30);
+
+        String body = criarLote(tokenContextual, produtoId, "lote-1",
+                        payloadLote("Primeiro Lote", "75.50", "BRL", 30, 10,
+                                "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                        status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(header().string("ETag", "\"0\""))
+                .andExpect(jsonPath("$.organizationId").value(organizacaoId))
+                .andExpect(jsonPath("$.parkingProductId").value(produtoId))
+                .andExpect(jsonPath("$.name").value("Primeiro Lote"))
+                .andExpect(jsonPath("$.price").value(75.50))
+                .andExpect(jsonPath("$.currency").value("BRL"))
+                .andExpect(jsonPath("$.quantity").value(30))
+                .andExpect(jsonPath("$.priority").value(10))
+                .andReturn().getResponse().getContentAsString();
+        long loteId = JsonPath.<Number>read(body, "$.id").longValue();
+
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("LOTE_PRECO_CRIADO");
+            assertThat(auditoria.getRecursoId()).isEqualTo(loteId);
+            assertThat(auditoria.getEventoId()).isEqualTo(eventoId);
+            assertThat(auditoria.getPatioId()).isEqualTo(patioId);
+        });
+
+        criarLote(tokenContextual, produtoId, "lote-gratuito",
+                payloadLote("Cortesia", "0", "BRL", 5, 20,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isCreated());
+    }
+
+    @Test
+    void criacaoDeLoteEhIdempotenteERejeitaChaveComOutroPayload() throws Exception {
+        Long produtoId = criarProdutoBase("Produto Idempotente Lote", "produto-idem-lote", 20);
+        String payload = payloadLote("Lote Idempotente", "50", "BRL", 20, 1,
+                "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00");
+
+        String primeiro = criarLote(tokenContextual, produtoId, "lote-idem", payload,
+                status().isCreated()).andReturn().getResponse().getContentAsString();
+        String repetido = criarLote(tokenContextual, produtoId, "lote-idem", payload,
+                status().isCreated()).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(repetido, "$.id").longValue())
+                .isEqualTo(JsonPath.<Number>read(primeiro, "$.id").longValue());
+
+        criarLote(tokenContextual, produtoId, "lote-idem",
+                payloadLote("Outro Lote", "50", "BRL", 20, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isConflict());
+    }
+
+    @Test
+    void impedeSobreposicaoAmbiguaMasPermitePrioridadeDeterministica() throws Exception {
+        Long produtoId = criarProdutoBase("Produto Prioridades", "produto-prioridades", 40);
+        criarLote(tokenContextual, produtoId, "lote-prioridade-base",
+                payloadLote("Lote Base", "40", "BRL", 40, 10,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isCreated());
+        criarLote(tokenContextual, produtoId, "lote-prioridade-ambigua",
+                payloadLote("Lote Ambiguo", "45", "BRL", 40, 10,
+                        "2026-08-15T00:00:00-03:00", "2026-09-15T00:00:00-03:00"),
+                status().isConflict());
+        criarLote(tokenContextual, produtoId, "lote-prioridade-deterministica",
+                payloadLote("Lote Prioritario", "45", "BRL", 40, 20,
+                        "2026-08-15T00:00:00-03:00", "2026-09-15T00:00:00-03:00"),
+                status().isCreated());
+    }
+
+    @Test
+    void validaQuotaMoedaValorECamposControladosDoLote() throws Exception {
+        Long produtoId = criarProdutoBase("Produto Validacoes Lote", "produto-validacoes-lote", 30);
+
+        criarLote(tokenContextual, produtoId, "lote-quota-excedida",
+                payloadLote("Quota Excedida", "10", "BRL", 31, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isConflict());
+        criarLote(tokenContextual, produtoId, "lote-moeda-divergente",
+                payloadLote("Moeda Divergente", "10", "USD", 30, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isBadRequest());
+        criarLote(tokenContextual, produtoId, "lote-valor-negativo",
+                payloadLote("Valor Negativo", "-0.01", "BRL", 30, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isBadRequest());
+        criarLote(tokenContextual, produtoId, "lote-campo-controlado",
+                payloadLote("Campo Controlado", "10", "BRL", 30, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00")
+                        .replace("{", "{\"organizationId\":999,"),
+                status().isBadRequest());
+    }
+
+    @Test
+    void loteExigePricingManageETenantDoProduto() throws Exception {
+        Long produtoId = criarProdutoBase("Produto Protegido Lote", "produto-protegido-lote", 10);
+        Usuario membro = usuario("lote_membro", PerfilUsuario.OPERADOR);
+        criarMembership(membro.getId(), tokenContextual);
+        String tokenMembro = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
+
+        criarLote(tokenMembro, produtoId, "lote-sem-permissao",
+                payloadLote("Sem Permissao", "10", "BRL", 10, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isForbidden());
+
+        Long outraOrganizacao = organizacoes.criar(new CriarOrganizacaoRequest(
+                "45.723.174/0001-10", "Outro Tenant Lote Ltda", null,
+                "BRL", "America/Sao_Paulo", "BR-SP", "ENTERPRISE")).id();
+        criarMembership(outraOrganizacao, admin.getId(), tokenGlobal);
+        String tokenOutroTenant = selecionar(outraOrganizacao, tokenGlobal);
+        criarLote(tokenOutroTenant, produtoId, "lote-outro-tenant",
+                payloadLote("Outro Tenant", "10", "BRL", 10, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-09-01T00:00:00-03:00"),
+                status().isNotFound());
+    }
+
+    private Long criarProdutoBase(String nome, String chave, int quota) throws Exception {
+        String body = criarProduto(tokenContextual, eventoId, chave,
+                payload(nome, alocacaoId, "COMUM", quota,
+                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                status().isCreated()).andReturn().getResponse().getContentAsString();
+        return JsonPath.<Number>read(body, "$.id").longValue();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions criarLote(
+            String token, Long produtoId, String chave, String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/parking-products/{id}/price-tiers", produtoId)
+                        .header("Authorization", token).header("Idempotency-Key", chave)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
+    private static String payloadLote(
+            String nome, String preco, String moeda, int quantidade, int prioridade,
+            String inicio, String fim) {
+        return """
+                {"name":"%s","price":%s,"currency":"%s",
+                 "salesStartsAt":"%s","salesEndsAt":"%s",
+                 "quantity":%d,"priority":%d}
+                """.formatted(nome, preco, moeda, inicio, fim, quantidade, prioridade);
+    }
+
     private org.springframework.test.web.servlet.ResultActions criarProduto(
             String token, Long eventId, String chave, String body,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -271,7 +414,11 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     private long criarMembership(Long usuarioId, String token) throws Exception {
-        String body = mvc.perform(post("/api/v1/organizations/{organizationId}/memberships", organizacaoId)
+        return criarMembership(organizacaoId, usuarioId, token);
+    }
+
+    private long criarMembership(Long orgId, Long usuarioId, String token) throws Exception {
+        String body = mvc.perform(post("/api/v1/organizations/{organizationId}/memberships", orgId)
                         .header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":" + usuarioId + "}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
