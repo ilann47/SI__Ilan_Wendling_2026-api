@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.credencial;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -22,6 +23,16 @@ public interface CredencialAcessoRepository
             @Param("id") Long id,
             @Param("organizacaoId") Long organizacaoId,
             @Param("atorId") Long atorId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select c from CredencialAcesso c
+            where c.pedidoId = :pedidoId and c.organizacaoId = :organizacaoId
+            order by c.id
+            """)
+    List<CredencialAcesso> findDoPedidoForUpdate(
+            @Param("pedidoId") Long pedidoId,
+            @Param("organizacaoId") Long organizacaoId);
 
     long countByPedidoId(Long pedidoId);
 

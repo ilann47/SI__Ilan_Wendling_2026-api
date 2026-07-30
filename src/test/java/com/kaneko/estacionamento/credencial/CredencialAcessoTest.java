@@ -74,4 +74,23 @@ class CredencialAcessoTest {
         assertThatThrownBy(() -> placa.registrarRepresentacaoQr(inicio))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void bloqueiaCredencialAtivaComMotivoEInstante() {
+        OffsetDateTime inicio = OffsetDateTime.parse("2026-10-10T17:00:00-03:00");
+        OffsetDateTime fim = OffsetDateTime.parse("2026-10-11T01:00:00-03:00");
+        CredencialAcesso credencial = CredencialAcesso.criar(
+                1L, 2L, 3L, 4L, 5L, 6L,
+                "CRD-0123456789ABCDEF0123456789ABCDEF", 1,
+                OrigemCredencial.PEDIDO, CategoriaProduto.COMUM,
+                DireitoProduto.ESTACIONAMENTO_EVENTO, inicio, fim,
+                MeioPreferidoCredencial.QR, null);
+        credencial.ativar();
+
+        assertThat(credencial.bloquear("PEDIDO_CANCELADO", inicio)).isTrue();
+        assertThat(credencial.getStatus()).isEqualTo(StatusCredencial.BLOQUEADA);
+        assertThat(credencial.getMotivoBloqueio()).isEqualTo("PEDIDO_CANCELADO");
+        assertThat(credencial.getBloqueadaEm()).isEqualTo(inicio);
+        assertThat(credencial.bloquear("REPLAY", inicio.plusMinutes(1))).isFalse();
+    }
 }

@@ -72,3 +72,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro da confirmação manual conciliável de pedido e inventário. |
 | 2026-07-30 | Registro de UC711 com credencial ativa por unidade do pedido. |
 | 2026-07-30 | Registro de UC712 com QR opaco, hash persistido e concorrência por ETag. |
+| 2026-07-30 | Registro de UC713 com cancelamento compensatório e reembolso pendente. |

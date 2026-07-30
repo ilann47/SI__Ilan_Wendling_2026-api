@@ -194,8 +194,11 @@ alocação. `LotePreco` define preço, moeda, quantidade, período e prioridade;
 ator autenticado, congela comprador, veículo, produto, lote, janela, preço e
 moeda, deriva o total e expira automaticamente. Uma confirmação manual
 excepcional pode confirmar inventário e pedido mediante permissão, evidência e
-conciliação posterior; ela não representa `PagamentoAprovado`. O fluxo canônico
-de gateway, cancelamento e atendimento permanece nas histórias próprias.
+conciliação posterior; ela não representa `PagamentoAprovado`. UC713 cancela o
+pedido próprio de forma versionada e idempotente: antes da confirmação termina
+em `CANCELADO`; após confirmação/atendimento termina em `EM_REEMBOLSO`, bloqueia
+credenciais, revoga QR ativo e compensa o inventário uma única vez. A execução
+financeira do reembolso permanece em UC714.
 
 - **Objetivo:** representar intenção e contrato comercial com o comprador.
 - **Agregado:** `Pedido`.
@@ -223,8 +226,9 @@ de gateway, cancelamento e atendimento permanece nas histórias próprias.
 pedido confirmado, com snapshot de evento, pátio, direito e validade. UC712 cria
 `RepresentacaoQR` versionada para credencial QR ativa, devolve um token opaco de
 256 bits somente na criação e persiste exclusivamente seu hash SHA-256. O código
-público identifica o agregado, mas não autoriza acesso. Bloqueio, reemissão e
-consumo continuam TARGET.
+público identifica o agregado, mas não autoriza acesso. UC713 bloqueia
+credenciais de pedido cancelado e revoga sua representação QR vigente; bloqueio
+administrativo, reemissão e consumo continuam TARGET.
 
 - **Objetivo:** materializar o direito de acesso sem depender do meio físico.
 - **Agregado:** `CredencialAcesso`.

@@ -61,4 +61,16 @@ public class RepresentacaoQr extends AuditableEntity {
         representacao.expiraEm = expiraEm;
         return representacao;
     }
+
+    public boolean revogar(OffsetDateTime instante) {
+        if (revogadaEm != null) {
+            return false;
+        }
+        if (instante == null || instante.toInstant().isBefore(emitidoEm.toInstant())) {
+            throw new IllegalArgumentException(
+                    "O instante da revogacao QR e invalido.");
+        }
+        revogadaEm = instante;
+        return true;
+    }
 }

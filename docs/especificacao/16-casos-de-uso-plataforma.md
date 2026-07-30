@@ -217,6 +217,14 @@ apenas SHA-256 e publica `QRCodeGerado` sem token ou hash. A versão da credenci
 
 ## UC713 — Cancelar pedido
 
+**Situação implementada:** `POST /api/v1/orders/{id}/cancellation` exige
+`orders:cancel`, tenant, ownership, `If-Match` e `Idempotency-Key`. Pedido antes
+da confirmação termina em `CANCELADO` e libera o hold; pedido
+`CONFIRMADO/ATENDIDO` termina em `EM_REEMBOLSO`, bloqueia as credenciais, revoga
+QR vigente e compensa o contador vendido. O processo persistido registra motivo
+e efeitos. Prazo, multa/crédito, credencial já consumida e execução do reembolso
+dependem das políticas e histórias posteriores.
+
 **Objetivo:** encerrar pedido conforme política.  
 **Atores:** Cliente, Gestor, Atendimento.  
 **Pré-condições:** pedido cancelável; identidade autorizada.

@@ -2,6 +2,8 @@ package com.kaneko.estacionamento.pedido;
 
 import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
 import com.kaneko.estacionamento.pedido.dto.ConfirmarPedidoManualmenteRequest;
+import com.kaneko.estacionamento.pedido.dto.CancelamentoPedidoResponse;
+import com.kaneko.estacionamento.pedido.dto.CancelarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.CriarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.PedidoResponse;
 import jakarta.validation.Valid;
@@ -71,6 +73,25 @@ public class PedidoController {
                 versao(ifMatch), chaveIdempotencia, request);
         return ResponseEntity.accepted()
                 .eTag("\"" + response.version() + "\"")
+                .body(response);
+    }
+
+    @PostMapping("/{orderId}/cancellation")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('orders:cancel', authentication)")
+    public ResponseEntity<CancelamentoPedidoResponse> cancelar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long orderId,
+            @RequestHeader("If-Match") String ifMatch,
+            @RequestHeader("Idempotency-Key") String chaveIdempotencia,
+            @Valid @RequestBody CancelarPedidoRequest request) {
+        CancelamentoPedidoResponse response = service.cancelar(
+                principal.organizacaoId(), principal.userId(), orderId,
+                versao(ifMatch), chaveIdempotencia, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .build().toUri();
+        return ResponseEntity.accepted()
+                .location(location)
+                .eTag("\"" + response.orderVersion() + "\"")
                 .body(response);
     }
 

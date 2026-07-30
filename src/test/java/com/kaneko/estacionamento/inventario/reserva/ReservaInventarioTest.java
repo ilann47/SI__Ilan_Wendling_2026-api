@@ -54,4 +54,18 @@ class ReservaInventarioTest {
         assertThatIllegalStateException().isThrownBy(
                 () -> reserva.liberar("DESISTENCIA", agora.plusMinutes(3)));
     }
+
+    @Test
+    void cancelaReservaConfirmadaComoCompensacaoUnicaDoPedido() {
+        OffsetDateTime agora = OffsetDateTime.parse("2099-07-30T12:00:00Z");
+        ReservaInventario reserva = ReservaInventario.criar(
+                1L, 2L, 3L, 4L, 2, "DIRECT_WEB", null, "key-cancel",
+                9L, BigDecimal.TEN, "BRL", agora.plusMinutes(15));
+        reserva.confirmar(agora.plusMinutes(1));
+
+        assertThat(reserva.cancelarPedido("DESISTENCIA_DO_COMPRADOR",
+                agora.plusMinutes(2))).isTrue();
+        assertThat(reserva.getStatus()).isEqualTo(StatusReservaInventario.CANCELADA);
+        assertThat(reserva.cancelarPedido("REPLAY", agora.plusMinutes(3))).isFalse();
+    }
 }

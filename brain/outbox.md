@@ -14,7 +14,7 @@ A fundação persiste `EventoCriado`, `EventoConfigurado`, `EventoPublicado`,
 `ProdutoEstacionamentoPublicado`, além de `InventarioReservado`,
 `ReservaExpirada`, `InventarioLiberado`, `InventarioConfirmado`, `PedidoCriado`,
 `PedidoAguardandoPagamento`, `PedidoExpirado`, `PedidoConfirmado`,
-`CredencialEmitida`, `PedidoAtendido` e `QRCodeGerado`. Dispatcher,
+`CredencialEmitida`, `PedidoAtendido`, `QRCodeGerado` e `PedidoCancelado`. Dispatcher,
 retry, dead-letter
 lógico e consumidores serão implementados quando existir o primeiro efeito
 entre contextos.
@@ -84,3 +84,4 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 | 2026-07-30 | Persiste confirmação de inventário e pedido manual sem simular pagamento aprovado. |
 | 2026-07-30 | Persiste emissão de credencial e atendimento integral do pedido. |
 | 2026-07-30 | Persiste QRCodeGerado sem incluir token ou hash no payload. |
+| 2026-07-30 | Persiste PedidoCancelado e InventarioLiberado na compensação UC713. |

@@ -1025,6 +1025,130 @@ class ProdutoEstacionamentoControllerTest {
         gerarQr(tokenOrganizador, credencialId, "\"0\"", status().isNotFound());
     }
 
+    @Test
+    void cancelaPedidoAguardandoELiberaHoldUmaUnicaVez() throws Exception {
+        long pedidoId = criarPedidoPersistido("cancel-waiting");
+        long reservaId = jdbc.queryForObject(
+                "select reserva_inventario_id from pedido where id = ?",
+                Long.class, pedidoId);
+        long produtoId = jdbc.queryForObject(
+                "select produto_id from reserva_inventario where id = ?",
+                Long.class, reservaId);
+        long versao = jdbc.queryForObject(
+                "select version from pedido where id = ?", Long.class, pedidoId);
+        String payload = "{\"reason\":\"DESISTENCIA_DO_COMPRADOR\"}";
+
+        String body = cancelarPedido(
+                        tokenContextual, pedidoId, "\"" + versao + "\"",
+                        "cancel-waiting", payload, status().isAccepted())
+                .andExpect(header().exists("Location"))
+                .andExpect(jsonPath("$.orderId").value(pedidoId))
+                .andExpect(jsonPath("$.orderStatus").value("CANCELADO"))
+                .andExpect(jsonPath("$.refundRequired").value(false))
+                .andExpect(jsonPath("$.releasedQuantity").value(1))
+                .andExpect(jsonPath("$.blockedCredentials").value(0))
+                .andExpect(jsonPath("$.reason")
+                        .value("DESISTENCIA_DO_COMPRADOR"))
+                .andReturn().getResponse().getContentAsString();
+        long cancelamentoId = JsonPath.<Number>read(body, "$.id").longValue();
+
+        String replay = cancelarPedido(
+                        tokenContextual, pedidoId, "\"" + versao + "\"",
+                        "cancel-waiting", payload, status().isAccepted())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(replay, "$.id").longValue())
+                .isEqualTo(cancelamentoId);
+        cancelarPedido(tokenContextual, pedidoId, "\"" + versao + "\"",
+                "cancel-waiting", "{\"reason\":\"OUTRO_MOTIVO\"}",
+                status().isConflict());
+
+        assertThat(jdbc.queryForObject(
+                "select status from pedido where id = ?", String.class, pedidoId))
+                .isEqualTo("CANCELADO");
+        assertThat(jdbc.queryForObject(
+                "select status from reserva_inventario where id = ?",
+                String.class, reservaId)).isEqualTo("LIBERADA");
+        assertThat(jdbc.queryForObject(
+                "select quantidade_reservada from produto_estacionamento where id = ?",
+                Integer.class, produtoId)).isZero();
+        assertThat(outbox.findAll().stream().map(e -> e.getEventType()).toList())
+                .contains("PedidoCancelado", "InventarioLiberado");
+    }
+
+    @Test
+    void cancelaPedidoAtendidoBloqueiaQrELiberaVendaParaReembolso() throws Exception {
+        long pedidoId = criarPedidoConfirmado("cancel-attended", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "cancel-credential",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+        gerarQr(tokenContextual, credencialId, "\"0\"", status().isCreated());
+        long versao = jdbc.queryForObject(
+                "select version from pedido where id = ?", Long.class, pedidoId);
+
+        cancelarPedido(tokenContextual, pedidoId, "\"" + versao + "\"",
+                        "cancel-attended", "{\"reason\":\"EVENTO_NAO_UTILIZADO\"}",
+                        status().isAccepted())
+                .andExpect(jsonPath("$.orderStatus").value("EM_REEMBOLSO"))
+                .andExpect(jsonPath("$.refundRequired").value(true))
+                .andExpect(jsonPath("$.releasedQuantity").value(1))
+                .andExpect(jsonPath("$.blockedCredentials").value(1));
+
+        assertThat(jdbc.queryForObject(
+                "select status from credencial_acesso where id = ?",
+                String.class, credencialId)).isEqualTo("BLOQUEADA");
+        assertThat(jdbc.queryForObject(
+                "select revogada_em is not null from representacao_qr where credencial_id = ?",
+                Boolean.class, credencialId)).isTrue();
+        assertThat(jdbc.queryForObject("""
+                select status from reserva_inventario
+                where id = (select reserva_inventario_id from pedido where id = ?)
+                """, String.class, pedidoId)).isEqualTo("CANCELADA");
+        assertThat(jdbc.queryForObject("""
+                select quantidade_vendida from produto_estacionamento
+                where id = (select produto_id from item_pedido where pedido_id = ?)
+                """, Integer.class, pedidoId)).isZero();
+        assertThat(outbox.findAll().stream().map(e -> e.getEventType()).toList())
+                .contains("PedidoCancelado", "CredencialBloqueada", "InventarioLiberado")
+                .doesNotContain("ReembolsoSolicitado");
+    }
+
+    @Test
+    void cancelamentoExigeContratoPrecondicaoPermissaoEOwnership() throws Exception {
+        long pedidoId = criarPedidoPersistido("cancel-rules");
+        String payload = "{\"reason\":\"DESISTENCIA_DO_COMPRADOR\"}";
+
+        mvc.perform(post("/api/v1/orders/{id}/cancellation", pedidoId)
+                        .header("Authorization", tokenContextual)
+                        .header("Idempotency-Key", "cancel-missing-etag")
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isPreconditionRequired());
+        cancelarPedido(tokenContextual, pedidoId, "1", "cancel-bad-etag",
+                payload, status().isBadRequest());
+        cancelarPedido(tokenContextual, pedidoId, "\"99\"", "cancel-version",
+                payload, status().isPreconditionFailed());
+        cancelarPedido(tokenContextual, pedidoId, "\"1\"", "cancel-field",
+                "{\"reason\":\"MOTIVO\",\"status\":\"CANCELADO\"}",
+                status().isBadRequest());
+
+        Usuario membro = usuario("cancel_member", PerfilUsuario.OPERADOR);
+        criarMembership(membro.getId(), tokenContextual);
+        String tokenMembro = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
+        cancelarPedido(tokenMembro, pedidoId, "\"1\"", "cancel-denied",
+                payload, status().isForbidden());
+
+        Usuario organizador = usuario("cancel_organizer", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(organizador.getId(), tokenContextual);
+        concederPapel(membershipId, "ORGANIZADOR");
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+        cancelarPedido(tokenOrganizador, pedidoId, "\"1\"", "cancel-other",
+                payload, status().isNotFound());
+    }
+
     private org.springframework.test.web.servlet.ResultActions publicarProduto(
             String token, Long produtoId, String ifMatch,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -1117,6 +1241,17 @@ class ProdutoEstacionamentoControllerTest {
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
         return mvc.perform(post("/api/v1/credentials/{id}/qr-code", credencialId)
                         .header("Authorization", token).header("If-Match", ifMatch))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions cancelarPedido(
+            String token, long pedidoId, String ifMatch, String chave,
+            String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/orders/{id}/cancellation", pedidoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .header("Idempotency-Key", chave)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(esperado);
     }
 

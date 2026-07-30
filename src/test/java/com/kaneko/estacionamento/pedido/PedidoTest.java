@@ -69,6 +69,29 @@ class PedidoTest {
         assertThatIllegalStateException().isThrownBy(pedido::atender);
     }
 
+    @Test
+    void cancelaDiretoAntesDaConfirmacaoEExigeReembolsoDepois() {
+        OffsetDateTime agora = OffsetDateTime.parse("2099-07-30T12:00:00Z");
+        Pedido aguardando = pedidoAguardandoPagamento();
+
+        assertThat(aguardando.cancelar(agora)).isFalse();
+        assertThat(aguardando.getStatus()).isEqualTo(StatusPedido.CANCELADO);
+        assertThat(aguardando.getFinalizadoEm()).isEqualTo(agora);
+        assertThatIllegalStateException().isThrownBy(() -> aguardando.cancelar(agora));
+
+        Pedido confirmado = pedidoAguardandoPagamento();
+        confirmado.confirmar();
+        assertThat(confirmado.cancelar(agora)).isTrue();
+        assertThat(confirmado.getStatus()).isEqualTo(StatusPedido.EM_REEMBOLSO);
+        assertThat(confirmado.getFinalizadoEm()).isNull();
+
+        Pedido atendido = pedidoAguardandoPagamento();
+        atendido.confirmar();
+        atendido.atender();
+        assertThat(atendido.cancelar(agora)).isTrue();
+        assertThat(atendido.getStatus()).isEqualTo(StatusPedido.EM_REEMBOLSO);
+    }
+
     private static Pedido pedidoAguardandoPagamento() {
         Pedido pedido = Pedido.criar(
                 1L, 2L, 3L, 4L, "PED-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",

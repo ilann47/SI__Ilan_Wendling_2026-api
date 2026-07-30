@@ -49,6 +49,10 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
 - **Pedidos** (`POST /api/v1/orders`) — contrato comercial idempotente criado a
   partir do hold do próprio ator, com snapshots, total derivado e expiração
   automática enquanto aguarda pagamento.
+- **Cancelamento de pedido** (`POST /api/v1/orders/{id}/cancellation`) — comando
+  próprio, versionado e idempotente que libera o inventário uma única vez;
+  pedidos confirmados/atendidos seguem para reembolso e têm credenciais e QR
+  inutilizados antes da integração financeira.
 - **Confirmação manual conciliável**
   (`POST /api/v1/orders/{id}/manual-confirmation`) — exceção administrativa
   versionada e idempotente que exige evidência, confirma o inventário e registra

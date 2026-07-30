@@ -12,8 +12,9 @@ sobrevenda mesmo quando requisições disputam a última vaga.
 UC709 materializa `ReservaInventario` somente para eventos em
 `VENDAS_ABERTAS`. O hold fornece snapshot imutável para [[pedidos]] e pode ser
 confirmado atomicamente por um pedido elegível, convertendo reservado em
-vendido. Pagamento permanece fora deste módulo. O prazo padrão provisório é 15
-minutos e pode ser configurado.
+vendido. UC713 compensa uma reserva de pedido: libera `MANTIDA` ou converte
+`CONFIRMADA` em `CANCELADA`, reduzindo vendido uma única vez. Pagamento permanece
+fora deste módulo. O prazo padrão provisório é 15 minutos e pode ser configurado.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -37,6 +38,12 @@ confirmação de pedido
   -> lock produto -> lock reserva MANTIDA e vigente
   -> CONFIRMADA + reservado decrementado + vendido incrementado
   -> auditoria + InventarioConfirmado
+
+cancelamento de pedido
+  -> consulta escalar do produto -> lock produto -> lock reserva
+  -> MANTIDA: LIBERADA + reservado decrementado
+  -> CONFIRMADA: CANCELADA + vendido decrementado
+  -> auditoria + InventarioLiberado
 ```
 
 ## Endpoints (se houver)
@@ -56,7 +63,7 @@ contadores reservado, vendido e bloqueado, todos defendidos por constraints.
 
 Não há broker ou gateway. `InventarioReservado`, `ReservaExpirada`,
 `InventarioLiberado` e `InventarioConfirmado` são gravados na [[outbox]] da
-transação.
+transação, inclusive a compensação iniciada por [[pedidos]].
 
 ## Tratamento de Erros
 
@@ -68,8 +75,9 @@ transação.
 ## Testes (curl ou equivalente)
 
 Há testes de domínio, API, RBAC, ownership, idempotência, expiração, liberação,
-confirmação, saldo projetado, constraints e transações concorrentes pela última
-vaga e pela confirmação do mesmo pedido.
+confirmação, cancelamento compensatório, saldo projetado, constraints e
+transações concorrentes pela última vaga, confirmação e cancelamento do mesmo
+pedido.
 
 ## Decisões Técnicas
 
@@ -80,6 +88,9 @@ vaga e pela confirmação do mesmo pedido.
   reservar, sempre na ordem de locks produto → reserva.
 - Confirmação usa a mesma ordem produto → reserva e altera os contadores uma
   única vez; hold confirmado é terminal.
+- Cancelamento usa a mesma ordem de locks e consulta somente o `produtoId`
+  antes do lock, evitando manter uma versão stale da reserva no persistence
+  context enquanto aguarda outra transação.
 - O prazo de 15 minutos é premissa operacional configurável até definição de negócio.
 - Nesta etapa, Admin, Gestor e Organizador autenticados representam os canais;
   identidade pública de cliente/caixa/integração permanece no backlog próprio.
@@ -104,3 +115,4 @@ vaga e pela confirmação do mesmo pedido.
 |---|---|
 | 2026-07-30 | Implementa UC709 com hold atômico, expiração e liberação única. |
 | 2026-07-30 | Converte hold confirmado de reservado para vendido na transação do pedido. |
+| 2026-07-30 | Compensa cancelamento do pedido uma vez, inclusive sobre saldo vendido. |

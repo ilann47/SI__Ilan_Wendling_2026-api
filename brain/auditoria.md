@@ -68,8 +68,8 @@ imutabilidade física no PostgreSQL.
 - [[instalacoes]] — publica `PATIO_CRIADO` com snapshot explícito de capacidade.
 - [[venues]] — publica `UNIDADE_CRIADA` com snapshot explícito de localização.
 - [[eventos]] — registra `EVENTO_CRIADO` com referência direta ao evento.
-- [[pedidos]] — registra criação, expiração e confirmação manual com evidência,
-  ator, valores e estados explícitos.
+- [[pedidos]] — registra criação, expiração, confirmação manual e cancelamento
+  compensatório com ator, motivo, valores, estados e efeitos explícitos.
 
 ## Histórico (data + ação)
 
@@ -87,3 +87,4 @@ imutabilidade física no PostgreSQL.
 | 2026-07-30 | Confirmação manual registra evidência conciliável e transições de pedido/inventário. |
 | 2026-07-30 | Emissão de credencial e atendimento integral do pedido são auditados. |
 | 2026-07-30 | Geração QR registra somente metadados seguros, sem token ou hash. |
+| 2026-07-30 | Cancelamento registra compensação de inventário e bloqueio sem segredo QR. |

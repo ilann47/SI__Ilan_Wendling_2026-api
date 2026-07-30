@@ -40,6 +40,8 @@ import com.kaneko.estacionamento.organizacao.venue.dto.CriarVenueRequest;
 import com.kaneko.estacionamento.pedido.PedidoService;
 import com.kaneko.estacionamento.pedido.VersaoPedidoDivergenteException;
 import com.kaneko.estacionamento.pedido.dto.CompradorPedidoRequest;
+import com.kaneko.estacionamento.pedido.dto.CancelamentoPedidoResponse;
+import com.kaneko.estacionamento.pedido.dto.CancelarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.ConfirmarPedidoManualmenteRequest;
 import com.kaneko.estacionamento.pedido.dto.CriarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.PedidoResponse;
@@ -293,6 +295,51 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    @Test
+    void apenasUmCancelamentoLiberaOInventarioDoPedido() throws Exception {
+        Long reservaId = reservas.criar(
+                organizacaoId, usuarioId, "hold-cancel-concorrente",
+                new CriarReservaInventarioRequest(
+                        produtoId, 1, "DIRECT_WEB", "buyer-cancel")).id();
+        PedidoResponse pedido = pedidos.criar(
+                organizacaoId, usuarioId, "order-cancel-concorrente",
+                new CriarPedidoRequest(
+                        reservaId,
+                        new CompradorPedidoRequest(
+                                "Comprador Cancelamento", "cancel@example.com", null),
+                        null, "DIRECT_WEB"));
+
+        CountDownLatch inicio = new CountDownLatch(1);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<Object> primeira = executor.submit(
+                    () -> cancelar(inicio, pedido.id(), "cancel-a"));
+            Future<Object> segunda = executor.submit(
+                    () -> cancelar(inicio, pedido.id(), "cancel-b"));
+            inicio.countDown();
+
+            List<Object> resultados = List.of(primeira.get(), segunda.get());
+            assertThat(resultados.stream()
+                    .filter(r -> r instanceof CancelamentoPedidoResponse).count())
+                    .as("resultados: %s", resultados.stream()
+                            .map(r -> r.getClass().getName() + ":" + r)
+                            .toList())
+                    .isEqualTo(1);
+            assertThat(resultados.stream()
+                    .filter(r -> r instanceof ConflitoException)
+                    .count())
+                    .as("resultados: %s", resultados.stream()
+                            .map(r -> r.getClass().getName() + ":" + r)
+                            .toList())
+                    .isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "select count(*) from cancelamento_pedido where pedido_id = ?",
+                    Integer.class, pedido.id())).isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "select quantidade_reservada from produto_estacionamento where id = ?",
+                    Integer.class, produtoId)).isZero();
+        }
+    }
+
     private Object reservar(CountDownLatch inicio, String chave) {
         try {
             inicio.await();
@@ -339,12 +386,25 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    private Object cancelar(
+            CountDownLatch inicio, Long pedidoId, String chave) {
+        try {
+            inicio.await();
+            return pedidos.cancelar(
+                    organizacaoId, usuarioId, pedidoId, 1L, chave,
+                    new CancelarPedidoRequest("DESISTENCIA_DO_COMPRADOR"));
+        } catch (Exception ex) {
+            return ex;
+        }
+    }
+
     @AfterEach
     void limparDadosCommitados() {
         if (organizacaoId == null) return;
         jdbc.update("delete from requisicao_idempotente where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from representacao_qr where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from credencial_acesso where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from cancelamento_pedido where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from confirmacao_manual_pedido where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from item_pedido where pedido_id in (select id from pedido where organizacao_id = ?)", organizacaoId);
         jdbc.update("delete from comprador_pedido where pedido_id in (select id from pedido where organizacao_id = ?)", organizacaoId);

@@ -100,10 +100,11 @@ flowchart TD
 
 ## 13.4 Catálogo — Pedido, pagamento e credencial
 
-**Situação implementada:** `PedidoCriado`, `PedidoAguardandoPagamento` e
-`PedidoExpirado` são gravados na outbox pela implementação atual. O primeiro
-comando não inicia gateway nem confirma inventário; esses fatos permanecem no
-fluxo TARGET posterior.
+**Situação implementada:** `PedidoCriado`, `PedidoAguardandoPagamento`,
+`PedidoExpirado` e `PedidoCancelado` são gravados na outbox pela implementação
+atual. O cancelamento compensa o inventário uma única vez e, se o direito já
+estiver confirmado, bloqueia credenciais e revoga QR antes de deixar o pedido
+em `EM_REEMBOLSO`. `ReembolsoSolicitado` permanece dependente de UC714.
 
 | Evento | Disparador | Regras executadas | Entidades afetadas | Seguimento |
 |---|---|---|---|---|

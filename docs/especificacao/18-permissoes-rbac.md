@@ -140,6 +140,11 @@ parceiro permanecem no backlog de identidade contextual.
 pendência de conciliação; ela não permite alterar valor, itens ou documento do
 pedido.
 
+`orders:cancel` está implementada para `ADMIN_ORGANIZACAO`, `GESTOR` e
+`ORGANIZADOR`, limitada ao pedido do próprio ator. A permissão não concede
+reembolso: quando há valor confirmado, o comando apenas cria a pendência
+compensatória para UC714.
+
 `credentials:issue` está implementada para `ADMIN_ORGANIZACAO`, `GESTOR` e
 `ORGANIZADOR`. No recorte atual, emissão, leitura e geração QR continuam
 limitadas aos pedidos/credenciais do próprio ator; operação administrativa sobre

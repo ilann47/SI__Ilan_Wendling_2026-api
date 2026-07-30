@@ -32,4 +32,17 @@ class RepresentacaoQrTest {
                 1L, 2L, 0, "token-em-claro", agora, agora.minusMinutes(1)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void revogaUmaUnicaVezSemApagarHistorico() {
+        OffsetDateTime emitidoEm = OffsetDateTime.parse("2026-10-10T16:00:00-03:00");
+        RepresentacaoQr representacao = RepresentacaoQr.criar(
+                1L, 2L, 1, "a".repeat(64), emitidoEm,
+                emitidoEm.plusHours(8));
+
+        assertThat(representacao.revogar(emitidoEm.plusMinutes(1))).isTrue();
+        assertThat(representacao.getRevogadaEm())
+                .isEqualTo(emitidoEm.plusMinutes(1));
+        assertThat(representacao.revogar(emitidoEm.plusMinutes(2))).isFalse();
+    }
 }

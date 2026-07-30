@@ -130,6 +130,18 @@ public class ReservaInventario extends AuditableEntity {
         return true;
     }
 
+    public boolean cancelarPedido(String motivo, OffsetDateTime instante) {
+        if (status == StatusReservaInventario.CANCELADA) {
+            return false;
+        }
+        if (status != StatusReservaInventario.CONFIRMADA) {
+            throw new IllegalStateException(
+                    "Somente reserva confirmada pode ser cancelada pelo pedido.");
+        }
+        concluir(StatusReservaInventario.CANCELADA, motivo, instante);
+        return true;
+    }
+
     private void concluir(
             StatusReservaInventario novoStatus, String motivo, OffsetDateTime instante) {
         if (instante == null) {

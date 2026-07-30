@@ -151,6 +151,14 @@ public class ProdutoEstacionamento extends AuditableEntity {
         quantidadeVendida += quantidade;
     }
 
+    public void cancelarVenda(int quantidade) {
+        if (quantidade < 1 || quantidade > quantidadeVendida) {
+            throw new IllegalStateException(
+                    "O saldo vendido nao pode ficar negativo.");
+        }
+        quantidadeVendida -= quantidade;
+    }
+
     static void validarDados(
             String nome, CategoriaProduto categoria, DireitoProduto direito,
             OffsetDateTime inicioAcesso, OffsetDateTime fimAcesso, Integer quota,

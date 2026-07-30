@@ -10,6 +10,8 @@ import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
 import com.kaneko.estacionamento.inventario.reserva.ReservaInventarioService;
 import com.kaneko.estacionamento.inventario.reserva.ReservaParaPedido;
+import com.kaneko.estacionamento.pedido.dto.CancelamentoPedidoResponse;
+import com.kaneko.estacionamento.pedido.dto.CancelarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.ConfirmarPedidoManualmenteRequest;
 import com.kaneko.estacionamento.pedido.dto.CriarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.PedidoResponse;
@@ -32,11 +34,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class PedidoService {
     private static final String OPERACAO_CRIAR = "PEDIDO_CRIAR";
     private static final String OPERACAO_CONFIRMAR_MANUAL = "PEDIDO_CONFIRMAR_MANUAL";
+    private static final String OPERACAO_CANCELAR = "PEDIDO_CANCELAR";
     private static final String RECURSO = "PEDIDO";
+    private static final String RECURSO_CANCELAMENTO = "CANCELAMENTO_PEDIDO";
 
     private final PedidoRepository pedidos;
     private final ConfirmacaoManualPedidoRepository confirmacoesManuais;
+    private final CancelamentoPedidoRepository cancelamentos;
     private final ReservaInventarioService reservas;
+    private final CredenciaisPedidoPort credenciais;
     private final IdempotenciaRepository idempotencia;
     private final AuditoriaService auditoria;
     private final OutboxService outbox;
@@ -44,12 +50,15 @@ public class PedidoService {
     public PedidoService(
             PedidoRepository pedidos,
             ConfirmacaoManualPedidoRepository confirmacoesManuais,
-            ReservaInventarioService reservas,
+            CancelamentoPedidoRepository cancelamentos,
+            ReservaInventarioService reservas, CredenciaisPedidoPort credenciais,
             IdempotenciaRepository idempotencia, AuditoriaService auditoria,
             OutboxService outbox) {
         this.pedidos = pedidos;
         this.confirmacoesManuais = confirmacoesManuais;
+        this.cancelamentos = cancelamentos;
         this.reservas = reservas;
+        this.credenciais = credenciais;
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.outbox = outbox;
@@ -199,6 +208,84 @@ public class PedidoService {
     }
 
     @Transactional
+    public CancelamentoPedidoResponse cancelar(
+            Long organizacaoId, Long atorId, Long pedidoId,
+            Long versaoEsperada, String chaveIdempotencia,
+            CancelarPedidoRequest request) {
+        String chave = validarChave(chaveIdempotencia);
+        validarCancelamento(request);
+        String requestHash = hashCancelamento(pedidoId, request);
+        idempotencia.bloquear(
+                organizacaoId, atorId, OPERACAO_CANCELAR, chave);
+        var anterior = idempotencia.buscar(
+                organizacaoId, atorId, OPERACAO_CANCELAR, chave);
+        if (anterior.isPresent()) {
+            if (!requestHash.equals(anterior.get().requestHash())) {
+                throw new ConflitoException(
+                        "A chave de idempotencia ja foi usada com outro payload.");
+            }
+            return CancelamentoPedidoResponse.from(
+                    cancelamentos.findDoAtor(
+                                    anterior.get().recursoId(), organizacaoId, atorId)
+                            .orElseThrow(() -> new ConflitoException(
+                                    "O resultado idempotente nao esta mais disponivel.")));
+        }
+
+        Pedido visivel = pedidos.findByIdAndOrganizacaoIdAndAtorId(
+                        pedidoId, organizacaoId, atorId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Pedido", pedidoId));
+        var inventario = reservas.cancelarParaPedido(
+                organizacaoId, visivel.getReservaInventarioId(),
+                visivel.getEventoId(), "PEDIDO_CANCELADO");
+        Pedido pedido = pedidos.findDoAtorForUpdate(
+                        pedidoId, organizacaoId, atorId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Pedido", pedidoId));
+        if (!pedido.getVersion().equals(versaoEsperada)) {
+            throw new VersaoPedidoDivergenteException();
+        }
+
+        Map<String, Object> estadoAnterior = snapshot(pedido);
+        Long versaoAnterior = pedido.getVersion();
+        OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
+        boolean reembolsoNecessario;
+        try {
+            reembolsoNecessario = pedido.cancelar(agora);
+        } catch (IllegalStateException ex) {
+            throw new ConflitoException(ex.getMessage());
+        }
+        int bloqueadas = reembolsoNecessario
+                ? credenciais.bloquearDoPedido(
+                        organizacaoId, pedidoId, "PEDIDO_CANCELADO", agora)
+                : 0;
+        CancelamentoPedido cancelamento = cancelamentos.saveAndFlush(
+                CancelamentoPedido.criar(
+                        organizacaoId, pedido, atorId, request.reason(),
+                        reembolsoNecessario, inventario.quantidadeLiberada(),
+                        bloqueadas));
+        pedidos.flush();
+
+        Map<String, Object> posterior = snapshot(pedido);
+        posterior.put("cancelamentoId", cancelamento.getId());
+        posterior.put("reembolsoNecessario", reembolsoNecessario);
+        posterior.put("quantidadeLiberada", inventario.quantidadeLiberada());
+        posterior.put("credenciaisBloqueadas", bloqueadas);
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                organizacaoId, "PEDIDO_CANCELADO", RECURSO, pedidoId,
+                pedido.getEventoId(), null, request.reason(), estadoAnterior,
+                posterior, versaoAnterior, pedido.getVersion(),
+                ClasseRetencaoAuditoria.FINANCEIRA));
+        outbox.publicar(new PublicarEventoOutboxCommand(
+                "PedidoCancelado", organizacaoId, RECURSO, pedidoId,
+                pedido.getVersion(), null, 1, posterior));
+        idempotencia.registrar(
+                organizacaoId, atorId, OPERACAO_CANCELAR, chave, requestHash,
+                RECURSO_CANCELAMENTO, cancelamento.getId());
+        return CancelamentoPedidoResponse.from(cancelamento);
+    }
+
+    @Transactional
     public int expirarVencidos(int limite) {
         if (limite < 1 || limite > 1000) {
             throw new IllegalArgumentException("O limite de expiracao e invalido.");
@@ -252,6 +339,14 @@ public class PedidoService {
         }
     }
 
+    private static void validarCancelamento(CancelarPedidoRequest request) {
+        if (request == null || request.reason() == null
+                || request.reason().isBlank()) {
+            throw new IllegalArgumentException(
+                    "O cancelamento do pedido esta incompleto.");
+        }
+    }
+
     private static String numero() {
         return "PED-" + UUID.randomUUID().toString().replace("-", "")
                 .toUpperCase(Locale.ROOT);
@@ -295,6 +390,11 @@ public class PedidoService {
                 + campo(request.evidenceReference().trim())
                 + campo(request.reason().trim());
         return sha256(canonico);
+    }
+
+    private static String hashCancelamento(
+            Long pedidoId, CancelarPedidoRequest request) {
+        return sha256(campo(pedidoId) + campo(request.reason().trim()));
     }
 
     private static String sha256(String canonico) {

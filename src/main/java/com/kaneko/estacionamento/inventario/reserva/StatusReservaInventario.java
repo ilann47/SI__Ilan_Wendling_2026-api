@@ -4,5 +4,6 @@ public enum StatusReservaInventario {
     MANTIDA,
     CONFIRMADA,
     EXPIRADA,
-    LIBERADA
+    LIBERADA,
+    CANCELADA
 }

@@ -73,7 +73,8 @@ proteção do último administrador.
 - [[produtos-estacionamento]] — criação exige `pricing:manage`, concedida também ao Organizador.
 - [[pedidos]] — criação e leitura própria exigem `orders:create`, concedida a
   Administrador, Gestor e Organizador; `orders:manual-confirm` é restrita a
-  Administrador e Gestor.
+  Administrador e Gestor; `orders:cancel` é concedida aos três papéis, sempre
+  com ownership do pedido.
 - [[credenciais]] — emissão, leitura própria e geração QR exigem
   `credentials:issue`, concedida a Administrador, Gestor e Organizador.
 
@@ -89,3 +90,4 @@ proteção do último administrador.
 | 2026-07-30 | Catálogo recebe `pricing:manage` para Administrador, Gestor e Organizador. |
 | 2026-07-30 | Catálogo recebe `orders:create` para Administrador, Gestor e Organizador. |
 | 2026-07-30 | Catálogo recebe `credentials:issue` para Administrador, Gestor e Organizador. |
+| 2026-07-30 | Catálogo recebe `orders:cancel` para cancelamento do próprio pedido. |

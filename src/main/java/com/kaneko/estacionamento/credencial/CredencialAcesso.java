@@ -61,6 +61,10 @@ public class CredencialAcesso extends AuditableEntity {
     private StatusCredencial status;
     @Column(name = "qr_versao", nullable = false)
     private Integer qrVersao;
+    @Column(name = "bloqueada_em")
+    private OffsetDateTime bloqueadaEm;
+    @Column(name = "motivo_bloqueio", length = 300)
+    private String motivoBloqueio;
     @Version
     @Column(nullable = false)
     private Long version;
@@ -132,6 +136,25 @@ public class CredencialAcesso extends AuditableEntity {
         }
         qrVersao++;
         return qrVersao;
+    }
+
+    public boolean bloquear(String motivo, OffsetDateTime instante) {
+        if (status == StatusCredencial.BLOQUEADA) {
+            return false;
+        }
+        if (status != StatusCredencial.ATIVA) {
+            throw new IllegalStateException(
+                    "Somente credencial ativa pode ser bloqueada.");
+        }
+        if (motivo == null || motivo.isBlank() || motivo.trim().length() > 300
+                || instante == null) {
+            throw new IllegalArgumentException(
+                    "Motivo e instante do bloqueio sao obrigatorios.");
+        }
+        status = StatusCredencial.BLOQUEADA;
+        motivoBloqueio = motivo.trim();
+        bloqueadaEm = instante;
+        return true;
     }
 
     private static String placa(String valor) {

@@ -17,6 +17,13 @@ public interface ReservaInventarioRepository extends JpaRepository<ReservaInvent
 
     Optional<ReservaInventario> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    @Query("""
+            select r.produtoId from ReservaInventario r
+            where r.id = :id and r.organizacaoId = :organizacaoId
+            """)
+    Optional<Long> findProdutoId(
+            @Param("id") Long id, @Param("organizacaoId") Long organizacaoId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select r from ReservaInventario r

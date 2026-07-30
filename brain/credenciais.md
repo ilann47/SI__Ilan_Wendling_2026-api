@@ -12,7 +12,8 @@ tenant-aware e gerar sua representação QR segura sem acoplar o direito ao meio
 UC711 está implementada para pedidos confirmados do próprio ator. Cada chamada
 emite uma credencial para a próxima unidade ainda não atendida. Quando todas as
 unidades recebem credencial, o pedido transiciona para `ATENDIDO`. UC712 gera
-uma representação QR para credencial própria ativa com meio QR. Bloqueio,
+uma representação QR para credencial própria ativa com meio QR. UC713 bloqueia
+credenciais de pedido cancelado e revoga o QR vigente; bloqueio administrativo,
 reemissão e consumo pertencem às histórias seguintes.
 
 ## Fluxo (camadas da arquitetura)
@@ -38,6 +39,11 @@ POST /api/v1/credentials/{credentialId}/qr-code + If-Match
   -> incrementa qrVersao e @Version da credencial
   -> auditoria + QRCodeGerado sem token/hash
   -> 201 + token retornado uma única vez + novo ETag
+
+cancelamento do pedido confirmado/atendido
+  -> lock das credenciais do pedido
+  -> ATIVA -> BLOQUEADA + revogação do QR vigente
+  -> auditoria sem token/hash
 ```
 
 ## Endpoints (se houver)
@@ -52,7 +58,8 @@ POST /api/v1/credentials/{credentialId}/qr-code + If-Match
 
 `CredencialAcesso` congela organização, evento, pátio, pedido, item, proprietário,
 código público não autorizador, número da unidade, origem, categoria, direito,
-validade, meio preferido, placa não ambígua, estado, `qrVersao` e versão JPA. O
+validade, meio preferido, placa não ambígua, estado, bloqueio/motivo,
+`qrVersao` e versão JPA. O
 `ItemPedido` congela também o pátio resolvido da alocação. `RepresentacaoQr`
 guarda escopo tenant, credencial, número da versão, hash SHA-256, emissão,
 expiração e revogação opcional; o token em claro não integra a entidade.
@@ -79,7 +86,8 @@ validação física no acesso permanecem fora deste caso de uso.
 Há testes de domínio, API, RBAC, ownership, idempotência, uma credencial por
 unidade, snapshot de pátio/direito/validade, transição do pedido, token opaco,
 ausência de segredo no banco, precondição, constraints, OpenAPI, Flyway,
-Hibernate validate, emissão concorrente e geração QR concorrente.
+Hibernate validate, emissão concorrente, geração QR concorrente e bloqueio
+compensatório durante cancelamento.
 
 ## Decisões Técnicas
 
@@ -96,6 +104,8 @@ Hibernate validate, emissão concorrente e geração QR concorrente.
   somente na criação; persistência, auditoria e outbox recebem apenas metadados.
 - `qrVersao` pertence ao agregado e incrementa o `ETag`; lock pessimista,
   `If-Match` e índice parcial garantem uma representação não revogada.
+- Cancelamento do pedido revoga a representação ativa no mesmo commit do
+  bloqueio; o histórico e o hash permanecem para rastreabilidade.
 - `meioPreferido = QR` é a permissão efetiva enquanto não existir uma política
   de meios híbridos. QR rotativo, revogação e reemissão não foram antecipados.
 
@@ -117,3 +127,4 @@ Hibernate validate, emissão concorrente e geração QR concorrente.
 |---|---|
 | 2026-07-30 | Implementa UC711 com uma credencial ativa por unidade confirmada. |
 | 2026-07-30 | Implementa UC712 com token QR de entrega única e hash persistido. |
+| 2026-07-30 | UC713 bloqueia credenciais e revoga QR de pedido cancelado. |

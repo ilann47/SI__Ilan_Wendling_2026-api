@@ -621,3 +621,25 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Testes cobrem domínio, API, RBAC, ownership, precondição, segredo não
   persistido, constraints, OpenAPI e duas gerações concorrentes.
 - A suíte passa de 456 para 462 testes sem regressões.
+
+---
+
+## Atualização — Cancelamento compensatório de pedido / UC713 (2026-07-30)
+
+- A migration `V27__cancelamento_pedido.sql` cria o processo tenant-aware e
+  único por pedido, adiciona o estado `CANCELADA` à reserva e os metadados de
+  bloqueio da credencial, além da permissão `orders:cancel`.
+- `POST /api/v1/orders/{id}/cancellation` exige tenant, ownership, `If-Match` e
+  `Idempotency-Key`; Admin, Gestor e Organizador recebem a permissão.
+- Pedido ainda não confirmado termina em `CANCELADO` e devolve o contador
+  reservado. Pedido confirmado ou atendido termina em `EM_REEMBOLSO`, compensa
+  o contador vendido, bloqueia credenciais e revoga a representação QR ativa.
+- Produto e reserva usam ordem estável de lock e consulta escalar prévia, sem
+  entidade stale no persistence context. Duas transações concorrentes não
+  liberam a mesma quantidade duas vezes.
+- O processo registra motivo, estado resultante, necessidade de reembolso,
+  quantidade liberada e credenciais bloqueadas. `PedidoCancelado` e
+  `InventarioLiberado` são persistidos na outbox; auditoria não expõe token/hash.
+- UC713 não simula gateway nem publica reembolso. A restituição financeira e as
+  políticas ainda não definidas de prazo, multa e crédito permanecem em UC714.
+- A suíte passa de 462 para 471 testes sem regressões.

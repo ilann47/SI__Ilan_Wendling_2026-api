@@ -151,6 +151,26 @@ public class Pedido extends AuditableEntity {
         return true;
     }
 
+    public boolean cancelar(OffsetDateTime instante) {
+        if (instante == null) {
+            throw new IllegalArgumentException(
+                    "O instante do cancelamento e obrigatorio.");
+        }
+        if (status == StatusPedido.CRIADO
+                || status == StatusPedido.AGUARDANDO_PAGAMENTO) {
+            status = StatusPedido.CANCELADO;
+            finalizadoEm = instante;
+            return false;
+        }
+        if (status == StatusPedido.CONFIRMADO
+                || status == StatusPedido.ATENDIDO) {
+            status = StatusPedido.EM_REEMBOLSO;
+            return true;
+        }
+        throw new IllegalStateException(
+                "O estado do pedido nao permite cancelamento.");
+    }
+
     public List<ItemPedido> getItens() {
         return Collections.unmodifiableList(itens);
     }

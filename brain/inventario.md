@@ -18,6 +18,8 @@ UC708 acrescenta lotes comerciais; cada lote respeita a quota do produto e
 prioridades distintas resolvem períodos sobrepostos sem ambiguidade.
 [[disponibilidade]] projeta a quota e o lote vigente. UC709 acrescenta
 [[reservas-inventario]], que compromete e devolve saldo sob lock do produto.
+UC713 também compensa venda confirmada ao cancelar o pedido, sem permitir
+contador negativo ou devolução duplicada.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -70,7 +72,8 @@ e ainda não possui dispatcher ou consumidor.
 ## Testes (curl ou equivalente)
 
 Há testes de domínio, API, RBAC, tenant, idempotência, compartilhamento do
-saldo, sobrealocação, ETag, auditoria, outbox, expiração e concorrência real no PostgreSQL.
+saldo, sobrealocação, ETag, auditoria, outbox, expiração, cancelamento
+compensatório e concorrência real no PostgreSQL.
 
 ## Decisões Técnicas
 
@@ -106,3 +109,4 @@ saldo, sobrealocação, ETag, auditoria, outbox, expiração e concorrência rea
 | 2026-07-30 | Vincula lotes de preço à quota do produto e impede períodos ambíguos. |
 | 2026-07-30 | Expõe disponibilidade projetada sem consumir inventário. |
 | 2026-07-30 | Implementa UC709 e serializa o consumo temporário por produto. |
+| 2026-07-30 | UC713 compensa contadores reservado/vendido sob o mesmo lock do produto. |

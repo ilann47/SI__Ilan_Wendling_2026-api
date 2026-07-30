@@ -233,22 +233,22 @@ public class ReservaInventarioService {
     @Transactional(propagation = Propagation.MANDATORY)
     public ReservaInventarioResponse confirmarParaPedido(
             Long organizacaoId, Long reservaId, Long eventoId) {
-        ReservaInventario visivel = reservas.findByIdAndOrganizacaoId(
+        Long produtoId = reservas.findProdutoId(
                         reservaId, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Reserva de inventario", reservaId));
-        if (!visivel.getEventoId().equals(eventoId)) {
-            throw new RecursoNaoEncontradoException(
-                    "Reserva de inventario", reservaId);
-        }
         ProdutoEstacionamento produto = produtos.findByIdAndOrganizacaoIdForUpdate(
-                        visivel.getProdutoId(), organizacaoId)
+                        produtoId, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
-                        "Produto de estacionamento", visivel.getProdutoId()));
+                        "Produto de estacionamento", produtoId));
         ReservaInventario reserva = reservas.findByIdAndOrganizacaoIdForUpdate(
                         reservaId, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Reserva de inventario", reservaId));
+        if (!reserva.getEventoId().equals(eventoId)) {
+            throw new RecursoNaoEncontradoException(
+                    "Reserva de inventario", reservaId);
+        }
         OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
         if (reserva.getStatus() != StatusReservaInventario.MANTIDA
                 || !agora.toInstant().isBefore(reserva.getExpiraEm().toInstant())) {
@@ -265,6 +265,54 @@ public class ReservaInventarioService {
                 reserva, produto, "RESERVA_INVENTARIO_CONFIRMADA",
                 "InventarioConfirmado", anterior, versaoAnterior);
         return ReservaInventarioResponse.from(reserva);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public CancelamentoInventarioResultado cancelarParaPedido(
+            Long organizacaoId, Long reservaId, Long eventoId,
+            String motivo) {
+        Long produtoId = reservas.findProdutoId(
+                        reservaId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Reserva de inventario", reservaId));
+        ProdutoEstacionamento produto = produtos.findByIdAndOrganizacaoIdForUpdate(
+                        produtoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Produto de estacionamento", produtoId));
+        ReservaInventario reserva = reservas.findByIdAndOrganizacaoIdForUpdate(
+                        reservaId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Reserva de inventario", reservaId));
+        if (!reserva.getEventoId().equals(eventoId)) {
+            throw new RecursoNaoEncontradoException(
+                    "Reserva de inventario", reservaId);
+        }
+        OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
+        Map<String, Object> anterior = snapshot(reserva);
+        Long versaoAnterior = reserva.getVersion();
+
+        if (reserva.getStatus() == StatusReservaInventario.MANTIDA) {
+            if (!agora.toInstant().isBefore(reserva.getExpiraEm().toInstant())) {
+                throw new ConflitoException(
+                        "O prazo do pedido expirou antes do cancelamento.");
+            }
+            reserva.liberar(motivo, agora);
+            produto.liberarReserva(reserva.getQuantidade());
+        } else if (reserva.getStatus() == StatusReservaInventario.CONFIRMADA) {
+            reserva.cancelarPedido(motivo, agora);
+            produto.cancelarVenda(reserva.getQuantidade());
+        } else {
+            throw new ConflitoException(
+                    "O inventario do pedido nao pode ser cancelado neste estado.");
+        }
+
+        reservas.flush();
+        produtos.flush();
+        registrarTransicao(
+                reserva, produto, "INVENTARIO_PEDIDO_LIBERADO",
+                "InventarioLiberado", anterior, versaoAnterior);
+        return new CancelamentoInventarioResultado(
+                reserva.getQuantidade(), reserva.getStatus());
     }
 
     @Transactional
