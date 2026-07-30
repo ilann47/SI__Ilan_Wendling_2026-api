@@ -4,6 +4,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repositorio de {@link Patio}. Filtros dinamicos via
@@ -15,5 +17,6 @@ public interface PatioRepository extends JpaRepository<Patio, Long>,
 
     @Override
     @EntityGraph(attributePaths = {"cidade"})
-    Optional<Patio> findById(Long id);
+    @Query("select p from Patio p where p.id = :id and p.organizacaoId is null")
+    Optional<Patio> findById(@Param("id") Long id);
 }

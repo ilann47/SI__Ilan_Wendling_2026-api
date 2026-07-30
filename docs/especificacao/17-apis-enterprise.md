@@ -148,7 +148,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 
 | Método e rota | Payload/Parâmetros | Resposta | Regras |
 |---|---|---|---|
-| `POST /parking-facilities` | nome, unidade, endereço, capacidade | `201 Patio` | capacidade > 0 |
+| `POST /parking-facilities` | AS-IS: organização implícita, nome, endereço, cidade, capacidade física/operacional | `201 Patio`, `Location`, `ETag` | `facilities:manage`; organização/cidade ativas; `0 ≤ operacional ≤ física`; nome único no tenant |
 | `POST /parking-facilities/{id}/sectors` | código, capacidade, categorias | `201 Sector` | limites físicos |
 | `POST /sectors/{id}/spaces:batch` | lista de vagas | `201/207` | importação idempotente |
 | `GET /parking-facilities/{id}/occupancy` | por setor/categoria | projeção atual + atraso | leitura no escopo |

@@ -65,9 +65,11 @@ imutabilidade física no PostgreSQL.
 - [[organizacoes]]
 - [[membership]]
 - [[rbac]]
+- [[instalacoes]] — publica `PATIO_CRIADO` com snapshot explícito de capacidade.
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-29 | Implementa fundação transacional append-only e instrumenta os módulos enterprise existentes. |
+| 2026-07-29 | Instalações passa a registrar criação de pátio na mesma transação. |

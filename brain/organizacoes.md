@@ -67,7 +67,7 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 - [[core]]
 - [[membership]] — vínculos ativos habilitam descoberta e emissão de contexto organizacional.
 - [[auditoria]] — preserva criação e mudanças cadastrais com versões e snapshots redigidos.
-- Instalações — receberá ownership da organização em sua etapa própria.
+- [[instalacoes]] — pátios novos recebem ownership obrigatório da organização ativa.
 
 ## Histórico
 
@@ -76,3 +76,4 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 | 2026-07-29 | Implementação inicial do agregado, migration V8 e três endpoints `/api/v1`. |
 | 2026-07-29 | Integração de leitura com Membership ativa, sem alterar o contrato administrativo da organização. |
 | 2026-07-29 | Integração transacional com a trilha imutável de auditoria. |
+| 2026-07-29 | Pátios enterprise passam a pertencer ao tenant ativo. |

@@ -96,6 +96,10 @@ Papéis são compostos por permissões, entre elas:
 - `devices:provision`, `devices:command`, `devices:diagnose`;
 - `audit:read`, `audit:export`.
 
+**Situação implementada:** `facilities:manage` integra o papel de sistema
+`ADMIN_ORGANIZACAO` e protege a criação de pátio no contexto ativo. Os demais
+papéis e `facilities:read` permanecem nas histórias correspondentes.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

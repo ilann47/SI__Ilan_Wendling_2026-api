@@ -316,3 +316,21 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Registros recebem classe de retenção. Prazos e expurgo não foram inventados e
   permanecem dependentes de definição legal; nenhuma API pública foi antecipada.
 - A suíte passou de 357 para 362 testes sem regressões.
+
+---
+
+## Atualização — História 5: Instalações/Pátio (2026-07-29)
+
+- A migration `V13__instalacoes_patio_tenant.sql` evolui aditivamente a tabela
+  `patio`: dados legados permanecem sem tenant, recebem capacidade operacional
+  igual à física e não são atribuídos automaticamente a organizações.
+- Novos pátios pertencem obrigatoriamente à organização do JWT contextual. O
+  corpo não aceita `organizationId`, impedindo troca de tenant pelo cliente.
+- Capacidade física positiva e `0 ≤ capacidade operacional ≤ capacidade física`
+  são defendidas no domínio e no PostgreSQL; nome normalizado é único por tenant.
+- `POST /api/v1/parking-facilities` exige `facilities:manage`, retorna `Location`
+  e `ETag`, e registra `PATIO_CRIADO` na auditoria transacional.
+- As APIs legadas `/api/patios` continuam operantes e enxergam exclusivamente
+  registros legados sem organização; Venue, Setor e alteração de capacidade não
+  foram antecipados.
+- A suíte passou de 362 para 368 testes sem regressões.

@@ -65,6 +65,7 @@ proteção do último administrador.
 - [[organizacoes]]
 - [[membership]]
 - [[auditoria]] — registra concessões e revogações com vigência, versões e motivo.
+- [[instalacoes]] — criação de pátio exige `facilities:manage` no contexto ativo.
 
 ## Histórico (data + ação)
 
@@ -72,3 +73,4 @@ proteção do último administrador.
 |---|---|
 | 2026-07-29 | Implementa RBAC contextual organizacional e remove administração global excessiva. |
 | 2026-07-29 | Concessões e revogações passam a integrar a trilha transacional de auditoria. |
+| 2026-07-29 | Catálogo recebe `facilities:manage` para o módulo de Instalações. |

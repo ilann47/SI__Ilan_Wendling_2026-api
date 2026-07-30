@@ -35,6 +35,12 @@ public class RbacGuard {
         UsuarioAutenticado p = principal(auth);
         return p != null && p.possuiOrganizacaoAtiva();
     }
+    public boolean hasPermissionInActiveContext(String permission, Authentication auth) {
+        if (!enabled) return true;
+        UsuarioAutenticado p = principal(auth);
+        return p != null && p.possuiOrganizacaoAtiva()
+                && rbac.permissoes(p.membershipId(), p.organizacaoId()).contains(permission);
+    }
     public boolean canReadOrganization(Long orgId, Authentication auth) {
         return platformAdmin(auth) || hasPermission(orgId, "organizations:admin", auth);
     }

@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]]
 
 # Core do Estacionamento Kaneko
 
@@ -37,6 +37,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[membership]] — vínculo da identidade global, descoberta e contexto de tenant.
 - [[rbac]] — permissões efetivas por papel, Membership e escopo organizacional.
 - [[auditoria]] — trilha transacional e imutável das mutações enterprise.
+- [[instalacoes]] — topologia física tenant-aware e limites de capacidade.
 
 ## Histórico
 
@@ -46,3 +47,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-29 | Registro da História 2 de Membership e JWT contextual. |
 | 2026-07-29 | Registro da História 3 de RBAC contextual. |
 | 2026-07-29 | Registro da História 4 de auditoria append-only. |
+| 2026-07-29 | Registro da História 5 de Instalações e criação de pátio tenant-aware. |

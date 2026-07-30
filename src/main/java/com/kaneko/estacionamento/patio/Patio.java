@@ -8,6 +8,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,6 +25,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Patio extends BaseEntity {
+
+    @Column(name = "organizacao_id", insertable = false, updatable = false)
+    private Long organizacaoId;
 
     @Column(name = "nome", nullable = false, length = 120)
     private String nome;
@@ -49,6 +53,13 @@ public class Patio extends BaseEntity {
 
     @Column(name = "capacidade_vagas", nullable = false)
     private Integer capacidadeVagas;
+
+    @Column(name = "capacidade_operacional", nullable = false)
+    private Integer capacidadeOperacional;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @Column(name = "observacao", length = 255)
     private String observacao;

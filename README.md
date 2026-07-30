@@ -31,6 +31,9 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   revogação imediata e bootstrap controlado do primeiro administrador do tenant.
 - **Auditoria imutável** — trilha transacional append-only de Organização,
   Membership e RBAC, com ator, origem, trace, versões e snapshots redigidos.
+- **Instalações** (`POST /api/v1/parking-facilities`) — criação tenant-aware de
+  pátios físicos, com capacidade operacional limitada pela capacidade física,
+  autorização contextual e auditoria.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
 
@@ -51,7 +54,7 @@ CREATE DATABASE estacionamento_kaneko_test;
 ```
 
 O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
-migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V12`). O
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V13`). O
 Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
 schema, nunca o altera.
 

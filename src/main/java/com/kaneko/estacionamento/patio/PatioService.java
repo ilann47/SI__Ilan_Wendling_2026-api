@@ -35,6 +35,7 @@ public class PatioService {
     @Transactional(readOnly = true)
     public Page<PatioResponse> listar(String nome, Boolean ativo, Pageable pageable) {
         Specification<Patio> filtro = FiltroSpecs.todos(
+                (root, query, cb) -> cb.isNull(root.get("organizacaoId")),
                 FiltroSpecs.contemIgnoreCase("nome", nome),
                 FiltroSpecs.igual("ativo", ativo));
         return repository.findAll(filtro, pageable).map(this::toResponse);
@@ -85,6 +86,7 @@ public class PatioService {
         p.setCep(req.cep());
         p.setCidade(req.cidadeId() != null ? buscarCidade(req.cidadeId()) : null);
         p.setCapacidadeVagas(req.capacidadeVagas());
+        p.setCapacidadeOperacional(req.capacidadeVagas());
         p.setObservacao(req.observacao());
         if (req.ativo() != null) {
             p.setAtivo(req.ativo());

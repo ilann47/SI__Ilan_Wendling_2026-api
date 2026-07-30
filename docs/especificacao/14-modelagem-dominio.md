@@ -39,7 +39,7 @@
 
 | Entidade | Situação e responsabilidade | Atributos principais | Relacionamentos | Estados/validações | Histórico e auditoria |
 |---|---|---|---|---|---|
-| `Patio` | AS-IS/EVOLUÇÃO; instalação física | nome, endereço, capacidade física, observação | N:1 organização/unidade; 1:N setores/alocações | ativo/interditado; capacidade > 0 | capacidade e interdições versionadas |
+| `Patio` | AS-IS/EVOLUÇÃO; raiz de instalação física tenant-aware | nome, endereço, cidade, capacidade física, capacidade operacional, observação | N:1 organização; unidade/venue e setores permanecem evoluções | ativo; física > 0; `0 ≤ operacional ≤ física`; nome normalizado único por organização | criação auditada e versão otimista; interdições permanecem futuras |
 | `Setor` | TARGET; divisão operacional | código, nome, capacidade, categorias, coordenadas | N:1 pátio; 1:N vagas/faixas | capacidade ≤ pátio; código único no pátio | alterações e bloqueios |
 | `Vaga` | TARGET; unidade individual opcional | código, tipo, acessibilidade, posição | N:1 setor | livre/bloqueada/manutenção; código único | mudanças de disponibilidade |
 | `FaixaAcesso` | TARGET; via física de entrada/saída | código, direção, modo de falha | N:1 pátio/setor; N:N equipamentos | entrada/saída/bidirecional; ativa | abertura manual e mudança de política |
