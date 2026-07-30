@@ -141,9 +141,9 @@ pendência de conciliação; ela não permite alterar valor, itens ou documento 
 pedido.
 
 `credentials:issue` está implementada para `ADMIN_ORGANIZACAO`, `GESTOR` e
-`ORGANIZADOR`. No recorte atual, emissão e leitura continuam limitadas aos
-pedidos/credenciais do próprio ator; operação administrativa sobre terceiros
-aguarda escopos contextuais próprios.
+`ORGANIZADOR`. No recorte atual, emissão, leitura e geração QR continuam
+limitadas aos pedidos/credenciais do próprio ator; operação administrativa sobre
+terceiros aguarda escopos contextuais próprios.
 
 ## 18.5 Regras ABAC complementares
 

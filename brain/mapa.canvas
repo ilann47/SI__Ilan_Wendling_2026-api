@@ -64,6 +64,6 @@
     {"id": "pedidos-credenciais", "fromNode": "pedidos", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "pedido confirmado"},
     {"id": "instalacoes-credenciais", "fromNode": "instalacoes", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "escopo do patio"},
     {"id": "rbac-credenciais", "fromNode": "rbac", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "credentials:issue"},
-    {"id": "credenciais-outbox", "fromNode": "credenciais", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "emitida/pedido atendido"}
+    {"id": "credenciais-outbox", "fromNode": "credenciais", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "emitida/QR gerado/pedido atendido"}
   ]
 }

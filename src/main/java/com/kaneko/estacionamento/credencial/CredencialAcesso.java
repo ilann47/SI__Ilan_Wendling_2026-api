@@ -59,6 +59,8 @@ public class CredencialAcesso extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private StatusCredencial status;
+    @Column(name = "qr_versao", nullable = false)
+    private Integer qrVersao;
     @Version
     @Column(nullable = false)
     private Long version;
@@ -103,6 +105,7 @@ public class CredencialAcesso extends AuditableEntity {
         credencial.meioPreferido = meioPreferido;
         credencial.placaVeiculo = placa(placaVeiculo);
         credencial.status = StatusCredencial.PENDENTE;
+        credencial.qrVersao = 0;
         return credencial;
     }
 
@@ -111,6 +114,24 @@ public class CredencialAcesso extends AuditableEntity {
             throw new IllegalStateException("Somente credencial pendente pode ser ativada.");
         }
         status = StatusCredencial.ATIVA;
+    }
+
+    public int registrarRepresentacaoQr(OffsetDateTime emitidoEm) {
+        if (status != StatusCredencial.ATIVA) {
+            throw new IllegalStateException(
+                    "Somente credencial ativa pode gerar QR Code.");
+        }
+        if (meioPreferido != MeioPreferidoCredencial.QR) {
+            throw new IllegalStateException(
+                    "A credencial nao permite representacao QR.");
+        }
+        if (emitidoEm == null
+                || !fimValidade.toInstant().isAfter(emitidoEm.toInstant())) {
+            throw new IllegalStateException(
+                    "A credencial esta expirada para gerar QR Code.");
+        }
+        qrVersao++;
+        return qrVersao;
     }
 
     private static String placa(String valor) {

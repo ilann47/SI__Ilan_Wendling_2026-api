@@ -25,6 +25,7 @@ public record CredencialAcessoResponse(
         MeioPreferidoCredencial preferredMedium,
         String vehiclePlate,
         StatusCredencial status,
+        Integer qrVersion,
         Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
@@ -38,7 +39,8 @@ public record CredencialAcessoResponse(
                 credencial.getDireito(), credencial.getInicioValidade(),
                 credencial.getFimValidade(), credencial.getMeioPreferido(),
                 credencial.getPlacaVeiculo(), credencial.getStatus(),
-                credencial.getVersion(), credencial.getCreatedAt(),
+                credencial.getQrVersao(), credencial.getVersion(),
+                credencial.getCreatedAt(),
                 credencial.getUpdatedAt());
     }
 }

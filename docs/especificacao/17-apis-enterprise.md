@@ -194,6 +194,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /payment-providers/{provider}/webhooks` | payload do provedor | `200/202` | assinatura, replay, inbox |
 | `POST /orders/{id}/credentials` | AS-IS: preferredMedium + `Idempotency-Key` | `201 Credential` + `Location` + `ETag` | `credentials:issue`; pedido próprio confirmado; uma unidade por chamada; última unidade atende pedido; código público não autoriza acesso |
 | `GET /credentials/{id}` | AS-IS: id | `200 Credential` + `ETag` | tenant e proprietário autenticado com `credentials:issue`; outro ator/tenant recebe `404` |
+| `POST /credentials/{id}/qr-code` | AS-IS: id + `If-Match` | `201 QRRepresentation` + `Location` + novo `ETag` da credencial | `credentials:issue`; credencial própria ativa, meio QR, não expirada e versão atual; token opaco retornado uma única vez; apenas hash persistido |
 | `POST /credentials/{id}/reissuance` | motivo | `201 Credential` | anterior revogada |
 | `POST /credentials/{id}/blocking` | motivo | `200` | supervisor/atendimento/fraude |
 | `POST /credentials/{id}/unblocking` | motivo | `200` | estado e alçada |

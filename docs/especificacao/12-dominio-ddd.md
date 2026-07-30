@@ -220,9 +220,11 @@ de gateway, cancelamento e atendimento permanece nas histórias próprias.
 ### BC09 — Credenciais
 
 **Situação AS-IS:** UC711 emite `CredencialAcesso` ativa para cada unidade de um
-pedido confirmado, com snapshot de evento, pátio, direito e validade. O código
-público identifica o agregado, mas não autoriza acesso. Representação QR,
-bloqueio, reemissão e consumo continuam TARGET.
+pedido confirmado, com snapshot de evento, pátio, direito e validade. UC712 cria
+`RepresentacaoQR` versionada para credencial QR ativa, devolve um token opaco de
+256 bits somente na criação e persiste exclusivamente seu hash SHA-256. O código
+público identifica o agregado, mas não autoriza acesso. Bloqueio, reemissão e
+consumo continuam TARGET.
 
 - **Objetivo:** materializar o direito de acesso sem depender do meio físico.
 - **Agregado:** `CredencialAcesso`.

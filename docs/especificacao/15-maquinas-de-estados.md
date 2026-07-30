@@ -166,6 +166,9 @@ Regras:
 
 - emissão: sistema após direito elegível; **AS-IS**, `PENDENTE → ATIVA` ocorre no
   mesmo caso de uso e uma credencial é criada por unidade do pedido;
+- representação QR: **AS-IS**, somente credencial `ATIVA` com meio QR e validade
+  futura pode incrementar `qrVersao`; a criação exige a versão esperada e o
+  PostgreSQL admite somente uma representação ainda não revogada;
 - bloqueio/desbloqueio: supervisor, atendimento autorizado ou policy antifraude;
 - substituição: atendimento, revogando a representação anterior no mesmo commit;
 - entrada/saída: controle de acesso;

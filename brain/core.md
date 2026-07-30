@@ -45,7 +45,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[disponibilidade]] — projeção read-only do catálogo vendável vigente.
 - [[reservas-inventario]] — hold temporal e atômico da capacidade vendável.
 - [[pedidos]] — intenção comercial com snapshots, total e expiração.
-- [[credenciais]] — direito de acesso por unidade comprada e confirmada.
+- [[credenciais]] — direito por unidade e representação QR opaca versionada.
 - [[idempotencia]] — execução única de comandos críticos por tenant e identidade.
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
 
@@ -71,3 +71,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro de UC710 até pedido aguardando pagamento e expiração. |
 | 2026-07-30 | Registro da confirmação manual conciliável de pedido e inventário. |
 | 2026-07-30 | Registro de UC711 com credencial ativa por unidade do pedido. |
+| 2026-07-30 | Registro de UC712 com QR opaco, hash persistido e concorrência por ETag. |

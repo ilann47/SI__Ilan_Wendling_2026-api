@@ -950,6 +950,81 @@ class ProdutoEstacionamentoControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void geraQrImprevisivelUmaUnicaVezSemPersistirSegredo() throws Exception {
+        long pedidoId = criarPedidoConfirmado("credential-qr", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "credential-qr-unit",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+
+        String qrBody = gerarQr(tokenContextual, credencialId, "\"0\"",
+                        status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.credentialId").value(credencialId))
+                .andExpect(jsonPath("$.representationVersion").value(1))
+                .andExpect(jsonPath("$.token").value(
+                        org.hamcrest.Matchers.matchesPattern("KQ1-[A-Za-z0-9_-]{43}")))
+                .andExpect(jsonPath("$.issuedAt").exists())
+                .andExpect(jsonPath("$.expiresAt")
+                        .value("2026-10-11T04:00:00Z"))
+                .andReturn().getResponse().getContentAsString();
+        String tokenQr = JsonPath.read(qrBody, "$.token");
+
+        assertThat(jdbc.queryForObject(
+                "select token_hash from representacao_qr where credencial_id = ?",
+                String.class, credencialId))
+                .matches("[a-f0-9]{64}")
+                .isNotEqualTo(tokenQr);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from representacao_qr where token_hash = ?",
+                Integer.class, tokenQr)).isZero();
+        mvc.perform(get("/api/v1/credentials/{id}", credencialId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.qrVersion").value(1))
+                .andExpect(jsonPath("$.token").doesNotExist());
+        gerarQr(tokenContextual, credencialId, "\"0\"",
+                status().isPreconditionFailed());
+
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("QR_CODE_GERADO");
+            assertThat(auditoria.getRecursoId()).isEqualTo(credencialId);
+        });
+        assertThat(outbox.findAll().stream().map(e -> e.getEventType()).toList())
+                .contains("QRCodeGerado");
+    }
+
+    @Test
+    void geracaoQrExigePrecondicaoOwnershipMeioPermitidoEValidade() throws Exception {
+        long pedidoId = criarPedidoConfirmado("credential-qr-rules", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "credential-qr-rules-unit",
+                        "{\"preferredMedium\":\"PLACA\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+
+        mvc.perform(post("/api/v1/credentials/{id}/qr-code", credencialId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isPreconditionRequired());
+        gerarQr(tokenContextual, credencialId, "0", status().isBadRequest());
+        gerarQr(tokenContextual, credencialId, "\"99\"",
+                status().isPreconditionFailed());
+        gerarQr(tokenContextual, credencialId, "\"0\"", status().isConflict());
+
+        Usuario organizador = usuario("credential_qr_other", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(organizador.getId(), tokenContextual);
+        concederPapel(membershipId, "ORGANIZADOR");
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+        gerarQr(tokenOrganizador, credencialId, "\"0\"", status().isNotFound());
+    }
+
     private org.springframework.test.web.servlet.ResultActions publicarProduto(
             String token, Long produtoId, String ifMatch,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -1034,6 +1109,14 @@ class ProdutoEstacionamentoControllerTest {
         return mvc.perform(post("/api/v1/orders/{id}/credentials", pedidoId)
                         .header("Authorization", token).header("Idempotency-Key", chave)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions gerarQr(
+            String token, long credencialId, String ifMatch,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/credentials/{id}/qr-code", credencialId)
+                        .header("Authorization", token).header("If-Match", ifMatch))
                 .andExpect(esperado);
     }
 

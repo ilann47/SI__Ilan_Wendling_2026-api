@@ -75,8 +75,8 @@
 
 | Entidade | Situação e responsabilidade | Atributos principais | Relacionamentos | Estados/validações | Histórico e auditoria |
 |---|---|---|---|---|---|
-| `CredencialAcesso` | AS-IS/EVOLUÇÃO; direito independente do meio | origem, direito, validade, unidade, pátio, evento, veículo opcional, código público | N:1 pedido/item; representações futuras | `PENDENTE → ATIVA` implementado; demais estados TARGET; uma por unidade | emissão auditada; código público não é token autorizador |
-| `RepresentacaoQR` | TARGET; representação escaneável | tokenHash, versão, emitidoEm, expiraEm | N:1 credencial | token imprevisível; nunca persistir segredo em claro quando evitável | geração e revogação |
+| `CredencialAcesso` | AS-IS/EVOLUÇÃO; direito independente do meio | origem, direito, validade, unidade, pátio, evento, veículo opcional, código público, qrVersao | N:1 pedido/item; 1:N representações | `PENDENTE → ATIVA` implementado; demais estados TARGET; uma por unidade | emissão e geração QR auditadas; código público não é token autorizador |
+| `RepresentacaoQR` | AS-IS/EVOLUÇÃO; representação escaneável | tokenHash, número da versão, emitidoEm, expiraEm, revogadaEm | N:1 credencial tenant-aware | token opaco de 256 bits; somente hash SHA-256 persistido; uma representação não revogada por credencial | geração auditada; revogação continua TARGET |
 | `PlacaAutorizada` | TARGET; placa como representação | placa normalizada, confiança exigida | N:1 credencial | período e quantidade de alterações | todas as trocas de placa |
 | `TagRFID` | TARGET; identificador físico | uidTokenizado, emissor, status | N:1 credencial | único e revogável | emissão/substituição |
 | `TentativaAcesso` | TARGET; toda decisão de portão | direção, instante, faixa, credencial/placa, decisão, motivo | 0:1 credencial; N:1 evento/pátio | autorizada/recusada/pendente-supervisor | ator/dispositivo/evidência sempre |

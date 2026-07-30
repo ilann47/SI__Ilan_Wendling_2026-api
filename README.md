@@ -55,7 +55,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   pendência de conciliação sem simular aprovação de gateway.
 - **Credenciais de acesso** (`POST /api/v1/orders/{id}/credentials`) — emissão
   idempotente de um direito ativo por unidade confirmada, com snapshot de
-  evento, pátio e validade; QR permanece em etapa própria.
+  evento, pátio e validade; `POST /api/v1/credentials/{id}/qr-code` cria uma
+  representação QR imprevisível e devolve o segredo somente na criação.
 - **Alocação de pátios** — associação temporal multipátio por evento, com
   capacidades operacional/vendável/reservada, prevenção transacional de
   sobrealocação, idempotência, auditoria e concorrência otimista.
@@ -86,7 +87,7 @@ CREATE DATABASE estacionamento_kaneko_test;
 ```
 
 O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
-migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V19`). O
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V26`). O
 Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
 schema, nunca o altera.
 

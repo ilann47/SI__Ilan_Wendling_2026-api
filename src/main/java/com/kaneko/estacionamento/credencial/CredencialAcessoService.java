@@ -10,6 +10,7 @@ import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
 import com.kaneko.estacionamento.credencial.dto.CredencialAcessoResponse;
 import com.kaneko.estacionamento.credencial.dto.EmitirCredencialRequest;
+import com.kaneko.estacionamento.credencial.dto.QrCodeResponse;
 import com.kaneko.estacionamento.pedido.ItemPedido;
 import com.kaneko.estacionamento.pedido.Pedido;
 import com.kaneko.estacionamento.pedido.PedidoRepository;
@@ -17,6 +18,10 @@ import com.kaneko.estacionamento.pedido.StatusPedido;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -30,19 +35,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class CredencialAcessoService {
     private static final String OPERACAO_EMITIR = "CREDENCIAL_EMITIR";
     private static final String RECURSO = "CREDENCIAL_ACESSO";
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final CredencialAcessoRepository credenciais;
     private final PedidoRepository pedidos;
+    private final RepresentacaoQrRepository representacoesQr;
     private final IdempotenciaRepository idempotencia;
     private final AuditoriaService auditoria;
     private final OutboxService outbox;
 
     public CredencialAcessoService(
             CredencialAcessoRepository credenciais, PedidoRepository pedidos,
+            RepresentacaoQrRepository representacoesQr,
             IdempotenciaRepository idempotencia, AuditoriaService auditoria,
             OutboxService outbox) {
         this.credenciais = credenciais;
         this.pedidos = pedidos;
+        this.representacoesQr = representacoesQr;
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.outbox = outbox;
@@ -146,6 +155,49 @@ public class CredencialAcessoService {
                                 "Credencial", credencialId)));
     }
 
+    @Transactional
+    public QrCodeResponse gerarQr(
+            Long organizacaoId, Long atorId, Long credencialId,
+            long versaoEsperada) {
+        CredencialAcesso credencial = credenciais.findDoAtorForUpdate(
+                        credencialId, organizacaoId, atorId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Credencial", credencialId));
+        if (!Long.valueOf(versaoEsperada).equals(credencial.getVersion())) {
+            throw new VersaoCredencialDivergenteException();
+        }
+
+        OffsetDateTime emitidoEm = OffsetDateTime.now(ZoneOffset.UTC);
+        Long versaoAnterior = credencial.getVersion();
+        int numeroVersao = credencial.registrarRepresentacaoQr(emitidoEm);
+        String token = tokenQr();
+        RepresentacaoQr representacao = RepresentacaoQr.criar(
+                organizacaoId, credencialId, numeroVersao, hashToken(token),
+                emitidoEm, credencial.getFimValidade());
+        representacao = representacoesQr.saveAndFlush(representacao);
+        credenciais.flush();
+
+        Map<String, Object> estado = new LinkedHashMap<>();
+        estado.put("credencialId", credencialId);
+        estado.put("representacaoQrId", representacao.getId());
+        estado.put("numeroVersao", numeroVersao);
+        estado.put("emitidoEm", emitidoEm.toString());
+        estado.put("expiraEm", credencial.getFimValidade().toString());
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                organizacaoId, "QR_CODE_GERADO", RECURSO, credencialId,
+                credencial.getEventoId(), credencial.getPatioId(), null,
+                Map.of("qrVersao", numeroVersao - 1), estado,
+                versaoAnterior, credencial.getVersion(),
+                ClasseRetencaoAuditoria.OPERACIONAL));
+        outbox.publicar(new PublicarEventoOutboxCommand(
+                "QRCodeGerado", organizacaoId, RECURSO, credencialId,
+                credencial.getVersion(), null, 1, estado));
+
+        return new QrCodeResponse(
+                representacao.getId(), credencialId, numeroVersao, token,
+                emitidoEm, credencial.getFimValidade(), credencial.getVersion());
+    }
+
     private ItemPedido proximoItem(Pedido pedido) {
         return pedido.getItens().stream()
                 .sorted(Comparator.comparing(ItemPedido::getId))
@@ -159,6 +211,22 @@ public class CredencialAcessoService {
     private static String codigoPublico() {
         return "CRD-" + UUID.randomUUID().toString().replace("-", "")
                 .toUpperCase(Locale.ROOT);
+    }
+
+    private static String tokenQr() {
+        byte[] bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        return "KQ1-" + Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(bytes);
+    }
+
+    private static String hashToken(String token) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 indisponivel.", ex);
+        }
     }
 
     private static String validarChave(String chave) {

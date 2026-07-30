@@ -594,8 +594,30 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   `PedidoAtendido` entram na outbox e as mutações são auditadas.
 - `GET /api/v1/credentials/{id}` aplica tenant e proprietário. Pedido ou
   credencial de outro ator é indistinguível de recurso inexistente.
-- O código `CRD-...` é identificador público não autorizador. UC712 ainda deverá
-  gerar uma representação QR imprevisível e persistir somente seu hash.
+- O código `CRD-...` é identificador público não autorizador e permanece
+  separado da representação segura implementada posteriormente em UC712.
 - Placa é associada automaticamente somente a pedido unitário; pedidos com mais
   unidades evitam vínculo ambíguo e aguardam associação individual futura.
 - A suíte passa de 450 para 456 testes sem regressões.
+
+---
+
+## Atualização — Representação QR / UC712 (2026-07-30)
+
+- As migrations `V25__representacao_qr.sql` e
+  `V26__representacao_qr_hash_varchar.sql` versionam QR na credencial e criam
+  `representacao_qr` com FK tenant-aware, hash único, validade e unicidade
+  parcial da representação ainda não revogada.
+- `POST /api/v1/credentials/{id}/qr-code` exige `credentials:issue`, tenant,
+  ownership e `If-Match`; ausência retorna `428` e versão divergente retorna
+  `412`.
+- Somente credencial `ATIVA`, com meio preferido `QR` e validade futura aceita
+  geração. Um lock pessimista e o `ETag` da credencial serializam concorrência.
+- O token usa 32 bytes de `SecureRandom`, formato Base64 URL-safe e não contém
+  dados pessoais. Ele é devolvido somente no `201`; PostgreSQL persiste apenas
+  seu SHA-256 e consultas da credencial não expõem o segredo.
+- Auditoria e `QRCodeGerado` carregam apenas identificadores, versão e validade,
+  nunca o token ou seu hash.
+- Testes cobrem domínio, API, RBAC, ownership, precondição, segredo não
+  persistido, constraints, OpenAPI e duas gerações concorrentes.
+- A suíte passa de 456 para 462 testes sem regressões.

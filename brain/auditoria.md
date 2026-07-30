@@ -86,3 +86,4 @@ imutabilidade física no PostgreSQL.
 | 2026-07-30 | Pedido passa a auditar criação e expiração financeira. |
 | 2026-07-30 | Confirmação manual registra evidência conciliável e transições de pedido/inventário. |
 | 2026-07-30 | Emissão de credencial e atendimento integral do pedido são auditados. |
+| 2026-07-30 | Geração QR registra somente metadados seguros, sem token ou hash. |

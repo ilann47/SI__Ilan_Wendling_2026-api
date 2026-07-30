@@ -186,7 +186,7 @@ iniciar pagamento por gateway permanece dependente da integração própria.
 emite a próxima unidade ainda não atendida como credencial `ATIVA`, congelando
 evento, pátio, direito e validade. A última unidade transiciona o pedido para
 `ATENDIDO`. `GET /api/v1/credentials/{id}` respeita tenant e proprietário. O
-código público não é meio autorizador; QR permanece em UC712.
+código público não é meio autorizador; a representação segura é criada em UC712.
 
 **Objetivo:** materializar o direito adquirido.  
 **Atores:** Process manager; atendimento em reemissão.  
@@ -198,6 +198,13 @@ código público não é meio autorizador; QR permanece em UC712.
 **Pós-condição:** credencial ativa e auditável.
 
 ## UC712 — Gerar QR Code
+
+**Situação implementada:** `POST /api/v1/credentials/{id}/qr-code` exige
+`credentials:issue`, tenant, ownership e `If-Match`. Sob lock pessimista da
+credencial, valida estado `ATIVA`, meio preferido `QR`, validade e versão; gera
+32 bytes com CSPRNG, devolve o token opaco somente na resposta `201`, persiste
+apenas SHA-256 e publica `QRCodeGerado` sem token ou hash. A versão da credencial
+é incrementada e a constraint parcial impede duas representações ativas.
 
 **Objetivo:** criar representação escaneável da credencial.  
 **Atores:** Sistema.  

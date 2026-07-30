@@ -74,8 +74,8 @@ proteção do último administrador.
 - [[pedidos]] — criação e leitura própria exigem `orders:create`, concedida a
   Administrador, Gestor e Organizador; `orders:manual-confirm` é restrita a
   Administrador e Gestor.
-- [[credenciais]] — emissão e leitura própria exigem `credentials:issue`,
-  concedida a Administrador, Gestor e Organizador.
+- [[credenciais]] — emissão, leitura própria e geração QR exigem
+  `credentials:issue`, concedida a Administrador, Gestor e Organizador.
 
 ## Histórico (data + ação)
 

@@ -7,8 +7,10 @@ import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.credencial.CredencialAcessoService;
 import com.kaneko.estacionamento.credencial.MeioPreferidoCredencial;
+import com.kaneko.estacionamento.credencial.VersaoCredencialDivergenteException;
 import com.kaneko.estacionamento.credencial.dto.CredencialAcessoResponse;
 import com.kaneko.estacionamento.credencial.dto.EmitirCredencialRequest;
+import com.kaneko.estacionamento.credencial.dto.QrCodeResponse;
 import com.kaneko.estacionamento.evento.EventoService;
 import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
@@ -246,6 +248,51 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    @Test
+    void apenasUmaGeracaoQrVenceComAMesmaVersaoDaCredencial() throws Exception {
+        Long reservaId = reservas.criar(
+                organizacaoId, usuarioId, "hold-qr-concorrente",
+                new CriarReservaInventarioRequest(
+                        produtoId, 1, "DIRECT_WEB", "buyer-qr")).id();
+        PedidoResponse pedido = pedidos.criar(
+                organizacaoId, usuarioId, "order-qr-concorrente",
+                new CriarPedidoRequest(
+                        reservaId,
+                        new CompradorPedidoRequest(
+                                "Comprador QR", "qr@example.com", null),
+                        null, "DIRECT_WEB"));
+        pedidos.confirmarManualmente(
+                organizacaoId, usuarioId, pedido.id(), 1L, "confirm-qr",
+                new ConfirmarPedidoManualmenteRequest(
+                        "DINHEIRO", "RECIBO-QR", "RECEBIMENTO_PRESENCIAL"));
+        CredencialAcessoResponse credencial = credenciais.emitir(
+                organizacaoId, usuarioId, pedido.id(), "credential-qr",
+                new EmitirCredencialRequest(MeioPreferidoCredencial.QR));
+
+        CountDownLatch inicio = new CountDownLatch(1);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<Object> primeira = executor.submit(
+                    () -> gerarQr(inicio, credencial.id()));
+            Future<Object> segunda = executor.submit(
+                    () -> gerarQr(inicio, credencial.id()));
+            inicio.countDown();
+
+            List<Object> resultados = List.of(primeira.get(), segunda.get());
+            assertThat(resultados.stream()
+                    .filter(r -> r instanceof QrCodeResponse).count())
+                    .isEqualTo(1);
+            assertThat(resultados.stream()
+                    .filter(r -> r instanceof VersaoCredencialDivergenteException)
+                    .count()).isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "select count(*) from representacao_qr where credencial_id = ?",
+                    Integer.class, credencial.id())).isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "select qr_versao from credencial_acesso where id = ?",
+                    Integer.class, credencial.id())).isEqualTo(1);
+        }
+    }
+
     private Object reservar(CountDownLatch inicio, String chave) {
         try {
             inicio.await();
@@ -282,10 +329,21 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    private Object gerarQr(CountDownLatch inicio, Long credencialId) {
+        try {
+            inicio.await();
+            return credenciais.gerarQr(
+                    organizacaoId, usuarioId, credencialId, 0L);
+        } catch (Exception ex) {
+            return ex;
+        }
+    }
+
     @AfterEach
     void limparDadosCommitados() {
         if (organizacaoId == null) return;
         jdbc.update("delete from requisicao_idempotente where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from representacao_qr where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from credencial_acesso where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from confirmacao_manual_pedido where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from item_pedido where pedido_id in (select id from pedido where organizacao_id = ?)", organizacaoId);
