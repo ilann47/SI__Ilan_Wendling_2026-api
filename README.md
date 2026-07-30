@@ -40,6 +40,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   `RASCUNHO`, com venue tenant-aware, checklist, auditoria e outbox transacional.
 - **Publicação de eventos** (`POST /api/v1/events/{id}/publication`) — checklist
   de venue, capacidade e produto publicado, versão esperada e outbox atômica.
+- **Disponibilidade** (`GET /api/v1/events/{id}/availability`) — projeção
+  tenant-aware por categoria, lote vigente e prioridade, sem garantir reserva.
 - **Alocação de pátios** — associação temporal multipátio por evento, com
   capacidades operacional/vendável/reservada, prevenção transacional de
   sobrealocação, idempotência, auditoria e concorrência otimista.

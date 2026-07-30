@@ -42,6 +42,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[eventos]] — planejamento e ciclo de vida do agregado de evento.
 - [[inventario]] — alocação temporal da capacidade dos pátios aos eventos.
 - [[produtos-estacionamento]] — ofertas, quotas e lotes de preço comerciais.
+- [[disponibilidade]] — projeção read-only do catálogo vendável vigente.
 - [[idempotencia]] — execução única de comandos críticos por tenant e identidade.
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
 
@@ -61,3 +62,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro de UC708 com lotes de preço temporais e determinísticos. |
 | 2026-07-30 | Registro da publicação transacional de produto com auditoria e outbox. |
 | 2026-07-30 | Registro de UC702 com publicação versionada e checklist de prontidão. |
+| 2026-07-30 | Registro da consulta de disponibilidade sem garantia de hold. |

@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.inventario.produto;
 
+import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,24 @@ public interface ProdutoEstacionamentoRepository
 
     boolean existsByEventoIdAndOrganizacaoIdAndStatus(
             Long eventoId, Long organizacaoId, StatusProdutoEstacionamento status);
+
+    @Query("""
+            select p.id as produtoId, p.alocacaoId as alocacaoId,
+                   p.nome as nome, p.categoria as categoria, p.direito as direito,
+                   p.inicioAcesso as inicioAcesso, p.fimAcesso as fimAcesso,
+                   p.quota as quota
+            from ProdutoEstacionamento p
+            where p.eventoId = :eventoId
+              and p.organizacaoId = :organizacaoId
+              and p.status = :status
+              and (:categoria is null or p.categoria = :categoria)
+            order by p.id
+            """)
+    List<ProdutoDisponibilidadeView> projetarDisponibilidade(
+            @Param("eventoId") Long eventoId,
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("status") StatusProdutoEstacionamento status,
+            @Param("categoria") CategoriaProduto categoria);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

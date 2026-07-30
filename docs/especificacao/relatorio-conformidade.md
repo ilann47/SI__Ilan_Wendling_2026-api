@@ -468,3 +468,21 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   política é fechada: publicação não abre vendas nem habilita acesso. Contratos
   explícitos continuam necessários antes dessas fases.
 - A suíte passa de 419 para 423 testes sem regressões.
+
+---
+
+## Atualização — Disponibilidade da primeira entrega (2026-07-30)
+
+- `GET /api/v1/events/{id}/availability` projeta somente produtos publicados de
+  evento publicado no tenant autenticado, com filtro opcional por categoria.
+- A leitura usa projeção direta dos produtos e uma consulta em lote dos preços,
+  evitando carregar coleções de benefícios/restrições e consultas N+1.
+- Entre lotes simultaneamente vigentes, a maior prioridade numérica vence e o
+  ID desempata deterministicamente; lotes de mesma prioridade sobrepostos já
+  são impedidos pela V18.
+- O saldo é `min(quota do produto, quantidade do lote vigente)` enquanto ainda
+  não existem reservas/vendas. `guaranteesHold=false` explicita que a consulta
+  não protege a última vaga.
+- Canal, hold e redução por reservado/vendido permanecem para UC709; nenhum
+  estado ou migration foi antecipado.
+- A suíte passa de 423 para 425 testes sem regressões.

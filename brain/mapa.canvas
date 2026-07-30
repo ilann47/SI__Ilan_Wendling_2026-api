@@ -11,7 +11,8 @@
     {"id": "idempotencia", "type": "file", "file": "idempotencia.md", "x": 2000, "y": 320, "width": 360, "height": 220},
     {"id": "outbox", "type": "file", "file": "outbox.md", "x": 2500, "y": 0, "width": 360, "height": 220},
     {"id": "inventario", "type": "file", "file": "inventario.md", "x": 2500, "y": 320, "width": 360, "height": 220},
-    {"id": "produtos-estacionamento", "type": "file", "file": "produtos-estacionamento.md", "x": 3000, "y": 320, "width": 360, "height": 220}
+    {"id": "produtos-estacionamento", "type": "file", "file": "produtos-estacionamento.md", "x": 3000, "y": 320, "width": 360, "height": 220},
+    {"id": "disponibilidade", "type": "file", "file": "disponibilidade.md", "x": 3500, "y": 320, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -44,6 +45,10 @@
     {"id": "rbac-produtos", "fromNode": "rbac", "fromSide": "right", "toNode": "produtos-estacionamento", "toSide": "left", "label": "pricing:manage"},
     {"id": "produtos-auditoria", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "PRODUTO/LOTE_CRIADO"},
     {"id": "produtos-idempotencia", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "idempotencia", "toSide": "right", "label": "execução única"},
-    {"id": "produtos-outbox", "fromNode": "produtos-estacionamento", "fromSide": "top", "toNode": "outbox", "toSide": "bottom", "label": "ProdutoEstacionamentoPublicado"}
+    {"id": "produtos-outbox", "fromNode": "produtos-estacionamento", "fromSide": "top", "toNode": "outbox", "toSide": "bottom", "label": "ProdutoEstacionamentoPublicado"},
+    {"id": "eventos-disponibilidade", "fromNode": "eventos", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "evento publicado"},
+    {"id": "inventario-disponibilidade", "fromNode": "inventario", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "quota projetada"},
+    {"id": "produtos-disponibilidade", "fromNode": "produtos-estacionamento", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "lote vigente"},
+    {"id": "rbac-disponibilidade", "fromNode": "rbac", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "tenant ativo"}
   ]
 }

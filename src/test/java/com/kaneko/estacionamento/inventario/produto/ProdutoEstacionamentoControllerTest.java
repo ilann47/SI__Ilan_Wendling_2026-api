@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.inventario.produto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,6 +13,7 @@ import com.kaneko.estacionamento.common.security.JwtService;
 import com.kaneko.estacionamento.common.outbox.EventoOutboxRepository;
 import com.kaneko.estacionamento.evento.EventoService;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
+import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
 import com.kaneko.estacionamento.geografia.CidadeService;
 import com.kaneko.estacionamento.geografia.EstadoService;
 import com.kaneko.estacionamento.geografia.PaisService;
@@ -388,6 +390,58 @@ class ProdutoEstacionamentoControllerTest {
                 status().isPreconditionFailed());
     }
 
+    @Test
+    void consultaDisponibilidadeSelecionandoLoteAtivoDeMaiorPrioridade() throws Exception {
+        Long produtoComum = criarProdutoBase("Produto Comum Disponivel", "disp-comum", 20);
+        Long produtoVip = criarProdutoBaseCategoria(
+                "Produto VIP Disponivel", "disp-vip", 20, "VIP");
+        OffsetDateTime agora = OffsetDateTime.now().withNano(0);
+        String inicio = agora.minusDays(1).toString();
+        String fim = agora.plusDays(1).toString();
+
+        criarLote(tokenContextual, produtoComum, "disp-comum-lote",
+                payloadLote("Comum Vigente", "30", "BRL", 20, 1, inicio, fim),
+                status().isCreated());
+        criarLote(tokenContextual, produtoVip, "disp-vip-base",
+                payloadLote("VIP Base", "50", "BRL", 20, 1, inicio, fim),
+                status().isCreated());
+        criarLote(tokenContextual, produtoVip, "disp-vip-prioritario",
+                payloadLote("VIP Prioritario", "75", "BRL", 10, 5, inicio, fim),
+                status().isCreated());
+        publicarProduto(tokenContextual, produtoComum, "\"0\"", status().isOk());
+        publicarProduto(tokenContextual, produtoVip, "\"0\"", status().isOk());
+        eventos.publicar(
+                organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
+
+        mvc.perform(get("/api/v1/events/{id}/availability", eventoId)
+                        .header("Authorization", tokenContextual)
+                        .queryParam("category", "VIP"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eventId").value(eventoId))
+                .andExpect(jsonPath("$.guaranteesHold").value(false))
+                .andExpect(jsonPath("$.totalAvailable").value(10))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].productId").value(produtoVip))
+                .andExpect(jsonPath("$.items[0].category").value("VIP"))
+                .andExpect(jsonPath("$.items[0].availableQuantity").value(10))
+                .andExpect(jsonPath("$.items[0].priceTierName").value("VIP Prioritario"))
+                .andExpect(jsonPath("$.items[0].price").value(75.00))
+                .andExpect(jsonPath("$.items[0].currency").value("BRL"));
+    }
+
+    @Test
+    void disponibilidadeExigeEventoPublicadoETenantAtivo() throws Exception {
+        mvc.perform(get("/api/v1/events/{id}/availability", eventoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/events/{id}/availability", eventoId)
+                        .header("Authorization", tokenGlobal))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/events/{id}/availability", Long.MAX_VALUE)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isNotFound());
+    }
+
     private org.springframework.test.web.servlet.ResultActions publicarProduto(
             String token, Long produtoId, String ifMatch,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -398,8 +452,13 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     private Long criarProdutoBase(String nome, String chave, int quota) throws Exception {
+        return criarProdutoBaseCategoria(nome, chave, quota, "COMUM");
+    }
+
+    private Long criarProdutoBaseCategoria(
+            String nome, String chave, int quota, String categoria) throws Exception {
         String body = criarProduto(tokenContextual, eventoId, chave,
-                payload(nome, alocacaoId, "COMUM", quota,
+                payload(nome, alocacaoId, categoria, quota,
                         "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
                 status().isCreated()).andReturn().getResponse().getContentAsString();
         return JsonPath.<Number>read(body, "$.id").longValue();

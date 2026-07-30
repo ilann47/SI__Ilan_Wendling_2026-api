@@ -16,6 +16,7 @@ UC707 acrescenta [[produtos-estacionamento]], cuja soma de quotas não pode
 ultrapassar a capacidade vendável da alocação.
 UC708 acrescenta lotes comerciais; cada lote respeita a quota do produto e
 prioridades distintas resolvem períodos sobrepostos sem ambiguidade.
+[[disponibilidade]] projeta a quota e o lote vigente sem reservar capacidade.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -42,6 +43,8 @@ PATCH /api/v1/parking-allocations/{id} + If-Match
   idempotente para um pátio do tenant.
 - `PATCH /api/v1/parking-allocations/{id}`: altera somente capacidades e exige
   a versão exata do agregado em `If-Match`.
+- `GET /api/v1/events/{eventoId}/availability`: consulta saldo comercial
+  projetado; não cria hold.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -89,6 +92,7 @@ saldo, sobrealocação, ETag, auditoria, outbox e constraints PostgreSQL.
 - [[idempotencia]]
 - [[outbox]]
 - [[produtos-estacionamento]]
+- [[disponibilidade]]
 
 ## Histórico (data + ação)
 
@@ -97,3 +101,4 @@ saldo, sobrealocação, ETag, auditoria, outbox e constraints PostgreSQL.
 | 2026-07-30 | Implementa UC706 com alocação temporal e prevenção de sobrealocação. |
 | 2026-07-30 | Protege a capacidade vendável contra soma excessiva de quotas de produtos. |
 | 2026-07-30 | Vincula lotes de preço à quota do produto e impede períodos ambíguos. |
+| 2026-07-30 | Expõe disponibilidade projetada sem consumir inventário. |

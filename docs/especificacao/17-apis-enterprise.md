@@ -171,7 +171,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /events/{id}/parking-products` | AS-IS: nome, categoria, alocação, direito, janela, quota, benefícios/restrições + `Idempotency-Key`; tenant implícito | `201 Product`, `Location`, `ETag` | `pricing:manage`; evento configurável; alocação do evento/tenant; janela contida; soma de quotas não excede vendável; produto nasce em rascunho |
 | `POST /parking-products/{id}/publication` | AS-IS: confirmação + `If-Match` | `200 Product`, `ETag` | `pricing:manage`; produto em rascunho com ao menos um lote; ausência de versão retorna `428`, versão divergente `412`; auditoria e outbox atômicas |
 | `POST /parking-products/{id}/price-tiers` | AS-IS: nome, preço, moeda, período, quantidade, prioridade + `Idempotency-Key`; tenant implícito | `201 Tier`, `Location`, `ETag` | `pricing:manage`; produto em rascunho; moeda da organização; quantidade ≤ quota; sobreposição somente com prioridades distintas; replay equivalente devolve o lote original |
-| `GET /events/{id}/availability` | filtros de canal/categoria | projeção de disponibilidade | não garante hold |
+| `GET /events/{id}/availability` | AS-IS: filtro opcional de categoria; tenant implícito | produtos, lote/preço vigente, saldo projetado e instante de cálculo | exige contexto ativo e evento publicado; maior prioridade numérica vence; não garante hold; filtro por canal permanece TARGET |
 | `POST /inventory-holds` | produto, quantidade, canal | `201 Hold` | atômico; idempotência |
 | `POST /inventory-holds/{id}/release` | motivo | `200 Hold` | uma liberação |
 | `GET /inventory-holds/{id}` | id | `200 Hold` | comprador/canal ou operação |

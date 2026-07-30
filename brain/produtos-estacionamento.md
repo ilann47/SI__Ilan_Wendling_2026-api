@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[inventario]] · [[disponibilidade]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Produtos de Estacionamento
 
@@ -109,6 +109,7 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
 - [[auditoria]]
 - [[idempotencia]]
 - [[outbox]]
+- [[disponibilidade]]
 
 ## Histórico (data + ação)
 
@@ -117,3 +118,4 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
 | 2026-07-30 | Implementa UC707 com criação idempotente de produto em rascunho. |
 | 2026-07-30 | Implementa UC708 com lote de preço temporal e quantitativo. |
 | 2026-07-30 | Implementa publicação versionada do produto com auditoria e outbox. |
+| 2026-07-30 | Fornece produto e lote vigentes à projeção de [[disponibilidade]]. |
