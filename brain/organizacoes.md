@@ -68,6 +68,7 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 - [[membership]] — vínculos ativos habilitam descoberta e emissão de contexto organizacional.
 - [[auditoria]] — preserva criação e mudanças cadastrais com versões e snapshots redigidos.
 - [[instalacoes]] — pátios novos recebem ownership obrigatório da organização ativa.
+- [[venues]] — unidade operacional pertencente à organização ativa.
 
 ## Histórico
 
@@ -77,3 +78,4 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 | 2026-07-29 | Integração de leitura com Membership ativa, sem alterar o contrato administrativo da organização. |
 | 2026-07-29 | Integração transacional com a trilha imutável de auditoria. |
 | 2026-07-29 | Pátios enterprise passam a pertencer ao tenant ativo. |
+| 2026-07-29 | Venue passa a integrar o contexto de Organizações como unidade operacional. |

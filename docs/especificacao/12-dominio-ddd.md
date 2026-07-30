@@ -90,6 +90,10 @@ flowchart LR
 
 ### BC01 — Organizações e Tenancy
 
+**Situação implementada:** `Organizacao` e `UnidadeOperacional` do tipo `VENUE`
+estão persistidas no tenant ativo. Outros tipos de unidade, contatos e branding
+permanecem dependentes de contrato próprio.
+
 - **Objetivo:** definir propriedade, configuração e isolamento dos dados.
 - **Responsabilidades:** organização, unidades, branding, fuso, moeda, plano, status e políticas regionais.
 - **Agregado raiz:** `Organizacao`.

@@ -5,7 +5,8 @@
     {"id": "membership", "type": "file", "file": "membership.md", "x": 500, "y": 320, "width": 360, "height": 220},
     {"id": "rbac", "type": "file", "file": "rbac.md", "x": 1000, "y": 320, "width": 360, "height": 220},
     {"id": "auditoria", "type": "file", "file": "auditoria.md", "x": 1000, "y": 0, "width": 360, "height": 220},
-    {"id": "instalacoes", "type": "file", "file": "instalacoes.md", "x": 1500, "y": 0, "width": 360, "height": 220}
+    {"id": "instalacoes", "type": "file", "file": "instalacoes.md", "x": 1500, "y": 0, "width": 360, "height": 220},
+    {"id": "venues", "type": "file", "file": "venues.md", "x": 1500, "y": 320, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -17,6 +18,9 @@
     {"id": "rbac-auditoria", "fromNode": "rbac", "fromSide": "top", "toNode": "auditoria", "toSide": "bottom", "label": "acessos auditados"},
     {"id": "organizacoes-instalacoes", "fromNode": "organizacoes", "fromSide": "right", "toNode": "instalacoes", "toSide": "left", "label": "ownership tenant"},
     {"id": "rbac-instalacoes", "fromNode": "rbac", "fromSide": "right", "toNode": "instalacoes", "toSide": "left", "label": "facilities:manage"},
-    {"id": "instalacoes-auditoria", "fromNode": "instalacoes", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "PATIO_CRIADO"}
+    {"id": "instalacoes-auditoria", "fromNode": "instalacoes", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "PATIO_CRIADO"},
+    {"id": "organizacoes-venues", "fromNode": "organizacoes", "fromSide": "right", "toNode": "venues", "toSide": "left", "label": "unidade operacional"},
+    {"id": "venues-auditoria", "fromNode": "venues", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "UNIDADE_CRIADA"},
+    {"id": "venues-instalacoes", "fromNode": "venues", "fromSide": "top", "toNode": "instalacoes", "toSide": "bottom", "label": "vínculo futuro"}
   ]
 }

@@ -100,6 +100,11 @@ Papéis são compostos por permissões, entre elas:
 `ADMIN_ORGANIZACAO` e protege a criação de pátio no contexto ativo. Os demais
 papéis e `facilities:read` permanecem nas histórias correspondentes.
 
+Enquanto não existe papel Gestor no catálogo implementado, a criação de Venue
+usa `organizations:admin`, coerente com sua pertença ao BC de Organizações. A
+separação de alçada para Gestor será feita junto ao catálogo de papéis aprovado,
+sem conceder autoridade global antecipadamente.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

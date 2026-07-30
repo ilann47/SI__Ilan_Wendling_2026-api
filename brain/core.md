@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]]
 
 # Core do Estacionamento Kaneko
 
@@ -38,6 +38,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[rbac]] — permissões efetivas por papel, Membership e escopo organizacional.
 - [[auditoria]] — trilha transacional e imutável das mutações enterprise.
 - [[instalacoes]] — topologia física tenant-aware e limites de capacidade.
+- [[venues]] — unidades operacionais que localizam eventos no tempo e espaço.
 
 ## Histórico
 
@@ -48,3 +49,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-29 | Registro da História 3 de RBAC contextual. |
 | 2026-07-29 | Registro da História 4 de auditoria append-only. |
 | 2026-07-29 | Registro da História 5 de Instalações e criação de pátio tenant-aware. |
+| 2026-07-29 | Registro da História 6 de Venue. |

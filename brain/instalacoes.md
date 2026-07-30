@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[rbac]] · [[auditoria]]
+> Links: [[core]] · [[organizacoes]] · [[venues]] · [[rbac]] · [[auditoria]]
 
 # Instalações
 
@@ -68,6 +68,7 @@ constraints diretas no PostgreSQL e isolamento da API legada.
 
 - [[core]]
 - [[organizacoes]]
+- [[venues]] — localização administrativa do evento; associação física com pátio ainda não exposta.
 - [[rbac]]
 - [[auditoria]]
 

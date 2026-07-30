@@ -66,6 +66,7 @@ imutabilidade física no PostgreSQL.
 - [[membership]]
 - [[rbac]]
 - [[instalacoes]] — publica `PATIO_CRIADO` com snapshot explícito de capacidade.
+- [[venues]] — publica `UNIDADE_CRIADA` com snapshot explícito de localização.
 
 ## Histórico (data + ação)
 
@@ -73,3 +74,4 @@ imutabilidade física no PostgreSQL.
 |---|---|
 | 2026-07-29 | Implementa fundação transacional append-only e instrumenta os módulos enterprise existentes. |
 | 2026-07-29 | Instalações passa a registrar criação de pátio na mesma transação. |
+| 2026-07-29 | Venue passa a registrar criação de unidade na mesma transação. |

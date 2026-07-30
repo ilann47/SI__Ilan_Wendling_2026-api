@@ -334,3 +334,19 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   registros legados sem organização; Venue, Setor e alteração de capacidade não
   foram antecipados.
 - A suíte passou de 362 para 368 testes sem regressões.
+
+---
+
+## Atualização — História 6: Venue (2026-07-29)
+
+- A migration `V14__venue_unidade_operacional.sql` cria `unidade_operacional`
+  com ownership obrigatório, endereço, cidade, fuso, versão e unicidade de nome
+  normalizado por tenant.
+- `POST /api/v1/venues` deriva a organização exclusivamente do JWT contextual,
+  exige `organizations:admin` e retorna `Location` e `ETag`.
+- Venue nasce ativo e com tipo server-side `VENUE`; tipos adicionais e contatos
+  não foram inventados porque a baseline ainda não fixa seus contratos.
+- A aplicação valida organização/cidade ativas e fuso IANA; o PostgreSQL protege
+  FKs, tipo aprovado, versão e unicidade.
+- A criação registra `UNIDADE_CRIADA` com recurso lógico `VENUE` na mesma transação.
+- A suíte passou de 368 para 373 testes sem regressões.
