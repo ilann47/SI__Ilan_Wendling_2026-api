@@ -11,6 +11,7 @@ public record ReservaParaPedido(
         Long eventoId,
         Long produtoId,
         Long alocacaoId,
+        Long patioId,
         Long lotePrecoId,
         String nomeProduto,
         CategoriaProduto categoria,

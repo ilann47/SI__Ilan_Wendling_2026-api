@@ -575,3 +575,27 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Testes cobrem domínio, API, RBAC, precondição, idempotência, expiração,
   auditoria/outbox e duas transações concorrentes sobre o mesmo pedido.
 - A suíte passa de 444 para 450 testes sem regressões.
+
+---
+
+## Atualização — Emissão de credencial / UC711 (2026-07-30)
+
+- As migrations `V23__credencial_acesso.sql` e
+  `V24__credencial_escopo_integridade.sql` adicionam o snapshot de pátio ao item
+  do pedido e criam `credencial_acesso` com FKs tenant-aware, validade, estado,
+  versão e unicidade por unidade comprada. Evento, pátio, pedido e item são
+  coerentes por constraints compostas.
+- `POST /api/v1/orders/{id}/credentials` exige `credentials:issue`, tenant,
+  ownership e `Idempotency-Key`; Admin, Gestor e Organizador recebem a permissão.
+- Cada chamada emite a próxima unidade como `ATIVA`. O lock pessimista do pedido
+  e a constraint `(item_pedido_id, numero_unidade)` impedem emissão excedente,
+  inclusive em duas transações concorrentes.
+- A última unidade transiciona o pedido para `ATENDIDO`. `CredencialEmitida` e
+  `PedidoAtendido` entram na outbox e as mutações são auditadas.
+- `GET /api/v1/credentials/{id}` aplica tenant e proprietário. Pedido ou
+  credencial de outro ator é indistinguível de recurso inexistente.
+- O código `CRD-...` é identificador público não autorizador. UC712 ainda deverá
+  gerar uma representação QR imprevisível e persistir somente seu hash.
+- Placa é associada automaticamente somente a pedido unitário; pedidos com mais
+  unidades evitam vínculo ambíguo e aguardam associação individual futura.
+- A suíte passa de 450 para 456 testes sem regressões.

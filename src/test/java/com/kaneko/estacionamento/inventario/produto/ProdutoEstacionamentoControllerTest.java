@@ -615,6 +615,7 @@ class ProdutoEstacionamentoControllerTest {
                 .andExpect(jsonPath("$.buyer.maskedDocument").value("*******8909"))
                 .andExpect(jsonPath("$.items[0].parkingProductId").value(produtoId))
                 .andExpect(jsonPath("$.items[0].parkingAllocationId").value(alocacaoId))
+                .andExpect(jsonPath("$.items[0].parkingFacilityId").value(patioId))
                 .andExpect(jsonPath("$.items[0].quantity").value(2))
                 .andExpect(jsonPath("$.items[0].unitPrice").value(45.00))
                 .andExpect(jsonPath("$.subtotal").value(90.00))
@@ -839,6 +840,116 @@ class ProdutoEstacionamentoControllerTest {
                 payload, status().isConflict());
     }
 
+    @Test
+    void emiteUmaCredencialPorUnidadeComIdempotenciaEAuditoria() throws Exception {
+        long pedidoId = criarPedidoConfirmado("credential-units", 2);
+        String payload = "{\"preferredMedium\":\"QR\"}";
+
+        String primeira = emitirCredencial(
+                        tokenContextual, pedidoId, "credential-unit-1", payload,
+                        status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(header().string("ETag", "\"0\""))
+                .andExpect(jsonPath("$.organizationId").value(organizacaoId))
+                .andExpect(jsonPath("$.eventId").value(eventoId))
+                .andExpect(jsonPath("$.parkingFacilityId").value(patioId))
+                .andExpect(jsonPath("$.orderId").value(pedidoId))
+                .andExpect(jsonPath("$.unitNumber").value(1))
+                .andExpect(jsonPath("$.publicCode").value(
+                        org.hamcrest.Matchers.matchesPattern("CRD-[A-F0-9]{32}")))
+                .andExpect(jsonPath("$.origin").value("PEDIDO"))
+                .andExpect(jsonPath("$.right").value("ESTACIONAMENTO_EVENTO"))
+                .andExpect(jsonPath("$.preferredMedium").value("QR"))
+                .andExpect(jsonPath("$.vehiclePlate").doesNotExist())
+                .andExpect(jsonPath("$.status").value("ATIVA"))
+                .andReturn().getResponse().getContentAsString();
+        long primeiraId = JsonPath.<Number>read(primeira, "$.id").longValue();
+
+        String replay = emitirCredencial(
+                        tokenContextual, pedidoId, "credential-unit-1", payload,
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(replay, "$.id").longValue())
+                .isEqualTo(primeiraId);
+        emitirCredencial(tokenContextual, pedidoId, "credential-unit-1",
+                "{\"preferredMedium\":\"RFID\"}", status().isConflict());
+        emitirCredencial(tokenContextual, pedidoId, "credential-plate-multi",
+                "{\"preferredMedium\":\"PLACA\"}", status().isConflict());
+
+        mvc.perform(get("/api/v1/credentials/{id}", primeiraId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(primeiraId));
+        mvc.perform(get("/api/v1/orders/{id}", pedidoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMADO"));
+
+        emitirCredencial(tokenContextual, pedidoId, "credential-unit-2", payload,
+                        status().isCreated())
+                .andExpect(jsonPath("$.unitNumber").value(2));
+        mvc.perform(get("/api/v1/orders/{id}", pedidoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ATENDIDO"));
+        emitirCredencial(tokenContextual, pedidoId, "credential-excess", payload,
+                status().isConflict());
+
+        assertThat(jdbc.queryForObject(
+                "select count(*) from credencial_acesso where pedido_id = ?",
+                Integer.class, pedidoId)).isEqualTo(2);
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("CREDENCIAL_EMITIDA");
+            assertThat(auditoria.getEventoId()).isEqualTo(eventoId);
+            assertThat(auditoria.getPatioId()).isEqualTo(patioId);
+        });
+        assertThat(outbox.findAll().stream().map(e -> e.getEventType()).toList())
+                .contains("CredencialEmitida", "PedidoAtendido");
+    }
+
+    @Test
+    void emissaoExigePedidoConfirmadoPermissaoOwnershipEContratoValido() throws Exception {
+        long aguardandoId = criarPedidoPersistido("credential-waiting");
+        String payload = "{\"preferredMedium\":\"QR\"}";
+
+        emitirCredencial(tokenContextual, aguardandoId, "credential-waiting",
+                payload, status().isConflict());
+        mvc.perform(post("/api/v1/orders/{id}/credentials", aguardandoId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isBadRequest());
+        emitirCredencial(tokenContextual, aguardandoId, "credential-field",
+                "{\"preferredMedium\":\"QR\",\"status\":\"ATIVA\"}",
+                status().isBadRequest());
+
+        Usuario membro = usuario("credential_member", PerfilUsuario.OPERADOR);
+        criarMembership(membro.getId(), tokenContextual);
+        String tokenMembro = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
+        emitirCredencial(tokenMembro, aguardandoId, "credential-denied",
+                payload, status().isForbidden());
+
+        confirmarManualmente(tokenContextual, aguardandoId, "\"1\"",
+                "manual-credential-owner",
+                payloadConfirmacaoManual("PIX", "EV-credential-owner"),
+                status().isAccepted());
+        long confirmadoId = aguardandoId;
+        String body = emitirCredencial(
+                        tokenContextual, confirmadoId, "credential-owner", payload,
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(body, "$.id").longValue();
+
+        Usuario organizador = usuario("credential_organizer", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(organizador.getId(), tokenContextual);
+        concederPapel(membershipId, "ORGANIZADOR");
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+        mvc.perform(get("/api/v1/credentials/{id}", credencialId)
+                        .header("Authorization", tokenOrganizador))
+                .andExpect(status().isNotFound());
+    }
+
     private org.springframework.test.web.servlet.ResultActions publicarProduto(
             String token, Long produtoId, String ifMatch,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -900,6 +1011,30 @@ class ProdutoEstacionamentoControllerTest {
                         payloadPedido(holdId, "DIRECT_WEB"), status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.<Number>read(orderBody, "$.id").longValue();
+    }
+
+    private long criarPedidoConfirmado(String sufixo, int quantidade) throws Exception {
+        Long produtoId = prepararVendaAberta(quantidade, quantidade);
+        String holdBody = criarHold(tokenContextual, "hold-" + sufixo,
+                        payloadHold(produtoId, quantidade, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(holdBody, "$.id").longValue();
+        String orderBody = criarPedido(tokenContextual, "order-" + sufixo,
+                        payloadPedido(holdId, "DIRECT_WEB"), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long pedidoId = JsonPath.<Number>read(orderBody, "$.id").longValue();
+        confirmarManualmente(tokenContextual, pedidoId, "\"1\"", "manual-" + sufixo,
+                payloadConfirmacaoManual("PIX", "EV-" + sufixo), status().isAccepted());
+        return pedidoId;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions emitirCredencial(
+            String token, long pedidoId, String chave, String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/orders/{id}/credentials", pedidoId)
+                        .header("Authorization", token).header("Idempotency-Key", chave)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
     }
 
     private org.springframework.test.web.servlet.ResultActions confirmarManualmente(

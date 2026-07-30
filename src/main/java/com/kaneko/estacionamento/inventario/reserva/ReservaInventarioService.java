@@ -217,9 +217,14 @@ public class ReservaInventarioService {
                         reserva.getProdutoId(), organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Produto de estacionamento", reserva.getProdutoId()));
+        AlocacaoPatioEvento alocacao = alocacoes.findByIdAndOrganizacaoId(
+                        produto.getAlocacaoId(), organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Alocacao", produto.getAlocacaoId()));
         return new ReservaParaPedido(
                 reserva.getId(), reserva.getEventoId(), produto.getId(),
-                produto.getAlocacaoId(), reserva.getLotePrecoId(), produto.getNome(),
+                produto.getAlocacaoId(), alocacao.getPatioId(),
+                reserva.getLotePrecoId(), produto.getNome(),
                 produto.getCategoria(), produto.getDireito(), produto.getInicioAcesso(),
                 produto.getFimAcesso(), reserva.getQuantidade(), reserva.getCanal(),
                 reserva.getPrecoUnitario(), reserva.getMoeda(), reserva.getExpiraEm());

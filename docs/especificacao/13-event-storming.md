@@ -187,6 +187,10 @@ Compensações: pagamento recusado mantém o pedido até a política expirar; ex
 `PENDENTE_CONCILIACAO` e não publica `PagamentoAprovado`. O fluxo canônico acima
 continua TARGET para integrações com provedores.
 
+**AS-IS UC711:** cada unidade confirmada produz `CredencialEmitida`; a última
+unidade também produz `PedidoAtendido`. `QRCodeGerado` permanece dependente de
+UC712 e não é inferido do código público da credencial.
+
 ### PM02 — Cancelamento e reembolso
 
 ```text

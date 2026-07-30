@@ -1,12 +1,12 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[reservas-inventario]] · [[produtos-estacionamento]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[reservas-inventario]] · [[produtos-estacionamento]] · [[credenciais]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Pedidos
 
 ## Objetivo
 
 Materializar a intenção comercial do comprador com snapshots e total
-reprodutíveis e permitir a confirmação manual excepcional, sem antecipar
-gateway, credencial ou acesso.
+reprodutíveis, permitir a confirmação manual excepcional e fornecer o snapshot
+imutável usado por [[credenciais]], sem antecipar gateway ou acesso.
 
 ## Contexto
 
@@ -53,7 +53,7 @@ POST /api/v1/orders/{id}/manual-confirmation + If-Match + Idempotency-Key
 
 `Pedido` conserva tenant, evento, hold, ator, número, canal, placa, estado,
 valores, moeda e prazo. `CompradorPedido` guarda nome, email normalizado e
-documento normalizado. `ItemPedido` congela produto, alocação, lote, nome,
+documento normalizado. `ItemPedido` congela produto, alocação, pátio, lote, nome,
 categoria, direito, janela, quantidade, preço e moeda.
 
 ## Integrações externas (se houver)
@@ -93,6 +93,8 @@ validate.
   evidência e motivo, preserva o ator e nasce `PENDENTE_CONCILIACAO`.
 - A transação serializa pedido, produto e hold; somente uma requisição pode
   converter o contador reservado em vendido.
+- [[credenciais]] serializa o pedido confirmado e o leva a `ATENDIDO` somente
+  depois de emitir todas as unidades compradas.
 - O documento é persistido normalizado e retornado somente mascarado.
 
 ## Módulos relacionados
@@ -102,6 +104,7 @@ validate.
 - [[eventos]]
 - [[reservas-inventario]]
 - [[produtos-estacionamento]]
+- [[credenciais]]
 - [[rbac]]
 - [[auditoria]]
 - [[idempotencia]]
@@ -113,3 +116,4 @@ validate.
 |---|---|
 | 2026-07-30 | Implementa UC710 até pedido aguardando pagamento e expiração automática. |
 | 2026-07-30 | Implementa confirmação manual versionada, idempotente e pendente de conciliação. |
+| 2026-07-30 | Snapshot do item inclui pátio e pedido atendido depende de todas as credenciais. |

@@ -59,7 +59,7 @@
 | `QuotaCanal` | TARGET; inventário por canal | canal, quantidade, período | N:1 produto/alocação | soma de quotas ≤ vendável | transferência de quota auditada |
 | `ReservaInventario` | AS-IS/EVOLUÇÃO; hold temporário | produto, quantidade, canal, referência do comprador, expiraEm, idempotencyKey, snapshot de lote/preço/moeda | N:1 produto; 0:1 pedido | `MANTIDA/EXPIRADA/LIBERADA/CONFIRMADA`; confirmação converte reservado em vendido; transições atômicas | criação, expiração, liberação e confirmação auditadas com outbox |
 | `Pedido` | AS-IS/EVOLUÇÃO; contrato comercial | número, comprador, canal, moeda, subtotal, desconto, taxa, total, expiraEm | 1:N itens; 0:1 confirmação manual; pagamentos/credenciais futuros | `CRIADO/AGUARDANDO_PAGAMENTO/CONFIRMADO/EXPIRADO`; total derivado; confirmado imutável | criação, espera, expiração e confirmação manual com snapshots |
-| `ItemPedido` | AS-IS/EVOLUÇÃO; linha comercial | produtoId, alocaçãoId, loteId, descrição, categoria, direito, janela, quantidade, preço, total | N:1 pedido; snapshot da reserva | total derivado; snapshot obrigatório | preservado mesmo se produto mudar |
+| `ItemPedido` | AS-IS/EVOLUÇÃO; linha comercial | produtoId, alocaçãoId, pátioId, loteId, descrição, categoria, direito, janela, quantidade, preço, total | N:1 pedido; snapshot da reserva; 1:N credenciais | total derivado; snapshot obrigatório | preservado mesmo se produto/alocação mudar |
 | `ConfirmacaoManualPedido` | AS-IS; exceção conciliável | pedido, ator, meio, referênciaEvidência, motivo, statusConciliação | 1:1 pedido no tenant | única por pedido; nasce `PENDENTE_CONCILIACAO`; não equivale a gateway | evidência e ator preservados para conciliação |
 | `DescontoPedido` | TARGET; benefício aplicado | código, tipo, valor, origem, justificativa | N:1 pedido/item | limites e autorização | concessor e regra versionada |
 | `IntencaoPagamento` | TARGET; ciclo transacional | provider, método, valor, moeda, externalRef, idempotencyKey | N:1 pedido; 1:N tentativas/capturas | estados; referência externa única | payloads redigidos e callbacks |
@@ -75,7 +75,7 @@
 
 | Entidade | Situação e responsabilidade | Atributos principais | Relacionamentos | Estados/validações | Histórico e auditoria |
 |---|---|---|---|---|---|
-| `CredencialAcesso` | TARGET; direito independente do meio | origem, direito, validade, uso, pátios, evento, veículo | pedido/contrato/cortesia; 1:N representações | pendente/ativa/dentro/consumida/bloqueada/expirada/substituída | emissão, entrega, bloqueio, uso e substituição |
+| `CredencialAcesso` | AS-IS/EVOLUÇÃO; direito independente do meio | origem, direito, validade, unidade, pátio, evento, veículo opcional, código público | N:1 pedido/item; representações futuras | `PENDENTE → ATIVA` implementado; demais estados TARGET; uma por unidade | emissão auditada; código público não é token autorizador |
 | `RepresentacaoQR` | TARGET; representação escaneável | tokenHash, versão, emitidoEm, expiraEm | N:1 credencial | token imprevisível; nunca persistir segredo em claro quando evitável | geração e revogação |
 | `PlacaAutorizada` | TARGET; placa como representação | placa normalizada, confiança exigida | N:1 credencial | período e quantidade de alterações | todas as trocas de placa |
 | `TagRFID` | TARGET; identificador físico | uidTokenizado, emissor, status | N:1 credencial | único e revogável | emissão/substituição |

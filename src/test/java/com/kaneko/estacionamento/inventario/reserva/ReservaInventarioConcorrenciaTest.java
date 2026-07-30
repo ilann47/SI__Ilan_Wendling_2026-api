@@ -5,6 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.kaneko.estacionamento.auditoria.AuditoriaService;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
+import com.kaneko.estacionamento.credencial.CredencialAcessoService;
+import com.kaneko.estacionamento.credencial.MeioPreferidoCredencial;
+import com.kaneko.estacionamento.credencial.dto.CredencialAcessoResponse;
+import com.kaneko.estacionamento.credencial.dto.EmitirCredencialRequest;
 import com.kaneko.estacionamento.evento.EventoService;
 import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
@@ -71,6 +75,7 @@ class ReservaInventarioConcorrenciaTest {
     @Autowired LotePrecoService lotes;
     @Autowired ReservaInventarioService reservas;
     @Autowired PedidoService pedidos;
+    @Autowired CredencialAcessoService credenciais;
     @Autowired JdbcTemplate jdbc;
     @MockitoBean AuditoriaService auditoria;
     @MockitoBean OutboxService outbox;
@@ -198,6 +203,49 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    @Test
+    void apenasUmaEmissaoAtendeAUnicaUnidadeDoPedido() throws Exception {
+        Long reservaId = reservas.criar(
+                organizacaoId, usuarioId, "hold-credential-concorrente",
+                new CriarReservaInventarioRequest(
+                        produtoId, 1, "DIRECT_WEB", "buyer-credential")).id();
+        PedidoResponse pedido = pedidos.criar(
+                organizacaoId, usuarioId, "order-credential-concorrente",
+                new CriarPedidoRequest(
+                        reservaId,
+                        new CompradorPedidoRequest(
+                                "Comprador Credencial", "credential@example.com", null),
+                        null, "DIRECT_WEB"));
+        pedidos.confirmarManualmente(
+                organizacaoId, usuarioId, pedido.id(), 1L, "confirm-credential",
+                new ConfirmarPedidoManualmenteRequest(
+                        "DINHEIRO", "RECIBO-CREDENTIAL",
+                        "RECEBIMENTO_PRESENCIAL"));
+
+        CountDownLatch inicio = new CountDownLatch(1);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<Object> primeira = executor.submit(
+                    () -> emitir(inicio, pedido.id(), "credential-a"));
+            Future<Object> segunda = executor.submit(
+                    () -> emitir(inicio, pedido.id(), "credential-b"));
+            inicio.countDown();
+
+            List<Object> resultados = List.of(primeira.get(), segunda.get());
+            assertThat(resultados.stream()
+                    .filter(r -> r instanceof CredencialAcessoResponse).count())
+                    .isEqualTo(1);
+            assertThat(resultados.stream()
+                    .filter(r -> r instanceof ConflitoException).count())
+                    .isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "select count(*) from credencial_acesso where pedido_id = ?",
+                    Integer.class, pedido.id())).isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "select status from pedido where id = ?",
+                    String.class, pedido.id())).isEqualTo("ATENDIDO");
+        }
+    }
+
     private Object reservar(CountDownLatch inicio, String chave) {
         try {
             inicio.await();
@@ -223,10 +271,22 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    private Object emitir(CountDownLatch inicio, Long pedidoId, String chave) {
+        try {
+            inicio.await();
+            return credenciais.emitir(
+                    organizacaoId, usuarioId, pedidoId, chave,
+                    new EmitirCredencialRequest(MeioPreferidoCredencial.QR));
+        } catch (Exception ex) {
+            return ex;
+        }
+    }
+
     @AfterEach
     void limparDadosCommitados() {
         if (organizacaoId == null) return;
         jdbc.update("delete from requisicao_idempotente where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from credencial_acesso where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from confirmacao_manual_pedido where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from item_pedido where pedido_id in (select id from pedido where organizacao_id = ?)", organizacaoId);
         jdbc.update("delete from comprador_pedido where pedido_id in (select id from pedido where organizacao_id = ?)", organizacaoId);

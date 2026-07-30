@@ -39,4 +39,14 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             """)
     Optional<Pedido> findByIdAndOrganizacaoIdForUpdate(
             @Param("id") Long id, @Param("organizacaoId") Long organizacaoId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select p from Pedido p
+            where p.id = :id and p.organizacaoId = :organizacaoId
+              and p.atorId = :atorId
+            """)
+    Optional<Pedido> findDoAtorForUpdate(
+            @Param("id") Long id, @Param("organizacaoId") Long organizacaoId,
+            @Param("atorId") Long atorId);
 }

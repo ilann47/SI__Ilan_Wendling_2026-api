@@ -32,6 +32,8 @@ public class ItemPedido extends AuditableEntity {
     private Long produtoId;
     @Column(name = "alocacao_id", nullable = false, updatable = false)
     private Long alocacaoId;
+    @Column(name = "patio_id", nullable = false, updatable = false)
+    private Long patioId;
     @Column(name = "lote_preco_id", nullable = false, updatable = false)
     private Long lotePrecoId;
     @Column(name = "nome_produto", nullable = false, updatable = false, length = 160)
@@ -59,7 +61,7 @@ public class ItemPedido extends AuditableEntity {
     public static ItemPedido criar(
             Pedido pedido, Long produtoId, String nomeProduto, Integer quantidade,
             BigDecimal precoUnitario, String moeda) {
-        return criar(pedido, produtoId, 0L, 0L, nomeProduto,
+        return criar(pedido, produtoId, 0L, 0L, 0L, nomeProduto,
                 CategoriaProduto.COMUM, DireitoProduto.ESTACIONAMENTO_EVENTO,
                 OffsetDateTime.parse("2099-01-01T00:00:00Z"),
                 OffsetDateTime.parse("2099-01-02T00:00:00Z"),
@@ -68,10 +70,12 @@ public class ItemPedido extends AuditableEntity {
 
     public static ItemPedido criar(
             Pedido pedido, Long produtoId, Long alocacaoId, Long lotePrecoId,
+            Long patioId,
             String nomeProduto, CategoriaProduto categoria, DireitoProduto direito,
             OffsetDateTime inicioAcesso, OffsetDateTime fimAcesso, Integer quantidade,
             BigDecimal precoUnitario, String moeda) {
         if (pedido == null || produtoId == null || alocacaoId == null || lotePrecoId == null
+                || patioId == null
                 || categoria == null || direito == null) {
             throw new IllegalArgumentException("O snapshot do item esta incompleto.");
         }
@@ -90,6 +94,7 @@ public class ItemPedido extends AuditableEntity {
         item.pedido = pedido;
         item.produtoId = produtoId;
         item.alocacaoId = alocacaoId;
+        item.patioId = patioId;
         item.lotePrecoId = lotePrecoId;
         item.nomeProduto = nomeProduto.trim();
         item.categoria = categoria;

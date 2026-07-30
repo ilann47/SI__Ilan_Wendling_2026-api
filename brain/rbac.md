@@ -74,6 +74,8 @@ proteção do último administrador.
 - [[pedidos]] — criação e leitura própria exigem `orders:create`, concedida a
   Administrador, Gestor e Organizador; `orders:manual-confirm` é restrita a
   Administrador e Gestor.
+- [[credenciais]] — emissão e leitura própria exigem `credentials:issue`,
+  concedida a Administrador, Gestor e Organizador.
 
 ## Histórico (data + ação)
 
@@ -86,3 +88,4 @@ proteção do último administrador.
 | 2026-07-30 | Catálogo recebe `inventory:manage` para Administrador da Organização e Gestor. |
 | 2026-07-30 | Catálogo recebe `pricing:manage` para Administrador, Gestor e Organizador. |
 | 2026-07-30 | Catálogo recebe `orders:create` para Administrador, Gestor e Organizador. |
+| 2026-07-30 | Catálogo recebe `credentials:issue` para Administrador, Gestor e Organizador. |

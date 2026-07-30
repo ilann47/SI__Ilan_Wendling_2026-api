@@ -130,6 +130,14 @@ public class Pedido extends AuditableEntity {
         status = StatusPedido.CONFIRMADO;
     }
 
+    public void atender() {
+        if (status != StatusPedido.CONFIRMADO) {
+            throw new IllegalStateException(
+                    "Somente pedido confirmado pode ser atendido.");
+        }
+        status = StatusPedido.ATENDIDO;
+    }
+
     public boolean expirar(OffsetDateTime instante) {
         if (status == StatusPedido.EXPIRADO) return false;
         if (status != StatusPedido.CRIADO && status != StatusPedido.AGUARDANDO_PAGAMENTO) {

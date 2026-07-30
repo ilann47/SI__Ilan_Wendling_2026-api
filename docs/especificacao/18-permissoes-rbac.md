@@ -140,6 +140,11 @@ parceiro permanecem no backlog de identidade contextual.
 pendência de conciliação; ela não permite alterar valor, itens ou documento do
 pedido.
 
+`credentials:issue` está implementada para `ADMIN_ORGANIZACAO`, `GESTOR` e
+`ORGANIZADOR`. No recorte atual, emissão e leitura continuam limitadas aos
+pedidos/credenciais do próprio ator; operação administrativa sobre terceiros
+aguarda escopos contextuais próprios.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

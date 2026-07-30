@@ -10,6 +10,7 @@ public record ItemPedidoResponse(
         Long id,
         Long parkingProductId,
         Long parkingAllocationId,
+        Long parkingFacilityId,
         Long priceTierId,
         String productName,
         CategoriaProduto category,
@@ -24,7 +25,8 @@ public record ItemPedidoResponse(
     public static ItemPedidoResponse from(ItemPedido item) {
         return new ItemPedidoResponse(
                 item.getId(), item.getProdutoId(), item.getAlocacaoId(),
-                item.getLotePrecoId(), item.getNomeProduto(), item.getCategoria(),
+                item.getPatioId(), item.getLotePrecoId(), item.getNomeProduto(),
+                item.getCategoria(),
                 item.getDireito(), item.getInicioAcesso(), item.getFimAcesso(),
                 item.getQuantidade(), item.getPrecoUnitario(), item.getMoeda(),
                 item.getTotal());

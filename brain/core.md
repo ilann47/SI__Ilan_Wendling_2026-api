@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[idempotencia]] · [[outbox]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[idempotencia]] · [[outbox]]
 
 # Core do Estacionamento Kaneko
 
@@ -45,6 +45,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[disponibilidade]] — projeção read-only do catálogo vendável vigente.
 - [[reservas-inventario]] — hold temporal e atômico da capacidade vendável.
 - [[pedidos]] — intenção comercial com snapshots, total e expiração.
+- [[credenciais]] — direito de acesso por unidade comprada e confirmada.
 - [[idempotencia]] — execução única de comandos críticos por tenant e identidade.
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
 
@@ -69,3 +70,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro de UC709 com reserva atômica, expiração e liberação de saldo. |
 | 2026-07-30 | Registro de UC710 até pedido aguardando pagamento e expiração. |
 | 2026-07-30 | Registro da confirmação manual conciliável de pedido e inventário. |
+| 2026-07-30 | Registro de UC711 com credencial ativa por unidade do pedido. |

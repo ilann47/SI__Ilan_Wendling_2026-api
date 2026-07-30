@@ -1,4 +1,4 @@
-> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[reservas-inventario]] · [[pedidos]]
+> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]]
 
 # Idempotência
 
@@ -76,3 +76,4 @@ e rejeitam payload diferente.
 | 2026-07-30 | Reutiliza a fundação no hold atômico de inventário. |
 | 2026-07-30 | Reutiliza a fundação na criação de pedido por hold. |
 | 2026-07-30 | Protege confirmação manual de pedido contra replay e payload divergente. |
+| 2026-07-30 | Protege emissão unitária de credencial contra replay e payload divergente. |

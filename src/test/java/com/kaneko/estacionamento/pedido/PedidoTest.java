@@ -58,6 +58,17 @@ class PedidoTest {
         assertThatIllegalStateException().isThrownBy(pedido::confirmar);
     }
 
+    @Test
+    void atendeSomentePedidoConfirmado() {
+        Pedido pedido = pedidoAguardandoPagamento();
+        pedido.confirmar();
+
+        pedido.atender();
+
+        assertThat(pedido.getStatus()).isEqualTo(StatusPedido.ATENDIDO);
+        assertThatIllegalStateException().isThrownBy(pedido::atender);
+    }
+
     private static Pedido pedidoAguardandoPagamento() {
         Pedido pedido = Pedido.criar(
                 1L, 2L, 3L, 4L, "PED-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",

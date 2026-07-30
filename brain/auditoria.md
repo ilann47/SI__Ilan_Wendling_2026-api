@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[eventos]] · [[pedidos]]
+> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[eventos]] · [[pedidos]] · [[credenciais]]
 
 # Auditoria
 
@@ -85,3 +85,4 @@ imutabilidade física no PostgreSQL.
 | 2026-07-30 | Reserva de inventário passa a auditar criação, expiração e liberação. |
 | 2026-07-30 | Pedido passa a auditar criação e expiração financeira. |
 | 2026-07-30 | Confirmação manual registra evidência conciliável e transições de pedido/inventário. |
+| 2026-07-30 | Emissão de credencial e atendimento integral do pedido são auditados. |

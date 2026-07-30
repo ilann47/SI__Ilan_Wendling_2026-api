@@ -167,8 +167,8 @@ job expira pedidos vencidos e publica `PedidoExpirado`.
 `POST /api/v1/orders/{id}/manual-confirmation` implementa o caminho alternativo
 de pagamento manual: exige Admin/Gestor, `If-Match`, `Idempotency-Key`, meio,
 referência de evidência e motivo; confirma inventário e pedido atomicamente e
-registra pendência de conciliação. Iniciar pagamento por gateway e solicitar
-credencial ainda não estão implementados e permanecem nas histórias seguintes.
+registra pendência de conciliação. A credencial já pode ser emitida por UC711;
+iniciar pagamento por gateway permanece dependente da integração própria.
 
 **Objetivo:** criar pedido e concluir o compromisso comercial.  
 **Atores:** Cliente, Caixa, Parceiro.  
@@ -180,6 +180,13 @@ credencial ainda não estão implementados e permanecem nas histórias seguintes
 **Pós-condição:** pedido confirmado e processo de credencial iniciado, ou pedido pendente/expirado sem perda de rastreabilidade.
 
 ## UC711 — Emitir credencial
+
+**Situação implementada:** `POST /api/v1/orders/{id}/credentials` exige
+`credentials:issue`, tenant, ownership e `Idempotency-Key`. Sob lock do pedido,
+emite a próxima unidade ainda não atendida como credencial `ATIVA`, congelando
+evento, pátio, direito e validade. A última unidade transiciona o pedido para
+`ATENDIDO`. `GET /api/v1/credentials/{id}` respeita tenant e proprietário. O
+código público não é meio autorizador; QR permanece em UC712.
 
 **Objetivo:** materializar o direito adquirido.  
 **Atores:** Process manager; atendimento em reemissão.  

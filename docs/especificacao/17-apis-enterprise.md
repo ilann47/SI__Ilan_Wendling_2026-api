@@ -192,8 +192,8 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `GET /payments/{id}` | id | `200 Payment` | cliente próprio ou financeiro |
 | `POST /payments/{id}/refunds` | valor, motivo | `202 Refund` | alçada e saldo |
 | `POST /payment-providers/{provider}/webhooks` | payload do provedor | `200/202` | assinatura, replay, inbox |
-| `POST /orders/{id}/credentials` | meio preferido | `201 Credential` | pedido elegível |
-| `GET /credentials/{id}` | id | representação redigida | proprietário/operação |
+| `POST /orders/{id}/credentials` | AS-IS: preferredMedium + `Idempotency-Key` | `201 Credential` + `Location` + `ETag` | `credentials:issue`; pedido próprio confirmado; uma unidade por chamada; última unidade atende pedido; código público não autoriza acesso |
+| `GET /credentials/{id}` | AS-IS: id | `200 Credential` + `ETag` | tenant e proprietário autenticado com `credentials:issue`; outro ator/tenant recebe `404` |
 | `POST /credentials/{id}/reissuance` | motivo | `201 Credential` | anterior revogada |
 | `POST /credentials/{id}/blocking` | motivo | `200` | supervisor/atendimento/fraude |
 | `POST /credentials/{id}/unblocking` | motivo | `200` | estado e alçada |

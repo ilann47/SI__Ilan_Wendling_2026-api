@@ -65,6 +65,8 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/v1/inventory-holds/{holdId}/release'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/orders'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/orders/{orderId}'].get").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/orders/{orderId}/manual-confirmation'].post").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/orders/{orderId}/manual-confirmation'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/orders/{orderId}/credentials'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/credentials/{credentialId}'].get").exists());
     }
 }

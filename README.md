@@ -53,6 +53,9 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   (`POST /api/v1/orders/{id}/manual-confirmation`) — exceção administrativa
   versionada e idempotente que exige evidência, confirma o inventário e registra
   pendência de conciliação sem simular aprovação de gateway.
+- **Credenciais de acesso** (`POST /api/v1/orders/{id}/credentials`) — emissão
+  idempotente de um direito ativo por unidade confirmada, com snapshot de
+  evento, pátio e validade; QR permanece em etapa própria.
 - **Alocação de pátios** — associação temporal multipátio por evento, com
   capacidades operacional/vendável/reservada, prevenção transacional de
   sobrealocação, idempotência, auditoria e concorrência otimista.

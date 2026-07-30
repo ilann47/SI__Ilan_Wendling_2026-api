@@ -93,7 +93,8 @@ public class PedidoService {
                 request.vehiclePlate(), reserva.expiraEm());
         pedido.adicionarItem(ItemPedido.criar(
                 pedido, reserva.produtoId(), reserva.alocacaoId(),
-                reserva.lotePrecoId(), reserva.nomeProduto(), reserva.categoria(),
+                reserva.lotePrecoId(), reserva.patioId(), reserva.nomeProduto(),
+                reserva.categoria(),
                 reserva.direito(), reserva.inicioAcesso(), reserva.fimAcesso(),
                 reserva.quantidade(), reserva.precoUnitario(), reserva.moeda()));
         pedido = pedidos.saveAndFlush(pedido);

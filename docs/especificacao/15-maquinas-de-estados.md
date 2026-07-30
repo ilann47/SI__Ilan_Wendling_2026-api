@@ -164,11 +164,14 @@ stateDiagram-v2
 
 Regras:
 
-- emissão: sistema após direito elegível;
+- emissão: sistema após direito elegível; **AS-IS**, `PENDENTE → ATIVA` ocorre no
+  mesmo caso de uso e uma credencial é criada por unidade do pedido;
 - bloqueio/desbloqueio: supervisor, atendimento autorizado ou policy antifraude;
 - substituição: atendimento, revogando a representação anterior no mesmo commit;
 - entrada/saída: controle de acesso;
 - `DENTRO` descreve o direito, enquanto `Presenca` guarda o histórico físico detalhado.
+- O código público AS-IS é somente identificador do agregado. Não substitui QR,
+  placa validada ou RFID e nunca autoriza entrada isoladamente.
 
 ## 15.7 Tentativa de acesso
 
