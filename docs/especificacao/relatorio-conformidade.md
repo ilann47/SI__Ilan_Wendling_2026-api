@@ -450,3 +450,21 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Auditoria e `ProdutoEstacionamentoPublicado` na outbox são persistidos na
   mesma transação do agregado.
 - A suíte passou de 416 para 419 testes sem regressões.
+
+---
+
+## Atualização — Publicação de evento / UC702 (2026-07-30)
+
+- A migration `V19__publicacao_evento.sql` adiciona `events:publish` somente a
+  `ADMIN_ORGANIZACAO` e `GESTOR`; `ORGANIZADOR` permanece sem aprovação.
+- `POST /api/v1/events/{id}/publication` exige confirmação e `If-Match`, com
+  respostas `428` para precondição ausente e `412` para versão divergente.
+- O evento é bloqueado pessimisticamente e somente publica com alocação de
+  capacidade vendável positiva e ao menos um produto publicado no mesmo tenant.
+- O comando materializa `RASCUNHO → CONFIGURADO → PUBLICADO`, incrementando a
+  versão em cada transição e persistindo `EventoConfigurado` e `EventoPublicado`
+  na outbox junto da auditoria final.
+- Na primeira entrega, o publicador autenticado assume a responsabilidade e a
+  política é fechada: publicação não abre vendas nem habilita acesso. Contratos
+  explícitos continuam necessários antes dessas fases.
+- A suíte passa de 419 para 423 testes sem regressões.

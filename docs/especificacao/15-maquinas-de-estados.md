@@ -12,9 +12,10 @@
 
 ## 15.2 Evento
 
-**Situação implementada:** o evento ainda entra em `RASCUNHO`; a publicação do
-produto associado já executa `RASCUNHO → PUBLICADO` em comando explícito,
-protegido por versão. As transições do evento entram na história seguinte.
+**Situação implementada:** o evento entra em `RASCUNHO`; o comando explícito de
+publicação, protegido por versão, executa `RASCUNHO → CONFIGURADO → PUBLICADO`
+somente com alocação vendável e produto publicado. As transições posteriores
+continuam TARGET.
 
 ```mermaid
 stateDiagram-v2

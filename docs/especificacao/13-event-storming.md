@@ -22,6 +22,9 @@ rascunho e de seus lotes de preço já existe. A janela do lote determina quando
 ele é selecionável e prioridades diferentes tornam sobreposições determinísticas.
 O comando explícito de publicação já produz `ProdutoEstacionamentoPublicado`
 atomicamente após validar lote e versão do produto.
+`PublicarEvento` também está implementado: valida prontidão, materializa as
+transições de configuração/publicação e grava `EventoConfigurado` e
+`EventoPublicado` na mesma transação do agregado.
 
 ```mermaid
 flowchart TD

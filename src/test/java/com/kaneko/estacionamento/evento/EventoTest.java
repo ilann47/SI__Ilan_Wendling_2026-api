@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.evento;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
@@ -34,5 +35,28 @@ class EventoTest {
                 1L, 2L, "Evento", inicio, inicio.plusHours(1), "Sao_Paulo", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("IANA");
+    }
+
+    @Test
+    void configuraEPublicaSomenteNaOrdemAprovada() {
+        Evento evento = novoEvento();
+
+        assertThatIllegalStateException().isThrownBy(evento::publicar);
+
+        evento.configurar();
+        assertThat(evento.getStatus()).isEqualTo(StatusEvento.CONFIGURADO);
+        assertThatIllegalStateException().isThrownBy(evento::configurar);
+
+        evento.publicar();
+        assertThat(evento.getStatus()).isEqualTo(StatusEvento.PUBLICADO);
+        assertThatIllegalStateException().isThrownBy(evento::publicar);
+    }
+
+    private static Evento novoEvento() {
+        return Evento.criar(
+                1L, 2L, "Evento Publicavel",
+                OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
+                OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
+                "America/Sao_Paulo", null);
     }
 }

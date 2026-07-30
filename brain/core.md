@@ -60,3 +60,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro de UC707 com Produto de Estacionamento e quota comercial. |
 | 2026-07-30 | Registro de UC708 com lotes de preço temporais e determinísticos. |
 | 2026-07-30 | Registro da publicação transacional de produto com auditoria e outbox. |
+| 2026-07-30 | Registro de UC702 com publicação versionada e checklist de prontidão. |

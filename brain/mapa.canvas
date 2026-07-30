@@ -31,7 +31,7 @@
     {"id": "rbac-eventos", "fromNode": "rbac", "fromSide": "right", "toNode": "eventos", "toSide": "left", "label": "events:create"},
     {"id": "eventos-auditoria", "fromNode": "eventos", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "EVENTO_CRIADO"},
     {"id": "eventos-idempotencia", "fromNode": "eventos", "fromSide": "bottom", "toNode": "idempotencia", "toSide": "top", "label": "execução única"},
-    {"id": "eventos-outbox", "fromNode": "eventos", "fromSide": "right", "toNode": "outbox", "toSide": "left", "label": "EventoCriado"},
+    {"id": "eventos-outbox", "fromNode": "eventos", "fromSide": "right", "toNode": "outbox", "toSide": "left", "label": "EventoCriado/Configurado/Publicado"},
     {"id": "organizacoes-eventos", "fromNode": "organizacoes", "fromSide": "right", "toNode": "eventos", "toSide": "left", "label": "ownership tenant"},
     {"id": "eventos-inventario", "fromNode": "eventos", "fromSide": "right", "toNode": "inventario", "toSide": "left", "label": "janela e estado"},
     {"id": "instalacoes-inventario", "fromNode": "instalacoes", "fromSide": "right", "toNode": "inventario", "toSide": "left", "label": "capacidade do pátio"},

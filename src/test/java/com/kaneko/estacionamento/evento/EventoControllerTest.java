@@ -15,6 +15,17 @@ import com.kaneko.estacionamento.geografia.PaisService;
 import com.kaneko.estacionamento.geografia.dto.CidadeRequest;
 import com.kaneko.estacionamento.geografia.dto.EstadoRequest;
 import com.kaneko.estacionamento.geografia.dto.PaisRequest;
+import com.kaneko.estacionamento.instalacoes.InstalacoesService;
+import com.kaneko.estacionamento.instalacoes.dto.CriarPatioInstalacaoRequest;
+import com.kaneko.estacionamento.inventario.alocacao.AlocacaoPatioEventoService;
+import com.kaneko.estacionamento.inventario.alocacao.dto.CriarAlocacaoPatioEventoRequest;
+import com.kaneko.estacionamento.inventario.produto.CategoriaProduto;
+import com.kaneko.estacionamento.inventario.produto.DireitoProduto;
+import com.kaneko.estacionamento.inventario.produto.LotePrecoService;
+import com.kaneko.estacionamento.inventario.produto.ProdutoEstacionamentoService;
+import com.kaneko.estacionamento.inventario.produto.dto.CriarLotePrecoRequest;
+import com.kaneko.estacionamento.inventario.produto.dto.CriarProdutoEstacionamentoRequest;
+import com.kaneko.estacionamento.inventario.produto.dto.PublicarProdutoRequest;
 import com.kaneko.estacionamento.organizacao.OrganizacaoService;
 import com.kaneko.estacionamento.organizacao.dto.CriarOrganizacaoRequest;
 import com.kaneko.estacionamento.organizacao.venue.VenueService;
@@ -23,6 +34,9 @@ import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
 import com.kaneko.estacionamento.usuario.UsuarioService;
 import com.kaneko.estacionamento.usuario.dto.UsuarioRequest;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +59,10 @@ class EventoControllerTest {
     @Autowired EstadoService estados;
     @Autowired CidadeService cidades;
     @Autowired VenueService venues;
+    @Autowired InstalacoesService instalacoes;
+    @Autowired AlocacaoPatioEventoService alocacoes;
+    @Autowired ProdutoEstacionamentoService produtos;
+    @Autowired LotePrecoService lotes;
     @Autowired JwtService jwt;
     @Autowired JdbcTemplate jdbc;
     @Autowired RegistroAuditoriaRepository auditorias;
@@ -52,8 +70,10 @@ class EventoControllerTest {
     private Usuario admin;
     private Usuario operador;
     private Usuario organizador;
+    private Usuario gestor;
     private Long organizacaoId;
     private Long venueId;
+    private Long patioId;
     private String tokenGlobal;
     private String tokenContextual;
 
@@ -62,6 +82,7 @@ class EventoControllerTest {
         admin = usuario("evento_admin", PerfilUsuario.ADMIN);
         operador = usuario("evento_operador", PerfilUsuario.OPERADOR);
         organizador = usuario("evento_organizador", PerfilUsuario.OPERADOR);
+        gestor = usuario("evento_gestor", PerfilUsuario.OPERADOR);
         tokenGlobal = bearer(jwt.gerarToken(admin.getLogin(), "ADMIN"));
         organizacaoId = organizacoes.criar(new CriarOrganizacaoRequest(
                 "12.345.678/0001-95", "Kaneko Eventos Ltda", null,
@@ -72,6 +93,9 @@ class EventoControllerTest {
         venueId = venues.criar(organizacaoId, new CriarVenueRequest(
                 "Arena de Eventos", "Avenida Principal", "500", null,
                 "Centro", "80000-000", cidadeId, "America/Sao_Paulo")).id();
+        patioId = instalacoes.criar(organizacaoId, new CriarPatioInstalacaoRequest(
+                "Patio de Eventos", "Avenida Principal", "510", null,
+                "Centro", "80000-000", cidadeId, 100, 100, null, true)).id();
     }
 
     @Test
@@ -189,6 +213,93 @@ class EventoControllerTest {
                 status().isBadRequest());
     }
 
+    @Test
+    void publicaEventoProntoComChecklistAuditoriaEOutbox() throws Exception {
+        Long eventoId = idEvento(criarEvento(
+                tokenContextual, "evento-publicavel", payload("Evento Publicavel", venueId),
+                status().isCreated()).andReturn().getResponse().getContentAsString());
+        prepararProdutoPublicado(eventoId);
+        long membershipGestor = criarMembership(gestor.getId(), tokenContextual);
+        concederPapel(membershipGestor, "GESTOR");
+        String tokenGestor = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(gestor.getLogin(), "OPERADOR")));
+
+        publicarEvento(tokenGestor, eventoId, "\"0\"", status().isOk())
+                .andExpect(header().string("ETag", "\"2\""))
+                .andExpect(jsonPath("$.status").value("PUBLICADO"))
+                .andExpect(jsonPath("$.version").value(2))
+                .andExpect(jsonPath("$.configurationChecklist.ready").value(true))
+                .andExpect(jsonPath("$.configurationChecklist.venue").value(true))
+                .andExpect(jsonPath("$.configurationChecklist.parkingAllocation").value(true))
+                .andExpect(jsonPath("$.configurationChecklist.parkingProduct").value(true))
+                .andExpect(jsonPath("$.configurationChecklist.responsibleParty").value(true))
+                .andExpect(jsonPath("$.configurationChecklist.policies").value(true));
+
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("EVENTO_PUBLICADO");
+            assertThat(auditoria.getRecursoId()).isEqualTo(eventoId);
+            assertThat(auditoria.getEstadoAnterior()).containsEntry("status", "RASCUNHO");
+            assertThat(auditoria.getEstadoPosterior()).containsEntry("status", "PUBLICADO");
+        });
+        assertThat(jdbc.queryForObject("""
+                select count(*) from evento_outbox
+                where aggregate_type = 'EVENTO' and aggregate_id = ?
+                  and event_type in ('EventoConfigurado', 'EventoPublicado')
+                """, Long.class, eventoId)).isEqualTo(2L);
+        assertThat(jdbc.queryForObject("""
+                select aggregate_version from evento_outbox
+                where aggregate_type = 'EVENTO' and aggregate_id = ?
+                  and event_type = 'EventoConfigurado'
+                """, Long.class, eventoId)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("""
+                select aggregate_version from evento_outbox
+                where aggregate_type = 'EVENTO' and aggregate_id = ?
+                  and event_type = 'EventoPublicado'
+                """, Long.class, eventoId)).isEqualTo(2L);
+    }
+
+    @Test
+    void rejeitaPublicacaoIncompletaEProtegeVersaoEsperada() throws Exception {
+        Long semAlocacao = idEvento(criarEvento(
+                tokenContextual, "evento-sem-alocacao", payload("Sem Alocacao", venueId),
+                status().isCreated()).andReturn().getResponse().getContentAsString());
+        publicarEvento(tokenContextual, semAlocacao, "\"0\"", status().isConflict());
+
+        Long eventoId = idEvento(criarEvento(
+                tokenContextual, "evento-versao", payload("Evento Versao", venueId),
+                status().isCreated()).andReturn().getResponse().getContentAsString());
+        prepararProdutoPublicado(eventoId);
+        mvc.perform(post("/api/v1/events/{id}/publication", eventoId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"confirmed\":true}"))
+                .andExpect(status().isPreconditionRequired());
+        publicarEvento(tokenContextual, eventoId, "\"99\"",
+                status().isPreconditionFailed());
+        publicarEvento(tokenContextual, eventoId, "\"0\"", status().isOk());
+        publicarEvento(tokenContextual, eventoId, "\"0\"",
+                status().isPreconditionFailed());
+    }
+
+    @Test
+    void organizadorNaoPodePublicarEvento() throws Exception {
+        long membershipId = criarMembership(organizador.getId(), tokenContextual);
+        mvc.perform(post("/api/v1/organizations/{organizationId}/memberships/{membershipId}/role-assignments",
+                        organizacaoId, membershipId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleCode\":\"ORGANIZADOR\"}"))
+                .andExpect(status().isCreated());
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+        Long eventoId = idEvento(criarEvento(
+                tokenContextual, "evento-nao-publicavel-organizador",
+                payload("Evento Protegido", venueId), status().isCreated())
+                .andReturn().getResponse().getContentAsString());
+
+        publicarEvento(tokenOrganizador, eventoId, "\"0\"", status().isForbidden());
+    }
+
     private org.springframework.test.web.servlet.ResultActions criarEvento(
             String token, String chave, String payload,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -198,6 +309,45 @@ class EventoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions publicarEvento(
+            String token, Long eventoId, String ifMatch,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/events/{id}/publication", eventoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"confirmed\":true}"))
+                .andExpect(esperado);
+    }
+
+    private void prepararProdutoPublicado(Long eventoId) {
+        Long alocacaoId = alocacoes.criar(
+                organizacaoId, admin.getId(), eventoId, "alocacao-" + eventoId,
+                new CriarAlocacaoPatioEventoRequest(
+                        patioId, OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
+                        OffsetDateTime.parse("2026-10-11T01:00:00-03:00"),
+                        100, 80, 20)).id();
+        Long produtoId = produtos.criar(
+                organizacaoId, admin.getId(), eventoId, "produto-" + eventoId,
+                new CriarProdutoEstacionamentoRequest(
+                        "Produto do Evento", CategoriaProduto.COMUM, alocacaoId,
+                        OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
+                        OffsetDateTime.parse("2026-10-11T01:00:00-03:00"),
+                        DireitoProduto.ESTACIONAMENTO_EVENTO, 80,
+                        List.of(), List.of())).id();
+        lotes.criar(
+                organizacaoId, admin.getId(), produtoId, "lote-" + produtoId,
+                new CriarLotePrecoRequest(
+                        "Lote do Evento", new BigDecimal("50.00"), "BRL",
+                        OffsetDateTime.parse("2026-08-01T00:00:00-03:00"),
+                        OffsetDateTime.parse("2026-09-01T00:00:00-03:00"),
+                        80, 1));
+        produtos.publicar(organizacaoId, produtoId, 0L, new PublicarProdutoRequest(true));
+    }
+
+    private static Long idEvento(String body) {
+        return JsonPath.<Number>read(body, "$.id").longValue();
     }
 
     private static String payload(String nome, Long venue) {
@@ -215,6 +365,15 @@ class EventoControllerTest {
                         .content("{\"userId\":" + usuarioId + "}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         return JsonPath.<Number>read(body, "$.id").longValue();
+    }
+
+    private void concederPapel(long membershipId, String papel) throws Exception {
+        mvc.perform(post("/api/v1/organizations/{organizationId}/memberships/{membershipId}/role-assignments",
+                        organizacaoId, membershipId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleCode\":\"" + papel + "\"}"))
+                .andExpect(status().isCreated());
     }
 
     private String selecionar(Long orgId, String token) throws Exception {

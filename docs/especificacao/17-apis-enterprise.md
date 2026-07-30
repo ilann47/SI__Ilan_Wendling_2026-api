@@ -154,7 +154,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `GET /parking-facilities/{id}/occupancy` | por setor/categoria | projeção atual + atraso | leitura no escopo |
 | `POST /events` | AS-IS: schema Evento + `Idempotency-Key`; tenant implícito | `201 Evento`, checklist, `Location`, `ETag` | `events:create`; venue ativo do tenant; período/fuso válidos; replay equivalente devolve o mesmo evento e conflito retorna `409` |
 | `PATCH /events/{id}` | campos + `If-Match` | `200 Evento` | permitido pelo estado |
-| `POST /events/{id}/publication` | versão e confirmação | `200 Evento` | checklist e Gestor |
+| `POST /events/{id}/publication` | AS-IS: confirmação + `If-Match` | `200 Evento`, checklist, `ETag` | `events:publish`; alocação vendável e produto publicado; ausência de versão retorna `428`, divergência `412`; auditoria e outbox atômicas |
 | `POST /events/{id}/sales-opening` | instante opcional | `200/202` | publicado |
 | `POST /events/{id}/sales-closing` | motivo | `200` | Organizador/Gestor |
 | `POST /events/{id}/operation-opening` | checklist | `200` | Supervisor |

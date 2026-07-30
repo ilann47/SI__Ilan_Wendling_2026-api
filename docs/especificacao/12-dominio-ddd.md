@@ -146,8 +146,10 @@ de capacidade permanecem nas histórias próprias.
 **Situação implementada:** a criação do agregado `Evento` está disponível em
 `RASCUNHO`, com ownership direto, venue visível, período/fuso, versão,
 idempotência, auditoria e `EventoCriado` persistido em outbox. A alocação
-temporal multipátio já é implementada no BC06; configuração, publicação e
-demais transições permanecem nas histórias seguintes.
+  temporal multipátio já é implementada no BC06. A publicação executa
+  `RASCUNHO → CONFIGURADO → PUBLICADO` após validar capacidade vendável e produto
+  publicado, persistindo `EventoConfigurado` e `EventoPublicado` na outbox; as
+  demais transições permanecem nas histórias seguintes.
 
 - **Objetivo:** controlar identidade, agenda, participantes, políticas e ciclo operacional do evento.
 - **Agregado:** `Evento`.

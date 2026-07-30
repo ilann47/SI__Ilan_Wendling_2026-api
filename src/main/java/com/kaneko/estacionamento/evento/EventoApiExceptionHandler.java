@@ -4,6 +4,7 @@ import com.kaneko.estacionamento.common.web.TraceIdFilter;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -16,8 +17,19 @@ public class EventoApiExceptionHandler {
 
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ProblemDetail handleCabecalhoObrigatorio(MissingRequestHeaderException ex) {
+        if ("If-Match".equalsIgnoreCase(ex.getHeaderName())) {
+            return problem(HttpStatus.PRECONDITION_REQUIRED, "Pre-condicao obrigatoria",
+                    "O cabecalho If-Match com a versao esperada e obrigatorio.");
+        }
         return problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
                 "O cabecalho " + ex.getHeaderName() + " e obrigatorio.");
+    }
+
+    @ExceptionHandler({VersaoEventoDivergenteException.class,
+            OptimisticLockingFailureException.class})
+    public ProblemDetail handleVersaoDivergente(RuntimeException ex) {
+        return problem(HttpStatus.PRECONDITION_FAILED, "Versao desatualizada",
+                "O evento foi alterado por outra operacao. Consulte-o novamente antes de publicar.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

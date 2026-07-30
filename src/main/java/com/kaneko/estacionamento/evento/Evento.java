@@ -63,6 +63,22 @@ public class Evento extends AuditableEntity {
         return evento;
     }
 
+    public void configurar() {
+        if (status != StatusEvento.RASCUNHO) {
+            throw new IllegalStateException(
+                    "Somente evento em rascunho pode ser configurado.");
+        }
+        status = StatusEvento.CONFIGURADO;
+    }
+
+    public void publicar() {
+        if (status != StatusEvento.CONFIGURADO) {
+            throw new IllegalStateException(
+                    "Somente evento configurado pode ser publicado.");
+        }
+        status = StatusEvento.PUBLICADO;
+    }
+
     static String validarFuso(String valor) {
         String fuso = textoObrigatorio(valor, "fuso horario", 60);
         try {

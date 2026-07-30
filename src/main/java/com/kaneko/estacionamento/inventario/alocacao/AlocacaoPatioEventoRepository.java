@@ -26,6 +26,9 @@ public interface AlocacaoPatioEventoRepository
 
     boolean existsByEventoIdAndPatioId(Long eventoId, Long patioId);
 
+    boolean existsByEventoIdAndOrganizacaoIdAndCapacidadeVendavelGreaterThan(
+            Long eventoId, Long organizacaoId, Integer capacidadeVendavel);
+
     @Query("""
             select coalesce(sum(a.capacidadeOperacional), 0)
             from AlocacaoPatioEvento a

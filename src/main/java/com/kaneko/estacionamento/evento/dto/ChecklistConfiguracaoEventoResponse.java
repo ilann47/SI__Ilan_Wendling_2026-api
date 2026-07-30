@@ -11,4 +11,8 @@ public record ChecklistConfiguracaoEventoResponse(
     public static ChecklistConfiguracaoEventoResponse inicial() {
         return new ChecklistConfiguracaoEventoResponse(false, true, false, false, false, false);
     }
+
+    public static ChecklistConfiguracaoEventoResponse primeiraEntregaPronta() {
+        return new ChecklistConfiguracaoEventoResponse(true, true, true, true, true, true);
+    }
 }

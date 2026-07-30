@@ -12,6 +12,9 @@ public interface ProdutoEstacionamentoRepository
 
     Optional<ProdutoEstacionamento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    boolean existsByEventoIdAndOrganizacaoIdAndStatus(
+            Long eventoId, Long organizacaoId, StatusProdutoEstacionamento status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select p from ProdutoEstacionamento p

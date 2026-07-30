@@ -40,6 +40,13 @@ embora autenticação técnica dedicada permaneça futura.
 
 ## UC702 — Configurar e publicar evento
 
+**Situação implementada:** `POST /api/v1/events/{id}/publication` exige
+confirmação, `If-Match`, `events:publish`, alocação com capacidade vendável e
+produto publicado. A primeira entrega usa o Gestor autenticado como responsável
+pela publicação e uma política fechada: publicar o catálogo não abre vendas nem
+habilita acesso. Políticas comerciais/operacionais explícitas continuam
+obrigatórias antes desses comandos futuros.
+
 **Objetivo:** tornar o evento oficialmente disponível.  
 **Atores:** Organizador configura; Gestor publica.  
 **Pré-condições:** evento `RASCUNHO/CONFIGURADO`; alocação, produtos, responsáveis e políticas completos.

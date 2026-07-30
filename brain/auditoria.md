@@ -78,3 +78,4 @@ imutabilidade física no PostgreSQL.
 | 2026-07-29 | Venue passa a registrar criação de unidade na mesma transação. |
 | 2026-07-30 | Evento passa a registrar criação, versão e estado inicial na mesma transação. |
 | 2026-07-30 | Produto de estacionamento passa a auditar criação de lote e publicação. |
+| 2026-07-30 | Evento passa a auditar a publicação e suas versões inicial/final. |

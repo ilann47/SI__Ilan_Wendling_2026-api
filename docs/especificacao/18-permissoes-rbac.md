@@ -119,6 +119,10 @@ capacidade compartilhada dos pátios.
 além da criação de `LotePreco`. Ela não concede alteração da capacidade física
 ou operacional da alocação.
 
+`events:publish` está implementada para `ADMIN_ORGANIZACAO` e `GESTOR`.
+`ORGANIZADOR` pode preparar evento e produto, mas não executar a publicação,
+preservando a aprovação definida na matriz de operações.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

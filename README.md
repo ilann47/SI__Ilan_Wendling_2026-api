@@ -38,6 +38,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   eventos por endereço, cidade e fuso IANA no tenant ativo.
 - **Eventos** (`POST /api/v1/events`) — criação idempotente no estado
   `RASCUNHO`, com venue tenant-aware, checklist, auditoria e outbox transacional.
+- **Publicação de eventos** (`POST /api/v1/events/{id}/publication`) — checklist
+  de venue, capacidade e produto publicado, versão esperada e outbox atômica.
 - **Alocação de pátios** — associação temporal multipátio por evento, com
   capacidades operacional/vendável/reservada, prevenção transacional de
   sobrealocação, idempotência, auditoria e concorrência otimista.
@@ -68,7 +70,7 @@ CREATE DATABASE estacionamento_kaneko_test;
 ```
 
 O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
-migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V18`). O
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V19`). O
 Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
 schema, nunca o altera.
 

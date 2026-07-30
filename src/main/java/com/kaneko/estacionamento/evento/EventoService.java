@@ -9,7 +9,12 @@ import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
+import com.kaneko.estacionamento.evento.dto.ChecklistConfiguracaoEventoResponse;
 import com.kaneko.estacionamento.evento.dto.EventoResponse;
+import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
+import com.kaneko.estacionamento.inventario.alocacao.AlocacaoPatioEventoRepository;
+import com.kaneko.estacionamento.inventario.produto.ProdutoEstacionamentoRepository;
+import com.kaneko.estacionamento.inventario.produto.StatusProdutoEstacionamento;
 import com.kaneko.estacionamento.organizacao.OrganizacaoRepository;
 import com.kaneko.estacionamento.organizacao.StatusOrganizacao;
 import com.kaneko.estacionamento.organizacao.venue.VenueRepository;
@@ -31,17 +36,23 @@ public class EventoService {
     private final EventoRepository eventos;
     private final OrganizacaoRepository organizacoes;
     private final VenueRepository venues;
+    private final AlocacaoPatioEventoRepository alocacoes;
+    private final ProdutoEstacionamentoRepository produtos;
     private final IdempotenciaRepository idempotencia;
     private final AuditoriaService auditoria;
     private final OutboxService outbox;
 
     public EventoService(
             EventoRepository eventos, OrganizacaoRepository organizacoes,
-            VenueRepository venues, IdempotenciaRepository idempotencia,
-            AuditoriaService auditoria, OutboxService outbox) {
+            VenueRepository venues, AlocacaoPatioEventoRepository alocacoes,
+            ProdutoEstacionamentoRepository produtos,
+            IdempotenciaRepository idempotencia, AuditoriaService auditoria,
+            OutboxService outbox) {
         this.eventos = eventos;
         this.organizacoes = organizacoes;
         this.venues = venues;
+        this.alocacoes = alocacoes;
+        this.produtos = produtos;
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.outbox = outbox;
@@ -98,6 +109,61 @@ public class EventoService {
                 organizacaoId, atorId, OPERACAO_CRIAR, chave,
                 requestHash, RECURSO, evento.getId());
         return EventoResponse.from(evento);
+    }
+
+    @Transactional
+    public EventoResponse publicar(
+            Long organizacaoId, Long eventoId, long versaoEsperada,
+            PublicarEventoRequest request) {
+        if (request == null || !Boolean.TRUE.equals(request.confirmed())) {
+            throw new IllegalArgumentException("A confirmacao da publicacao e obrigatoria.");
+        }
+        Evento evento = eventos.findByIdAndOrganizacaoIdForUpdate(eventoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Evento", eventoId));
+        if (!evento.getVersion().equals(versaoEsperada)) {
+            throw new VersaoEventoDivergenteException();
+        }
+        if (evento.getStatus() != StatusEvento.RASCUNHO
+                && evento.getStatus() != StatusEvento.CONFIGURADO) {
+            throw new ConflitoException(
+                    "Somente evento em rascunho ou configurado pode ser publicado.");
+        }
+        boolean possuiAlocacao = alocacoes
+                .existsByEventoIdAndOrganizacaoIdAndCapacidadeVendavelGreaterThan(
+                        eventoId, organizacaoId, 0);
+        if (!possuiAlocacao) {
+            throw new ConflitoException(
+                    "O evento precisa possuir alocacao com capacidade vendavel positiva.");
+        }
+        boolean possuiProdutoPublicado = produtos.existsByEventoIdAndOrganizacaoIdAndStatus(
+                eventoId, organizacaoId, StatusProdutoEstacionamento.PUBLICADO);
+        if (!possuiProdutoPublicado) {
+            throw new ConflitoException(
+                    "O evento precisa possuir ao menos um produto publicado.");
+        }
+
+        Map<String, Object> anterior = snapshot(evento);
+        Long versaoAnterior = evento.getVersion();
+        if (evento.getStatus() == StatusEvento.RASCUNHO) {
+            evento.configurar();
+            eventos.flush();
+            Map<String, Object> configurado = snapshot(evento);
+            outbox.publicar(new PublicarEventoOutboxCommand(
+                    "EventoConfigurado", organizacaoId, RECURSO, evento.getId(),
+                    evento.getVersion(), null, 1, configurado));
+        }
+        evento.publicar();
+        eventos.flush();
+        Map<String, Object> publicado = snapshot(evento);
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                organizacaoId, "EVENTO_PUBLICADO", RECURSO, evento.getId(), evento.getId(),
+                null, null, anterior, publicado, versaoAnterior, evento.getVersion(),
+                ClasseRetencaoAuditoria.CONFIGURACAO));
+        outbox.publicar(new PublicarEventoOutboxCommand(
+                "EventoPublicado", organizacaoId, RECURSO, evento.getId(),
+                evento.getVersion(), null, 1, publicado));
+        return EventoResponse.from(
+                evento, ChecklistConfiguracaoEventoResponse.primeiraEntregaPronta());
     }
 
     private static DadosCriacao normalizar(CriarEventoRequest request) {
