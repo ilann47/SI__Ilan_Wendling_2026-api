@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]]
+> Links: [[core]] · [[organizacoes]] · [[rbac]]
 
 # Membership
 
@@ -12,7 +12,7 @@ resolver o tenant autenticado sem confiar em contexto enviado pelo cliente.
 A Membership nasce em `ATIVO`, pode alternar entre `ATIVO` e `SUSPENSO` e termina
 em `ENCERRADO`. Um encerramento preserva o histórico e permite um novo vínculo;
 o registro anterior nunca é reaberto. O perfil `ADMIN/OPERADOR` continua vindo do
-`Usuario` global até a implementação do RBAC contextual.
+`Usuario` para compatibilidade legada; APIs tenant-aware usam [[rbac]].
 
 ## Fluxo (camadas da arquitetura)
 
@@ -69,17 +69,18 @@ claims contextuais, invalidação por versão/estado/usuário e compatibilidade 
 - A troca de tenant sempre emite outro JWT; headers não selecionam organização.
 - Tokens legados continuam válidos nas rotas compatíveis, mas não contêm tenant.
 - A validade permanece em 480 minutos; access/refresh tokens curtos são evolução futura.
-- `ROLE_ADMIN` administra temporariamente o módulo até o RBAC contextual da História 3.
+- O primeiro vínculo recebe `ADMIN_ORGANIZACAO`; os demais exigem `users:invite`.
 
 ## Módulos relacionados
 
 - [[core]]
 - [[organizacoes]]
 - Usuários — identidade global e authority legada.
-- RBAC contextual — próxima história, ainda não implementada.
+- [[rbac]] — controla administração, concessões e revogações no tenant.
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-29 | Implementa vínculo temporal, descoberta de organizações e JWT contextual. |
+| 2026-07-29 | Administração do vínculo migra de `ROLE_ADMIN` global para permissões contextuais. |

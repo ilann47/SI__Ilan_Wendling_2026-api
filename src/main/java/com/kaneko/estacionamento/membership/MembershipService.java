@@ -9,6 +9,7 @@ import com.kaneko.estacionamento.organizacao.OrganizacaoRepository;
 import com.kaneko.estacionamento.organizacao.StatusOrganizacao;
 import com.kaneko.estacionamento.usuario.Usuario;
 import com.kaneko.estacionamento.usuario.UsuarioRepository;
+import com.kaneko.estacionamento.rbac.RbacService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,19 +19,21 @@ public class MembershipService {
     private final MembroOrganizacaoRepository repository;
     private final OrganizacaoRepository organizacaoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final RbacService rbacService;
 
     public MembershipService(
             MembroOrganizacaoRepository repository,
             OrganizacaoRepository organizacaoRepository,
-            UsuarioRepository usuarioRepository) {
+            UsuarioRepository usuarioRepository, RbacService rbacService) {
         this.repository = repository;
         this.organizacaoRepository = organizacaoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.rbacService = rbacService;
     }
 
     @Transactional
     public MembershipResponse criar(Long organizacaoId, Long usuarioId) {
-        Organizacao organizacao = organizacaoRepository.findById(organizacaoId)
+        Organizacao organizacao = organizacaoRepository.findByIdForUpdate(organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Organizacao", organizacaoId));
         if (organizacao.getStatus() != StatusOrganizacao.ATIVA) {
             throw new ConflitoException("Somente uma organizacao ativa aceita Memberships.");
@@ -47,9 +50,13 @@ public class MembershipService {
             throw new ConflitoException("Ja existe uma Membership corrente para este usuario e organizacao.");
         }
 
+        boolean primeiro = repository.countByOrganizacaoIdAndStatusNot(
+                organizacaoId, StatusMembroOrganizacao.ENCERRADO) == 0;
         MembroOrganizacao membro = MembroOrganizacao.adicionar(
                 organizacaoId, usuarioId, OrigemMembroOrganizacao.ADMINISTRATIVA);
-        return MembershipResponse.from(repository.saveAndFlush(membro));
+        membro = repository.saveAndFlush(membro);
+        if (primeiro) rbacService.concederAdminInicial(membro.getId(), organizacaoId);
+        return MembershipResponse.from(membro);
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +73,11 @@ public class MembershipService {
         MembroOrganizacao membro = buscarEntidade(organizacaoId, membershipId);
         if (membro.getVersion().longValue() != versaoEsperada) {
             throw new VersaoMembershipDivergenteException(versaoEsperada, membro.getVersion());
+        }
+
+        if (request.getStatus() == StatusMembroOrganizacao.SUSPENSO
+                || request.getStatus() == StatusMembroOrganizacao.ENCERRADO) {
+            rbacService.validarDesativacaoMembership(membershipId, organizacaoId);
         }
 
         switch (request.getStatus()) {

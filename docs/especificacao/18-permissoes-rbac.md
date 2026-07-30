@@ -133,3 +133,12 @@ O JWT HS256 atual pode permanecer durante transição. O alvo é OIDC/OAuth 2.1 
 ## 18.8 Diferença para o AS-IS
 
 Atualmente existem apenas `ADMIN` e `OPERADOR`; usuários, manutenção de tarifa e exclusões recebem regras específicas, enquanto as demais rotas autenticadas são amplamente acessíveis. A matriz deste documento é TARGET e deve substituir gradualmente essa autorização coarse-grained sem remover o comportamento até que cada tela/API tenha migração definida.
+
+### Fundação implementada — História 3
+
+O escopo organizacional já possui catálogo persistido, papel de sistema
+`ADMIN_ORGANIZACAO`, atribuições versionadas e resolução server-side das quatro
+permissões necessárias à fundação: `organizations:admin`, `users:invite`,
+`roles:grant` e `roles:revoke`. APIs legadas continuam em `ADMIN/OPERADOR`; novos
+papéis e escopos serão adicionados junto dos respectivos módulos, sem permissões
+antecipadas ou confiança em autorização da interface.

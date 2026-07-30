@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1/organizations/{organizationId}/memberships")
@@ -32,6 +33,7 @@ public class MembershipController {
     }
 
     @PostMapping
+    @PreAuthorize("@rbacGuard.canProvisionMembership(#organizationId, authentication)")
     public ResponseEntity<MembershipResponse> criar(
             @PathVariable Long organizationId,
             @Valid @RequestBody CriarMembershipRequest request) {
@@ -46,6 +48,7 @@ public class MembershipController {
     }
 
     @GetMapping("/{membershipId}")
+    @PreAuthorize("@rbacGuard.hasPermission(#organizationId, 'organizations:admin', authentication)")
     public ResponseEntity<MembershipResponse> buscar(
             @PathVariable Long organizationId,
             @PathVariable Long membershipId) {
@@ -54,6 +57,7 @@ public class MembershipController {
     }
 
     @PatchMapping("/{membershipId}")
+    @PreAuthorize("@rbacGuard.hasPermission(#organizationId, 'organizations:admin', authentication)")
     public ResponseEntity<MembershipResponse> atualizar(
             @PathVariable Long organizationId,
             @PathVariable Long membershipId,

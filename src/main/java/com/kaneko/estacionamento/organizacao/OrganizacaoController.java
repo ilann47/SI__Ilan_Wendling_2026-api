@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1/organizations")
@@ -32,6 +33,7 @@ public class OrganizacaoController {
     }
 
     @PostMapping
+    @PreAuthorize("@rbacGuard.platformAdmin(authentication)")
     public ResponseEntity<OrganizacaoResponse> criar(@Valid @RequestBody CriarOrganizacaoRequest request) {
         OrganizacaoResponse response = service.criar(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -44,6 +46,7 @@ public class OrganizacaoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@rbacGuard.canReadOrganization(#id, authentication)")
     public ResponseEntity<OrganizacaoResponse> buscar(@PathVariable Long id) {
         OrganizacaoResponse response = service.buscar(id);
         return ResponseEntity.ok()
@@ -52,6 +55,7 @@ public class OrganizacaoController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("@rbacGuard.hasPermission(#id, 'organizations:admin', authentication)")
     public ResponseEntity<OrganizacaoResponse> atualizar(
             @PathVariable Long id,
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,

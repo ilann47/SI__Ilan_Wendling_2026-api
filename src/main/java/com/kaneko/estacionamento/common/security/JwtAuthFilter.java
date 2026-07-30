@@ -8,6 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.ArrayList;
+import com.kaneko.estacionamento.rbac.RbacService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,14 +31,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UsuarioRepository usuarioRepository;
     private final ContextoAutenticadoService contextoService;
+    private final RbacService rbacService;
 
     public JwtAuthFilter(
             JwtService jwtService,
             UsuarioRepository usuarioRepository,
-            ContextoAutenticadoService contextoService) {
+            ContextoAutenticadoService contextoService, RbacService rbacService) {
         this.jwtService = jwtService;
         this.usuarioRepository = usuarioRepository;
         this.contextoService = contextoService;
+        this.rbacService = rbacService;
     }
 
     @Override
@@ -55,9 +59,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         contexto != null ? contexto.organizacaoId() : null,
                         contexto != null ? contexto.membershipId() : null,
                         contexto != null ? contexto.membershipVersion() : null);
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        principal, null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getPerfil().name())));
+                var authorities = new ArrayList<SimpleGrantedAuthority>();
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + usuario.getPerfil().name()));
+                if (contexto != null) rbacService.permissoes(contexto.membershipId(), contexto.organizacaoId())
+                        .forEach(p -> authorities.add(new SimpleGrantedAuthority("PERMISSION_" + p)));
+                var authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (RuntimeException ignored) {
                 // Token invalido: segue sem autenticacao.

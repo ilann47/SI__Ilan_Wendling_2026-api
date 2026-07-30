@@ -15,6 +15,7 @@ import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
 import com.kaneko.estacionamento.usuario.UsuarioService;
 import com.kaneko.estacionamento.usuario.dto.UsuarioRequest;
+import com.kaneko.estacionamento.rbac.RbacService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +37,8 @@ class MembershipControllerTest {
     private UsuarioService usuarioService;
     @Autowired
     private OrganizacaoRepository organizacaoRepository;
+    @Autowired
+    private RbacService rbacService;
 
     @Test
     void criaConsultaSuspendeReativaEEncerraComConcorrenciaOtimista() throws Exception {
@@ -54,6 +57,7 @@ class MembershipControllerTest {
                 .andExpect(jsonPath("$.origin").value("ADMINISTRATIVA"))
                 .andReturn().getResponse().getContentAsString();
         Number membershipId = JsonPath.read(criacao, "$.id");
+        garantirOutroAdministrador(organizacaoId);
 
         mvc.perform(get("/api/v1/organizations/{organizationId}/memberships/{membershipId}",
                         organizacaoId, membershipId.longValue()))
@@ -99,6 +103,7 @@ class MembershipControllerTest {
         Long organizacaoId = criarOrganizacao();
         Long usuarioId = criarUsuario("membro_patch").getId();
         long membershipId = criarMembership(organizacaoId, usuarioId);
+        garantirOutroAdministrador(organizacaoId);
 
         mvc.perform(patch("/api/v1/organizations/{organizationId}/memberships/{membershipId}",
                         organizacaoId, membershipId)
@@ -119,6 +124,7 @@ class MembershipControllerTest {
         Long organizacaoId = criarOrganizacao();
         Long usuarioId = criarUsuario("membro_historico").getId();
         long membershipId = criarMembership(organizacaoId, usuarioId);
+        garantirOutroAdministrador(organizacaoId);
 
         mvc.perform(post("/api/v1/organizations/{organizationId}/memberships", organizacaoId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -199,5 +205,11 @@ class MembershipControllerTest {
     private Usuario criarUsuario(String login) {
         return usuarioService.criar(new UsuarioRequest(
                 "Usuario Membership", login, "senha123", null, null, PerfilUsuario.OPERADOR));
+    }
+
+    private void garantirOutroAdministrador(Long organizacaoId) throws Exception {
+        Usuario outro = criarUsuario("membro_admin_reserva");
+        long membershipId = criarMembership(organizacaoId, outro.getId());
+        rbacService.conceder(membershipId, organizacaoId, RbacService.ADMIN_ORGANIZACAO);
     }
 }

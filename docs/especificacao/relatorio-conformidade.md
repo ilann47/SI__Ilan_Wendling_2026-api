@@ -286,3 +286,19 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - O perfil atual do `Usuario` no banco define a authority, inclusive para tokens
   legados; não é possível trocar tenant por header.
 - A suíte automatizada passou de 332 para 348 testes, preservando os anteriores.
+
+---
+
+## Atualização — História 3: RBAC contextual (2026-07-29)
+
+- Migrations `V10__rbac_contextual_organizacao.sql` e
+  `V11__vigencia_atribuicao_acesso.sql` criam permissões, papéis, relação
+  papel–permissão e atribuições versionadas com vigência.
+- O primeiro membro recebe `ADMIN_ORGANIZACAO`; o administrador de plataforma
+  deixa de administrar indiscriminadamente Memberships do tenant.
+- Permissões são resolvidas no banco a cada requisição contextual e não são
+  confiadas ao JWT, tornando concessões e revogações imediatamente efetivas.
+- Organização e Membership passaram a exigir escopo e permissões contextuais.
+- O último administrador ativo é protegido contra revogação, suspensão e encerramento.
+- O escopo implementado é somente `ORGANIZACAO`; evento e pátio permanecem em suas histórias.
+- A suíte passou de 348 para 357 testes sem regressões.

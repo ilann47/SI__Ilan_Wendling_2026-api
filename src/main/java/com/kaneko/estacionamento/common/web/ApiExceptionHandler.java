@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 
 /**
  * Tratamento centralizado de erros da API, padronizando as respostas no formato
@@ -41,6 +42,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ConflitoException.class)
     public ProblemDetail handleConflito(ConflitoException ex) {
         return problem(HttpStatus.CONFLICT, "Conflito", ex.getMessage());
+    }
+
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ProblemDetail handleAcessoNegado(AuthorizationDeniedException ex) {
+        return problem(HttpStatus.FORBIDDEN, "Acesso negado",
+                "O usuario nao possui permissao efetiva para esta operacao e escopo.");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

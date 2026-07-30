@@ -13,6 +13,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import com.kaneko.estacionamento.rbac.RbacService;
 
 /**
  * Configuracao de seguranca. Em producao ({@code app.security.enabled=true}), os
@@ -20,14 +22,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * o Swagger e o actuator. Em testes de cadastro a protecao e desligada
  * ({@code app.security.enabled=false}) para exercitar os controllers diretamente.
  *
- * <p>Autorizacao por perfil (segregacao de funcoes): operacoes administrativas
- * sao restritas a {@code ROLE_ADMIN} — gestao de usuarios, qualquer exclusao
+ * <p>APIs legadas preservam autorizacao por perfil. APIs tenant-aware usam
+ * permissoes efetivas resolvidas por Membership, papel e escopo. Operacoes legadas
+ * administrativas permanecem restritas a {@code ROLE_ADMIN} — gestao de usuarios, qualquer exclusao
  * ({@code DELETE}) e a manutencao de tarifas (preco). As demais rotas exigem
  * apenas autenticacao, liberando o OPERADOR para a operacao do dia a dia (pátio,
  * vendas, baixas, consultas). O perfil chega como autoridade {@code ROLE_<perfil>}
  * a partir do perfil atual do {@code Usuario} persistido (ver {@link JwtAuthFilter}).
  */
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -41,7 +45,7 @@ public class SecurityConfig {
             @Value("${app.security.enabled:true}") boolean segurancaHabilitada,
             JwtService jwtService,
             UsuarioRepository usuarioRepository,
-            ContextoAutenticadoService contextoService) throws Exception {
+            ContextoAutenticadoService contextoService, RbacService rbacService) throws Exception {
 
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
@@ -50,9 +54,8 @@ public class SecurityConfig {
             http.authorizeHttpRequests(auth -> auth
                             .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html",
                                     "/v3/api-docs/**", "/actuator/**").permitAll()
-                            // Fundacao multiempresa: ate o RBAC contextual da Historia 3,
-                            // provisionamento e consulta de tenants sao exclusivos do ADMIN legado.
-                            .requestMatchers("/api/v1/organizations/**").hasRole("ADMIN")
+                            // Controllers /api/v1 aplicam RBAC contextual por metodo.
+                            .requestMatchers("/api/v1/organizations/**").authenticated()
                             // Gestao de usuarios e exclusivamente administrativa.
                             .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                             // Manutencao de tarifa (preco) e administrativa.
@@ -61,7 +64,7 @@ public class SecurityConfig {
                             // Qualquer exclusao e administrativa.
                             .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
                             .anyRequest().authenticated())
-                    .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository, contextoService),
+                    .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository, contextoService, rbacService),
                             UsernamePasswordAuthenticationFilter.class)
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(
                             new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));

@@ -130,9 +130,9 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /organizations` | dados empresariais, região, plano | `201 Organization` | Admin plataforma; idempotência |
 | `GET /organizations/{id}` | id | `200 Organization` | Admin plataforma/organização no próprio escopo |
 | `PATCH /organizations/{id}` | campos aditivos + `If-Match` | `200` | Admin organização; campos de propriedade imutáveis |
-| `POST /organizations/{organizationId}/memberships` | somente `userId` | `201 Membership` + `Location`/`ETag` | AS-IS: `ROLE_ADMIN`; usuário e organização ativos; vínculo nasce ativo |
-| `GET /organizations/{organizationId}/memberships/{membershipId}` | IDs no path | `200 Membership` + `ETag` | AS-IS: `ROLE_ADMIN`; vínculo deve pertencer à organização informada |
-| `PATCH /organizations/{organizationId}/memberships/{membershipId}` | somente status + `If-Match` | `200 Membership` + `ETag` | AS-IS: `ROLE_ADMIN`; `ATIVO ↔ SUSPENSO`, ou encerramento terminal |
+| `POST /organizations/{organizationId}/memberships` | somente `userId` | `201 Membership` + `Location`/`ETag` | AS-IS: primeiro vínculo pelo Admin plataforma; demais exigem `users:invite` |
+| `GET /organizations/{organizationId}/memberships/{membershipId}` | IDs no path | `200 Membership` + `ETag` | AS-IS: `organizations:admin`; vínculo no tenant ativo |
+| `PATCH /organizations/{organizationId}/memberships/{membershipId}` | somente status + `If-Match` | `200 Membership` + `ETag` | AS-IS: `organizations:admin`; preserva ao menos um administrador |
 | `GET /me` | token | identidade e organização ativa opcional | qualquer autenticado; contexto presente é revalidado no banco |
 | `GET /me/organizations` | token | organizações acessíveis | projeção direta; somente Membership e organização ativas |
 | `POST /me/active-organization` | somente `organizationId` | novo JWT contextual | Membership, estado, perfil e versão resolvidos pelo servidor |
@@ -141,6 +141,8 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `PUT /users/{id}/role-assignments/{assignmentId}` | papel, escopo, vigência | `200 Assignment` | Admin; não pode conceder além da própria alçada |
 | `DELETE /users/{id}/role-assignments/{assignmentId}` | motivo | `204` | Admin; auditoria obrigatória |
 | `GET /me/permissions` | escopo opcional | permissões efetivas | qualquer autenticado |
+| `POST /organizations/{organizationId}/memberships/{membershipId}/role-assignments` | `roleCode` | `201 Assignment` | AS-IS: `roles:grant`; mesmo tenant |
+| `DELETE /organizations/{organizationId}/memberships/{membershipId}/role-assignments/{assignmentId}` | motivo + `If-Match` | `204` | AS-IS: `roles:revoke`; não remove último administrador |
 
 ## 17.4 Instalações e eventos
 

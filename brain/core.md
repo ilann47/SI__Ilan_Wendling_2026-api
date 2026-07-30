@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]]
 
 # Core do Estacionamento Kaneko
 
@@ -19,7 +19,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 
 - Banco relacional: PostgreSQL.
 - Persistência: Spring Data JPA/Hibernate.
-- Segurança atual: JWT HS256 e perfis legados `ADMIN`/`OPERADOR`.
+- Segurança atual: JWT HS256, RBAC contextual nas APIs `/api/v1` implementadas e perfis legados nas APIs `/api`.
 - Documentação de API: springdoc OpenAPI.
 - Testes de integração contra banco PostgreSQL separado.
 
@@ -35,6 +35,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 
 - [[organizacoes]] — fundação do tenant empresarial.
 - [[membership]] — vínculo da identidade global, descoberta e contexto de tenant.
+- [[rbac]] — permissões efetivas por papel, Membership e escopo organizacional.
 
 ## Histórico
 
@@ -42,3 +43,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 |---|---|
 | 2026-07-29 | Inicialização do brain e registro da História 1 de Organizações. |
 | 2026-07-29 | Registro da História 2 de Membership e JWT contextual. |
+| 2026-07-29 | Registro da História 3 de RBAC contextual. |

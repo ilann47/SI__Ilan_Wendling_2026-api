@@ -13,6 +13,8 @@ public interface MembroOrganizacaoRepository extends JpaRepository<MembroOrganiz
     boolean existsByOrganizacaoIdAndUsuarioIdAndStatusNot(
             Long organizacaoId, Long usuarioId, StatusMembroOrganizacao status);
 
+    long countByOrganizacaoIdAndStatusNot(Long organizacaoId, StatusMembroOrganizacao status);
+
     Optional<MembroOrganizacao> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
     Optional<MembroOrganizacao> findByIdAndUsuarioIdAndOrganizacaoIdAndStatus(

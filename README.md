@@ -27,6 +27,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   documento empresarial, moeda, fuso, região, plano e concorrência otimista.
 - **Membership** — vínculo temporal entre o `Usuario` global e organizações,
   seleção server-side do tenant ativo e emissão de JWT contextual revogável por versão.
+- **RBAC contextual** — papéis e permissões por organização, com concessão,
+  revogação imediata e bootstrap controlado do primeiro administrador do tenant.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
 
@@ -47,7 +49,7 @@ CREATE DATABASE estacionamento_kaneko_test;
 ```
 
 O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
-migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V9`). O
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V11`). O
 Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
 schema, nunca o altera.
 
@@ -121,7 +123,7 @@ schema; a cada classe a transação sofre rollback):
 ./mvnw test
 ```
 
-São 348 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
+São 357 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
 dos processos do pátio, fiscais, financeiros e dos relatórios.
 
@@ -144,6 +146,7 @@ financeiro/      contas a pagar, a receber e avulsas
 usuario/         cadastro de usuários
 organizacao/     tenant empresarial, lifecycle, ETag e If-Match
 membership/      vínculo usuário–organização, contexto autenticado e JWT contextual
+rbac/            papéis, permissões, atribuições e autorização por organização
 relatorio/       relatórios gerenciais (consultas consolidadas)
 ```
 

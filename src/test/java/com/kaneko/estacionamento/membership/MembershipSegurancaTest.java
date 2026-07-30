@@ -128,6 +128,14 @@ class MembershipSegurancaTest {
 
     @Test
     void suspensaoEReativacaoInvalidamTokenContextualAnteriorCom401() throws Exception {
+        membershipService.criar(organizacaoId, admin.getId());
+        String bodyAdmin = mvc.perform(post("/api/v1/me/active-organization")
+                        .header("Authorization", tokenAdmin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"organizationId\":" + organizacaoId + "}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String adminContextual = bearer(JsonPath.read(bodyAdmin, "$.token"));
         var membro = membershipService.criar(organizacaoId, operador.getId());
         String body = mvc.perform(post("/api/v1/me/active-organization")
                         .header("Authorization", tokenOperador)
@@ -139,7 +147,7 @@ class MembershipSegurancaTest {
 
         mvc.perform(patch("/api/v1/organizations/{organizationId}/memberships/{membershipId}",
                         organizacaoId, membro.id())
-                        .header("Authorization", tokenAdmin)
+                        .header("Authorization", adminContextual)
                         .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"SUSPENSO\"}"))
@@ -149,7 +157,7 @@ class MembershipSegurancaTest {
 
         mvc.perform(patch("/api/v1/organizations/{organizationId}/memberships/{membershipId}",
                         organizacaoId, membro.id())
-                        .header("Authorization", tokenAdmin)
+                        .header("Authorization", adminContextual)
                         .header("If-Match", "\"1\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"ATIVO\"}"))
@@ -166,7 +174,7 @@ class MembershipSegurancaTest {
 
         mvc.perform(patch("/api/v1/organizations/{organizationId}/memberships/{membershipId}",
                         organizacaoId, membro.id())
-                        .header("Authorization", tokenAdmin)
+                        .header("Authorization", adminContextual)
                         .header("If-Match", "\"2\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"ENCERRADO\"}"))
