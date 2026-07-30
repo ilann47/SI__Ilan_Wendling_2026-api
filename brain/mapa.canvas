@@ -32,7 +32,7 @@
     {"id": "rbac-eventos", "fromNode": "rbac", "fromSide": "right", "toNode": "eventos", "toSide": "left", "label": "events:create"},
     {"id": "eventos-auditoria", "fromNode": "eventos", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "EVENTO_CRIADO"},
     {"id": "eventos-idempotencia", "fromNode": "eventos", "fromSide": "bottom", "toNode": "idempotencia", "toSide": "top", "label": "execução única"},
-    {"id": "eventos-outbox", "fromNode": "eventos", "fromSide": "right", "toNode": "outbox", "toSide": "left", "label": "EventoCriado/Configurado/Publicado"},
+    {"id": "eventos-outbox", "fromNode": "eventos", "fromSide": "right", "toNode": "outbox", "toSide": "left", "label": "Criado/Configurado/Publicado/VendasAbertas"},
     {"id": "organizacoes-eventos", "fromNode": "organizacoes", "fromSide": "right", "toNode": "eventos", "toSide": "left", "label": "ownership tenant"},
     {"id": "eventos-inventario", "fromNode": "eventos", "fromSide": "right", "toNode": "inventario", "toSide": "left", "label": "janela e estado"},
     {"id": "instalacoes-inventario", "fromNode": "instalacoes", "fromSide": "right", "toNode": "inventario", "toSide": "left", "label": "capacidade do pátio"},
@@ -46,7 +46,7 @@
     {"id": "produtos-auditoria", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "PRODUTO/LOTE_CRIADO"},
     {"id": "produtos-idempotencia", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "idempotencia", "toSide": "right", "label": "execução única"},
     {"id": "produtos-outbox", "fromNode": "produtos-estacionamento", "fromSide": "top", "toNode": "outbox", "toSide": "bottom", "label": "ProdutoEstacionamentoPublicado"},
-    {"id": "eventos-disponibilidade", "fromNode": "eventos", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "evento publicado"},
+    {"id": "eventos-disponibilidade", "fromNode": "eventos", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "publicado/vendas abertas"},
     {"id": "inventario-disponibilidade", "fromNode": "inventario", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "quota projetada"},
     {"id": "produtos-disponibilidade", "fromNode": "produtos-estacionamento", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "lote vigente"},
     {"id": "rbac-disponibilidade", "fromNode": "rbac", "fromSide": "right", "toNode": "disponibilidade", "toSide": "left", "label": "tenant ativo"}

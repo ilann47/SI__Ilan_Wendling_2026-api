@@ -486,3 +486,21 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Canal, hold e redução por reservado/vendido permanecem para UC709; nenhum
   estado ou migration foi antecipado.
 - A suíte passa de 423 para 425 testes sem regressões.
+
+---
+
+## Atualização — Abertura imediata de vendas (2026-07-30)
+
+- `POST /api/v1/events/{id}/sales-opening` exige `events:publish`, `If-Match` e
+  evento `PUBLICADO`, retornando a nova representação e `ETag`.
+- O comando executa somente `PUBLICADO → VENDAS_ABERTAS`, sob lock pessimista e
+  comparação da versão JPA; replay com versão anterior retorna `412`.
+- Auditoria `VENDAS_EVENTO_ABERTAS` e outbox `VendasDoEventoAbertas` são
+  persistidas na mesma transação do agregado.
+- `startsAt` futuro retorna `409` até existir scheduler confiável; a API não
+  aceita agendamento que não possa executar.
+- A consulta de disponibilidade permanece válida em `PUBLICADO` e
+  `VENDAS_ABERTAS`; o hold comercial exige o segundo estado.
+- Nenhuma migration ou permissão nova foi antecipada; a transição reutiliza
+  `events:publish` de Gestor/Admin da organização.
+- A suíte passa de 425 para 426 testes sem regressões.

@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.evento;
 
 import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
+import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.EventoResponse;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
@@ -53,6 +54,20 @@ public class EventoController {
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
             @Valid @RequestBody PublicarEventoRequest request) {
         EventoResponse response = service.publicar(
+                principal.organizacaoId(), eventoId, extrairVersao(ifMatch), request);
+        return ResponseEntity.ok()
+                .eTag("\"" + response.version() + "\"")
+                .body(response);
+    }
+
+    @PostMapping("/{eventoId}/sales-opening")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('events:publish', authentication)")
+    public ResponseEntity<EventoResponse> abrirVendas(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long eventoId,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody AbrirVendasEventoRequest request) {
+        EventoResponse response = service.abrirVendas(
                 principal.organizacaoId(), eventoId, extrairVersao(ifMatch), request);
         return ResponseEntity.ok()
                 .eTag("\"" + response.version() + "\"")

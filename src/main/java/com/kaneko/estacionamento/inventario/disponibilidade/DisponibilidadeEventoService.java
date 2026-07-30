@@ -40,7 +40,8 @@ public class DisponibilidadeEventoService {
             Long organizacaoId, Long eventoId, CategoriaProduto categoria) {
         Evento evento = eventos.findByIdAndOrganizacaoId(eventoId, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Evento", eventoId));
-        if (evento.getStatus() != StatusEvento.PUBLICADO) {
+        if (evento.getStatus() != StatusEvento.PUBLICADO
+                && evento.getStatus() != StatusEvento.VENDAS_ABERTAS) {
             throw new ConflitoException(
                     "A disponibilidade somente pode ser consultada para evento publicado.");
         }

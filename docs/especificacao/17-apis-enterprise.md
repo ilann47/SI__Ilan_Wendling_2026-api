@@ -155,7 +155,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /events` | AS-IS: schema Evento + `Idempotency-Key`; tenant implícito | `201 Evento`, checklist, `Location`, `ETag` | `events:create`; venue ativo do tenant; período/fuso válidos; replay equivalente devolve o mesmo evento e conflito retorna `409` |
 | `PATCH /events/{id}` | campos + `If-Match` | `200 Evento` | permitido pelo estado |
 | `POST /events/{id}/publication` | AS-IS: confirmação + `If-Match` | `200 Evento`, checklist, `ETag` | `events:publish`; alocação vendável e produto publicado; ausência de versão retorna `428`, divergência `412`; auditoria e outbox atômicas |
-| `POST /events/{id}/sales-opening` | instante opcional | `200/202` | publicado |
+| `POST /events/{id}/sales-opening` | AS-IS: `startsAt` opcional + `If-Match` | `200 Evento`, `ETag`; `202` permanece TARGET | `events:publish`; evento publicado; abertura imediata auditada e com outbox; instante futuro retorna `409` até existir scheduler; ausência de versão `428`, divergência `412` |
 | `POST /events/{id}/sales-closing` | motivo | `200` | Organizador/Gestor |
 | `POST /events/{id}/operation-opening` | checklist | `200` | Supervisor |
 | `POST /events/{id}/operation-closing` | pendências | `200` | Supervisor |
@@ -171,7 +171,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /events/{id}/parking-products` | AS-IS: nome, categoria, alocação, direito, janela, quota, benefícios/restrições + `Idempotency-Key`; tenant implícito | `201 Product`, `Location`, `ETag` | `pricing:manage`; evento configurável; alocação do evento/tenant; janela contida; soma de quotas não excede vendável; produto nasce em rascunho |
 | `POST /parking-products/{id}/publication` | AS-IS: confirmação + `If-Match` | `200 Product`, `ETag` | `pricing:manage`; produto em rascunho com ao menos um lote; ausência de versão retorna `428`, versão divergente `412`; auditoria e outbox atômicas |
 | `POST /parking-products/{id}/price-tiers` | AS-IS: nome, preço, moeda, período, quantidade, prioridade + `Idempotency-Key`; tenant implícito | `201 Tier`, `Location`, `ETag` | `pricing:manage`; produto em rascunho; moeda da organização; quantidade ≤ quota; sobreposição somente com prioridades distintas; replay equivalente devolve o lote original |
-| `GET /events/{id}/availability` | AS-IS: filtro opcional de categoria; tenant implícito | produtos, lote/preço vigente, saldo projetado e instante de cálculo | exige contexto ativo e evento publicado; maior prioridade numérica vence; não garante hold; filtro por canal permanece TARGET |
+| `GET /events/{id}/availability` | AS-IS: filtro opcional de categoria; tenant implícito | produtos, lote/preço vigente, saldo projetado e instante de cálculo | exige contexto ativo e evento publicado ou com vendas abertas; maior prioridade numérica vence; não garante hold; filtro por canal permanece TARGET |
 | `POST /inventory-holds` | produto, quantidade, canal | `201 Hold` | atômico; idempotência |
 | `POST /inventory-holds/{id}/release` | motivo | `200 Hold` | uma liberação |
 | `GET /inventory-holds/{id}` | id | `200 Hold` | comprador/canal ou operação |

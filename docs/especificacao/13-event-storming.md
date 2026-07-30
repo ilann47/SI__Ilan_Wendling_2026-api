@@ -25,6 +25,9 @@ atomicamente após validar lote e versão do produto.
 `PublicarEvento` também está implementado: valida prontidão, materializa as
 transições de configuração/publicação e grava `EventoConfigurado` e
 `EventoPublicado` na mesma transação do agregado.
+`AbrirVendas` materializa imediatamente `PUBLICADO → VENDAS_ABERTAS` e grava
+`VendasDoEventoAbertas` junto da auditoria. Abertura futura permanece TARGET
+até existir scheduler confiável.
 A leitura de disponibilidade projeta produtos publicados e lotes vigentes, mas
 não produz evento porque não altera nem bloqueia inventário.
 

@@ -121,7 +121,9 @@ ou operacional da alocação.
 
 `events:publish` está implementada para `ADMIN_ORGANIZACAO` e `GESTOR`.
 `ORGANIZADOR` pode preparar evento e produto, mas não executar a publicação,
-preservando a aprovação definida na matriz de operações.
+preservando a aprovação definida na matriz de operações. A mesma permissão
+protege a abertura explícita de vendas, pois ela aprova a exposição comercial
+do catálogo já publicado.
 
 ## 18.5 Regras ABAC complementares
 

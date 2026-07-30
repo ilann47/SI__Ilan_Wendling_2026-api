@@ -148,8 +148,10 @@ de capacidade permanecem nas histórias próprias.
 idempotência, auditoria e `EventoCriado` persistido em outbox. A alocação
   temporal multipátio já é implementada no BC06. A publicação executa
   `RASCUNHO → CONFIGURADO → PUBLICADO` após validar capacidade vendável e produto
-  publicado, persistindo `EventoConfigurado` e `EventoPublicado` na outbox; as
-  demais transições permanecem nas histórias seguintes.
+  publicado, persistindo `EventoConfigurado` e `EventoPublicado` na outbox. O
+  comando de abertura imediata executa `PUBLICADO → VENDAS_ABERTAS`, com versão,
+  auditoria e `VendasDoEventoAbertas`; agendamento e demais transições permanecem
+  nas histórias seguintes.
 
 - **Objetivo:** controlar identidade, agenda, participantes, políticas e ciclo operacional do evento.
 - **Agregado:** `Evento`.

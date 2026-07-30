@@ -12,7 +12,8 @@ tenant, sem misturar inventário, pedidos, pagamentos ou acesso no agregado.
 UC701 cria o evento em `RASCUNHO`. [[inventario]] associa pátios sem transferir
 essa responsabilidade ao agregado e [[produtos-estacionamento]] publica a oferta.
 UC702 publica o evento somente após validar capacidade vendável e produto
-publicado, sem abrir vendas ou antecipar pedidos e acesso.
+publicado. Um comando posterior abre vendas imediatamente, sem antecipar
+pedidos, credenciais ou acesso.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -32,6 +33,13 @@ POST /api/v1/events/{eventoId}/publication + If-Match
   -> RASCUNHO -> CONFIGURADO -> PUBLICADO
   -> AuditoriaService + EventoConfigurado/EventoPublicado na outbox
   -> 200 + ETag + checklist pronto
+
+POST /api/v1/events/{eventoId}/sales-opening + If-Match
+  -> JWT contextual + events:publish
+  -> EventoService + lock pessimista do agregado
+  -> PUBLICADO -> VENDAS_ABERTAS
+  -> AuditoriaService + VendasDoEventoAbertas na outbox
+  -> 200 + ETag
 ```
 
 ## Endpoints (se houver)
@@ -39,6 +47,8 @@ POST /api/v1/events/{eventoId}/publication + If-Match
 - `POST /api/v1/events`: cria evento em `RASCUNHO` no tenant autenticado.
 - `POST /api/v1/events/{eventoId}/publication`: publica evento pronto usando a
   versão atual.
+- `POST /api/v1/events/{eventoId}/sales-opening`: abre vendas imediatamente
+  usando a versão atual; agendamento ainda não é aceito.
 - Repetição da mesma chave e payload devolve o agregado original; payload
   divergente com a mesma chave retorna `409`.
 
@@ -52,8 +62,9 @@ primeira entrega ficam satisfeitos.
 ## Integrações externas (se houver)
 
 Não há chamada externa. `externalId` é preservado para origem parceira futura.
-`EventoCriado`, `EventoConfigurado` e `EventoPublicado` são persistidos em
-[[outbox]], ainda sem dispatcher ou broker.
+`EventoCriado`, `EventoConfigurado`, `EventoPublicado` e
+`VendasDoEventoAbertas` são persistidos em [[outbox]], ainda sem dispatcher ou
+broker.
 
 ## Tratamento de Erros
 
@@ -62,14 +73,15 @@ Não há chamada externa. `externalId` é preservado para origem parceira futura
 - `404`: venue/organização fora do tenant visível.
 - `409`: chave reutilizada com payload diferente, externalId duplicado ou constraint.
 - `409`: publicação sem capacidade vendável ou produto publicado.
-- `428`: publicação sem `If-Match`.
+- `409`: abertura fora de `PUBLICADO` ou solicitada para instante futuro.
+- `428`: publicação ou abertura sem `If-Match`.
 - `412`: versão esperada divergente ou conflito otimista.
 
 ## Testes (curl ou equivalente)
 
 Há testes de domínio, API, tenant, papéis, idempotência, replay, auditoria,
-outbox, publicação, RBAC, concorrência, OpenAPI e constraints PostgreSQL para
-período, estado e FK composta.
+outbox, publicação, abertura de vendas, RBAC, concorrência, OpenAPI e constraints
+PostgreSQL para período, estado e FK composta.
 
 ## Decisões Técnicas
 
@@ -81,8 +93,10 @@ período, estado e FK composta.
 - A publicação percorre e persiste `CONFIGURADO` antes de `PUBLICADO`; cada
   transição incrementa a versão e produz seu fato na outbox.
 - O Gestor autenticado assume a responsabilidade da publicação nesta entrega.
-  A política permanece fechada: publicar não abre vendas nem habilita acesso;
-  esses comandos futuros exigirão seus contratos explícitos.
+  Publicar não abre vendas nem habilita acesso; a exposição comercial exige o
+  comando versionado próprio e acesso permanece fora deste escopo.
+- `startsAt` futuro é rejeitado até existir scheduler transacional; aceitar e
+  esquecer um agendamento violaria o contrato operacional.
 
 ## Módulos relacionados
 
@@ -103,3 +117,4 @@ período, estado e FK composta.
 | 2026-07-30 | Implementa UC701 com criação tenant-aware, idempotência e EventoCriado. |
 | 2026-07-30 | Passa a fornecer evento configurável para a alocação temporal de pátios em [[inventario]]. |
 | 2026-07-30 | Implementa UC702 com checklist, versão, auditoria e outbox transacional. |
+| 2026-07-30 | Implementa abertura imediata `PUBLICADO → VENDAS_ABERTAS` com ETag, auditoria e outbox. |

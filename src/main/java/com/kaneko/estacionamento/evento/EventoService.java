@@ -8,8 +8,9 @@ import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
-import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
+import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
 import com.kaneko.estacionamento.evento.dto.ChecklistConfiguracaoEventoResponse;
+import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.EventoResponse;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
 import com.kaneko.estacionamento.inventario.alocacao.AlocacaoPatioEventoRepository;
@@ -164,6 +165,43 @@ public class EventoService {
                 evento.getVersion(), null, 1, publicado));
         return EventoResponse.from(
                 evento, ChecklistConfiguracaoEventoResponse.primeiraEntregaPronta());
+    }
+
+    @Transactional
+    public EventoResponse abrirVendas(
+            Long organizacaoId, Long eventoId, long versaoEsperada,
+            AbrirVendasEventoRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("O comando de abertura de vendas e obrigatorio.");
+        }
+        OffsetDateTime agora = OffsetDateTime.now();
+        if (request.startsAt() != null
+                && request.startsAt().toInstant().isAfter(agora.toInstant())) {
+            throw new ConflitoException(
+                    "Abertura agendada depende do scheduler e ainda nao esta disponivel.");
+        }
+        Evento evento = eventos.findByIdAndOrganizacaoIdForUpdate(eventoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Evento", eventoId));
+        if (!evento.getVersion().equals(versaoEsperada)) {
+            throw new VersaoEventoDivergenteException();
+        }
+        if (evento.getStatus() != StatusEvento.PUBLICADO) {
+            throw new ConflitoException(
+                    "Somente evento publicado pode abrir vendas.");
+        }
+        Map<String, Object> anterior = snapshot(evento);
+        Long versaoAnterior = evento.getVersion();
+        evento.abrirVendas();
+        eventos.flush();
+        Map<String, Object> posterior = snapshot(evento);
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                organizacaoId, "VENDAS_EVENTO_ABERTAS", RECURSO,
+                evento.getId(), evento.getId(), null, null, anterior, posterior,
+                versaoAnterior, evento.getVersion(), ClasseRetencaoAuditoria.CONFIGURACAO));
+        outbox.publicar(new PublicarEventoOutboxCommand(
+                "VendasDoEventoAbertas", organizacaoId, RECURSO, evento.getId(),
+                evento.getVersion(), null, 1, posterior));
+        return EventoResponse.from(evento);
     }
 
     private static DadosCriacao normalizar(CriarEventoRequest request) {

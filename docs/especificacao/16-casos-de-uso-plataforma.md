@@ -43,9 +43,10 @@ embora autenticação técnica dedicada permaneça futura.
 **Situação implementada:** `POST /api/v1/events/{id}/publication` exige
 confirmação, `If-Match`, `events:publish`, alocação com capacidade vendável e
 produto publicado. A primeira entrega usa o Gestor autenticado como responsável
-pela publicação e uma política fechada: publicar o catálogo não abre vendas nem
-habilita acesso. Políticas comerciais/operacionais explícitas continuam
-obrigatórias antes desses comandos futuros.
+pela publicação. A abertura de vendas permanece um comando separado:
+`POST /api/v1/events/{id}/sales-opening` exige `If-Match` e executa imediatamente
+`PUBLICADO → VENDAS_ABERTAS`; instante futuro é recusado até existir scheduler.
+Publicação e abertura de vendas não habilitam acesso.
 
 **Objetivo:** tornar o evento oficialmente disponível.  
 **Atores:** Organizador configura; Gestor publica.  
@@ -58,6 +59,8 @@ obrigatórias antes desses comandos futuros.
 3. O sistema executa o checklist de prontidão.
 4. O gestor confirma a publicação usando a versão atual.
 5. O sistema congela uma versão da configuração e publica `EventoPublicado`.
+6. Em comando posterior, o gestor abre vendas e o sistema publica
+   `VendasDoEventoAbertas`.
 
 **Alternativos:** publicação pode ser agendada.  
 **Exceções:** E1 configuração incompleta; E2 capacidade inexistente; E3 produto não publicado; E4 versão concorrente.  

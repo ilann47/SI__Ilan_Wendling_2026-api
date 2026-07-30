@@ -50,6 +50,10 @@ class EventoTest {
         evento.publicar();
         assertThat(evento.getStatus()).isEqualTo(StatusEvento.PUBLICADO);
         assertThatIllegalStateException().isThrownBy(evento::publicar);
+
+        evento.abrirVendas();
+        assertThat(evento.getStatus()).isEqualTo(StatusEvento.VENDAS_ABERTAS);
+        assertThatIllegalStateException().isThrownBy(evento::abrirVendas);
     }
 
     private static Evento novoEvento() {

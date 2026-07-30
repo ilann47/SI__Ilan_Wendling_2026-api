@@ -14,8 +14,9 @@
 
 **Situação implementada:** o evento entra em `RASCUNHO`; o comando explícito de
 publicação, protegido por versão, executa `RASCUNHO → CONFIGURADO → PUBLICADO`
-somente com alocação vendável e produto publicado. As transições posteriores
-continuam TARGET.
+somente com alocação vendável e produto publicado. O comando de abertura
+imediata, também protegido por versão, executa `PUBLICADO → VENDAS_ABERTAS` e
+persiste auditoria e outbox. Agendamento e transições posteriores continuam TARGET.
 
 ```mermaid
 stateDiagram-v2

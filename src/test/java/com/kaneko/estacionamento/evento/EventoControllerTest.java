@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.kaneko.estacionamento.auditoria.RegistroAuditoriaRepository;
 import com.kaneko.estacionamento.common.security.JwtService;
+import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
 import com.kaneko.estacionamento.geografia.CidadeService;
 import com.kaneko.estacionamento.geografia.EstadoService;
 import com.kaneko.estacionamento.geografia.PaisService;
@@ -63,6 +64,7 @@ class EventoControllerTest {
     @Autowired AlocacaoPatioEventoService alocacoes;
     @Autowired ProdutoEstacionamentoService produtos;
     @Autowired LotePrecoService lotes;
+    @Autowired EventoService eventos;
     @Autowired JwtService jwt;
     @Autowired JdbcTemplate jdbc;
     @Autowired RegistroAuditoriaRepository auditorias;
@@ -300,6 +302,33 @@ class EventoControllerTest {
         publicarEvento(tokenOrganizador, eventoId, "\"0\"", status().isForbidden());
     }
 
+    @Test
+    void abreVendasImediatamenteComVersaoAuditoriaEOutbox() throws Exception {
+        Long eventoId = idEvento(criarEvento(
+                tokenContextual, "evento-abrir-vendas", payload("Evento Vendas", venueId),
+                status().isCreated()).andReturn().getResponse().getContentAsString());
+        prepararProdutoPublicado(eventoId);
+        eventos.publicar(organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
+
+        abrirVendas(tokenContextual, eventoId, "\"2\"", status().isOk())
+                .andExpect(header().string("ETag", "\"3\""))
+                .andExpect(jsonPath("$.status").value("VENDAS_ABERTAS"))
+                .andExpect(jsonPath("$.version").value(3));
+
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("VENDAS_EVENTO_ABERTAS");
+            assertThat(auditoria.getRecursoId()).isEqualTo(eventoId);
+        });
+        assertThat(jdbc.queryForObject("""
+                select count(*) from evento_outbox
+                where aggregate_type = 'EVENTO' and aggregate_id = ?
+                  and event_type = 'VendasDoEventoAbertas'
+                """, Long.class, eventoId)).isEqualTo(1L);
+
+        abrirVendas(tokenContextual, eventoId, "\"2\"",
+                status().isPreconditionFailed());
+    }
+
     private org.springframework.test.web.servlet.ResultActions criarEvento(
             String token, String chave, String payload,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -318,6 +347,15 @@ class EventoControllerTest {
                         .header("Authorization", token).header("If-Match", ifMatch)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"confirmed\":true}"))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions abrirVendas(
+            String token, Long eventoId, String ifMatch,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/events/{id}/sales-opening", eventoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(esperado);
     }
 

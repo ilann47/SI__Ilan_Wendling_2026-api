@@ -10,9 +10,9 @@ futura não dependa de efeitos em memória ou de chamada externa na transação.
 ## Contexto
 
 A fundação persiste `EventoCriado`, `EventoConfigurado`, `EventoPublicado`,
-`CapacidadeAlocadaAoEvento` e `ProdutoEstacionamentoPublicado`. Dispatcher,
-retry, dead-letter lógico e consumidores serão implementados quando existir o
-primeiro efeito entre contextos.
+`VendasDoEventoAbertas`, `CapacidadeAlocadaAoEvento` e
+`ProdutoEstacionamentoPublicado`. Dispatcher, retry, dead-letter lógico e
+consumidores serão implementados quando existir o primeiro efeito entre contextos.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -70,3 +70,4 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 | 2026-07-30 | Persiste CapacidadeAlocadaAoEvento atomicamente com a alocação. |
 | 2026-07-30 | Persiste ProdutoEstacionamentoPublicado atomicamente com a publicação. |
 | 2026-07-30 | Persiste EventoConfigurado e EventoPublicado nas transições versionadas. |
+| 2026-07-30 | Persiste VendasDoEventoAbertas na abertura comercial versionada. |

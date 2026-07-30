@@ -40,6 +40,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   `RASCUNHO`, com venue tenant-aware, checklist, auditoria e outbox transacional.
 - **Publicação de eventos** (`POST /api/v1/events/{id}/publication`) — checklist
   de venue, capacidade e produto publicado, versão esperada e outbox atômica.
+- **Abertura de vendas** (`POST /api/v1/events/{id}/sales-opening`) — transição
+  imediata e versionada para `VENDAS_ABERTAS`, com auditoria e outbox atômica.
 - **Disponibilidade** (`GET /api/v1/events/{id}/availability`) — projeção
   tenant-aware por categoria, lote vigente e prioridade, sem garantir reserva.
 - **Alocação de pátios** — associação temporal multipátio por evento, com
@@ -146,7 +148,7 @@ schema; a cada classe a transação sofre rollback):
 ./mvnw test
 ```
 
-São 383 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
+São 426 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
 dos processos do pátio, fiscais, financeiros e dos relatórios.
 

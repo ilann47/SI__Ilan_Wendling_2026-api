@@ -79,6 +79,14 @@ public class Evento extends AuditableEntity {
         status = StatusEvento.PUBLICADO;
     }
 
+    public void abrirVendas() {
+        if (status != StatusEvento.PUBLICADO) {
+            throw new IllegalStateException(
+                    "Somente evento publicado pode abrir vendas.");
+        }
+        status = StatusEvento.VENDAS_ABERTAS;
+    }
+
     static String validarFuso(String valor) {
         String fuso = textoObrigatorio(valor, "fuso horario", 60);
         try {
