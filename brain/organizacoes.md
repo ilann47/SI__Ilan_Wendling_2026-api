@@ -59,13 +59,14 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 - Documento é normalizado na aplicação e protegido no banco por CHECK e índice único funcional.
 - Região significa subdivisão operacional/regulatória ISO 3166-2, como `BR-PR`.
 - Moeda é armazenada em maiúsculas após validação ISO 4217.
-- A proteção temporária usa `ROLE_ADMIN` até o RBAC contextual da História 3.
-- Membership referencia a organização por ID, sem antecipar auditoria, outbox ou ownership de pátio.
+- `ROLE_ADMIN` global provisiona tenants; leitura e alteração usam RBAC contextual após o bootstrap.
+- Criação e alteração cadastral geram registros em [[auditoria]]; outbox e ownership de pátio permanecem futuros.
 
 ## Módulos relacionados
 
 - [[core]]
 - [[membership]] — vínculos ativos habilitam descoberta e emissão de contexto organizacional.
+- [[auditoria]] — preserva criação e mudanças cadastrais com versões e snapshots redigidos.
 - Instalações — receberá ownership da organização em sua etapa própria.
 
 ## Histórico
@@ -74,3 +75,4 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 |---|---|
 | 2026-07-29 | Implementação inicial do agregado, migration V8 e três endpoints `/api/v1`. |
 | 2026-07-29 | Integração de leitura com Membership ativa, sem alterar o contrato administrativo da organização. |
+| 2026-07-29 | Integração transacional com a trilha imutável de auditoria. |

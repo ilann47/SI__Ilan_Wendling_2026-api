@@ -1,5 +1,8 @@
 package com.kaneko.estacionamento.rbac;
 
+import com.kaneko.estacionamento.auditoria.AuditoriaService;
+import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
+import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.membership.MembroOrganizacaoRepository;
@@ -8,6 +11,8 @@ import com.kaneko.estacionamento.organizacao.OrganizacaoRepository;
 import com.kaneko.estacionamento.rbac.dto.AtribuicaoAcessoResponse;
 import java.util.List;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,10 +23,11 @@ public class RbacService {
     private final PapelRepository papeis;
     private final MembroOrganizacaoRepository memberships;
     private final OrganizacaoRepository organizacoes;
+    private final AuditoriaService auditoria;
 
     public RbacService(AtribuicaoAcessoRepository a, PapelRepository p, MembroOrganizacaoRepository m,
-                       OrganizacaoRepository o) {
-        atribuicoes = a; papeis = p; memberships = m; organizacoes = o;
+                       OrganizacaoRepository o, AuditoriaService auditoria) {
+        atribuicoes = a; papeis = p; memberships = m; organizacoes = o; this.auditoria = auditoria;
     }
 
     @Transactional
@@ -56,6 +62,10 @@ public class RbacService {
         OffsetDateTime vigenteDe = inicio == null ? OffsetDateTime.now() : inicio;
         var salva = atribuicoes.saveAndFlush(AtribuicaoAcesso.conceder(
                 membershipId, papel.getId(), orgId, orgId, vigenteDe, fim));
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                orgId, "PAPEL_ATRIBUIDO", "ATRIBUICAO_ACESSO", salva.getId(),
+                null, null, null, null, snapshot(salva, papel.getCodigo()), null, salva.getVersion(),
+                ClasseRetencaoAuditoria.SEGURANCA));
         return AtribuicaoAcessoResponse.from(salva, papel.getCodigo());
     }
 
@@ -71,7 +81,13 @@ public class RbacService {
                 && a.estaVigente()
                 && atribuicoes.contarAdministradoresAtivos(orgId, agora) <= 1)
             throw new ConflitoException("A organizacao deve manter ao menos um administrador ativo.");
+        Map<String, Object> anterior = snapshot(a, papel.getCodigo());
+        Long versaoAnterior = a.getVersion();
         a.revogar(motivo); atribuicoes.flush();
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                orgId, "ACESSO_REVOGADO", "ATRIBUICAO_ACESSO", a.getId(),
+                null, null, motivo, anterior, snapshot(a, papel.getCodigo()), versaoAnterior, a.getVersion(),
+                ClasseRetencaoAuditoria.SEGURANCA));
     }
 
     @Transactional(readOnly = true)
@@ -93,5 +109,17 @@ public class RbacService {
     private void bloquearOrganizacao(Long orgId) {
         organizacoes.findByIdForUpdate(orgId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Organizacao", orgId));
+    }
+
+    private static Map<String, Object> snapshot(AtribuicaoAcesso atribuicao, String papel) {
+        Map<String, Object> estado = new LinkedHashMap<>();
+        estado.put("membershipId", atribuicao.getMembershipId());
+        estado.put("papel", papel);
+        estado.put("escopoTipo", atribuicao.getEscopoTipo());
+        estado.put("escopoId", atribuicao.getEscopoId());
+        estado.put("vigenteDe", atribuicao.getVigenteDe().toString());
+        if (atribuicao.getVigenteAte() != null) estado.put("vigenteAte", atribuicao.getVigenteAte().toString());
+        if (atribuicao.getRevogadoEm() != null) estado.put("revogadoEm", atribuicao.getRevogadoEm().toString());
+        return estado;
     }
 }

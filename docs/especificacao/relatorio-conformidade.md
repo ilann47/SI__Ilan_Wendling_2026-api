@@ -302,3 +302,17 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - O último administrador ativo é protegido contra revogação, suspensão e encerramento.
 - O escopo implementado é somente `ORGANIZACAO`; evento e pátio permanecem em suas histórias.
 - A suíte passou de 348 para 357 testes sem regressões.
+
+---
+
+## Atualização — História 4: Auditoria (2026-07-29)
+
+- A migration `V12__registro_auditoria_append_only.sql` cria a trilha com índices,
+  snapshots JSONB, versões, contexto operacional e trigger que recusa UPDATE/DELETE.
+- Organização, Membership e RBAC registram mutações na mesma transação do caso de uso;
+  falha de auditoria provoca rollback integral.
+- O contexto captura ator humano ou sistema, organização, origem, dispositivo, IP e
+  `traceId`; os estados são allowlists redigidas, sem segredo, token ou documento.
+- Registros recebem classe de retenção. Prazos e expurgo não foram inventados e
+  permanecem dependentes de definição legal; nenhuma API pública foi antecipada.
+- A suíte passou de 357 para 362 testes sem regressões.

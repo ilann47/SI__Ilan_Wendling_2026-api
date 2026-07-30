@@ -29,6 +29,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   seleção server-side do tenant ativo e emissão de JWT contextual revogável por versão.
 - **RBAC contextual** — papéis e permissões por organização, com concessão,
   revogação imediata e bootstrap controlado do primeiro administrador do tenant.
+- **Auditoria imutável** — trilha transacional append-only de Organização,
+  Membership e RBAC, com ator, origem, trace, versões e snapshots redigidos.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
 
@@ -49,7 +51,7 @@ CREATE DATABASE estacionamento_kaneko_test;
 ```
 
 O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
-migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V11`). O
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V12`). O
 Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
 schema, nunca o altera.
 
@@ -123,7 +125,7 @@ schema; a cada classe a transação sofre rollback):
 ./mvnw test
 ```
 
-São 357 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
+São 362 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
 dos processos do pátio, fiscais, financeiros e dos relatórios.
 
@@ -147,6 +149,7 @@ usuario/         cadastro de usuários
 organizacao/     tenant empresarial, lifecycle, ETag e If-Match
 membership/      vínculo usuário–organização, contexto autenticado e JWT contextual
 rbac/            papéis, permissões, atribuições e autorização por organização
+auditoria/       trilha imutável de ator, origem, versões e estados redigidos
 relatorio/       relatórios gerenciais (consultas consolidadas)
 ```
 

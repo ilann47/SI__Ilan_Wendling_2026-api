@@ -77,6 +77,7 @@ claims contextuais, invalidação por versão/estado/usuário e compatibilidade 
 - [[organizacoes]]
 - Usuários — identidade global e authority legada.
 - [[rbac]] — controla administração, concessões e revogações no tenant.
+- [[auditoria]] — registra criação e transições de estado do vínculo.
 
 ## Histórico (data + ação)
 
@@ -84,3 +85,4 @@ claims contextuais, invalidação por versão/estado/usuário e compatibilidade 
 |---|---|
 | 2026-07-29 | Implementa vínculo temporal, descoberta de organizações e JWT contextual. |
 | 2026-07-29 | Administração do vínculo migra de `ROLE_ADMIN` global para permissões contextuais. |
+| 2026-07-29 | Criação, suspensão, reativação e encerramento passam a gerar auditoria imutável. |

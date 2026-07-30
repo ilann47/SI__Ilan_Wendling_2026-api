@@ -64,10 +64,11 @@ proteção do último administrador.
 - [[core]]
 - [[organizacoes]]
 - [[membership]]
-- Auditoria — próxima história.
+- [[auditoria]] — registra concessões e revogações com vigência, versões e motivo.
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-29 | Implementa RBAC contextual organizacional e remove administração global excessiva. |
+| 2026-07-29 | Concessões e revogações passam a integrar a trilha transacional de auditoria. |

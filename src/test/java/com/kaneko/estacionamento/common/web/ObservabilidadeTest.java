@@ -38,4 +38,13 @@ class ObservabilidadeTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Trace-Id", "trace-cliente-123"));
     }
+
+    @Test
+    void traceIdInvalidoEhSubstituidoParaManterCorrelacaoSegura() throws Exception {
+        String invalido = "x".repeat(101);
+        mvc.perform(get("/api/tarifas").header("X-Trace-Id", invalido))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Trace-Id", Matchers.not(invalido)))
+                .andExpect(header().string("X-Trace-Id", Matchers.matchesPattern("[a-f0-9]{16}")));
+    }
 }

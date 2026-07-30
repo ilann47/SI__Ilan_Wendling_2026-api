@@ -1,5 +1,8 @@
 package com.kaneko.estacionamento.organizacao;
 
+import com.kaneko.estacionamento.auditoria.AuditoriaService;
+import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
+import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.util.Documentos;
@@ -8,14 +11,18 @@ import com.kaneko.estacionamento.organizacao.dto.CriarOrganizacaoRequest;
 import com.kaneko.estacionamento.organizacao.dto.OrganizacaoResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 public class OrganizacaoService {
 
     private final OrganizacaoRepository repository;
+    private final AuditoriaService auditoria;
 
-    public OrganizacaoService(OrganizacaoRepository repository) {
+    public OrganizacaoService(OrganizacaoRepository repository, AuditoriaService auditoria) {
         this.repository = repository;
+        this.auditoria = auditoria;
     }
 
     @Transactional
@@ -32,6 +39,10 @@ public class OrganizacaoService {
             throw new ConflitoException("Ja existe uma organizacao com este documento.");
         }
         Organizacao persistida = repository.saveAndFlush(organizacao);
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                persistida.getId(), "ORGANIZACAO_CRIADA", "ORGANIZACAO", persistida.getId(),
+                null, null, null, null, snapshot(persistida), null, persistida.getVersion(),
+                ClasseRetencaoAuditoria.CONFIGURACAO));
         return OrganizacaoResponse.from(persistida);
     }
 
@@ -46,6 +57,8 @@ public class OrganizacaoService {
         if (organizacao.getVersion() != versaoEsperada) {
             throw new VersaoOrganizacaoDivergenteException(versaoEsperada, organizacao.getVersion());
         }
+        Map<String, Object> anterior = snapshot(organizacao);
+        Long versaoAnterior = organizacao.getVersion();
 
         organizacao.atualizarCadastro(
                 valorOuAtual(request.getRazaoSocial(), organizacao.getRazaoSocial()),
@@ -55,6 +68,10 @@ public class OrganizacaoService {
                 valorOuAtual(request.getRegiao(), organizacao.getRegiao()),
                 valorOuAtual(request.getPlano(), organizacao.getPlano()));
         repository.flush();
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                organizacao.getId(), "ORGANIZACAO_ATUALIZADA", "ORGANIZACAO", organizacao.getId(),
+                null, null, null, anterior, snapshot(organizacao), versaoAnterior, organizacao.getVersion(),
+                ClasseRetencaoAuditoria.CONFIGURACAO));
         return OrganizacaoResponse.from(organizacao);
     }
 
@@ -65,5 +82,17 @@ public class OrganizacaoService {
 
     private static String valorOuAtual(String novoValor, String atual) {
         return novoValor != null ? novoValor : atual;
+    }
+
+    private static Map<String, Object> snapshot(Organizacao organizacao) {
+        Map<String, Object> estado = new LinkedHashMap<>();
+        estado.put("razaoSocial", organizacao.getRazaoSocial());
+        if (organizacao.getNomeFantasia() != null) estado.put("nomeFantasia", organizacao.getNomeFantasia());
+        estado.put("moeda", organizacao.getMoeda());
+        estado.put("fusoHorario", organizacao.getFusoHorario());
+        estado.put("regiao", organizacao.getRegiao());
+        estado.put("plano", organizacao.getPlano());
+        estado.put("status", organizacao.getStatus().name());
+        return estado;
     }
 }
