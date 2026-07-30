@@ -58,6 +58,7 @@ e rejeitam payload diferente.
 - [[organizacoes]]
 - [[eventos]]
 - [[inventario]]
+- [[produtos-estacionamento]]
 
 ## Histórico (data + ação)
 
@@ -65,3 +66,4 @@ e rejeitam payload diferente.
 |---|---|
 | 2026-07-30 | Implementa fundação PostgreSQL usada pela criação de Evento. |
 | 2026-07-30 | Reutiliza a fundação na criação de `AlocacaoPatioEvento`. |
+| 2026-07-30 | Reutiliza a fundação na criação de `ProdutoEstacionamento`. |

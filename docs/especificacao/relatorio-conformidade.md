@@ -392,3 +392,25 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - Produtos, consumo de inventário, quotas, override e publicação não foram
   antecipados.
 - A suíte passou de 383 para 393 testes sem regressões.
+
+---
+
+## Atualização — Produto de estacionamento / UC707 (2026-07-30)
+
+- “Oferta” permanece o conceito funcional materializado por
+  `ProdutoEstacionamento`; não foi criada entidade paralela ausente do DDD.
+- A migration `V17__produto_estacionamento.sql` cria produto, benefícios e
+  restrições normalizados, FK composta para alocação/evento/tenant, constraints,
+  índices e a permissão `pricing:manage`.
+- `POST /api/v1/events/{id}/parking-products` cria produto idempotente em
+  `RASCUNHO`, com `Location` e `ETag`, sem antecipar publicação.
+- A alocação é bloqueada pessimisticamente enquanto a soma de quotas é validada,
+  impedindo que produtos concorrentes comprometam capacidade vendável superior
+  à disponível.
+- Categoria, direito, janela, quota e códigos de benefícios/restrições são
+  campos explícitos; regras não foram escondidas em JSON genérico.
+- A criação é auditada. Não há evento de outbox nessa transição, pois o evento
+  aprovado é `ProdutoEstacionamentoPublicado`, reservado ao comando de publicação.
+- Compatibilidade das categorias com setores físicos permanece pendente porque
+  setor/categoria física ainda não está implementado na primeira entrega.
+- A suíte passou de 393 para 406 testes sem regressões.

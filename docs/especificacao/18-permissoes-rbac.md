@@ -114,6 +114,10 @@ protege criação e alteração de `AlocacaoPatioEvento`. `ORGANIZADOR` não rec
 essa permissão nesta etapa, preservando a responsabilidade do Gestor sobre a
 capacidade compartilhada dos pátios.
 
+`pricing:manage` está implementada para `ADMIN_ORGANIZACAO`, `GESTOR` e
+`ORGANIZADOR` e protege a criação de `ProdutoEstacionamento`. Ela não concede
+alteração da capacidade física ou operacional da alocação.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

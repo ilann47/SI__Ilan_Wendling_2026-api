@@ -163,8 +163,10 @@ demais transições permanecem nas histórias seguintes.
 **Situação implementada:** `AlocacaoPatioEvento` compromete capacidade
 operacional, vendável e reservada de um pátio ativo para uma janela do evento.
 O saldo simultâneo é protegido por lock pessimista no pátio, validação
-transacional e constraints tenant-aware. Produtos, lotes, reserva de inventário
-e projeções de disponibilidade permanecem TARGET.
+transacional e constraints tenant-aware. `ProdutoEstacionamento` materializa a
+oferta em rascunho e compromete quota da capacidade vendável sob lock da
+alocação. Lotes, publicação, reserva de inventário e projeções de disponibilidade
+permanecem TARGET.
 
 - **Objetivo:** transformar capacidade em ofertas sem sobrevenda.
 - **Agregados:** `AlocacaoCapacidade`, `ProdutoEstacionamento`, `PoliticaPreco`, `ReservaInventario`.

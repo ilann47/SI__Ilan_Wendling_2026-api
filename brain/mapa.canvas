@@ -10,7 +10,8 @@
     {"id": "eventos", "type": "file", "file": "eventos.md", "x": 2000, "y": 0, "width": 360, "height": 220},
     {"id": "idempotencia", "type": "file", "file": "idempotencia.md", "x": 2000, "y": 320, "width": 360, "height": 220},
     {"id": "outbox", "type": "file", "file": "outbox.md", "x": 2500, "y": 0, "width": 360, "height": 220},
-    {"id": "inventario", "type": "file", "file": "inventario.md", "x": 2500, "y": 320, "width": 360, "height": 220}
+    {"id": "inventario", "type": "file", "file": "inventario.md", "x": 2500, "y": 320, "width": 360, "height": 220},
+    {"id": "produtos-estacionamento", "type": "file", "file": "produtos-estacionamento.md", "x": 3000, "y": 320, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -37,6 +38,11 @@
     {"id": "rbac-inventario", "fromNode": "rbac", "fromSide": "right", "toNode": "inventario", "toSide": "left", "label": "inventory:manage"},
     {"id": "inventario-auditoria", "fromNode": "inventario", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "mutações auditadas"},
     {"id": "inventario-idempotencia", "fromNode": "inventario", "fromSide": "left", "toNode": "idempotencia", "toSide": "right", "label": "execução única"},
-    {"id": "inventario-outbox", "fromNode": "inventario", "fromSide": "top", "toNode": "outbox", "toSide": "bottom", "label": "CapacidadeAlocadaAoEvento"}
+    {"id": "inventario-outbox", "fromNode": "inventario", "fromSide": "top", "toNode": "outbox", "toSide": "bottom", "label": "CapacidadeAlocadaAoEvento"},
+    {"id": "inventario-produtos", "fromNode": "inventario", "fromSide": "right", "toNode": "produtos-estacionamento", "toSide": "left", "label": "quota vendável"},
+    {"id": "eventos-produtos", "fromNode": "eventos", "fromSide": "right", "toNode": "produtos-estacionamento", "toSide": "left", "label": "oferta do evento"},
+    {"id": "rbac-produtos", "fromNode": "rbac", "fromSide": "right", "toNode": "produtos-estacionamento", "toSide": "left", "label": "pricing:manage"},
+    {"id": "produtos-auditoria", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "PRODUTO_CRIADO"},
+    {"id": "produtos-idempotencia", "fromNode": "produtos-estacionamento", "fromSide": "left", "toNode": "idempotencia", "toSide": "right", "label": "execução única"}
   ]
 }

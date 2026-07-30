@@ -1,17 +1,19 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[instalacoes]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[instalacoes]] · [[produtos-estacionamento]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Inventário
 
 ## Objetivo
 
 Comprometer capacidade de pátios para eventos sem sobrealocação temporal e
-preparar a base para ofertas, produtos e disponibilidade sem antecipá-los.
+controlar a soma das quotas de produtos sobre a capacidade vendável.
 
 ## Contexto
 
 A História 8 implementa UC706 com `AlocacaoPatioEvento`. Um evento pode usar
 vários pátios e um pátio pode atender eventos simultâneos enquanto a soma da
 capacidade operacional comprometida não exceder seu limite operacional.
+UC707 acrescenta [[produtos-estacionamento]], cuja soma de quotas não pode
+ultrapassar a capacidade vendável da alocação.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -84,9 +86,11 @@ saldo, sobrealocação, ETag, auditoria, outbox e constraints PostgreSQL.
 - [[auditoria]]
 - [[idempotencia]]
 - [[outbox]]
+- [[produtos-estacionamento]]
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-30 | Implementa UC706 com alocação temporal e prevenção de sobrealocação. |
+| 2026-07-30 | Protege a capacidade vendável contra soma excessiva de quotas de produtos. |

@@ -41,6 +41,9 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
 - **Alocação de pátios** — associação temporal multipátio por evento, com
   capacidades operacional/vendável/reservada, prevenção transacional de
   sobrealocação, idempotência, auditoria e concorrência otimista.
+- **Produtos de estacionamento** (`POST /api/v1/events/{id}/parking-products`) —
+  ofertas em rascunho vinculadas à alocação, com categoria, direito, janela,
+  quota, benefícios/restrições, idempotência e proteção do saldo vendável.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
 
@@ -61,7 +64,7 @@ CREATE DATABASE estacionamento_kaneko_test;
 ```
 
 O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
-migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V16`). O
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V17`). O
 Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
 schema, nunca o altera.
 

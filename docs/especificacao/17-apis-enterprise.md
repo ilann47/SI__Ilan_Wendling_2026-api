@@ -168,7 +168,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 |---|---|---|---|
 | `POST /events/{id}/parking-allocations` | AS-IS: pátio, período, capacidades + `Idempotency-Key`; tenant implícito | `201 Allocation`, `Location`, `ETag` | `inventory:manage`; evento configurável, pátio ativo, janela intersecta evento, hierarquia e saldo simultâneo válidos; replay equivalente devolve a alocação original |
 | `PATCH /parking-allocations/{id}` | AS-IS: capacidades + `If-Match` | `200 Allocation`, `ETag` | `inventory:manage`; lista fechada de campos; não reduzir abaixo da hierarquia nem sobrealocar o pátio; versão divergente retorna `412` |
-| `POST /events/{id}/parking-products` | categoria, alocação, direito, quota | `201 Product` | produto em rascunho |
+| `POST /events/{id}/parking-products` | AS-IS: nome, categoria, alocação, direito, janela, quota, benefícios/restrições + `Idempotency-Key`; tenant implícito | `201 Product`, `Location`, `ETag` | `pricing:manage`; evento configurável; alocação do evento/tenant; janela contida; soma de quotas não excede vendável; produto nasce em rascunho |
 | `POST /parking-products/{id}/publication` | confirmação | `200` | configuração completa |
 | `POST /parking-products/{id}/price-tiers` | preço, moeda, período, quantidade | `201 Tier` | sem ambiguidade |
 | `GET /events/{id}/availability` | filtros de canal/categoria | projeção de disponibilidade | não garante hold |

@@ -17,7 +17,9 @@ Todo evento deve conter `eventId`, `eventType`, `occurredAt`, `organizationId`, 
 **Situação implementada:** `CriarEvento → EventoCriado` e
 `AlocarCapacidade → CapacidadeAlocadaAoEvento` são atômicos e gravam seus fatos
 na outbox PostgreSQL. Não existe dispatcher ou consumidor nesta etapa; os
-passos seguintes continuam TARGET.
+passos seguintes continuam TARGET. A criação de `ProdutoEstacionamento` em
+rascunho já existe, mas `ProdutoEstacionamentoPublicado` somente será produzido
+pelo comando explícito de publicação.
 
 ```mermaid
 flowchart TD

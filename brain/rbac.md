@@ -69,6 +69,7 @@ proteção do último administrador.
 - [[instalacoes]] — criação de pátio exige `facilities:manage` no contexto ativo.
 - [[eventos]] — criação exige `events:create`; Gestor e Organizador integram o catálogo.
 - [[inventario]] — alocações exigem `inventory:manage`, concedida a Administrador da Organização e Gestor.
+- [[produtos-estacionamento]] — criação exige `pricing:manage`, concedida também ao Organizador.
 
 ## Histórico (data + ação)
 
@@ -79,3 +80,4 @@ proteção do último administrador.
 | 2026-07-29 | Catálogo recebe `facilities:manage` para o módulo de Instalações. |
 | 2026-07-30 | Catálogo recebe Gestor, Organizador e `events:create`. |
 | 2026-07-30 | Catálogo recebe `inventory:manage` para Administrador da Organização e Gestor. |
+| 2026-07-30 | Catálogo recebe `pricing:manage` para Administrador, Gestor e Organizador. |

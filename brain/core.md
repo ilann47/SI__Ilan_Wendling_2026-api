@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[idempotencia]] · [[outbox]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[idempotencia]] · [[outbox]]
 
 # Core do Estacionamento Kaneko
 
@@ -41,6 +41,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[venues]] — unidades operacionais que localizam eventos no tempo e espaço.
 - [[eventos]] — planejamento e ciclo de vida do agregado de evento.
 - [[inventario]] — alocação temporal da capacidade dos pátios aos eventos.
+- [[produtos-estacionamento]] — ofertas e quotas comerciais em rascunho.
 - [[idempotencia]] — execução única de comandos críticos por tenant e identidade.
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
 
@@ -56,3 +57,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-29 | Registro da História 6 de Venue. |
 | 2026-07-30 | Registro da História 7 de Evento, idempotência e outbox transacional. |
 | 2026-07-30 | Registro da História 8 de alocação Evento–Pátio e proteção contra sobrealocação. |
+| 2026-07-30 | Registro de UC707 com Produto de Estacionamento e quota comercial. |
