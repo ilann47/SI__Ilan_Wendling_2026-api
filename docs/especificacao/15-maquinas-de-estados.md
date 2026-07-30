@@ -12,6 +12,9 @@
 
 ## 15.2 Evento
 
+**Situação implementada:** somente a entrada em `RASCUNHO` pelo comando de
+criação está ativa. Nenhuma transição seguinte é exposta nesta história.
+
 ```mermaid
 stateDiagram-v2
   [*] --> RASCUNHO

@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[membership]]
+> Links: [[core]] · [[organizacoes]] · [[membership]] · [[eventos]]
 
 # RBAC Contextual
 
@@ -9,9 +9,10 @@ permissão e escopo, sem confiar no perfil legado ou em IDs enviados pelo client
 
 ## Contexto
 
-A primeira entrega implementa exclusivamente o escopo `ORGANIZACAO`. O papel de
+A implementação atual usa exclusivamente o escopo `ORGANIZACAO`. O papel de
 sistema `ADMIN_ORGANIZACAO` reúne `organizations:admin`, `users:invite`,
-`roles:grant` e `roles:revoke`. Papéis de evento e pátio entram com seus módulos.
+`roles:grant`, `roles:revoke`, `facilities:manage` e `events:create`. Os papéis
+`GESTOR` e `ORGANIZADOR` recebem `events:create`; escopo por evento permanece futuro.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -57,7 +58,7 @@ proteção do último administrador.
 - O último administrador ativo não pode ser suspenso, encerrado ou revogado.
 - Alterações que afetam esse invariante são serializadas por lock pessimista da organização.
 - Recursos de outra organização são indistinguíveis de recursos inexistentes (`404`).
-- Escopos de pátio/evento não são antecipados.
+- Escopos de pátio/evento não são antecipados; criar um agregado novo usa escopo organizacional.
 
 ## Módulos relacionados
 
@@ -66,6 +67,7 @@ proteção do último administrador.
 - [[membership]]
 - [[auditoria]] — registra concessões e revogações com vigência, versões e motivo.
 - [[instalacoes]] — criação de pátio exige `facilities:manage` no contexto ativo.
+- [[eventos]] — criação exige `events:create`; Gestor e Organizador integram o catálogo.
 
 ## Histórico (data + ação)
 
@@ -74,3 +76,4 @@ proteção do último administrador.
 | 2026-07-29 | Implementa RBAC contextual organizacional e remove administração global excessiva. |
 | 2026-07-29 | Concessões e revogações passam a integrar a trilha transacional de auditoria. |
 | 2026-07-29 | Catálogo recebe `facilities:manage` para o módulo de Instalações. |
+| 2026-07-30 | Catálogo recebe Gestor, Organizador e `events:create`. |

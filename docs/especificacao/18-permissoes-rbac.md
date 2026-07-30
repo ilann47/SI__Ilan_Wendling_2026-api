@@ -100,10 +100,14 @@ Papéis são compostos por permissões, entre elas:
 `ADMIN_ORGANIZACAO` e protege a criação de pátio no contexto ativo. Os demais
 papéis e `facilities:read` permanecem nas histórias correspondentes.
 
-Enquanto não existe papel Gestor no catálogo implementado, a criação de Venue
-usa `organizations:admin`, coerente com sua pertença ao BC de Organizações. A
-separação de alçada para Gestor será feita junto ao catálogo de papéis aprovado,
-sem conceder autoridade global antecipadamente.
+Mesmo após a entrada do papel Gestor para Eventos, a criação de Venue continua
+usando `organizations:admin`, coerente com sua pertença ao BC de Organizações.
+O Gestor não recebe administração de unidades por implicação.
+
+Com o módulo de Eventos, `events:create` passa a integrar
+`ADMIN_ORGANIZACAO`, `GESTOR` e `ORGANIZADOR`. Nesta etapa as atribuições desses
+papéis usam escopo organizacional; escopos por evento só passam a existir após o
+agregado estar criado e o contrato de participantes ser implementado.
 
 ## 18.5 Regras ABAC complementares
 

@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[instalacoes]] · [[rbac]] · [[auditoria]]
+> Links: [[core]] · [[organizacoes]] · [[instalacoes]] · [[eventos]] · [[rbac]] · [[auditoria]]
 
 # Venues
 
@@ -59,6 +59,7 @@ unicidade, tipo fixo, auditoria, constraints PostgreSQL e OpenAPI.
 - Nome é único por organização após `trim` e normalização case-insensitive.
 - O fuso é persistido no identificador canônico retornado por `ZoneId`.
 - Contatos e vínculo Venue–Pátio aguardam contratos explícitos.
+- A FK composta `(venue_id, organizacao_id)` impede que [[eventos]] referencie venue externo ao tenant.
 
 ## Módulos relacionados
 
@@ -67,9 +68,11 @@ unicidade, tipo fixo, auditoria, constraints PostgreSQL e OpenAPI.
 - [[instalacoes]]
 - [[rbac]]
 - [[auditoria]]
+- [[eventos]]
 
 ## Histórico (data + ação)
 
 | Data | Ação |
 |---|---|
 | 2026-07-29 | Implementa criação tenant-aware de Venue como unidade operacional. |
+| 2026-07-30 | Evento passa a referenciar Venue com isolamento também no PostgreSQL. |

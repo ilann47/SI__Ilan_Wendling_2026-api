@@ -19,7 +19,7 @@
 |---|---|---|
 | `Authorization` | APIs protegidas | identidade humana, serviço ou dispositivo |
 | `X-Trace-Id` | aceito/retornado em todas | correlação ponta a ponta |
-| `Idempotency-Key` | pedidos, holds, pagamentos, reembolsos, credenciais, acesso, equipamento, fiscal e fechamento | escopo por tenant + identidade + operação |
+| `Idempotency-Key` | eventos, pedidos, holds, pagamentos, reembolsos, credenciais, acesso, equipamento, fiscal e fechamento | escopo por tenant + identidade + operação |
 | `If-Match` | mutações concorrentes sensíveis | versão/ETag esperada |
 | `ETag` | consulta unitária | versão lógica do agregado |
 | `X-Device-Id` | dispositivos | deve corresponder à identidade autenticada |
@@ -152,7 +152,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /parking-facilities/{id}/sectors` | código, capacidade, categorias | `201 Sector` | limites físicos |
 | `POST /sectors/{id}/spaces:batch` | lista de vagas | `201/207` | importação idempotente |
 | `GET /parking-facilities/{id}/occupancy` | por setor/categoria | projeção atual + atraso | leitura no escopo |
-| `POST /events` | schema Evento | `201 Evento` | `events:create`; idempotência para parceiros |
+| `POST /events` | AS-IS: schema Evento + `Idempotency-Key`; tenant implícito | `201 Evento`, checklist, `Location`, `ETag` | `events:create`; venue ativo do tenant; período/fuso válidos; replay equivalente devolve o mesmo evento e conflito retorna `409` |
 | `PATCH /events/{id}` | campos + `If-Match` | `200 Evento` | permitido pelo estado |
 | `POST /events/{id}/publication` | versão e confirmação | `200 Evento` | checklist e Gestor |
 | `POST /events/{id}/sales-opening` | instante opcional | `200/202` | publicado |

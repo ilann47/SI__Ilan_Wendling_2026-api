@@ -17,6 +17,11 @@
 
 ## UC701 — Criar evento
 
+**Situação implementada:** disponível em `POST /api/v1/events`, exigindo
+`Idempotency-Key`; o replay de payload equivalente devolve o mesmo agregado e o
+reuso conflitante retorna `409`. A origem por integração preserva `externalId`,
+embora autenticação técnica dedicada permaneça futura.
+
 **Objetivo:** iniciar o planejamento de um evento.  
 **Atores:** Gestor, Organizador.  
 **Pré-condições:** organização ativa; venue visível; permissão `events:create`.  

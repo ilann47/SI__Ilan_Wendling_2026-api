@@ -350,3 +350,22 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   FKs, tipo aprovado, versão e unicidade.
 - A criação registra `UNIDADE_CRIADA` com recurso lógico `VENUE` na mesma transação.
 - A suíte passou de 368 para 373 testes sem regressões.
+
+---
+
+## Atualização — História 7: Evento (2026-07-30)
+
+- A migration `V15__evento_idempotencia_outbox.sql` cria o agregado `evento`,
+  o registro genérico de idempotência e a outbox PostgreSQL, além dos papéis
+  `GESTOR`/`ORGANIZADOR` e da permissão `events:create`.
+- `POST /api/v1/events` exige tenant contextual e `Idempotency-Key`, cria o
+  evento em `RASCUNHO`, retorna checklist, `Location` e `ETag`.
+- A relação evento–venue é protegida por FK composta no banco, impedindo
+  associação entre organizações mesmo fora da aplicação.
+- O lock transacional por chave serializa replays concorrentes; payload
+  equivalente devolve o recurso original e payload divergente retorna `409`.
+- Auditoria, `EventoCriado`, outbox e resultado idempotente são persistidos na
+  mesma transação do agregado. O dispatcher da outbox permanece fora do escopo.
+- Somente a criação foi exposta; configuração, alocação e publicação não foram
+  antecipadas.
+- A suíte passou de 373 para 383 testes sem regressões.

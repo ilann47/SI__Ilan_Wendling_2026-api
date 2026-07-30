@@ -36,6 +36,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   autorização contextual e auditoria.
 - **Venues** (`POST /api/v1/venues`) — unidades operacionais que localizam os
   eventos por endereço, cidade e fuso IANA no tenant ativo.
+- **Eventos** (`POST /api/v1/events`) — criação idempotente no estado
+  `RASCUNHO`, com venue tenant-aware, checklist, auditoria e outbox transacional.
 - **Observabilidade** — trace id de correlação (`X-Trace-Id`), erros padronizados
   (RFC 7807) e health check (actuator).
 
@@ -56,7 +58,7 @@ CREATE DATABASE estacionamento_kaneko_test;
 ```
 
 O schema é versionado e aplicado automaticamente pelo **Flyway** na subida por
-migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V14`). O
+migrations incrementais em `src/main/resources/db/migration/` (`V1` a `V15`). O
 Hibernate roda em `ddl-auto=validate` — apenas confere o mapeamento contra o
 schema, nunca o altera.
 
@@ -130,7 +132,7 @@ schema; a cada classe a transação sofre rollback):
 ./mvnw test
 ```
 
-São 362 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
+São 383 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
 404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
 dos processos do pátio, fiscais, financeiros e dos relatórios.
 
@@ -141,6 +143,7 @@ Organização **por funcionalidade** (package-by-feature), sob
 
 ```
 common/          BaseEntity/AuditableEntity, exceções, ProblemDetail, segurança (JWT), trace id, OpenAPI
+common/idempotencia e common/outbox/  garantias transacionais para comandos e eventos confiáveis
 geografia/       país, estado, cidade
 pessoas/         cliente
 pagamento/       forma e condição de pagamento (parcelas)
@@ -155,6 +158,7 @@ organizacao/     tenant empresarial, lifecycle, ETag e If-Match
 membership/      vínculo usuário–organização, contexto autenticado e JWT contextual
 rbac/            papéis, permissões, atribuições e autorização por organização
 auditoria/       trilha imutável de ator, origem, versões e estados redigidos
+evento/          agregado Evento, estado, criação idempotente e checklist
 relatorio/       relatórios gerenciais (consultas consolidadas)
 ```
 
