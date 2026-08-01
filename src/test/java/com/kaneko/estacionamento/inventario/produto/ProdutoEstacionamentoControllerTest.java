@@ -1026,6 +1026,146 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     @Test
+    void realizaCheckinQrIdempotenteComPresencaSessaoEOcupacao() throws Exception {
+        long pedidoId = criarPedidoConfirmado("checkin-online", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "checkin-credential",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+        String qrBody = gerarQr(tokenContextual, credencialId, "\"0\"",
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String qrToken = JsonPath.read(qrBody, "$.token");
+        prepararOperacaoEPermissaoCheckin();
+
+        String payload = payloadCheckin(qrToken, eventoId, patioId, "PORTAO_NORTE");
+        String primeiro = realizarCheckin(
+                        tokenContextual, "checkin-online-1", payload, status().isOk())
+                .andExpect(jsonPath("$.decision").value("AUTORIZADA"))
+                .andExpect(jsonPath("$.reasonCode").value("AUTORIZADA"))
+                .andExpect(jsonPath("$.credentialId").value(credencialId))
+                .andExpect(jsonPath("$.presenceId").isNumber())
+                .andExpect(jsonPath("$.parkingSessionId").isNumber())
+                .andExpect(jsonPath("$.resultingOccupancy").value(1))
+                .andExpect(jsonPath("$.barrierCommandRequested").value(false))
+                .andReturn().getResponse().getContentAsString();
+        long tentativaId = JsonPath.<Number>read(
+                primeiro, "$.accessAttemptId").longValue();
+
+        String replay = realizarCheckin(
+                        tokenContextual, "checkin-online-1", payload, status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(replay, "$.accessAttemptId").longValue())
+                .isEqualTo(tentativaId);
+        realizarCheckin(tokenContextual, "checkin-online-2", payload, status().isOk())
+                .andExpect(jsonPath("$.decision").value("RECUSADA"))
+                .andExpect(jsonPath("$.reasonCode").value("ENTRADA_DUPLICADA"));
+
+        assertThat(jdbc.queryForObject(
+                "select status from credencial_acesso where id = ?",
+                String.class, credencialId)).isEqualTo("DENTRO");
+        assertThat(jdbc.queryForObject(
+                "select count(*) from presenca where credencial_id = ? and status = 'DENTRO'",
+                Integer.class, credencialId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from sessao_estacionamento where credencial_id = ? and status = 'ABERTA'",
+                Integer.class, credencialId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select ocupacao_atual from alocacao_patio_evento where id = ?",
+                Integer.class, alocacaoId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from tentativa_acesso where credencial_id = ?",
+                Integer.class, credencialId)).isEqualTo(2);
+        assertThat(outbox.findAll().stream().map(e -> e.getEventType()).toList())
+                .contains("AcessoAutorizado", "CheckinRealizado",
+                        "MovimentacaoAberta", "OcupacaoAlterada", "AcessoRecusado");
+        assertThat(auditorias.findAll().stream().map(a -> a.getAcao()).toList())
+                .contains("CHECKIN_AUTORIZADO", "CHECKIN_RECUSADO");
+    }
+
+    @Test
+    void recusaQrInvalidoELotacaoSemConsumirCredencial() throws Exception {
+        long pedidoId = criarPedidoConfirmado("checkin-refusal", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "checkin-refusal-credential",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+        String qrBody = gerarQr(tokenContextual, credencialId, "\"0\"",
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String qrToken = JsonPath.read(qrBody, "$.token");
+        prepararOperacaoEPermissaoCheckin();
+
+        realizarCheckin(tokenContextual, "checkin-invalid",
+                        payloadCheckin("KQ1-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                                eventoId, patioId, "PORTAO_NORTE"), status().isOk())
+                .andExpect(jsonPath("$.decision").value("RECUSADA"))
+                .andExpect(jsonPath("$.reasonCode").value("CREDENCIAL_INVALIDA"))
+                .andExpect(jsonPath("$.credentialId").doesNotExist());
+
+        jdbc.update("""
+                update alocacao_patio_evento
+                set ocupacao_atual = capacidade_operacional where id = ?
+                """, alocacaoId);
+        entityManager.clear();
+        realizarCheckin(tokenContextual, "checkin-full",
+                        payloadCheckin(qrToken, eventoId, patioId, "PORTAO_NORTE"),
+                        status().isOk())
+                .andExpect(jsonPath("$.decision").value("RECUSADA"))
+                .andExpect(jsonPath("$.reasonCode").value("PATIO_LOTADO"));
+
+        assertThat(jdbc.queryForObject(
+                "select status from credencial_acesso where id = ?",
+                String.class, credencialId)).isEqualTo("ATIVA");
+        assertThat(jdbc.queryForObject(
+                "select count(*) from presenca where credencial_id = ?",
+                Integer.class, credencialId)).isZero();
+    }
+
+    @Test
+    void checkinExigePermissaoIdempotenciaEContratoEstrito() throws Exception {
+        long pedidoId = criarPedidoConfirmado("checkin-contract", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "checkin-contract-credential",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+        String qrBody = gerarQr(tokenContextual, credencialId, "\"0\"",
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String qrToken = JsonPath.read(qrBody, "$.token");
+        prepararOperacaoEPermissaoCheckin();
+        String payload = payloadCheckin(qrToken, eventoId, patioId, "PORTAO_NORTE");
+
+        Usuario membro = usuario("checkin_member", PerfilUsuario.OPERADOR);
+        criarMembership(membro.getId(), tokenContextual);
+        String tokenMembro = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
+        realizarCheckin(tokenMembro, "checkin-denied", payload,
+                status().isForbidden());
+
+        mvc.perform(post("/api/v1/check-ins")
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isBadRequest());
+        realizarCheckin(tokenContextual, "checkin-extra-field",
+                payload.replace("}", ",\"decision\":\"AUTORIZADA\"}"),
+                status().isBadRequest());
+        realizarCheckin(tokenContextual, "checkin-invalid-format",
+                payloadCheckin("CRD-0123456789ABCDEF0123456789ABCDEF",
+                        eventoId, patioId, "PORTAO_NORTE"),
+                status().isBadRequest());
+        assertThat(jdbc.queryForObject(
+                "select count(*) from tentativa_acesso where organizacao_id = ?",
+                Integer.class, organizacaoId)).isZero();
+    }
+
+    @Test
     void cancelaPedidoAguardandoELiberaHoldUmaUnicaVez() throws Exception {
         long pedidoId = criarPedidoPersistido("cancel-waiting");
         long reservaId = jdbc.queryForObject(
@@ -1253,6 +1393,58 @@ class ProdutoEstacionamentoControllerTest {
                         .header("Idempotency-Key", chave)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions realizarCheckin(
+            String token, String chave, String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/check-ins")
+                        .header("Authorization", token)
+                        .header("Idempotency-Key", chave)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
+    private void prepararOperacaoEPermissaoCheckin() throws Exception {
+        jdbc.update("""
+                update evento set inicio = now() - interval '1 hour',
+                    fim = now() + interval '4 hours' where id = ?
+                """, eventoId);
+        jdbc.update("""
+                update alocacao_patio_evento
+                set inicio = now() - interval '1 hour',
+                    fim = now() + interval '4 hours' where id = ?
+                """, alocacaoId);
+        jdbc.update("""
+                update credencial_acesso
+                set inicio_validade = now() - interval '1 hour',
+                    fim_validade = now() + interval '4 hours'
+                where evento_id = ?
+                """, eventoId);
+        jdbc.update("""
+                update representacao_qr
+                set expira_em = now() + interval '4 hours'
+                where credencial_id in (
+                    select id from credencial_acesso where evento_id = ?)
+                """, eventoId);
+        entityManager.clear();
+        eventos.encerrarVendas(
+                organizacaoId, eventoId, 3L, new PublicarEventoRequest(true));
+        eventos.iniciarOperacao(
+                organizacaoId, eventoId, 4L, new PublicarEventoRequest(true));
+        long membershipId = jdbc.queryForObject("""
+                select id from membro_organizacao
+                where organizacao_id = ? and usuario_id = ? and status = 'ATIVO'
+                """, Long.class, organizacaoId, admin.getId());
+        concederPapel(membershipId, "SUPERVISOR");
+    }
+
+    private static String payloadCheckin(
+            String qrToken, Long eventId, Long parkingFacilityId, String lane) {
+        return """
+                {"qrToken":"%s","eventId":%d,"parkingFacilityId":%d,
+                 "lane":"%s"}
+                """.formatted(qrToken, eventId, parkingFacilityId, lane);
     }
 
     private org.springframework.test.web.servlet.ResultActions confirmarManualmente(

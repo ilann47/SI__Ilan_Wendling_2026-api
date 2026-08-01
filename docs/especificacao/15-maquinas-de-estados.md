@@ -14,9 +14,10 @@
 
 **Situação implementada:** o evento entra em `RASCUNHO`; o comando explícito de
 publicação, protegido por versão, executa `RASCUNHO → CONFIGURADO → PUBLICADO`
-somente com alocação vendável e produto publicado. O comando de abertura
-imediata, também protegido por versão, executa `PUBLICADO → VENDAS_ABERTAS` e
-persiste auditoria e outbox. Agendamento e transições posteriores continuam TARGET.
+somente com alocação vendável e produto publicado. Comandos também versionados
+executam `PUBLICADO → VENDAS_ABERTAS → VENDAS_ENCERRADAS → EM_OPERACAO`, com
+auditoria e outbox em cada etapa. Agendamento, suspensão e transições posteriores
+continuam TARGET.
 
 ```mermaid
 stateDiagram-v2
@@ -196,6 +197,13 @@ stateDiagram-v2
 
 Toda decisão terminal contém código estável e motivo. Override exige usuário distinto do operador quando a política determinar.
 
+**Situação implementada:** o check-in QR online persiste `RECEBIDA → AVALIANDO`
+e uma decisão terminal `AUTORIZADA` ou `RECUSADA`. As recusas usam códigos
+estáveis para representação inválida, credencial inativa, janela, estado do
+evento, pátio, duplicidade e lotação. A autorização consome a credencial,
+materializa presença e sessão, e incrementa a ocupação no mesmo commit. Override,
+placa, RFID, leitura sem consumo e sincronização offline continuam TARGET.
+
 ## 15.8 Movimentação/Sessão de estacionamento
 
 ```mermaid
@@ -211,6 +219,11 @@ stateDiagram-v2
 - **TARGET:** pátio e origem do direito são obrigatórios; encerrada não reabre; ajuste posterior é entidade compensatória.
 - Evento: valor normalmente é preço pré-pago, não cálculo de permanência.
 - Rotativo: valor pode ser calculado no encerramento por snapshot tarifário.
+
+**Situação implementada:** `SessaoEstacionamento` enterprise é aberta como efeito
+da autorização QR, com organização, evento, pátio, credencial, pedido, item,
+presença, tentativa e origem `PEDIDO_EVENTO`. A tabela e a API legadas de
+`Movimentacao` permanecem inalteradas. Encerramento será realizado pela UC717/UC719.
 
 ## 15.9 Contrato mensalista
 

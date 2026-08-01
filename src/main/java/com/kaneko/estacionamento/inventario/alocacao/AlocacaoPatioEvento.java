@@ -31,6 +31,8 @@ public class AlocacaoPatioEvento extends AuditableEntity {
     private Integer capacidadeVendavel;
     @Column(name = "capacidade_reservada", nullable = false)
     private Integer capacidadeReservada;
+    @Column(name = "ocupacao_atual", nullable = false)
+    private Integer ocupacaoAtual;
     @Version
     @Column(nullable = false)
     private Long version;
@@ -53,6 +55,7 @@ public class AlocacaoPatioEvento extends AuditableEntity {
         alocacao.capacidadeOperacional = capacidadeOperacional;
         alocacao.capacidadeVendavel = capacidadeVendavel;
         alocacao.capacidadeReservada = capacidadeReservada;
+        alocacao.ocupacaoAtual = 0;
         return alocacao;
     }
 
@@ -60,9 +63,21 @@ public class AlocacaoPatioEvento extends AuditableEntity {
             Integer capacidadeOperacional, Integer capacidadeVendavel,
             Integer capacidadeReservada) {
         validarCapacidades(capacidadeOperacional, capacidadeVendavel, capacidadeReservada);
+        if (ocupacaoAtual != null && capacidadeOperacional < ocupacaoAtual) {
+            throw new IllegalArgumentException(
+                    "A capacidade operacional nao pode ficar abaixo da ocupacao atual.");
+        }
         this.capacidadeOperacional = capacidadeOperacional;
         this.capacidadeVendavel = capacidadeVendavel;
         this.capacidadeReservada = capacidadeReservada;
+    }
+
+    public int registrarEntrada() {
+        if (ocupacaoAtual >= capacidadeOperacional) {
+            throw new IllegalStateException("O patio esta lotado para este evento.");
+        }
+        ocupacaoAtual++;
+        return ocupacaoAtual;
     }
 
     static void validarDados(

@@ -256,6 +256,14 @@ dependem das políticas e histórias posteriores.
 **Exceções:** E1 inválida; E2 duplicada; E3 pátio incorreto; E4 fora da janela; E5 bloqueada; E6 lotado.  
 **Pós-condição:** entrada registrada ou recusa auditada com motivo.
 
+**Situação implementada:** concluída para QR online. `POST /api/v1/check-ins`
+exige tenant contextual, `access:checkin` e `Idempotency-Key`; valida evento em
+operação, janelas, alocação, representação por hash, credencial, escopo,
+duplicidade e capacidade. A decisão autorizada cria `Presenca`, abre
+`SessaoEstacionamento`, altera `ATIVA → DENTRO` e incrementa a ocupação sob lock
+pessimista da alocação. Toda decisão é auditada e gera fatos na outbox. Placa,
+RFID, override, barreira física e offline permanecem nos casos de uso próprios.
+
 ## UC716 — Realizar check-in offline
 
 **Objetivo:** manter entrada durante perda de conectividade.  
@@ -288,6 +296,9 @@ dependem das políticas e histórias posteriores.
 **Alternativos:** entrada rotativa ou mensalista futura.  
 **Exceções:** E1 veículo já no pátio; E2 pátio lotado/inativo; E3 origem inválida.  
 **Pós-condição:** sessão aberta e ocupação incrementável.
+
+**Situação implementada:** concluída para origem `PEDIDO_EVENTO` como efeito
+transacional da UC715. A movimentação legada não foi alterada.
 
 ## UC719 — Encerrar movimentação
 

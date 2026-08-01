@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[instalacoes]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[eventos]] · [[instalacoes]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[acesso]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Inventário
 
@@ -53,7 +53,7 @@ PATCH /api/v1/parking-allocations/{id} + If-Match
 ## Estrutura de Dados (DTOs, Entidades)
 
 `AlocacaoPatioEvento` contém organização, evento, pátio, início/fim,
-capacidades operacional, vendável e reservada, versão e timestamps. As FKs
+capacidades operacional, vendável e reservada, ocupação atual, versão e timestamps. As FKs
 compostas impedem relacionamentos entre tenants. O par evento–pátio é único.
 
 ## Integrações externas (se houver)
@@ -85,6 +85,8 @@ compensatório e concorrência real no PostgreSQL.
   não pode exceder a capacidade operacional do pátio.
 - Alterar período ou vínculos não está no PATCH; override e consumo real ficam
   para histórias aprovadas posteriores.
+- [[acesso]] bloqueia pessimisticamente a alocação antes de incrementar a
+  ocupação; capacidade nunca pode ficar abaixo da ocupação atual.
 
 ## Módulos relacionados
 
@@ -110,3 +112,4 @@ compensatório e concorrência real no PostgreSQL.
 | 2026-07-30 | Expõe disponibilidade projetada sem consumir inventário. |
 | 2026-07-30 | Implementa UC709 e serializa o consumo temporário por produto. |
 | 2026-07-30 | UC713 compensa contadores reservado/vendido sob o mesmo lock do produto. |
+| 2026-08-01 | UC715 passa a serializar ocupação física na alocação Evento–Pátio. |

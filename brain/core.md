@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[idempotencia]] · [[outbox]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]]
 
 # Core do Estacionamento Kaneko
 
@@ -46,6 +46,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[reservas-inventario]] — hold temporal e atômico da capacidade vendável.
 - [[pedidos]] — intenção comercial com snapshots, total e expiração.
 - [[credenciais]] — direito por unidade e representação QR opaca versionada.
+- [[acesso]] — decisão QR online, presença, sessão e ocupação de evento.
 - [[idempotencia]] — execução única de comandos críticos por tenant e identidade.
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
 
@@ -74,3 +75,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro de UC712 com QR opaco, hash persistido e concorrência por ETag. |
 | 2026-07-30 | Registro de UC713 com cancelamento compensatório e reembolso pendente. |
 | 2026-08-01 | UC714 registrada como bloqueada externamente; UC715 confirmada como executável e independente do gateway. |
+| 2026-08-01 | UC715/UC718 implementadas com check-in QR online e ocupação concorrente. |

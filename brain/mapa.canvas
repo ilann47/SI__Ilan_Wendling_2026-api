@@ -15,7 +15,8 @@
     {"id": "disponibilidade", "type": "file", "file": "disponibilidade.md", "x": 3500, "y": 320, "width": 360, "height": 220},
     {"id": "reservas-inventario", "type": "file", "file": "reservas-inventario.md", "x": 3500, "y": 0, "width": 360, "height": 220},
     {"id": "pedidos", "type": "file", "file": "pedidos.md", "x": 4000, "y": 0, "width": 360, "height": 220},
-    {"id": "credenciais", "type": "file", "file": "credenciais.md", "x": 4500, "y": 0, "width": 360, "height": 220}
+    {"id": "credenciais", "type": "file", "file": "credenciais.md", "x": 4500, "y": 0, "width": 360, "height": 220},
+    {"id": "acesso", "type": "file", "file": "acesso.md", "x": 5000, "y": 0, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -64,6 +65,11 @@
     {"id": "pedidos-credenciais", "fromNode": "pedidos", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "pedido confirmado"},
     {"id": "instalacoes-credenciais", "fromNode": "instalacoes", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "escopo do patio"},
     {"id": "rbac-credenciais", "fromNode": "rbac", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "credentials:issue"},
-    {"id": "credenciais-outbox", "fromNode": "credenciais", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "emitida/QR gerado/pedido atendido"}
+    {"id": "credenciais-outbox", "fromNode": "credenciais", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "emitida/QR gerado/pedido atendido"},
+    {"id": "credenciais-acesso", "fromNode": "credenciais", "fromSide": "right", "toNode": "acesso", "toSide": "left", "label": "QR + direito ativo"},
+    {"id": "eventos-acesso", "fromNode": "eventos", "fromSide": "right", "toNode": "acesso", "toSide": "left", "label": "EM_OPERACAO"},
+    {"id": "inventario-acesso", "fromNode": "inventario", "fromSide": "right", "toNode": "acesso", "toSide": "left", "label": "ocupação serializada"},
+    {"id": "rbac-acesso", "fromNode": "rbac", "fromSide": "right", "toNode": "acesso", "toSide": "left", "label": "access:operate/checkin"},
+    {"id": "acesso-outbox", "fromNode": "acesso", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "decisões e efeitos"}
   ]
 }

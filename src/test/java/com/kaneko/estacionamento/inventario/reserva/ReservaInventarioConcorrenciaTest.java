@@ -2,6 +2,9 @@ package com.kaneko.estacionamento.inventario.reserva;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.kaneko.estacionamento.acesso.AcessoService;
+import com.kaneko.estacionamento.acesso.dto.CheckinResponse;
+import com.kaneko.estacionamento.acesso.dto.RealizarCheckinRequest;
 import com.kaneko.estacionamento.auditoria.AuditoriaService;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
@@ -80,6 +83,7 @@ class ReservaInventarioConcorrenciaTest {
     @Autowired ReservaInventarioService reservas;
     @Autowired PedidoService pedidos;
     @Autowired CredencialAcessoService credenciais;
+    @Autowired AcessoService acesso;
     @Autowired JdbcTemplate jdbc;
     @MockitoBean AuditoriaService auditoria;
     @MockitoBean OutboxService outbox;
@@ -90,6 +94,9 @@ class ReservaInventarioConcorrenciaTest {
     private Long estadoId;
     private Long cidadeId;
     private Long produtoId;
+    private Long eventoId;
+    private Long patioId;
+    private Long alocacaoId;
 
     @BeforeEach
     void prepararUltimaVaga() {
@@ -111,17 +118,17 @@ class ReservaInventarioConcorrenciaTest {
         Long venueId = venues.criar(organizacaoId, new CriarVenueRequest(
                 "Arena Concorrencia", "Rua Evento", null, null, "Centro",
                 "80000-000", cidadeId, "America/Sao_Paulo")).id();
-        Long patioId = instalacoes.criar(organizacaoId, new CriarPatioInstalacaoRequest(
+        patioId = instalacoes.criar(organizacaoId, new CriarPatioInstalacaoRequest(
                 "Patio Concorrencia", "Rua Patio", null, null, "Centro",
                 "80000-000", cidadeId, 1, 1, null, true)).id();
-        Long eventoId = eventos.criar(
+        eventoId = eventos.criar(
                 organizacaoId, usuarioId, "evento-concorrencia",
                 new CriarEventoRequest(
                         "Evento Concorrencia", venueId,
                         OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
                         OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
                         "America/Sao_Paulo", null)).id();
-        Long alocacaoId = alocacoes.criar(
+        alocacaoId = alocacoes.criar(
                 organizacaoId, usuarioId, eventoId, "alocacao-concorrencia",
                 new CriarAlocacaoPatioEventoRequest(
                         patioId, OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
@@ -296,6 +303,97 @@ class ReservaInventarioConcorrenciaTest {
     }
 
     @Test
+    void apenasUmCheckinOcupaAUltimaVagaFisica() throws Exception {
+        jdbc.update("""
+                update patio set capacidade_vagas = 2, capacidade_operacional = 2
+                where id = ?
+                """, patioId);
+        jdbc.update("""
+                update alocacao_patio_evento
+                set capacidade_operacional = 2, capacidade_vendavel = 2
+                where id = ?
+                """, alocacaoId);
+        jdbc.update("update produto_estacionamento set quota = 2 where id = ?", produtoId);
+        jdbc.update("update lote_preco set quantidade = 2 where produto_id = ?", produtoId);
+
+        Long reservaId = reservas.criar(
+                organizacaoId, usuarioId, "hold-checkin-concorrente",
+                new CriarReservaInventarioRequest(
+                        produtoId, 2, "DIRECT_WEB", "buyer-checkin")).id();
+        PedidoResponse pedido = pedidos.criar(
+                organizacaoId, usuarioId, "order-checkin-concorrente",
+                new CriarPedidoRequest(
+                        reservaId,
+                        new CompradorPedidoRequest(
+                                "Comprador Checkin", "checkin@example.com", null),
+                        null, "DIRECT_WEB"));
+        pedidos.confirmarManualmente(
+                organizacaoId, usuarioId, pedido.id(), 1L, "confirm-checkin",
+                new ConfirmarPedidoManualmenteRequest(
+                        "DINHEIRO", "RECIBO-CHECKIN", "RECEBIMENTO_PRESENCIAL"));
+        CredencialAcessoResponse primeiraCredencial = credenciais.emitir(
+                organizacaoId, usuarioId, pedido.id(), "credential-checkin-a",
+                new EmitirCredencialRequest(MeioPreferidoCredencial.QR));
+        CredencialAcessoResponse segundaCredencial = credenciais.emitir(
+                organizacaoId, usuarioId, pedido.id(), "credential-checkin-b",
+                new EmitirCredencialRequest(MeioPreferidoCredencial.QR));
+        String primeiroQr = credenciais.gerarQr(
+                organizacaoId, usuarioId, primeiraCredencial.id(), 0L).token();
+        String segundoQr = credenciais.gerarQr(
+                organizacaoId, usuarioId, segundaCredencial.id(), 0L).token();
+
+        jdbc.update("""
+                update evento set inicio = now() - interval '1 hour',
+                    fim = now() + interval '4 hours' where id = ?
+                """, eventoId);
+        jdbc.update("""
+                update alocacao_patio_evento
+                set inicio = now() - interval '1 hour',
+                    fim = now() + interval '4 hours',
+                    capacidade_operacional = 1, capacidade_vendavel = 1
+                where id = ?
+                """, alocacaoId);
+        jdbc.update("""
+                update credencial_acesso
+                set inicio_validade = now() - interval '1 hour',
+                    fim_validade = now() + interval '4 hours'
+                where pedido_id = ?
+                """, pedido.id());
+        jdbc.update("""
+                update representacao_qr set expira_em = now() + interval '4 hours'
+                where credencial_id in (?, ?)
+                """, primeiraCredencial.id(), segundaCredencial.id());
+        eventos.encerrarVendas(
+                organizacaoId, eventoId, 3L, new PublicarEventoRequest(true));
+        eventos.iniciarOperacao(
+                organizacaoId, eventoId, 4L, new PublicarEventoRequest(true));
+
+        CountDownLatch inicio = new CountDownLatch(1);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<Object> primeira = executor.submit(() -> checkin(
+                    inicio, "checkin-a", primeiroQr));
+            Future<Object> segunda = executor.submit(() -> checkin(
+                    inicio, "checkin-b", segundoQr));
+            inicio.countDown();
+
+            List<Object> resultados = List.of(primeira.get(), segunda.get());
+            assertThat(resultados).allMatch(CheckinResponse.class::isInstance);
+            assertThat(resultados.stream().map(CheckinResponse.class::cast)
+                    .filter(r -> "AUTORIZADA".equals(r.decision())).count())
+                    .isEqualTo(1);
+            assertThat(resultados.stream().map(CheckinResponse.class::cast)
+                    .filter(r -> "PATIO_LOTADO".equals(r.reasonCode())).count())
+                    .isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "select ocupacao_atual from alocacao_patio_evento where id = ?",
+                    Integer.class, alocacaoId)).isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "select count(*) from presenca where evento_id = ? and status = 'DENTRO'",
+                    Integer.class, eventoId)).isEqualTo(1);
+        }
+    }
+
+    @Test
     void apenasUmCancelamentoLiberaOInventarioDoPedido() throws Exception {
         Long reservaId = reservas.criar(
                 organizacaoId, usuarioId, "hold-cancel-concorrente",
@@ -398,10 +496,26 @@ class ReservaInventarioConcorrenciaTest {
         }
     }
 
+    private Object checkin(
+            CountDownLatch inicio, String chave, String qrToken) {
+        try {
+            inicio.await();
+            return acesso.realizarCheckin(
+                    organizacaoId, usuarioId, chave,
+                    new RealizarCheckinRequest(
+                            qrToken, eventoId, patioId, "PORTAO_CONCORRENTE"));
+        } catch (Exception ex) {
+            return ex;
+        }
+    }
+
     @AfterEach
     void limparDadosCommitados() {
         if (organizacaoId == null) return;
         jdbc.update("delete from requisicao_idempotente where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from sessao_estacionamento where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from presenca where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from tentativa_acesso where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from representacao_qr where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from credencial_acesso where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from cancelamento_pedido where organizacao_id = ?", organizacaoId);

@@ -56,6 +56,24 @@ class EventoTest {
         assertThatIllegalStateException().isThrownBy(evento::abrirVendas);
     }
 
+    @Test
+    void encerraVendasEIniciaOperacaoSomenteNaOrdemAprovada() {
+        Evento evento = novoEvento();
+        evento.configurar();
+        evento.publicar();
+        evento.abrirVendas();
+
+        assertThatIllegalStateException().isThrownBy(evento::iniciarOperacao);
+
+        evento.encerrarVendas();
+        assertThat(evento.getStatus()).isEqualTo(StatusEvento.VENDAS_ENCERRADAS);
+        assertThatIllegalStateException().isThrownBy(evento::encerrarVendas);
+
+        evento.iniciarOperacao();
+        assertThat(evento.getStatus()).isEqualTo(StatusEvento.EM_OPERACAO);
+        assertThatIllegalStateException().isThrownBy(evento::iniciarOperacao);
+    }
+
     private static Evento novoEvento() {
         return Evento.criar(
                 1L, 2L, "Evento Publicavel",

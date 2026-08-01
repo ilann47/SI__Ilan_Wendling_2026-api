@@ -74,6 +74,34 @@ public class EventoController {
                 .body(response);
     }
 
+    @PostMapping("/{eventoId}/sales-closing")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('events:publish', authentication)")
+    public ResponseEntity<EventoResponse> encerrarVendas(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long eventoId,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody PublicarEventoRequest request) {
+        EventoResponse response = service.encerrarVendas(
+                principal.organizacaoId(), eventoId, extrairVersao(ifMatch), request);
+        return ResponseEntity.ok()
+                .eTag("\"" + response.version() + "\"")
+                .body(response);
+    }
+
+    @PostMapping("/{eventoId}/operation-start")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('access:operate', authentication)")
+    public ResponseEntity<EventoResponse> iniciarOperacao(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long eventoId,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody PublicarEventoRequest request) {
+        EventoResponse response = service.iniciarOperacao(
+                principal.organizacaoId(), eventoId, extrairVersao(ifMatch), request);
+        return ResponseEntity.ok()
+                .eTag("\"" + response.version() + "\"")
+                .body(response);
+    }
+
     private static long extrairVersao(String ifMatch) {
         Matcher matcher = ETAG_VERSAO.matcher(ifMatch);
         if (!matcher.matches()) {

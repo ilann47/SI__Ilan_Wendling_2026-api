@@ -205,7 +205,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | Método e rota | Payload/Parâmetros | Resposta | Regras |
 |---|---|---|---|
 | `POST /access-validations` | token/placa, evento, pátio, faixa | decisão sem consumo | operação/dispositivo |
-| `POST /check-ins` | schema Check-in | decisão e IDs | idempotência/antiduplicidade |
+| `POST /check-ins` | AS-IS: `qrToken`, `eventId`, `parkingFacilityId`, `lane` + `Idempotency-Key` | `200` decisão, tentativa e IDs dos efeitos | `access:checkin`; QR por hash; evento em operação; janela; tenant/pátio; idempotência; antiduplicidade; capacidade serializada; sem comando de barreira nesta etapa |
 | `POST /check-outs` | presença/credencial/placa | saída e política de reentrada | presença aberta |
 | `POST /manual-admissions` | dados, motivo, aprovador | `201 Attempt` | exceção auditada |
 | `GET /access-attempts` | cursor, evento, decisão, motivo | feed | operação/auditoria |

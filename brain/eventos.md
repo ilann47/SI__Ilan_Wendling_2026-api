@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[venues]] · [[inventario]] · [[produtos-estacionamento]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[venues]] · [[inventario]] · [[produtos-estacionamento]] · [[acesso]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Eventos
 
@@ -12,8 +12,8 @@ tenant, sem misturar inventário, pedidos, pagamentos ou acesso no agregado.
 UC701 cria o evento em `RASCUNHO`. [[inventario]] associa pátios sem transferir
 essa responsabilidade ao agregado e [[produtos-estacionamento]] publica a oferta.
 UC702 publica o evento somente após validar capacidade vendável e produto
-publicado. Um comando posterior abre vendas imediatamente, sem antecipar
-pedidos, credenciais ou acesso.
+publicado. Comandos explícitos abrem e encerram vendas; o Supervisor inicia a
+operação que habilita [[acesso]].
 
 ## Fluxo (camadas da arquitetura)
 
@@ -40,6 +40,15 @@ POST /api/v1/events/{eventoId}/sales-opening + If-Match
   -> PUBLICADO -> VENDAS_ABERTAS
   -> AuditoriaService + VendasDoEventoAbertas na outbox
   -> 200 + ETag
+
+POST /api/v1/events/{eventoId}/sales-closing + If-Match
+  -> VENDAS_ABERTAS -> VENDAS_ENCERRADAS
+  -> auditoria + VendasDoEventoEncerradas
+
+POST /api/v1/events/{eventoId}/operation-start + If-Match
+  -> access:operate
+  -> VENDAS_ENCERRADAS -> EM_OPERACAO
+  -> auditoria + OperacaoDoEventoIniciada
 ```
 
 ## Endpoints (se houver)
@@ -49,6 +58,8 @@ POST /api/v1/events/{eventoId}/sales-opening + If-Match
   versão atual.
 - `POST /api/v1/events/{eventoId}/sales-opening`: abre vendas imediatamente
   usando a versão atual; agendamento ainda não é aceito.
+- `POST /api/v1/events/{eventoId}/sales-closing`: encerra vendas.
+- `POST /api/v1/events/{eventoId}/operation-start`: inicia a operação de acesso.
 - Repetição da mesma chave e payload devolve o agregado original; payload
   divergente com a mesma chave retorna `409`.
 
@@ -97,6 +108,8 @@ PostgreSQL para período, estado e FK composta.
   comando versionado próprio e acesso permanece fora deste escopo.
 - `startsAt` futuro é rejeitado até existir scheduler transacional; aceitar e
   esquecer um agendamento violaria o contrato operacional.
+- Encerramento de vendas preserva `events:publish`; início operacional exige o
+  papel Supervisor com `access:operate` e não ocorre implicitamente no check-in.
 
 ## Módulos relacionados
 
@@ -118,3 +131,4 @@ PostgreSQL para período, estado e FK composta.
 | 2026-07-30 | Passa a fornecer evento configurável para a alocação temporal de pátios em [[inventario]]. |
 | 2026-07-30 | Implementa UC702 com checklist, versão, auditoria e outbox transacional. |
 | 2026-07-30 | Implementa abertura imediata `PUBLICADO → VENDAS_ABERTAS` com ETag, auditoria e outbox. |
+| 2026-08-01 | Implementa fechamento de vendas e início explícito de operação para [[acesso]]. |

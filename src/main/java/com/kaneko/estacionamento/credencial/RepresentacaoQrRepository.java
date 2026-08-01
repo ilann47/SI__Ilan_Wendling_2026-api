@@ -12,6 +12,15 @@ public interface RepresentacaoQrRepository
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select r from RepresentacaoQr r
+            where r.organizacaoId = :organizacaoId and r.tokenHash = :tokenHash
+            """)
+    Optional<RepresentacaoQr> findByTokenHashForUpdate(
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("tokenHash") String tokenHash);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select r from RepresentacaoQr r
             where r.credencialId = :credencialId and r.revogadaEm is null
             """)
     Optional<RepresentacaoQr> findAtivaForUpdate(

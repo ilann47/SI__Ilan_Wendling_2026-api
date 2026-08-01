@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[pedidos]] · [[instalacoes]] · [[eventos]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[pedidos]] · [[instalacoes]] · [[eventos]] · [[acesso]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
 # Credenciais
 
@@ -13,8 +13,9 @@ UC711 está implementada para pedidos confirmados do próprio ator. Cada chamada
 emite uma credencial para a próxima unidade ainda não atendida. Quando todas as
 unidades recebem credencial, o pedido transiciona para `ATENDIDO`. UC712 gera
 uma representação QR para credencial própria ativa com meio QR. UC713 bloqueia
-credenciais de pedido cancelado e revoga o QR vigente; bloqueio administrativo,
-reemissão e consumo pertencem às histórias seguintes.
+credenciais de pedido cancelado e revoga o QR vigente. UC715 consome a
+credencial QR autorizada em [[acesso]], executando
+`ATIVA → DENTRO` sob lock pessimista.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -128,3 +129,4 @@ compensatório durante cancelamento.
 | 2026-07-30 | Implementa UC711 com uma credencial ativa por unidade confirmada. |
 | 2026-07-30 | Implementa UC712 com token QR de entrega única e hash persistido. |
 | 2026-07-30 | UC713 bloqueia credenciais e revoga QR de pedido cancelado. |
+| 2026-08-01 | UC715 consome QR ativo uma única vez e registra a credencial como DENTRO. |

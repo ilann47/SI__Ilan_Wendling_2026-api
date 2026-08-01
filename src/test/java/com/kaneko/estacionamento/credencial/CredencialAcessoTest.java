@@ -93,4 +93,24 @@ class CredencialAcessoTest {
         assertThat(credencial.getBloqueadaEm()).isEqualTo(inicio);
         assertThat(credencial.bloquear("REPLAY", inicio.plusMinutes(1))).isFalse();
     }
+
+    @Test
+    void registraEntradaUmaUnicaVezEConsomeOEstadoAtivo() {
+        OffsetDateTime inicio = OffsetDateTime.parse("2026-10-10T17:00:00-03:00");
+        OffsetDateTime fim = OffsetDateTime.parse("2026-10-11T01:00:00-03:00");
+        CredencialAcesso credencial = CredencialAcesso.criar(
+                1L, 2L, 3L, 4L, 5L, 6L,
+                "CRD-0123456789ABCDEF0123456789ABCDEF", 1,
+                OrigemCredencial.PEDIDO, CategoriaProduto.COMUM,
+                DireitoProduto.ESTACIONAMENTO_EVENTO, inicio, fim,
+                MeioPreferidoCredencial.QR, null);
+        credencial.ativar();
+
+        credencial.registrarEntrada();
+
+        assertThat(credencial.getStatus()).isEqualTo(StatusCredencial.DENTRO);
+        assertThatThrownBy(credencial::registrarEntrada)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ativa");
+    }
 }

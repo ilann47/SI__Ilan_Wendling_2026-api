@@ -643,3 +643,31 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
 - UC713 não simula gateway nem publica reembolso. A restituição financeira e as
   políticas ainda não definidas de prazo, multa e crédito permanecem em UC714.
 - A suíte passa de 462 para 471 testes sem regressões.
+
+---
+
+## Atualização — Check-in QR online / UC715 e UC718 (2026-08-01)
+
+- As migrations `V28__checkin_evento_online.sql` e
+  `V29__checkin_escopo_integridade.sql` criam tentativa de acesso, presença e
+  sessão de estacionamento enterprise, acrescentam ocupação à alocação e
+  defendem os vínculos tenant/evento/pátio/credencial/QR por constraints compostas.
+- Comandos versionados encerram vendas e iniciam a operação do evento. O início
+  exige `access:operate`, concedida ao novo papel Supervisor.
+- `POST /api/v1/check-ins` exige `access:checkin` e `Idempotency-Key`. Supervisor,
+  Operador e Fiscal de acesso podem executar; Admin e Gestor não recebem poder
+  operacional por implicação.
+- O QR é resolvido exclusivamente por SHA-256. Token em claro não integra banco,
+  auditoria ou outbox. Evento, janela, alocação, pátio, credencial, representação,
+  estado, duplicidade e lotação são validados antes do consumo.
+- Autorização executa `ATIVA → DENTRO`, cria presença `DENTRO`, abre sessão com
+  origem `PEDIDO_EVENTO` e incrementa a ocupação no mesmo commit. Recusas de
+  negócio retornam decisão terminal estável e também são auditadas.
+- O lock pessimista da alocação serializa a capacidade física. Um teste com duas
+  credenciais válidas disputando a última vaga comprova uma autorização, uma
+  recusa `PATIO_LOTADO` e ocupação final igual a um.
+- `AcessoAutorizado`, `AcessoRecusado`, `CheckinRealizado`,
+  `MovimentacaoAberta` e `OcupacaoAlterada` entram na outbox. Barreira física,
+  override e offline continuam fora deste recorte.
+- A suíte passa de 471 para 481 testes sem regressões; Flyway V29, Hibernate
+  validate e OpenAPI permanecem verdes.

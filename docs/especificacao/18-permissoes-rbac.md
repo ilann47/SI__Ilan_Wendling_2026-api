@@ -150,6 +150,13 @@ compensatória para UC714.
 limitadas aos pedidos/credenciais do próprio ator; operação administrativa sobre
 terceiros aguarda escopos contextuais próprios.
 
+`access:operate` e `access:checkin` estão implementadas com os papéis de sistema
+`SUPERVISOR`, `OPERADOR` e `FISCAL_ACESSO`. O Supervisor recebe ambas; Operador e
+Fiscal de acesso recebem somente check-in. `ADMIN_ORGANIZACAO` e `GESTOR` não
+executam o portão por implicação. A atribuição ainda usa escopo organizacional;
+turno, evento, pátio, faixa e identidade de dispositivo permanecem controles
+ABAC pendentes.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

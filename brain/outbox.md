@@ -1,4 +1,4 @@
-> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[reservas-inventario]] · [[pedidos]]
+> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[reservas-inventario]] · [[pedidos]] · [[acesso]]
 
 # Outbox
 
@@ -14,10 +14,10 @@ A fundação persiste `EventoCriado`, `EventoConfigurado`, `EventoPublicado`,
 `ProdutoEstacionamentoPublicado`, além de `InventarioReservado`,
 `ReservaExpirada`, `InventarioLiberado`, `InventarioConfirmado`, `PedidoCriado`,
 `PedidoAguardandoPagamento`, `PedidoExpirado`, `PedidoConfirmado`,
-`CredencialEmitida`, `PedidoAtendido`, `QRCodeGerado` e `PedidoCancelado`. Dispatcher,
-retry, dead-letter
-lógico e consumidores serão implementados quando existir o primeiro efeito
-entre contextos.
+`CredencialEmitida`, `PedidoAtendido`, `QRCodeGerado`, `PedidoCancelado`,
+`AcessoAutorizado`, `AcessoRecusado`, `CheckinRealizado`, `MovimentacaoAberta` e
+`OcupacaoAlterada`. Dispatcher, retry, dead-letter lógico e consumidores ainda
+não existem; os efeitos síncronos do check-in permanecem na mesma transação.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -85,3 +85,4 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 | 2026-07-30 | Persiste emissão de credencial e atendimento integral do pedido. |
 | 2026-07-30 | Persiste QRCodeGerado sem incluir token ou hash no payload. |
 | 2026-07-30 | Persiste PedidoCancelado e InventarioLiberado na compensação UC713. |
+| 2026-08-01 | Persiste decisões e efeitos do check-in online sem segredo QR. |

@@ -13,6 +13,20 @@ public interface AlocacaoPatioEventoRepository
 
     Optional<AlocacaoPatioEvento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    boolean existsByOrganizacaoIdAndEventoIdAndPatioId(
+            Long organizacaoId, Long eventoId, Long patioId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select a from AlocacaoPatioEvento a
+            where a.organizacaoId = :organizacaoId
+              and a.eventoId = :eventoId and a.patioId = :patioId
+            """)
+    Optional<AlocacaoPatioEvento> findByEventoAndPatioForUpdate(
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("eventoId") Long eventoId,
+            @Param("patioId") Long patioId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select a from AlocacaoPatioEvento a

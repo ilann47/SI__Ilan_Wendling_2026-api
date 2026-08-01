@@ -329,6 +329,39 @@ class EventoControllerTest {
                 status().isPreconditionFailed());
     }
 
+    @Test
+    void encerraVendasEIniciaOperacaoComPermissaoEVersao() throws Exception {
+        Long eventoId = idEvento(criarEvento(
+                tokenContextual, "evento-operacao", payload("Evento Operacao", venueId),
+                status().isCreated()).andReturn().getResponse().getContentAsString());
+        prepararProdutoPublicado(eventoId);
+        eventos.publicar(organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
+        abrirVendas(tokenContextual, eventoId, "\"2\"", status().isOk());
+
+        encerrarVendas(tokenContextual, eventoId, "\"3\"", status().isOk())
+                .andExpect(header().string("ETag", "\"4\""))
+                .andExpect(jsonPath("$.status").value("VENDAS_ENCERRADAS"));
+
+        long membershipSupervisor = criarMembership(operador.getId(), tokenContextual);
+        concederPapel(membershipSupervisor, "SUPERVISOR");
+        String tokenSupervisor = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(operador.getLogin(), "OPERADOR")));
+
+        iniciarOperacao(tokenContextual, eventoId, "\"4\"", status().isForbidden());
+        iniciarOperacao(tokenSupervisor, eventoId, "\"4\"", status().isOk())
+                .andExpect(header().string("ETag", "\"5\""))
+                .andExpect(jsonPath("$.status").value("EM_OPERACAO"));
+        iniciarOperacao(tokenSupervisor, eventoId, "\"4\"",
+                status().isPreconditionFailed());
+
+        assertThat(auditorias.findAll().stream().map(a -> a.getAcao()).toList())
+                .contains("VENDAS_EVENTO_ENCERRADAS", "OPERACAO_EVENTO_INICIADA");
+        assertThat(jdbc.queryForList(
+                "select event_type from evento_outbox where aggregate_id = ?",
+                String.class, eventoId))
+                .contains("VendasDoEventoEncerradas", "OperacaoDoEventoIniciada");
+    }
+
     private org.springframework.test.web.servlet.ResultActions criarEvento(
             String token, String chave, String payload,
             org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
@@ -356,6 +389,26 @@ class EventoControllerTest {
         return mvc.perform(post("/api/v1/events/{id}/sales-opening", eventoId)
                         .header("Authorization", token).header("If-Match", ifMatch)
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions encerrarVendas(
+            String token, Long eventoId, String ifMatch,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/events/{id}/sales-closing", eventoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"confirmed\":true}"))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions iniciarOperacao(
+            String token, Long eventoId, String ifMatch,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/events/{id}/operation-start", eventoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"confirmed\":true}"))
                 .andExpect(esperado);
     }
 

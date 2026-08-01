@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[eventos]] · [[pedidos]] · [[credenciais]]
+> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[eventos]] · [[pedidos]] · [[credenciais]] · [[acesso]]
 
 # Auditoria
 
@@ -88,3 +88,4 @@ imutabilidade física no PostgreSQL.
 | 2026-07-30 | Emissão de credencial e atendimento integral do pedido são auditados. |
 | 2026-07-30 | Geração QR registra somente metadados seguros, sem token ou hash. |
 | 2026-07-30 | Cancelamento registra compensação de inventário e bloqueio sem segredo QR. |
+| 2026-08-01 | Check-in passa a auditar autorização ou recusa sem token/hash QR. |

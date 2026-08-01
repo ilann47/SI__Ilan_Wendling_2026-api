@@ -10,6 +10,15 @@ import org.springframework.data.repository.query.Param;
 
 public interface CredencialAcessoRepository
         extends JpaRepository<CredencialAcesso, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select c from CredencialAcesso c
+            where c.id = :id and c.organizacaoId = :organizacaoId
+            """)
+    Optional<CredencialAcesso> findByIdAndOrganizacaoIdForUpdate(
+            @Param("id") Long id,
+            @Param("organizacaoId") Long organizacaoId);
+
     Optional<CredencialAcesso> findByIdAndOrganizacaoIdAndAtorId(
             Long id, Long organizacaoId, Long atorId);
 

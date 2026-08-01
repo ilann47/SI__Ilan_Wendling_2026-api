@@ -204,6 +204,82 @@ public class EventoService {
         return EventoResponse.from(evento);
     }
 
+    @Transactional
+    public EventoResponse encerrarVendas(
+            Long organizacaoId, Long eventoId, long versaoEsperada,
+            PublicarEventoRequest request) {
+        validarConfirmacao(request, "encerramento das vendas");
+        Evento evento = buscarParaTransicao(
+                organizacaoId, eventoId, versaoEsperada);
+        if (evento.getStatus() != StatusEvento.VENDAS_ABERTAS) {
+            throw new ConflitoException(
+                    "Somente evento com vendas abertas pode encerrar vendas.");
+        }
+        Map<String, Object> anterior = snapshot(evento);
+        Long versaoAnterior = evento.getVersion();
+        evento.encerrarVendas();
+        eventos.flush();
+        registrarTransicao(
+                evento, "VENDAS_EVENTO_ENCERRADAS", "VendasDoEventoEncerradas",
+                anterior, versaoAnterior);
+        return EventoResponse.from(evento);
+    }
+
+    @Transactional
+    public EventoResponse iniciarOperacao(
+            Long organizacaoId, Long eventoId, long versaoEsperada,
+            PublicarEventoRequest request) {
+        validarConfirmacao(request, "inicio da operacao");
+        Evento evento = buscarParaTransicao(
+                organizacaoId, eventoId, versaoEsperada);
+        if (evento.getStatus() != StatusEvento.VENDAS_ENCERRADAS) {
+            throw new ConflitoException(
+                    "Somente evento com vendas encerradas pode iniciar operacao.");
+        }
+        Map<String, Object> anterior = snapshot(evento);
+        Long versaoAnterior = evento.getVersion();
+        evento.iniciarOperacao();
+        eventos.flush();
+        registrarTransicao(
+                evento, "OPERACAO_EVENTO_INICIADA", "OperacaoDoEventoIniciada",
+                anterior, versaoAnterior);
+        return EventoResponse.from(evento);
+    }
+
+    private Evento buscarParaTransicao(
+            Long organizacaoId, Long eventoId, long versaoEsperada) {
+        Evento evento = eventos.findByIdAndOrganizacaoIdForUpdate(
+                        eventoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Evento", eventoId));
+        if (!evento.getVersion().equals(versaoEsperada)) {
+            throw new VersaoEventoDivergenteException();
+        }
+        return evento;
+    }
+
+    private void registrarTransicao(
+            Evento evento, String acao, String tipoEvento,
+            Map<String, Object> anterior, Long versaoAnterior) {
+        Map<String, Object> posterior = snapshot(evento);
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                evento.getOrganizacaoId(), acao, RECURSO, evento.getId(),
+                evento.getId(), null, null, anterior, posterior,
+                versaoAnterior, evento.getVersion(),
+                ClasseRetencaoAuditoria.CONFIGURACAO));
+        outbox.publicar(new PublicarEventoOutboxCommand(
+                tipoEvento, evento.getOrganizacaoId(), RECURSO, evento.getId(),
+                evento.getVersion(), null, 1, posterior));
+    }
+
+    private static void validarConfirmacao(
+            PublicarEventoRequest request, String operacao) {
+        if (request == null || !Boolean.TRUE.equals(request.confirmed())) {
+            throw new IllegalArgumentException(
+                    "A confirmacao do " + operacao + " e obrigatoria.");
+        }
+    }
+
     private static DadosCriacao normalizar(CriarEventoRequest request) {
         if (request == null) throw new IllegalArgumentException("O evento e obrigatorio.");
         String nome = Evento.textoObrigatorio(request.name(), "nome", 180);
