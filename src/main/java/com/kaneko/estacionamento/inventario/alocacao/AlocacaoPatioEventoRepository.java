@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.inventario.alocacao;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,6 +36,16 @@ public interface AlocacaoPatioEventoRepository
             """)
     Optional<AlocacaoPatioEvento> findByIdAndOrganizacaoIdAndEventoIdForUpdate(
             @Param("id") Long id,
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("eventoId") Long eventoId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select a from AlocacaoPatioEvento a
+            where a.organizacaoId = :organizacaoId and a.eventoId = :eventoId
+            order by a.id
+            """)
+    List<AlocacaoPatioEvento> findAllByEventoForUpdate(
             @Param("organizacaoId") Long organizacaoId,
             @Param("eventoId") Long eventoId);
 

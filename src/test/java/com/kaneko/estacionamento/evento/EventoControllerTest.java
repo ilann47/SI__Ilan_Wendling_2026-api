@@ -365,7 +365,7 @@ class EventoControllerTest {
     }
 
     @Test
-    void encerraVendasEIniciaOperacaoComPermissaoEVersao() throws Exception {
+    void percorreCicloOperacionalComPermissaoVersaoEAuditoria() throws Exception {
         Long eventoId = idEvento(criarEvento(
                 tokenContextual, "evento-operacao", payload("Evento Operacao", venueId),
                 status().isCreated()).andReturn().getResponse().getContentAsString());
@@ -391,12 +391,25 @@ class EventoControllerTest {
         iniciarOperacao(tokenSupervisor, eventoId, "\"5\"",
                 status().isPreconditionFailed());
 
+        encerrarOperacao(tokenContextual, eventoId, "\"6\"", true,
+                status().isForbidden());
+        encerrarOperacao(tokenSupervisor, eventoId, "\"6\"", false,
+                status().isBadRequest());
+        encerrarOperacao(tokenSupervisor, eventoId, "\"6\"", true,
+                status().isOk())
+                .andExpect(header().string("ETag", "\"7\""))
+                .andExpect(jsonPath("$.status").value("OPERACAO_ENCERRADA"));
+        encerrarOperacao(tokenSupervisor, eventoId, "\"6\"", true,
+                status().isPreconditionFailed());
+
         assertThat(auditorias.findAll().stream().map(a -> a.getAcao()).toList())
-                .contains("VENDAS_EVENTO_ENCERRADAS", "OPERACAO_EVENTO_INICIADA");
+                .contains("VENDAS_EVENTO_ENCERRADAS", "OPERACAO_EVENTO_INICIADA",
+                        "OPERACAO_EVENTO_ENCERRADA");
         assertThat(jdbc.queryForList(
                 "select event_type from evento_outbox where aggregate_id = ?",
                 String.class, eventoId))
-                .contains("VendasDoEventoEncerradas", "OperacaoDoEventoIniciada");
+                .contains("VendasDoEventoEncerradas", "OperacaoDoEventoIniciada",
+                        "OperacaoDoEventoEncerrada");
     }
 
     private org.springframework.test.web.servlet.ResultActions criarEvento(
@@ -456,6 +469,19 @@ class EventoControllerTest {
                         .header("Authorization", token).header("If-Match", ifMatch)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"confirmed\":true}"))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions encerrarOperacao(
+            String token, Long eventoId, String ifMatch,
+            boolean reconhecerPendenciaFinanceira,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/events/{id}/operation-closing", eventoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"confirmed\":true,"
+                                + "\"financialPendingAcknowledged\":"
+                                + reconhecerPendenciaFinanceira + "}"))
                 .andExpect(esperado);
     }
 

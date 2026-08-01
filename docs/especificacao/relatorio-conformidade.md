@@ -698,3 +698,21 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   RBAC, domínio, banco e OpenAPI.
 - A suíte passa de 481 para 489 testes; Flyway V31, Hibernate validate e OpenAPI
   permanecem sob regressão obrigatória.
+
+---
+
+## Atualização — Encerramento operacional do evento / UC720 (2026-08-01)
+
+- `POST /api/v1/events/{id}/operation-closing` exige `If-Match`, confirmação,
+  reconhecimento da pendência financeira e `access:operate` do Supervisor.
+- A transição `EM_OPERACAO → OPERACAO_ENCERRADA` somente ocorre depois de
+  bloquear deterministicamente as alocações e comprovar ocupação, presenças e
+  sessões abertas iguais a zero.
+- Check-in e check-out revalidam o estado do evento depois do lock da alocação,
+  impedindo que uma decisão iniciada antes do fechamento produza efeito depois
+  dele.
+- Auditoria operacional e `OperacaoDoEventoEncerrada` preservam o snapshot e a
+  ressalva `FONTES_FINANCEIRAS_PENDENTES`. Conciliação, fechamento financeiro,
+  DRE e finalização do evento permanecem pendentes, sem dados sintéticos.
+- A evolução é aditiva e não requer migration após V31; o legado
+  `Movimentacao` continua inalterado.

@@ -33,7 +33,7 @@ Estados utilizados:
 | UC717 — Check-out | `CONCLUIDA` | — | Política explícita, saída QR idempotente, presença encerrada, credencial consumida/reativada e ocupação decrementada | Saída manual, placa/RFID, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC718 — Abrir movimentação | `CONCLUIDA` | — | Sessão enterprise com origem `PEDIDO_EVENTO`, snapshots e vínculos tenant-aware aberta no check-in | Origens rotativo/mensalista permanecem fora da fase de eventos | Reabrir somente por defeito ou nova origem aprovada |
 | UC719 — Encerrar movimentação | `CONCLUIDA` | — | Sessão `PEDIDO_EVENTO` encerrada atomicamente no check-out, sem alterar o legado | Tarifação rotativa permanece fora da fase exclusiva de eventos | Reabrir somente por defeito ou nova origem aprovada |
-| UC720 — Fechar evento | `EXECUTAVEL` | UC715–UC719 concluídas | Ciclo operacional, presença, sessão e ocupação estão disponíveis | Encerramento versionado e ressalvas explícitas para fontes financeiras pendentes | Pode iniciar sem UC714/UC716; fechamento financeiro autêntico permanece separado |
+| UC720 — Fechar evento | `PARCIALMENTE_CONCLUIDA` | Fontes financeiras canônicas para a parte restante | Encerramento operacional versionado, bloqueio de ocupação/presença/sessão aberta e ressalva financeira auditável | Conciliação, aprovação, relatório de fechamento e finalização | Pagamento, reembolso, caixa, fiscal e repasse autênticos disponíveis |
 | UC721 — DRE por evento | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Fontes financeiras e fechamento | Relatórios legados existem | Linhagem econômica por evento | Disponibilizar fontes financeiras canônicas ou modo preliminar formal |
 | UC722 — Documento fiscal | `BLOQUEADA_EXTERNAMENTE` | Provedor fiscal, certificado e contratos regulatórios | Registros fiscais legados permanecem preservados | Transmissão, protocolo, contingência e armazenamento fiscal seguro | Provider/ambiente/certificado e escopo fiscal definidos |
 | UC723–UC724 — Compra e venda administrativa | `PARCIALMENTE_EXECUTAVEL` | Evolução tenant-aware de estoque e financeiro | Fluxos legados de notas e estoque existem | Agregados enterprise, razão de estoque e isolamento organizacional | Concluir a fase de eventos e planejar migração aditiva dos módulos legados |
@@ -79,6 +79,8 @@ ocupação; UC719 encerra a sessão `PEDIDO_EVENTO` no mesmo commit. A política
 possui default comercial: eventos legados permanecem sem política até
 configuração explícita e não podem ser publicados nessa condição.
 
-A próxima história independente e executável é a UC720. O fechamento operacional
-pode validar presenças, sessões e ocupação sem simular captura, reembolso,
-conciliação ou DRE financeira.
+O encerramento operacional da UC720 valida sob locks presença, sessão e ocupação,
+transiciona o evento para `OPERACAO_ENCERRADA` e impede novas admissões. A parte
+financeira permanece explicitamente pendente, sem simular captura, reembolso,
+conciliação ou DRE. A próxima história independente do gateway é a UC729, sujeita
+à modelagem documentada de escala tenant-aware.

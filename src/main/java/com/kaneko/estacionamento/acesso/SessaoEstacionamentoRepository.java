@@ -15,6 +15,10 @@ public interface SessaoEstacionamentoRepository
     Optional<SessaoEstacionamento> findByTentativaSaidaId(
             Long tentativaSaidaId);
 
+    boolean existsByOrganizacaoIdAndEventoIdAndStatus(
+            Long organizacaoId, Long eventoId,
+            StatusSessaoEstacionamento status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select s from SessaoEstacionamento s

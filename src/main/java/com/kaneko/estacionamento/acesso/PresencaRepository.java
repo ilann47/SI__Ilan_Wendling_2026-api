@@ -12,6 +12,9 @@ public interface PresencaRepository extends JpaRepository<Presenca, Long> {
 
     Optional<Presenca> findByTentativaCheckoutId(Long tentativaCheckoutId);
 
+    boolean existsByOrganizacaoIdAndEventoIdAndStatus(
+            Long organizacaoId, Long eventoId, StatusPresenca status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select p from Presenca p

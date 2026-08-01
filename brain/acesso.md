@@ -46,6 +46,8 @@ POST /api/v1/check-outs + Idempotency-Key
   `VENDAS_ABERTAS → VENDAS_ENCERRADAS` com `If-Match`.
 - `POST /api/v1/events/{eventoId}/operation-start`: executa
   `VENDAS_ENCERRADAS → EM_OPERACAO` com `If-Match` e `access:operate`.
+- `POST /api/v1/events/{eventoId}/operation-closing`: bloqueia novas decisões
+  depois de comprovar ocupação, presença e sessão abertas iguais a zero.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -86,6 +88,8 @@ OpenAPI e disputa concorrente da última vaga.
   acesso resolve `SHA-256` e nunca persiste/loga o token.
 - A alocação é o lock de serialização de ocupação; leitura preliminar usa apenas
   existência para não manter versão JPA obsoleta antes do lock.
+- O estado do evento é revalidado depois do lock da alocação para serializar o
+  acesso com o encerramento operacional sem criar um lock global por evento.
 - A tentativa é persistida em avaliação antes dos efeitos e termina no mesmo
   commit. Falha técnica reverte tudo; recusa de negócio é preservada.
 - Constraints compostas defendem organização, evento, pátio, credencial, QR,
@@ -111,3 +115,4 @@ OpenAPI e disputa concorrente da última vaga.
 |---|---|
 | 2026-08-01 | Implementa UC715/UC718 com check-in QR online, presença, sessão e ocupação concorrente. |
 | 2026-08-01 | Implementa UC717/UC719 com check-out QR, reentrada explícita e encerramento transacional. |
+| 2026-08-01 | Serializa admissões e saídas concorrentes com o encerramento operacional da UC720. |

@@ -3,6 +3,10 @@ package com.kaneko.estacionamento.evento;
 import com.kaneko.estacionamento.auditoria.AuditoriaService;
 import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
 import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
+import com.kaneko.estacionamento.acesso.PresencaRepository;
+import com.kaneko.estacionamento.acesso.SessaoEstacionamentoRepository;
+import com.kaneko.estacionamento.acesso.StatusPresenca;
+import com.kaneko.estacionamento.acesso.StatusSessaoEstacionamento;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
@@ -13,6 +17,7 @@ import com.kaneko.estacionamento.evento.dto.AtualizarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.ChecklistConfiguracaoEventoResponse;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.EventoResponse;
+import com.kaneko.estacionamento.evento.dto.EncerrarOperacaoEventoRequest;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
 import com.kaneko.estacionamento.inventario.alocacao.AlocacaoPatioEventoRepository;
 import com.kaneko.estacionamento.inventario.produto.ProdutoEstacionamentoRepository;
@@ -40,6 +45,8 @@ public class EventoService {
     private final VenueRepository venues;
     private final AlocacaoPatioEventoRepository alocacoes;
     private final ProdutoEstacionamentoRepository produtos;
+    private final PresencaRepository presencas;
+    private final SessaoEstacionamentoRepository sessoes;
     private final IdempotenciaRepository idempotencia;
     private final AuditoriaService auditoria;
     private final OutboxService outbox;
@@ -48,6 +55,8 @@ public class EventoService {
             EventoRepository eventos, OrganizacaoRepository organizacoes,
             VenueRepository venues, AlocacaoPatioEventoRepository alocacoes,
             ProdutoEstacionamentoRepository produtos,
+            PresencaRepository presencas,
+            SessaoEstacionamentoRepository sessoes,
             IdempotenciaRepository idempotencia, AuditoriaService auditoria,
             OutboxService outbox) {
         this.eventos = eventos;
@@ -55,6 +64,8 @@ public class EventoService {
         this.venues = venues;
         this.alocacoes = alocacoes;
         this.produtos = produtos;
+        this.presencas = presencas;
+        this.sessoes = sessoes;
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.outbox = outbox;
@@ -271,6 +282,53 @@ public class EventoService {
         return EventoResponse.from(evento);
     }
 
+    @Transactional
+    public EventoResponse encerrarOperacao(
+            Long organizacaoId, Long eventoId, long versaoEsperada,
+            EncerrarOperacaoEventoRequest request) {
+        validarEncerramentoOperacional(request);
+        Evento evento = buscarParaTransicao(
+                organizacaoId, eventoId, versaoEsperada);
+        if (evento.getStatus() != StatusEvento.EM_OPERACAO) {
+            throw new ConflitoException(
+                    "Somente evento em operacao pode encerrar a operacao.");
+        }
+
+        var alocacoesDoEvento = alocacoes.findAllByEventoForUpdate(
+                organizacaoId, eventoId);
+        boolean possuiOcupacao = alocacoesDoEvento.stream()
+                .anyMatch(alocacao -> alocacao.getOcupacaoAtual() > 0);
+        boolean possuiPresenca = presencas.existsByOrganizacaoIdAndEventoIdAndStatus(
+                organizacaoId, eventoId, StatusPresenca.DENTRO);
+        boolean possuiSessao = sessoes.existsByOrganizacaoIdAndEventoIdAndStatus(
+                organizacaoId, eventoId, StatusSessaoEstacionamento.ABERTA);
+        if (possuiOcupacao || possuiPresenca || possuiSessao) {
+            throw new ConflitoException(
+                    "A operacao possui ocupacao, presenca ou sessao aberta.");
+        }
+
+        Map<String, Object> anterior = snapshot(evento);
+        Long versaoAnterior = evento.getVersion();
+        evento.encerrarOperacao();
+        eventos.flush();
+        Map<String, Object> posterior = snapshot(evento);
+        posterior.put("ocupacaoAberta", 0);
+        posterior.put("presencasAbertas", 0);
+        posterior.put("sessoesAbertas", 0);
+        posterior.put("fechamentoFinanceiro", "PENDENTE");
+        posterior.put("ressalvaFinanceiraReconhecida", true);
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                organizacaoId, "OPERACAO_EVENTO_ENCERRADA", RECURSO,
+                evento.getId(), evento.getId(), null,
+                "FONTES_FINANCEIRAS_PENDENTES", anterior, posterior,
+                versaoAnterior, evento.getVersion(),
+                ClasseRetencaoAuditoria.OPERACIONAL));
+        outbox.publicar(new PublicarEventoOutboxCommand(
+                "OperacaoDoEventoEncerrada", organizacaoId, RECURSO,
+                evento.getId(), evento.getVersion(), null, 1, posterior));
+        return EventoResponse.from(evento);
+    }
+
     private Evento buscarParaTransicao(
             Long organizacaoId, Long eventoId, long versaoEsperada) {
         Evento evento = eventos.findByIdAndOrganizacaoIdForUpdate(
@@ -302,6 +360,18 @@ public class EventoService {
         if (request == null || !Boolean.TRUE.equals(request.confirmed())) {
             throw new IllegalArgumentException(
                     "A confirmacao do " + operacao + " e obrigatoria.");
+        }
+    }
+
+    private static void validarEncerramentoOperacional(
+            EncerrarOperacaoEventoRequest request) {
+        if (request == null || !Boolean.TRUE.equals(request.confirmed())) {
+            throw new IllegalArgumentException(
+                    "A confirmacao do encerramento da operacao e obrigatoria.");
+        }
+        if (!Boolean.TRUE.equals(request.financialPendingAcknowledged())) {
+            throw new IllegalArgumentException(
+                    "A pendencia do fechamento financeiro deve ser reconhecida.");
         }
     }
 

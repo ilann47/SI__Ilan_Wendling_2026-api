@@ -50,6 +50,12 @@ POST /api/v1/events/{eventoId}/operation-start + If-Match
   -> access:operate
   -> VENDAS_ENCERRADAS -> EM_OPERACAO
   -> auditoria + OperacaoDoEventoIniciada
+
+POST /api/v1/events/{eventoId}/operation-closing + If-Match
+  -> access:operate + reconhecimento da pendência financeira
+  -> locks das alocações + ocupação/presença/sessão zeradas
+  -> EM_OPERACAO -> OPERACAO_ENCERRADA
+  -> auditoria + OperacaoDoEventoEncerrada
 ```
 
 `PATCH /api/v1/events/{eventoId}` define `reentryPolicy` somente em `RASCUNHO`,
@@ -67,6 +73,8 @@ ausente.
   usando a versão atual; agendamento ainda não é aceito.
 - `POST /api/v1/events/{eventoId}/sales-closing`: encerra vendas.
 - `POST /api/v1/events/{eventoId}/operation-start`: inicia a operação de acesso.
+- `POST /api/v1/events/{eventoId}/operation-closing`: encerra somente a parte
+  operacional, mantendo a conciliação financeira explicitamente pendente.
 - Repetição da mesma chave e payload devolve o agregado original; payload
   divergente com a mesma chave retorna `409`.
 
@@ -120,6 +128,8 @@ PostgreSQL para período, estado e FK composta.
   papel Supervisor com `access:operate` e não ocorre implicitamente no check-in.
 - A política não é inferida nem escolhida pelo operador no portão; fica
   versionada no agregado antes da publicação.
+- O encerramento operacional não cria números financeiros. O reconhecimento da
+  ressalva fica no contrato, auditoria e outbox até existirem fontes canônicas.
 
 ## Módulos relacionados
 
@@ -143,3 +153,4 @@ PostgreSQL para período, estado e FK composta.
 | 2026-07-30 | Implementa abertura imediata `PUBLICADO → VENDAS_ABERTAS` com ETag, auditoria e outbox. |
 | 2026-08-01 | Implementa fechamento de vendas e início explícito de operação para [[acesso]]. |
 | 2026-08-01 | Implementa política de reentrada explícita e imutável após o rascunho. |
+| 2026-08-01 | Implementa encerramento operacional concorrente e ressalva financeira explícita da UC720. |

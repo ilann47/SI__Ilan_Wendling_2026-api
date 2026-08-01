@@ -5,6 +5,7 @@ import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
 import com.kaneko.estacionamento.evento.dto.AtualizarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.EventoResponse;
+import com.kaneko.estacionamento.evento.dto.EncerrarOperacaoEventoRequest;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -112,6 +113,20 @@ public class EventoController {
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
             @Valid @RequestBody PublicarEventoRequest request) {
         EventoResponse response = service.iniciarOperacao(
+                principal.organizacaoId(), eventoId, extrairVersao(ifMatch), request);
+        return ResponseEntity.ok()
+                .eTag("\"" + response.version() + "\"")
+                .body(response);
+    }
+
+    @PostMapping("/{eventoId}/operation-closing")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('access:operate', authentication)")
+    public ResponseEntity<EventoResponse> encerrarOperacao(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long eventoId,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody EncerrarOperacaoEventoRequest request) {
+        EventoResponse response = service.encerrarOperacao(
                 principal.organizacaoId(), eventoId, extrairVersao(ifMatch), request);
         return ResponseEntity.ok()
                 .eTag("\"" + response.version() + "\"")

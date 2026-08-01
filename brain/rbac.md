@@ -79,7 +79,8 @@ proteção do último administrador.
   `credentials:issue`, concedida a Administrador, Gestor e Organizador.
 - [[acesso]] — Supervisor recebe `access:operate`, `access:checkin` e
   `access:checkout`; Operador recebe entrada e saída; Fiscal de acesso recebe
-  apenas `access:checkin`.
+  apenas `access:checkin`. `access:operate` protege abertura e encerramento
+  operacional do evento.
 
 ## Histórico (data + ação)
 
@@ -96,3 +97,4 @@ proteção do último administrador.
 | 2026-07-30 | Catálogo recebe `orders:cancel` para cancelamento do próprio pedido. |
 | 2026-08-01 | Catálogo recebe Supervisor, Operador, Fiscal de acesso e permissões operacionais de check-in. |
 | 2026-08-01 | Catálogo recebe `access:checkout` para Supervisor e Operador. |
+| 2026-08-01 | Reutiliza `access:operate` no encerramento operacional da UC720. |

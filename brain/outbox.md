@@ -87,3 +87,4 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 | 2026-07-30 | Persiste PedidoCancelado e InventarioLiberado na compensação UC713. |
 | 2026-08-01 | Persiste decisões e efeitos do check-in online sem segredo QR. |
 | 2026-08-01 | Persiste política, check-out, encerramento da sessão e ocupação resultante. |
+| 2026-08-01 | Persiste `OperacaoDoEventoEncerrada` com snapshot e ressalva financeira. |

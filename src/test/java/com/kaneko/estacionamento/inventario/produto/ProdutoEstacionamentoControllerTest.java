@@ -1191,6 +1191,9 @@ class ProdutoEstacionamentoControllerTest {
         realizarCheckin(tokenContextual, "checkout-entry", payload, status().isOk())
                 .andExpect(jsonPath("$.decision").value("AUTORIZADA"));
 
+        encerrarOperacao(tokenContextual, eventoId, "\"6\"",
+                status().isConflict());
+
         String primeiro = realizarCheckout(
                         tokenContextual, "checkout-online-1", payload, status().isOk())
                 .andExpect(jsonPath("$.decision").value("AUTORIZADA"))
@@ -1209,6 +1212,9 @@ class ProdutoEstacionamentoControllerTest {
         realizarCheckout(tokenContextual, "checkout-online-2", payload, status().isOk())
                 .andExpect(jsonPath("$.decision").value("RECUSADA"))
                 .andExpect(jsonPath("$.reasonCode").value("SAIDA_DUPLICADA"));
+        encerrarOperacao(tokenContextual, eventoId, "\"6\"", status().isOk())
+                .andExpect(header().string("ETag", "\"7\""))
+                .andExpect(jsonPath("$.status").value("OPERACAO_ENCERRADA"));
 
         assertThat(jdbc.queryForObject(
                 "select status from credencial_acesso where id = ?",
@@ -1529,6 +1535,17 @@ class ProdutoEstacionamentoControllerTest {
                         .header("Authorization", token)
                         .header("Idempotency-Key", chave)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions encerrarOperacao(
+            String token, Long eventId, String ifMatch,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/events/{id}/operation-closing", eventId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"confirmed\":true,"
+                                + "\"financialPendingAcknowledged\":true}"))
                 .andExpect(esperado);
     }
 

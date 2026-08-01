@@ -90,3 +90,4 @@ imutabilidade física no PostgreSQL.
 | 2026-07-30 | Cancelamento registra compensação de inventário e bloqueio sem segredo QR. |
 | 2026-08-01 | Check-in passa a auditar autorização ou recusa sem token/hash QR. |
 | 2026-08-01 | Política de reentrada e check-out passam a registrar versões, decisão e efeitos sem segredo QR. |
+| 2026-08-01 | Encerramento operacional registra snapshot e ressalva financeira da UC720. |

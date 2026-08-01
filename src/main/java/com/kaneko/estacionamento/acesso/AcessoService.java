@@ -161,6 +161,12 @@ public class AcessoService {
                         request.parkingFacilityId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Alocacao de patio do evento", request.parkingFacilityId()));
+        if (eventos.findStatusByIdAndOrganizacaoId(
+                        request.eventId(), organizacaoId)
+                .filter(StatusEvento.EM_OPERACAO::equals).isEmpty()) {
+            return recusar(tentativa, MotivoDecisaoAcesso.EVENTO_FORA_DE_OPERACAO,
+                    chave, requestHash, atorId, agora);
+        }
         if (!dentroDaJanela(agora, alocacao.getInicio(), alocacao.getFim())) {
             return recusar(tentativa, MotivoDecisaoAcesso.FORA_DA_JANELA,
                     chave, requestHash, atorId, agora);

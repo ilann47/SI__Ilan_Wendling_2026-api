@@ -122,6 +122,14 @@ public class Evento extends AuditableEntity {
         status = StatusEvento.EM_OPERACAO;
     }
 
+    public void encerrarOperacao() {
+        if (status != StatusEvento.EM_OPERACAO) {
+            throw new IllegalStateException(
+                    "Somente evento em operacao pode encerrar a operacao.");
+        }
+        status = StatusEvento.OPERACAO_ENCERRADA;
+    }
+
     static String validarFuso(String valor) {
         String fuso = textoObrigatorio(valor, "fuso horario", 60);
         try {

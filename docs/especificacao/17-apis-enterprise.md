@@ -161,7 +161,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /events/{id}/sales-opening` | AS-IS: `startsAt` opcional + `If-Match` | `200 Evento`, `ETag`; `202` permanece TARGET | `events:publish`; evento publicado; abertura imediata auditada e com outbox; instante futuro retorna `409` até existir scheduler; ausência de versão `428`, divergência `412` |
 | `POST /events/{id}/sales-closing` | motivo | `200` | Organizador/Gestor |
 | `POST /events/{id}/operation-opening` | checklist | `200` | Supervisor |
-| `POST /events/{id}/operation-closing` | pendências | `200` | Supervisor |
+| `POST /events/{id}/operation-closing` | AS-IS: `confirmed`, `financialPendingAcknowledged` + `If-Match` | `200 Evento`, `ETag` | `access:operate`; somente `EM_OPERACAO`; bloqueia ocupação, presença ou sessão aberta; registra ressalva financeira, auditoria e outbox |
 | `POST /events/{id}/cancellation` | motivo, política | `202` | Gestor; inicia compensações |
 | `POST /events/{id}/completion` | fechamentoId | `200` | fechamento aprovado |
 

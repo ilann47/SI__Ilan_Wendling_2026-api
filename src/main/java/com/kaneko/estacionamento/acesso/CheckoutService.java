@@ -155,6 +155,12 @@ public class CheckoutService {
                         organizacaoId, request.eventId(), request.parkingFacilityId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Alocacao de patio do evento", request.parkingFacilityId()));
+        if (eventos.findStatusByIdAndOrganizacaoId(
+                        request.eventId(), organizacaoId)
+                .filter(StatusEvento.EM_OPERACAO::equals).isEmpty()) {
+            return recusar(tentativa, MotivoDecisaoAcesso.EVENTO_FORA_DE_OPERACAO,
+                    chave, requestHash, atorId, agora);
+        }
 
         int ocupacao = alocacao.registrarSaida();
         tentativa.autorizar(

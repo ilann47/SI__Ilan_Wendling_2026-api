@@ -152,7 +152,8 @@ terceiros aguarda escopos contextuais próprios.
 
 `access:operate`, `access:checkin` e `access:checkout` estão implementadas com os
 papéis de sistema `SUPERVISOR`, `OPERADOR` e `FISCAL_ACESSO`. O Supervisor recebe
-as três; Operador recebe check-in e check-out; Fiscal de acesso recebe somente
+as três e usa `access:operate` tanto para iniciar quanto para encerrar a operação;
+Operador recebe check-in e check-out; Fiscal de acesso recebe somente
 check-in. `ADMIN_ORGANIZACAO` e `GESTOR` não
 executam o portão por implicação. A atribuição ainda usa escopo organizacional;
 turno, evento, pátio, faixa e identidade de dispositivo permanecem controles

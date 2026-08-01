@@ -77,3 +77,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-01 | UC714 registrada como bloqueada externamente; UC715 confirmada como executável e independente do gateway. |
 | 2026-08-01 | UC715/UC718 implementadas com check-in QR online e ocupação concorrente. |
 | 2026-08-01 | UC717/UC719 implementadas com política explícita, check-out QR e encerramento da sessão. |
+| 2026-08-01 | UC720 recebe encerramento operacional seguro; fechamento financeiro permanece pendente. |

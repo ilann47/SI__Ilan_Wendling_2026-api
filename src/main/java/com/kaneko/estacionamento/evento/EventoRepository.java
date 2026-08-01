@@ -10,6 +10,14 @@ import org.springframework.data.repository.query.Param;
 public interface EventoRepository extends JpaRepository<Evento, Long> {
     Optional<Evento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    @Query("""
+            select e.status from Evento e
+            where e.id = :id and e.organizacaoId = :organizacaoId
+            """)
+    Optional<StatusEvento> findStatusByIdAndOrganizacaoId(
+            @Param("id") Long id,
+            @Param("organizacaoId") Long organizacaoId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select e from Evento e

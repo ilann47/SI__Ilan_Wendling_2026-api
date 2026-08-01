@@ -331,6 +331,14 @@ O fluxo legado e o cálculo tarifário rotativo não foram alterados.
 **Atores:** Supervisor encerra operação; Financeiro concilia; Gestor aprova.  
 **Pré-condições:** entradas encerradas; fontes disponíveis ou ressalva formal.
 
+**Situação implementada:** o recorte operacional está concluído. O Supervisor
+executa um comando versionado que somente aceita evento `EM_OPERACAO` sem
+ocupação, presença ou sessão aberta. A transição para `OPERACAO_ENCERRADA`
+registra auditoria e `OperacaoDoEventoEncerrada`, com reconhecimento formal de
+que o fechamento financeiro permanece pendente. Conciliação, aprovação,
+relatório imutável e `EventoFinalizado` não são simulados enquanto as fontes
+financeiras canônicas estiverem indisponíveis.
+
 **Fluxo principal:** consolida inventário, pedidos, pagamentos, credenciais, acessos, sessões, caixas, fiscal e repasses; detecta divergências; resolve/aprova; fecha e finaliza evento.  
 **Alternativos:** fechamento com ressalva e tarefas pendentes.  
 **Exceções:** E1 sessões críticas abertas; E2 caixa não fechado; E3 divergência sem aprovação; E4 pagamento não conciliado.  

@@ -58,7 +58,7 @@ class EventoTest {
     }
 
     @Test
-    void encerraVendasEIniciaOperacaoSomenteNaOrdemAprovada() {
+    void percorreCicloOperacionalSomenteNaOrdemAprovada() {
         Evento evento = novoEvento();
         evento.definirPoliticaReentrada(PoliticaReentrada.ENTRADA_UNICA);
         evento.configurar();
@@ -74,6 +74,10 @@ class EventoTest {
         evento.iniciarOperacao();
         assertThat(evento.getStatus()).isEqualTo(StatusEvento.EM_OPERACAO);
         assertThatIllegalStateException().isThrownBy(evento::iniciarOperacao);
+
+        evento.encerrarOperacao();
+        assertThat(evento.getStatus()).isEqualTo(StatusEvento.OPERACAO_ENCERRADA);
+        assertThatIllegalStateException().isThrownBy(evento::encerrarOperacao);
     }
 
     @Test

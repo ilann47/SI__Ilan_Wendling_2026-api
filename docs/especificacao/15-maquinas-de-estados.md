@@ -16,9 +16,10 @@
 define `ENTRADA_UNICA` ou `REENTRADA_PERMITIDA` com `If-Match`. O comando
 explícito de publicação exige essa política e executa `RASCUNHO → CONFIGURADO → PUBLICADO`
 somente com alocação vendável e produto publicado. Comandos também versionados
-executam `PUBLICADO → VENDAS_ABERTAS → VENDAS_ENCERRADAS → EM_OPERACAO`, com
-auditoria e outbox em cada etapa. Agendamento, suspensão e transições posteriores
-continuam TARGET.
+executam `PUBLICADO → VENDAS_ABERTAS → VENDAS_ENCERRADAS → EM_OPERACAO →
+OPERACAO_ENCERRADA`, com auditoria e outbox em cada etapa. O encerramento exige
+ocupação, presenças e sessões zeradas e registra ressalva financeira explícita.
+Agendamento, suspensão, conciliação e finalização continuam TARGET.
 
 ```mermaid
 stateDiagram-v2
