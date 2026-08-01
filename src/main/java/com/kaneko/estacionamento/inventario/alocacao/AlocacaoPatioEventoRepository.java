@@ -14,6 +14,9 @@ public interface AlocacaoPatioEventoRepository
 
     Optional<AlocacaoPatioEvento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    Optional<AlocacaoPatioEvento> findByOrganizacaoIdAndEventoIdAndPatioId(
+            Long organizacaoId, Long eventoId, Long patioId);
+
     boolean existsByOrganizacaoIdAndEventoIdAndPatioId(
             Long organizacaoId, Long eventoId, Long patioId);
 

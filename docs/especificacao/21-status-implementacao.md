@@ -31,7 +31,7 @@ Estados utilizados:
 | UC705 — Cadastrar vagas | `CONCLUIDA` | — | Vaga tenant-aware, batch idempotente, capacidade serializada, conflitos parciais, auditoria, outbox e constraints | Coordenadas e mudanças de disponibilidade pertencem a recortes próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC706–UC713 | `CONCLUIDA` | — | Alocação multipátio até cancelamento compensatório de pedido, conforme relatório de conformidade | — | Reabrir somente por defeito ou mudança aprovada |
 | UC714 — Reembolsar pagamento | `BLOQUEADA_EXTERNAMENTE` | Pagamento capturado real, gateway, credenciais sandbox, assinatura de webhook e política comercial | UC713 preserva `EM_REEMBOLSO`, bloqueia o direito e registra os efeitos compensatórios | Solicitação vinculada a captura, aprovação, execução, retorno, conciliação e restituição real | Provider e contrato escolhidos; credenciais/segredos sandbox disponíveis; alçadas, prazo, multa, crédito e reembolso parcial definidos |
-| UC715 — Realizar check-in | `CONCLUIDA` | — | QR online tenant-aware, tentativa terminal, consumo, presença, sessão de evento, ocupação concorrente, auditoria, outbox e idempotência | Placa/RFID, override, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
+| UC715 — Realizar check-in | `CONCLUIDA` | — | Validação QR sem consumo e check-in QR tenant-aware, tentativa terminal, consumo, presença, sessão de evento, ocupação concorrente, auditoria, outbox e idempotência | Placa/RFID, override, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC716 — Check-in offline | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | UC715 e modelo canônico de decisão | QR seguro e contexto tenant existem | Pacote assinado, edge, sequência, armazenamento local e sincronização | Concluir UC715 e definir infraestrutura edge verificável |
 | UC717 — Check-out | `CONCLUIDA` | — | Política explícita, saída QR idempotente, presença encerrada, credencial consumida/reativada e ocupação decrementada | Saída manual, placa/RFID, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC718 — Abrir movimentação | `CONCLUIDA` | — | Sessão enterprise com origem `PEDIDO_EVENTO`, snapshots e vínculos tenant-aware aberta no check-in | Origens rotativo/mensalista permanecem fora da fase de eventos | Reabrir somente por defeito ou nova origem aprovada |
@@ -104,29 +104,32 @@ A leitura exige `audit:read`, concedida somente a Administrador da Organização
 Gestor enquanto os escopos ABAC operacionais não estiverem implementados. Assim,
 `access:operate` não foi ampliada e nenhum segredo QR é retornado.
 
+`POST /api/v1/access-validations` foi concluído sobre o mesmo agregado de
+tentativa, agora discriminado como `VALIDACAO`, `CHECKIN` ou `CHECKOUT`. A
+validação QR aplica as regras online, registra decisão, auditoria, outbox e
+idempotência, mas responde `consumptionPerformed=false` e não altera credencial,
+presença, sessão ou ocupação. `access:validate` é operacional e separada de
+`audit:read` e `access:operate`.
+
 ## 21.5 Auditoria dos recortes remanescentes
 
 Depois das entregas de setor, vaga, leitura própria de pedidos, bloqueio de
-credencial e feed auditável de acesso, os candidatos internos restantes foram confrontados novamente com
-código e baseline. Nenhum deles possui hoje contrato suficiente para uma nova
-história vertical segura:
+credencial, validação sem consumo e feed auditável de acesso, os candidatos
+internos restantes foram confrontados novamente com código e baseline. Nenhum
+deles possui hoje contrato suficiente para uma nova história vertical segura:
 
 1. quota por canal não possui endpoint, catálogo canônico de canais nem regra
    que relacione o `canal` textual da reserva aos limites do produto;
 2. ocupação por setor/categoria não pode ser derivada porque check-in e sessão
    guardam evento/pátio, mas não setor/vaga, e produto/alocação também não roteiam
    a entrada para um setor;
-3. `POST /access-validations` exige decisão sem consumo, enquanto a tentativa
-   persistida atual representa admissão/saída e sua autorização exige efeitos de
-   ocupação; a baseline não decide se a validação preliminar cria outra entidade
-   ou outra transição;
-4. desbloqueio precisa impedir reativação de credencial bloqueada por
+3. desbloqueio precisa impedir reativação de credencial bloqueada por
    cancelamento/fraude e definir alçada; reemissão precisa definir vínculo com a
    substituída e migrar a unicidade por unidade; troca de placa depende da
    política comercial aprovada;
-5. abertura agendada de vendas ainda não possui persistência, cancelamento,
+4. abertura agendada de vendas ainda não possui persistência, cancelamento,
    reagendamento nem semântica multi-instância para um scheduler confiável;
-6. consoles administrativos enterprise dependem de contratos de consulta de
+5. consoles administrativos enterprise dependem de contratos de consulta de
    eventos, venues, pátios, produtos e alocações que a OpenAPI atual
    deliberadamente não publica.
 

@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.acesso.dto;
 
 import com.kaneko.estacionamento.acesso.MotivoDecisaoAcesso;
+import com.kaneko.estacionamento.acesso.OperacaoTentativaAcesso;
 import com.kaneko.estacionamento.acesso.StatusTentativaAcesso;
 import com.kaneko.estacionamento.acesso.TentativaAcesso;
 import java.time.OffsetDateTime;
@@ -11,6 +12,7 @@ public record TentativaAcessoResponse(
         Long parkingFacilityId,
         Long actorId,
         Long credentialId,
+        OperacaoTentativaAcesso operation,
         String direction,
         String readSource,
         String lane,
@@ -24,7 +26,8 @@ public record TentativaAcessoResponse(
         return new TentativaAcessoResponse(
                 tentativa.getId(), tentativa.getEventoId(),
                 tentativa.getPatioId(), tentativa.getAtorId(),
-                tentativa.getCredencialId(), tentativa.getDirecao(),
+                tentativa.getCredencialId(), tentativa.getOperacao(),
+                tentativa.getDirecao(),
                 tentativa.getOrigemLeitura(), tentativa.getFaixa(),
                 tentativa.getStatus(), tentativa.getMotivo(),
                 tentativa.getOcupacaoResultante(), tentativa.getRecebidoEm(),

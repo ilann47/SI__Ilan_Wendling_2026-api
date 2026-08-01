@@ -4,8 +4,9 @@
 
 ## Objetivo
 
-Decidir e registrar check-in/check-out online de evento sem expor o segredo QR,
-controlando direito, presença, sessão e ocupação de forma atômica.
+Validar, decidir e registrar check-in/check-out online de evento sem expor o
+segredo QR, separando decisão preliminar de consumo físico e controlando direito,
+presença, sessão e ocupação de forma atômica.
 
 ## Contexto
 
@@ -27,6 +28,13 @@ POST /api/v1/check-ins + Idempotency-Key
   -> ocupação da alocação incrementada sob lock pessimista
   -> auditoria + outbox + resposta idempotente
 
+POST /api/v1/access-validations + Idempotency-Key
+  -> JWT contextual + access:validate
+  -> tentativa VALIDACAO em RECEBIDA -> AVALIANDO
+  -> evento/alocação/janelas + QR por SHA-256 + credencial sem locks de consumo
+  -> AUTORIZADA/RECUSADA + auditoria + outbox + idempotência
+  -> nenhuma mudança em credencial, presença, sessão ou ocupação
+
 POST /api/v1/check-outs + Idempotency-Key
   -> JWT contextual + access:checkout
   -> tentativa SAIDA RECEBIDA -> AVALIANDO
@@ -46,6 +54,8 @@ GET /api/v1/access-attempts
 
 - `POST /api/v1/check-ins`: recebe `qrToken`, `eventId`, `parkingFacilityId` e
   `lane`; retorna decisão, motivo estável, tentativa e IDs dos efeitos.
+- `POST /api/v1/access-validations`: recebe o mesmo escopo QR, retorna decisão
+  preliminar com `consumptionPerformed=false` e não garante o check-in futuro.
 - `POST /api/v1/check-outs`: usa o mesmo identificador QR e escopo, encerra os
   efeitos abertos e retorna ocupação e estado resultantes.
 - `GET /api/v1/access-attempts`: lista tentativas do tenant com cursor,
@@ -59,8 +69,9 @@ GET /api/v1/access-attempts
 
 ## Estrutura de Dados (DTOs, Entidades)
 
-`TentativaAcesso` guarda escopo, ator, faixa, direção, origem, credencial/QR
-resolvidos, decisão, motivo, ocupação resultante e instantes. `Presenca` representa
+`TentativaAcesso` guarda escopo, ator, faixa, operação
+`VALIDACAO/CHECKIN/CHECKOUT`, direção, origem, credencial/QR resolvidos, decisão,
+motivo, ocupação resultante e instantes. `Presenca` representa
 o estado físico dentro do evento. `SessaoEstacionamento` preserva pedido, item,
 credencial, presença, tentativa, placa opcional e origem `PEDIDO_EVENTO`.
 `AlocacaoPatioEvento.ocupacaoAtual` é a projeção operacional concorrente.
@@ -78,6 +89,8 @@ persistidos em [[outbox]].
 
 - `400`: cabeçalho, token estrutural, payload ou campo desconhecido inválido.
 - `403`: ausência de `access:checkin`, `access:checkout` ou `access:operate`.
+- `403`: validação sem `access:validate`; Admin/Gestor não operam o portão por
+  implicação.
 - `403`: feed sem `audit:read`; permissões operacionais não implicam leitura
   organizacional.
 - `404`: evento ou alocação invisível no tenant.
@@ -91,7 +104,8 @@ Há testes de domínio, contrato HTTP, RBAC, idempotência, segredo QR, decisão
 autorizada/recusada, duplicidade, lotação, presença, sessão, ocupação, política
 de entrada única/reentrada, auditoria, outbox, Flyway, Hibernate validate,
 OpenAPI, feed paginado/filtrado, isolamento tenant e disputa concorrente da
-última vaga.
+última vaga. A validação sem consumo cobre replay, payload divergente, RBAC,
+auditoria/outbox e preservação de credencial/presença/sessão/ocupação.
 
 ## Decisões Técnicas
 
@@ -103,6 +117,10 @@ OpenAPI, feed paginado/filtrado, isolamento tenant e disputa concorrente da
   acesso com o encerramento operacional sem criar um lock global por evento.
 - A tentativa é persistida em avaliação antes dos efeitos e termina no mesmo
   commit. Falha técnica reverte tudo; recusa de negócio é preservada.
+- `VALIDACAO` é uma operação terminal do mesmo agregado, não uma entidade
+  paralela. Sua autorização exige credencial resolvida, mas a constraint impede
+  ocupação resultante; uma resposta válida é apenas um snapshot e não reserva a
+  entrada futura.
 - Constraints compostas defendem organização, evento, pátio, credencial, QR,
   tentativa, presença e sessão também contra escrita fora da aplicação.
 - O legado `Movimentacao` não foi alterado; sessão enterprise é aditiva.
@@ -131,3 +149,4 @@ OpenAPI, feed paginado/filtrado, isolamento tenant e disputa concorrente da
 | 2026-08-01 | Implementa UC717/UC719 com check-out QR, reentrada explícita e encerramento transacional. |
 | 2026-08-01 | Serializa admissões e saídas concorrentes com o encerramento operacional da UC720. |
 | 2026-08-01 | Publica feed auditável tenant-aware de tentativas com cursor e filtros. |
+| 2026-08-01 | Implementa validação QR idempotente sem consumo físico ou comercial. |

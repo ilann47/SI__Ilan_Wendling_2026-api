@@ -781,3 +781,21 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   operacional do feed completo.
 - Testes cobrem cursor, filtros, contrato de erro, RBAC, isolamento tenant e
   publicação OpenAPI; a suíte passa de 506 para 508 testes.
+
+---
+
+## Atualização — Validação QR sem consumo (2026-08-01)
+
+- A migration `V37__validacao_acesso_sem_consumo.sql` discrimina operações
+  `VALIDACAO/CHECKIN/CHECKOUT`, preserva os registros anteriores por backfill e
+  impede no PostgreSQL que uma validação autorizada registre ocupação.
+- `POST /api/v1/access-validations` exige `Idempotency-Key`, tenant contextual e
+  `access:validate`, concedida a Supervisor, Operador e Fiscal de Acesso.
+- O fluxo aplica evento, pátio, janelas, QR, credencial, duplicidade e lotação,
+  mas não altera credencial, presença, sessão ou ocupação e informa
+  `consumptionPerformed=false`.
+- Decisões são auditadas e publicam `AcessoAutorizado/AcessoRecusado` com
+  `operacao=VALIDACAO` e `consumoRealizado=false`; não publicam check-in,
+  movimentação ou alteração de ocupação.
+- Testes cobrem domínio, não consumo, check-in posterior, replay, conflito de
+  payload, contrato estrito, RBAC e OpenAPI; a suíte passa de 508 para 511 testes.

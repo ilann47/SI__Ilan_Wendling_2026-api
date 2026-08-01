@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = {
         AcessoController.class,
         CheckoutController.class,
+        ValidacaoAcessoController.class,
         TentativaAcessoController.class
 })
 public class AcessoApiExceptionHandler {

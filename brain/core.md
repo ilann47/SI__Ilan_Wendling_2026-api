@@ -84,3 +84,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-01 | Auditoria final consolida dependências que bloqueiam os recortes restantes da fase de eventos. |
 | 2026-08-01 | Restringe métricas e endpoints administrativos do Actuator a clientes autenticados. |
 | 2026-08-01 | Expõe o feed tenant-aware de tentativas de acesso sob `audit:read`. |
+| 2026-08-01 | Distingue validação, check-in e check-out no agregado de tentativa. |

@@ -204,7 +204,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 
 | Método e rota | Payload/Parâmetros | Resposta | Regras |
 |---|---|---|---|
-| `POST /access-validations` | token/placa, evento, pátio, faixa | decisão sem consumo | operação/dispositivo |
+| `POST /access-validations` | AS-IS: `qrToken`, `eventId`, `parkingFacilityId`, `lane` + `Idempotency-Key`; placa permanece TARGET | `200` decisão e tentativa com `consumptionPerformed=false` | `access:validate`; Supervisor/Operador/Fiscal de Acesso; mesmas regras QR online do check-in, sem alterar credencial, presença, sessão ou ocupação; auditoria/outbox/idempotência |
 | `POST /check-ins` | AS-IS: `qrToken`, `eventId`, `parkingFacilityId`, `lane` + `Idempotency-Key` | `200` decisão, tentativa e IDs dos efeitos | `access:checkin`; QR por hash; evento em operação; janela; tenant/pátio; idempotência; antiduplicidade; capacidade serializada; sem comando de barreira nesta etapa |
 | `POST /check-outs` | AS-IS: `qrToken`, `eventId`, `parkingFacilityId`, `lane` + `Idempotency-Key` | `200` decisão, tentativa, efeitos, ocupação e estado da credencial | `access:checkout`; evento em operação; QR por hash; presença/sessão abertas; política publicada; locks; idempotência; sem comando físico de barreira |
 | `POST /manual-admissions` | dados, motivo, aprovador | `201 Attempt` | exceção auditada |

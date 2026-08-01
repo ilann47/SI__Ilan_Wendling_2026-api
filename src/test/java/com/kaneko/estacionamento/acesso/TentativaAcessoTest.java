@@ -18,6 +18,8 @@ class TentativaAcessoTest {
 
         assertThat(tentativa.getStatus()).isEqualTo(StatusTentativaAcesso.AUTORIZADA);
         assertThat(tentativa.getMotivo()).isEqualTo(MotivoDecisaoAcesso.AUTORIZADA);
+        assertThat(tentativa.getOperacao())
+                .isEqualTo(OperacaoTentativaAcesso.CHECKIN);
         assertThat(tentativa.getCredencialId()).isEqualTo(5L);
         assertThat(tentativa.getOcupacaoResultante()).isEqualTo(1);
         assertThatIllegalStateException().isThrownBy(() -> tentativa.recusar(
@@ -36,5 +38,22 @@ class TentativaAcessoTest {
 
         assertThat(tentativa.getStatus()).isEqualTo(StatusTentativaAcesso.RECUSADA);
         assertThat(tentativa.getCredencialId()).isNull();
+    }
+
+    @Test
+    void autorizaValidacaoSemRegistrarConsumoOuOcupacao() {
+        OffsetDateTime instante = OffsetDateTime.parse(
+                "2026-10-10T18:00:00-03:00");
+        TentativaAcesso tentativa = TentativaAcesso.receberValidacao(
+                1L, 2L, 3L, 4L, "PORTAO_NORTE", instante);
+
+        tentativa.avaliar();
+        tentativa.autorizarSemConsumo(5L, 6L, instante.plusSeconds(1));
+
+        assertThat(tentativa.getOperacao())
+                .isEqualTo(OperacaoTentativaAcesso.VALIDACAO);
+        assertThat(tentativa.getStatus())
+                .isEqualTo(StatusTentativaAcesso.AUTORIZADA);
+        assertThat(tentativa.getOcupacaoResultante()).isNull();
     }
 }

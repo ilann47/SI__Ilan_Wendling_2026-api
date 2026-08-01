@@ -333,6 +333,7 @@ public class AcessoService {
         estado.put("tentativaAcessoId", tentativa.getId());
         estado.put("eventoId", tentativa.getEventoId());
         estado.put("patioId", tentativa.getPatioId());
+        estado.put("operacao", tentativa.getOperacao().name());
         estado.put("direcao", tentativa.getDirecao());
         estado.put("origemLeitura", tentativa.getOrigemLeitura());
         estado.put("faixa", tentativa.getFaixa());

@@ -197,6 +197,12 @@ stateDiagram-v2
   RECUSADA --> [*]
 ```
 
+**Situação implementada:** `VALIDACAO`, `CHECKIN` e `CHECKOUT` percorrem
+`RECEBIDA → AVALIANDO → AUTORIZADA/RECUSADA`. A operação é persistida para não
+confundir uma decisão preliminar com consumo físico. Somente `CHECKIN/CHECKOUT`
+podem registrar ocupação resultante; `VALIDACAO` termina sem alterar credencial,
+presença, sessão ou ocupação. Estados de supervisor e override permanecem TARGET.
+
 Toda decisão terminal contém código estável e motivo. Override exige usuário distinto do operador quando a política determinar.
 
 **Situação implementada:** check-in e check-out QR online persistem

@@ -1429,6 +1429,123 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     @Test
+    void validaQrSemConsumirDireitoPresencaSessaoOuOcupacao() throws Exception {
+        long pedidoId = criarPedidoConfirmado("access-validation", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "validation-credential",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+        String qrBody = gerarQr(tokenContextual, credencialId, "\"0\"",
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String qrToken = JsonPath.read(qrBody, "$.token");
+        prepararOperacaoEPermissaoCheckin();
+        String payload = payloadCheckin(
+                qrToken, eventoId, patioId, "PORTAO_VALIDACAO");
+
+        String primeiraResposta = mvc.perform(post("/api/v1/access-validations")
+                        .header("Authorization", tokenContextual)
+                        .header("Idempotency-Key", "access-validation-1")
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.decision").value("AUTORIZADA"))
+                .andExpect(jsonPath("$.reasonCode").value("AUTORIZADA"))
+                .andExpect(jsonPath("$.credentialId").value(credencialId))
+                .andExpect(jsonPath("$.consumptionPerformed").value(false))
+                .andReturn().getResponse().getContentAsString();
+        long tentativaId = JsonPath.<Number>read(
+                primeiraResposta, "$.accessAttemptId").longValue();
+
+        String replay = mvc.perform(post("/api/v1/access-validations")
+                        .header("Authorization", tokenContextual)
+                        .header("Idempotency-Key", "access-validation-1")
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(replay, "$.accessAttemptId").longValue())
+                .isEqualTo(tentativaId);
+        mvc.perform(post("/api/v1/access-validations")
+                        .header("Authorization", tokenContextual)
+                        .header("Idempotency-Key", "access-validation-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload.replace(
+                                "PORTAO_VALIDACAO", "PORTAO_DIVERGENTE")))
+                .andExpect(status().isConflict());
+
+        assertThat(jdbc.queryForObject(
+                "select status from credencial_acesso where id = ?",
+                String.class, credencialId)).isEqualTo("ATIVA");
+        assertThat(jdbc.queryForObject(
+                "select count(*) from presenca where credencial_id = ?",
+                Integer.class, credencialId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "select count(*) from sessao_estacionamento where credencial_id = ?",
+                Integer.class, credencialId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "select ocupacao_atual from alocacao_patio_evento where id = ?",
+                Integer.class, alocacaoId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "select operacao from tentativa_acesso where id = ?",
+                String.class, tentativaId)).isEqualTo("VALIDACAO");
+        assertThat(auditorias.findAll().stream().map(a -> a.getAcao()).toList())
+                .contains("VALIDACAO_ACESSO_AUTORIZADA");
+        assertThat(outbox.findAll().stream().map(e -> e.getEventType()).toList())
+                .contains("AcessoAutorizado")
+                .doesNotContain("CheckinRealizado", "MovimentacaoAberta");
+
+        realizarCheckin(tokenContextual, "checkin-after-validation", payload,
+                        status().isOk())
+                .andExpect(jsonPath("$.decision").value("AUTORIZADA"));
+    }
+
+    @Test
+    void validacaoDeAcessoExigePermissaoIdempotenciaEContratoEstrito()
+            throws Exception {
+        String payload = payloadCheckin(
+                "KQ1-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                eventoId, patioId, "PORTAO_VALIDACAO");
+
+        mvc.perform(post("/api/v1/access-validations")
+                        .header("Authorization", tokenContextual)
+                        .header("Idempotency-Key", "validation-admin-denied")
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/access-validations")
+                        .header("Authorization", tokenGlobal)
+                        .header("Idempotency-Key", "validation-global-denied")
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isForbidden());
+
+        Usuario fiscal = usuario("access_validation_fiscal", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(fiscal.getId(), tokenContextual);
+        concederPapel(membershipId, "FISCAL_ACESSO");
+        String tokenFiscal = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(fiscal.getLogin(), "OPERADOR")));
+
+        mvc.perform(post("/api/v1/access-validations")
+                        .header("Authorization", tokenFiscal)
+                        .header("Idempotency-Key", "validation-fiscal")
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.decision")
+                        .value("RECUSADA"))
+                .andExpect(jsonPath("$.reasonCode")
+                        .value("EVENTO_FORA_DE_OPERACAO"));
+        mvc.perform(post("/api/v1/access-validations")
+                        .header("Authorization", tokenFiscal)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/access-validations")
+                        .header("Authorization", tokenFiscal)
+                        .header("Idempotency-Key", "validation-extra-field")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload.replace("}", ",\"consume\":true}")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void realizaCheckoutQrIdempotenteEncerrandoPresencaSessaoEOcupacao()
             throws Exception {
         long pedidoId = criarPedidoConfirmado("checkout-online", 1);

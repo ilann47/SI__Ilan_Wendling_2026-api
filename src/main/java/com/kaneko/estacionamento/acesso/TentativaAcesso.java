@@ -33,6 +33,9 @@ public class TentativaAcesso extends AuditableEntity {
     private String direcao;
     @Column(name = "origem_leitura", nullable = false, updatable = false, length = 20)
     private String origemLeitura;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, updatable = false, length = 20)
+    private OperacaoTentativaAcesso operacao;
     @Column(nullable = false, updatable = false, length = 80)
     private String faixa;
     @Enumerated(EnumType.STRING)
@@ -70,6 +73,7 @@ public class TentativaAcesso extends AuditableEntity {
         tentativa.atorId = atorId;
         tentativa.direcao = "ENTRADA";
         tentativa.origemLeitura = "QR";
+        tentativa.operacao = OperacaoTentativaAcesso.CHECKIN;
         tentativa.faixa = faixa.trim();
         tentativa.status = StatusTentativaAcesso.RECEBIDA;
         tentativa.recebidoEm = recebidoEm;
@@ -82,6 +86,16 @@ public class TentativaAcesso extends AuditableEntity {
         TentativaAcesso tentativa = receber(
                 organizacaoId, eventoId, patioId, atorId, faixa, recebidoEm);
         tentativa.direcao = "SAIDA";
+        tentativa.operacao = OperacaoTentativaAcesso.CHECKOUT;
+        return tentativa;
+    }
+
+    public static TentativaAcesso receberValidacao(
+            Long organizacaoId, Long eventoId, Long patioId, Long atorId,
+            String faixa, OffsetDateTime recebidoEm) {
+        TentativaAcesso tentativa = receber(
+                organizacaoId, eventoId, patioId, atorId, faixa, recebidoEm);
+        tentativa.operacao = OperacaoTentativaAcesso.VALIDACAO;
         return tentativa;
     }
 
@@ -103,6 +117,10 @@ public class TentativaAcesso extends AuditableEntity {
     public void autorizar(
             Long credencialId, Long representacaoQrId,
             Integer ocupacaoResultante, OffsetDateTime instante) {
+        if (operacao == OperacaoTentativaAcesso.VALIDACAO) {
+            throw new IllegalStateException(
+                    "A validacao nao pode registrar consumo ou ocupacao.");
+        }
         vincularCredencial(credencialId, representacaoQrId);
         if (ocupacaoResultante == null
                 || ocupacaoResultante < 0 || instante == null) {
@@ -112,6 +130,26 @@ public class TentativaAcesso extends AuditableEntity {
         status = StatusTentativaAcesso.AUTORIZADA;
         motivo = MotivoDecisaoAcesso.AUTORIZADA;
         this.ocupacaoResultante = ocupacaoResultante;
+        decididoEm = instante;
+    }
+
+    public void autorizarSemConsumo(
+            Long credencialId, Long representacaoQrId,
+            OffsetDateTime instante) {
+        exigirStatus(StatusTentativaAcesso.AVALIANDO);
+        if (operacao != OperacaoTentativaAcesso.VALIDACAO) {
+            throw new IllegalStateException(
+                    "Somente validacao pode autorizar sem consumo.");
+        }
+        if (credencialId == null || representacaoQrId == null
+                || instante == null) {
+            throw new IllegalArgumentException(
+                    "Credencial, representacao e instante sao obrigatorios.");
+        }
+        this.credencialId = credencialId;
+        this.representacaoQrId = representacaoQrId;
+        status = StatusTentativaAcesso.AUTORIZADA;
+        motivo = MotivoDecisaoAcesso.AUTORIZADA;
         decididoEm = instante;
     }
 

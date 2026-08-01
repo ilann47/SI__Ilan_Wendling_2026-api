@@ -166,6 +166,12 @@ executam o portão por implicação. A atribuição ainda usa escopo organizacio
 turno, evento, pátio, faixa e identidade de dispositivo permanecem controles
 ABAC pendentes.
 
+`access:validate` está implementada para `SUPERVISOR`, `OPERADOR` e
+`FISCAL_ACESSO`. Ela permite avaliar QR online e registrar uma decisão
+idempotente, mas não concede check-in, check-out, comando de operação nem leitura
+tenant-wide do feed. Administrador da Organização e Gestor não operam o portão
+por implicação.
+
 `audit:read` está implementada para `ADMIN_ORGANIZACAO` e `GESTOR` e protege o
 feed tenant-aware de tentativas de acesso. `SUPERVISOR`, `OPERADOR` e
 `FISCAL_ACESSO` não recebem leitura organizacional por implicação: a consulta

@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface RepresentacaoQrRepository
         extends JpaRepository<RepresentacaoQr, Long> {
+    Optional<RepresentacaoQr> findByOrganizacaoIdAndTokenHash(
+            Long organizacaoId, String tokenHash);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select r from RepresentacaoQr r
