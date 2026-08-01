@@ -727,3 +727,18 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   endpoint administrativo exigem autenticação JWT quando a segurança está ativa.
 - Teste integrado reproduz a exposição anterior e valida `200` nos probes,
   `401` em métricas anônimas e `200` em métricas com token válido.
+
+---
+
+## Atualização — Setores e vagas / UC704 e UC705 (2026-08-01)
+
+- V32 introduz `Setor` tenant-aware com código normalizado, categorias físicas,
+  capacidade e versão; o lock do pátio serializa a soma dos setores.
+- V33 introduz `Vaga` com FK composta setor/tenant, código normalizado, tipo,
+  acessibilidade, posição opcional, estado e versão.
+- Os comandos exigem `facilities:manage`, retornam `404` fora do tenant e não
+  aceitam organização no payload.
+- O batch de até 500 vagas faz leitura em lote, reusa códigos equivalentes e
+  retorna `207` para conflitos pontuais, sem exceder a capacidade do setor.
+- Criações são auditadas e publicam `SetorCriado`/`VagaCriada` na outbox. Não há
+  efeito automático sobre inventário comercial.

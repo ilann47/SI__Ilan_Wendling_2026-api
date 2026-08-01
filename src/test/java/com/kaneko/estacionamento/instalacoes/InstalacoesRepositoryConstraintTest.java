@@ -81,6 +81,34 @@ class InstalacoesRepositoryConstraintTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    void bancoProtegeCodigoTipoEStatusDaVaga() {
+        long patioId = inserirRetornandoId("Patio Constraint Vagas", 100, 90);
+        long setorId = inserirSetorRetornandoId(patioId, "NORTE", 20, "{COMUM,PCD}");
+        inserirVaga(setorId, "A-01", "COMUM", "LIVRE");
+
+        assertThatThrownBy(() -> inserirVaga(setorId, " a-01 ", "COMUM", "LIVRE"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void bancoProtegeTipoDaVaga() {
+        long patioId = inserirRetornandoId("Patio Constraint Tipo Vaga", 100, 90);
+        long setorId = inserirSetorRetornandoId(patioId, "NORTE", 20, "{COMUM}");
+
+        assertThatThrownBy(() -> inserirVaga(setorId, "A-01", "INVALIDO", "LIVRE"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void bancoProtegeStatusDaVaga() {
+        long patioId = inserirRetornandoId("Patio Constraint Status Vaga", 100, 90);
+        long setorId = inserirSetorRetornandoId(patioId, "NORTE", 20, "{COMUM}");
+
+        assertThatThrownBy(() -> inserirVaga(setorId, "A-01", "COMUM", "INVALIDO"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     private void inserir(String nome, int fisica, int operacional) {
         jdbc.update("""
                 INSERT INTO patio (
@@ -106,5 +134,23 @@ class InstalacoesRepositoryConstraintTest {
                     organizacao_id, patio_id, codigo, nome, capacidade, categorias, ativo)
                 VALUES (?, ?, ?, 'Setor Constraint', ?, ?::varchar[], true)
                 """, organizacaoId, patioId, codigo, capacidade, categorias);
+    }
+
+    private long inserirSetorRetornandoId(
+            long patioId, String codigo, int capacidade, String categorias) {
+        return jdbc.queryForObject("""
+                INSERT INTO setor (
+                    organizacao_id, patio_id, codigo, nome, capacidade, categorias, ativo)
+                VALUES (?, ?, ?, 'Setor Constraint', ?, ?::varchar[], true)
+                RETURNING id
+                """, Long.class, organizacaoId, patioId, codigo, capacidade, categorias);
+    }
+
+    private void inserirVaga(long setorId, String codigo, String tipo, String status) {
+        jdbc.update("""
+                INSERT INTO vaga (
+                    organizacao_id, setor_id, codigo, tipo, acessivel, status)
+                VALUES (?, ?, ?, ?, false, ?)
+                """, organizacaoId, setorId, codigo, tipo, status);
     }
 }

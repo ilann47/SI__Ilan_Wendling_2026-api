@@ -9,8 +9,9 @@ das raízes `Patio` e `Setor` e de seus limites de capacidade.
 
 ## Contexto
 
-UC703 cria o pátio e UC704 o divide em setores tenant-aware. Vagas, faixas,
-interdições e alterações cadastrais permanecem em histórias posteriores. A
+UC703 cria o pátio, UC704 o divide em setores tenant-aware e UC705 permite
+individualizar vagas quando necessário. Faixas, interdições e alterações
+cadastrais permanecem em histórias posteriores. A
 operação rotativa legada continua isolada nos registros sem organização.
 
 ## Fluxo (camadas da arquitetura)
@@ -32,6 +33,15 @@ POST /api/v1/parking-facilities/{parkingFacilityId}/sectors
   -> SetorRepository -> PostgreSQL V32
   -> auditoria + outbox SetorCriado
   -> 201 + Location + ETag
+
+POST /api/v1/sectors/{sectorId}/spaces:batch
+  -> JWT contextual + facilities:manage
+  -> lock pessimista do setor ativo
+  -> leitura em lote por códigos normalizados
+  -> idempotência natural + capacidade + compatibilidade de categoria
+  -> VagaRepository -> PostgreSQL V33
+  -> auditoria + outbox VagaCriada por nova vaga
+  -> 201 ou 207 Multi-Status
 ```
 
 ## Endpoints (se houver)
@@ -40,6 +50,8 @@ POST /api/v1/parking-facilities/{parkingFacilityId}/sectors
   derivado exclusivamente do principal e não é aceito no payload.
 - `POST /api/v1/parking-facilities/{parkingFacilityId}/sectors`: cria setor ativo
   com código, nome, capacidade e categorias físicas canônicas.
+- `POST /api/v1/sectors/{sectorId}/spaces:batch`: importa de uma a 500 vagas,
+  preservando a ordem e informando criação, replay ou conflito por item.
 - `/api/patios`: compatibilidade legada; opera somente registros com
   `organizacao_id IS NULL`.
 
@@ -51,6 +63,9 @@ endereço, cidade, capacidades física/operacional, ativo, versão e timestamps.
 `Setor` é agregado próprio com organização/pátio imutáveis, código normalizado,
 capacidade, categorias, estado ativo e versão otimista. As categorias são locais
 ao contexto de Instalações para não depender do módulo downstream de Inventário.
+`Vaga` contém código normalizado, tipo local, acessibilidade, posição opcional,
+estado `LIVRE` e versão. `ImportarVagasResponse` resume os resultados e detalha
+cada item sem alterar uma vaga existente divergente.
 
 ## Integrações externas (se houver)
 
@@ -63,6 +78,8 @@ Nenhuma. Organização, referência geográfica, RBAC e auditoria são módulos 
 - `404`: organização ou cidade ativa não encontrada.
 - `409`: nome normalizado duplicado ou violação de integridade.
 - `409`: código de setor duplicado ou soma das capacidades acima do pátio.
+- `207`: batch parcialmente aplicado por replay, código divergente, categoria
+  incompatível ou capacidade esgotada.
 
 ## Testes (curl ou equivalente)
 
@@ -71,6 +88,8 @@ tenant fornecido pelo cliente, capacidade, cidade, unicidade normalizada, audito
 constraints diretas no PostgreSQL e isolamento da API legada.
 UC704 também cobre autorização, normalização, taxonomia, capacidade agregada,
 auditoria, outbox e constraints de código/categoria/capacidade.
+UC705 cobre replay equivalente, conflito parcial, lotação do setor, categoria,
+tenant, RBAC, contrato fechado e constraints de vaga.
 
 ## Decisões Técnicas
 
@@ -82,6 +101,10 @@ auditoria, outbox e constraints de código/categoria/capacidade.
 - O lock do pátio serializa criações concorrentes antes de somar capacidades.
 - O banco protege ownership composto, código normalizado e valores locais; a
   soma entre setores é uma invariante transacional protegida pelo lock da raiz.
+- O batch normaliza todos os itens antes da primeira escrita e busca códigos em
+  lote; o lock do setor serializa o limite sem uma query por item.
+- Posição é um identificador textual opcional. Geometria e coordenadas aguardam
+  contrato de layout explícito.
 
 ## Módulos relacionados
 
@@ -99,3 +122,4 @@ auditoria, outbox e constraints de código/categoria/capacidade.
 | 2026-07-29 | Implementa criação tenant-aware de pátio e compatibilidade isolada com `/api/patios`. |
 | 2026-07-30 | Expõe lock pessimista tenant-aware para serializar alocações concorrentes do pátio. |
 | 2026-08-01 | Implementa UC704 com setores tenant-aware, auditoria e outbox. |
+| 2026-08-01 | Implementa UC705 com importação idempotente de vagas em lote. |

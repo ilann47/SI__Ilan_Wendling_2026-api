@@ -108,6 +108,14 @@ em recortes próprios.
 **Exceções:** E1 código duplicado; E2 quantidade excedente; E3 layout inválido.  
 **Pós-condição:** vagas passam a integrar o mapa físico, sem criar inventário comercial automaticamente.
 
+**Situação implementada:** `POST /api/v1/sectors/{id}/spaces:batch` aceita até
+500 itens, exige tenant contextual e `facilities:manage`, bloqueia o setor ativo
+e processa códigos normalizados em lote. Repetição equivalente retorna
+`EXISTENTE`; dados divergentes, categoria incompatível ou capacidade atingida
+retornam conflito por item em `207`, sem desfazer os itens válidos. Cada nova
+vaga nasce `LIVRE`, é auditada e persiste `VagaCriada` na outbox. Coordenadas e
+mudanças de disponibilidade permanecem futuras.
+
 ## UC706 — Alocar pátio ao evento
 
 **Objetivo:** comprometer capacidade operacional em um período.  

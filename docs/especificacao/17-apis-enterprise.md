@@ -153,7 +153,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 |---|---|---|---|
 | `POST /parking-facilities` | AS-IS: organização implícita, nome, endereço, cidade, capacidade física/operacional | `201 Patio`, `Location`, `ETag` | `facilities:manage`; organização/cidade ativas; `0 ≤ operacional ≤ física`; nome único no tenant |
 | `POST /parking-facilities/{id}/sectors` | AS-IS: código, nome, capacidade e categorias; tenant implícito | `201 Sector`, `Location`, `ETag` | `facilities:manage`; pátio ativo no tenant; código normalizado único; categorias canônicas; soma das capacidades ≤ capacidade física; auditoria/outbox |
-| `POST /sectors/{id}/spaces:batch` | lista de vagas | `201/207` | importação idempotente |
+| `POST /sectors/{id}/spaces:batch` | AS-IS: 1–500 itens com código, tipo, acessibilidade e posição opcional; tenant implícito | `201` quando todos são criados; `207` com resultado por item em replay/conflito | `facilities:manage`; setor ativo; código normalizado; tipo aceito pelo setor; capacidade; idempotência natural; auditoria/outbox por vaga criada |
 | `GET /parking-facilities/{id}/occupancy` | por setor/categoria | projeção atual + atraso | leitura no escopo |
 | `POST /events` | AS-IS: schema Evento + `Idempotency-Key`; tenant implícito | `201 Evento`, checklist, `Location`, `ETag` | `events:create`; venue ativo do tenant; período/fuso válidos; replay equivalente devolve o mesmo evento e conflito retorna `409` |
 | `PATCH /events/{id}` | AS-IS: `reentryPolicy` + `If-Match` | `200 Evento`, `ETag` | `events:create`; somente `RASCUNHO`; lista fechada; política obrigatória antes da publicação |

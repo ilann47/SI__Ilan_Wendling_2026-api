@@ -212,6 +212,114 @@ class InstalacoesPatioTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void importaVagasEmLoteComIdempotenciaAuditoriaEOutbox() throws Exception {
+        long setorId = criarCenarioSetor("Patio Vagas", 4, "[\"COMUM\",\"PCD\"]");
+        String payload = """
+                {"spaces":[
+                  {"code":" a-001 ","type":"COMUM","accessible":false,"position":"A/01"},
+                  {"code":"PCD-01","type":"PCD","accessible":true,"position":"P/01"}
+                ]}
+                """;
+
+        mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sectorId").value(setorId))
+                .andExpect(jsonPath("$.requested").value(2))
+                .andExpect(jsonPath("$.created").value(2))
+                .andExpect(jsonPath("$.existing").value(0))
+                .andExpect(jsonPath("$.conflicts").value(0))
+                .andExpect(jsonPath("$.items[0].status").value("CRIADA"))
+                .andExpect(jsonPath("$.items[0].code").value("A-001"))
+                .andExpect(jsonPath("$.items[1].type").value("PCD"));
+
+        mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isMultiStatus())
+                .andExpect(jsonPath("$.created").value(0))
+                .andExpect(jsonPath("$.existing").value(2))
+                .andExpect(jsonPath("$.conflicts").value(0));
+
+        assertThat(auditorias.findAll().stream()
+                .filter(a -> "VAGA_CRIADA".equals(a.getAcao())
+                        && a.getRecursoId() != null).count()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM evento_outbox
+                WHERE event_type = 'VagaCriada' AND aggregate_type = 'VAGA'
+                  AND organizacao_id = ?
+                """, Integer.class, organizacaoId)).isEqualTo(2);
+    }
+
+    @Test
+    void importacaoDeVagasRetornaConflitosPontuaisSemExcederSetor() throws Exception {
+        long setorId = criarCenarioSetor("Patio Vagas Parciais", 2, "[\"COMUM\"]");
+        String inicial = """
+                {"spaces":[{"code":"A-01","type":"COMUM",
+                  "accessible":false,"position":"A/01"}]}
+                """;
+        mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content(inicial))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"spaces":[
+                                  {"code":"A-01","type":"COMUM","accessible":true},
+                                  {"code":"A-02","type":"COMUM","accessible":false},
+                                  {"code":"A-03","type":"COMUM","accessible":false},
+                                  {"code":"VIP-01","type":"VIP","accessible":false}
+                                ]}
+                                """))
+                .andExpect(status().isMultiStatus())
+                .andExpect(jsonPath("$.created").value(1))
+                .andExpect(jsonPath("$.existing").value(0))
+                .andExpect(jsonPath("$.conflicts").value(3))
+                .andExpect(jsonPath("$.items[0].status").value("CONFLITO"))
+                .andExpect(jsonPath("$.items[1].status").value("CRIADA"))
+                .andExpect(jsonPath("$.items[2].detail").value(org.hamcrest.Matchers.containsString("capacidade")))
+                .andExpect(jsonPath("$.items[3].detail").value(org.hamcrest.Matchers.containsString("categoria")));
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM vaga WHERE setor_id = ?", Integer.class, setorId))
+                .isEqualTo(2);
+    }
+
+    @Test
+    void importacaoDeVagasProtegeTenantPermissaoEContrato() throws Exception {
+        long setorId = criarCenarioSetor("Patio Vagas Seguro", 2, "[\"COMUM\"]");
+        String payload = """
+                {"spaces":[{"code":"A-01","type":"COMUM","accessible":false}]}
+                """;
+
+        criarMembership(organizacaoId, operador.getId(), tokenContextual);
+        String tokenOperador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(operador.getLogin(), "ADMIN")));
+        mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId)
+                        .header("Authorization", tokenOperador)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isForbidden());
+
+        Long outraOrganizacao = organizacoes.criar(new CriarOrganizacaoRequest(
+                "45.723.174/0001-10", "Outro Tenant Vagas Ltda", null,
+                "BRL", "America/Sao_Paulo", "BR-SP", "ENTERPRISE")).id();
+        criarMembership(outraOrganizacao, admin.getId(), tokenAdmin);
+        String tokenOutroTenant = selecionar(outraOrganizacao, tokenAdmin);
+        mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId)
+                        .header("Authorization", tokenOutroTenant)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload.replace("{\"spaces\"", "{\"organizationId\":999,\"spaces\"")))
+                .andExpect(status().isBadRequest());
+    }
+
     private org.springframework.test.web.servlet.ResultActions criarPatio(
             String token, String nome, int fisica, int operacional,
             org.springframework.test.web.servlet.ResultMatcher status) throws Exception {
@@ -239,6 +347,18 @@ class InstalacoesPatioTest {
                                 {"code":"%s","name":"%s","capacity":%d,"categories":%s}
                                 """.formatted(codigo, nome, capacidade, categorias)))
                 .andExpect(status);
+    }
+
+    private long criarCenarioSetor(String nomePatio, int capacidadeSetor, String categorias)
+            throws Exception {
+        String patio = criarPatio(
+                tokenContextual, nomePatio, 100, 90, status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long patioId = ((Number) JsonPath.read(patio, "$.id")).longValue();
+        String setor = criarSetor(tokenContextual, patioId, "SETOR-1", "Setor 1",
+                capacidadeSetor, categorias, status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return ((Number) JsonPath.read(setor, "$.id")).longValue();
     }
 
     private long criarMembership(long orgId, long userId, String token) throws Exception {
