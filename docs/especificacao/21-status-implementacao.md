@@ -98,10 +98,16 @@ hardware e foi concluído com `credentials:block` restrita ao Supervisor,
 revogação transacional do QR e replay sem efeitos duplicados. Desbloqueio e
 reemissão permanecem separados porque exigem política de alçada e substituição.
 
+O feed `GET /api/v1/access-attempts` também foi concluído de forma independente:
+usa cursor keyset e filtros de evento, decisão e motivo, sempre no tenant do JWT.
+A leitura exige `audit:read`, concedida somente a Administrador da Organização e
+Gestor enquanto os escopos ABAC operacionais não estiverem implementados. Assim,
+`access:operate` não foi ampliada e nenhum segredo QR é retornado.
+
 ## 21.5 Auditoria dos recortes remanescentes
 
-Depois das entregas de setor, vaga, leitura própria de pedidos e bloqueio de
-credencial, os candidatos internos restantes foram confrontados novamente com
+Depois das entregas de setor, vaga, leitura própria de pedidos, bloqueio de
+credencial e feed auditável de acesso, os candidatos internos restantes foram confrontados novamente com
 código e baseline. Nenhum deles possui hoje contrato suficiente para uma nova
 história vertical segura:
 
@@ -114,16 +120,13 @@ história vertical segura:
    persistida atual representa admissão/saída e sua autorização exige efeitos de
    ocupação; a baseline não decide se a validação preliminar cria outra entidade
    ou outra transição;
-4. `GET /access-attempts` define filtros, mas não fixa a permissão entre operação
-   e auditoria; conceder `access:operate` ampliaria comandos e `audit:read` ainda
-   não possui papel/contrato de consulta;
-5. desbloqueio precisa impedir reativação de credencial bloqueada por
+4. desbloqueio precisa impedir reativação de credencial bloqueada por
    cancelamento/fraude e definir alçada; reemissão precisa definir vínculo com a
    substituída e migrar a unicidade por unidade; troca de placa depende da
    política comercial aprovada;
-6. abertura agendada de vendas ainda não possui persistência, cancelamento,
+5. abertura agendada de vendas ainda não possui persistência, cancelamento,
    reagendamento nem semântica multi-instância para um scheduler confiável;
-7. consoles administrativos enterprise dependem de contratos de consulta de
+6. consoles administrativos enterprise dependem de contratos de consulta de
    eventos, venues, pátios, produtos e alocações que a OpenAPI atual
    deliberadamente não publica.
 

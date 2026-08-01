@@ -1324,6 +1324,111 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     @Test
+    void listaTentativasDeAcessoComCursorEFiltrosDoContrato() throws Exception {
+        prepararVendaAberta(1, 1);
+        prepararOperacaoEPermissaoCheckin();
+        String qrInexistente = "KQ1-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        String payload = payloadCheckin(
+                qrInexistente, eventoId, patioId, "PORTAO_NORTE");
+
+        for (int indice = 1; indice <= 3; indice++) {
+            realizarCheckin(tokenContextual, "feed-access-" + indice,
+                            payload, status().isOk())
+                    .andExpect(jsonPath("$.decision").value("RECUSADA"))
+                    .andExpect(jsonPath("$.reasonCode")
+                            .value("CREDENCIAL_INVALIDA"));
+        }
+
+        String primeiraPagina = mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenContextual)
+                        .param("eventId", eventoId.toString())
+                        .param("decision", "RECUSADA")
+                        .param("reason", "CREDENCIAL_INVALIDA")
+                        .param("limit", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].eventId").value(eventoId))
+                .andExpect(jsonPath("$.items[0].parkingFacilityId").value(patioId))
+                .andExpect(jsonPath("$.items[0].decision").value("RECUSADA"))
+                .andExpect(jsonPath("$.items[0].reasonCode")
+                        .value("CREDENCIAL_INVALIDA"))
+                .andExpect(jsonPath("$.items[0].qrToken").doesNotExist())
+                .andExpect(jsonPath("$.nextCursor").isNumber())
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andReturn().getResponse().getContentAsString();
+        long cursor = JsonPath.<Number>read(
+                primeiraPagina, "$.nextCursor").longValue();
+
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenContextual)
+                        .param("cursor", Long.toString(cursor))
+                        .param("eventId", eventoId.toString())
+                        .param("decision", "RECUSADA")
+                        .param("reason", "CREDENCIAL_INVALIDA")
+                        .param("limit", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.nextCursor").doesNotExist())
+                .andExpect(jsonPath("$.hasMore").value(false));
+
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenContextual)
+                        .param("eventId", Long.toString(eventoId + 1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenContextual)
+                        .param("cursor", "0"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenContextual)
+                        .param("limit", "101"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenContextual)
+                        .param("decision", "AVALIANDO"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void feedDeAcessoExigePermissaoEIsolaOrganizacoes() throws Exception {
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenGlobal))
+                .andExpect(status().isForbidden());
+
+        Usuario membro = usuario("access_feed_member", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(membro.getId(), tokenContextual);
+        String tokenMembro = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenMembro))
+                .andExpect(status().isForbidden());
+
+        concederPapel(membershipId, "SUPERVISOR");
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenMembro))
+                .andExpect(status().isForbidden());
+
+        concederPapel(membershipId, "GESTOR");
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenMembro))
+                .andExpect(status().isOk());
+
+        Long outraOrganizacao = organizacoes.criar(new CriarOrganizacaoRequest(
+                "84.706.129/0001-00", "Kaneko Feed Externo Ltda", null,
+                "BRL", "America/Sao_Paulo", "BR-SP", "ENTERPRISE")).id();
+        criarMembership(outraOrganizacao, admin.getId(), tokenGlobal);
+        String tokenOutroTenant = selecionar(outraOrganizacao, tokenGlobal);
+        mvc.perform(get("/api/v1/access-attempts")
+                        .header("Authorization", tokenOutroTenant))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
     void realizaCheckoutQrIdempotenteEncerrandoPresencaSessaoEOcupacao()
             throws Exception {
         long pedidoId = criarPedidoConfirmado("checkout-online", 1);

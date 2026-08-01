@@ -765,3 +765,19 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   retorna `207` para conflitos pontuais, sem exceder a capacidade do setor.
 - Criações são auditadas e publicam `SetorCriado`/`VagaCriada` na outbox. Não há
   efeito automático sobre inventário comercial.
+
+---
+
+## Atualização — Feed auditável de tentativas de acesso (2026-08-01)
+
+- A migration `V36__feed_tentativa_acesso.sql` cria o índice tenant/cursor e a
+  permissão `audit:read`, concedida a Administrador da Organização e Gestor.
+- `GET /api/v1/access-attempts` usa paginação keyset por ID e filtros opcionais
+  de evento, decisão e motivo, com limite de 1 a 100 registros.
+- A consulta deriva o tenant exclusivamente do JWT contextual e não retorna o
+  token QR nem seu hash. Outro tenant recebe somente sua própria projeção.
+- `access:operate` não foi ampliada. Supervisor, Operador e Fiscal de Acesso
+  aguardam o ABAC por evento, pátio, faixa e turno antes de receber leitura
+  operacional do feed completo.
+- Testes cobrem cursor, filtros, contrato de erro, RBAC, isolamento tenant e
+  publicação OpenAPI; a suíte passa de 506 para 508 testes.

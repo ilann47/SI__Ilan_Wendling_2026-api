@@ -34,6 +34,12 @@ POST /api/v1/check-outs + Idempotency-Key
   -> presença DENTRO -> FORA + sessão ABERTA -> ENCERRADA
   -> credencial DENTRO -> CONSUMIDA ou ATIVA conforme política publicada
   -> ocupação decrementada + auditoria + outbox + resposta idempotente
+
+GET /api/v1/access-attempts
+  -> JWT contextual + audit:read
+  -> filtros tenant-aware por evento, decisão e motivo
+  -> paginação keyset por ID decrescente
+  -> feed sem token ou hash QR
 ```
 
 ## Endpoints (se houver)
@@ -42,6 +48,8 @@ POST /api/v1/check-outs + Idempotency-Key
   `lane`; retorna decisão, motivo estável, tentativa e IDs dos efeitos.
 - `POST /api/v1/check-outs`: usa o mesmo identificador QR e escopo, encerra os
   efeitos abertos e retorna ocupação e estado resultantes.
+- `GET /api/v1/access-attempts`: lista tentativas do tenant com cursor,
+  `eventId`, `decision`, `reason` e limite de 1 a 100 itens.
 - `POST /api/v1/events/{eventoId}/sales-closing`: executa
   `VENDAS_ABERTAS → VENDAS_ENCERRADAS` com `If-Match`.
 - `POST /api/v1/events/{eventoId}/operation-start`: executa
@@ -70,6 +78,8 @@ persistidos em [[outbox]].
 
 - `400`: cabeçalho, token estrutural, payload ou campo desconhecido inválido.
 - `403`: ausência de `access:checkin`, `access:checkout` ou `access:operate`.
+- `403`: feed sem `audit:read`; permissões operacionais não implicam leitura
+  organizacional.
 - `404`: evento ou alocação invisível no tenant.
 - `409`: replay idempotente com payload divergente.
 - Recusas de negócio retornam `200` com `RECUSADA` e código estável; não são erro
@@ -80,7 +90,8 @@ persistidos em [[outbox]].
 Há testes de domínio, contrato HTTP, RBAC, idempotência, segredo QR, decisão
 autorizada/recusada, duplicidade, lotação, presença, sessão, ocupação, política
 de entrada única/reentrada, auditoria, outbox, Flyway, Hibernate validate,
-OpenAPI e disputa concorrente da última vaga.
+OpenAPI, feed paginado/filtrado, isolamento tenant e disputa concorrente da
+última vaga.
 
 ## Decisões Técnicas
 
@@ -97,6 +108,9 @@ OpenAPI e disputa concorrente da última vaga.
 - O legado `Movimentacao` não foi alterado; sessão enterprise é aditiva.
 - O portão nunca escolhe a política de reentrada; ele consome o snapshot
   versionado no evento e não simula comando de barreira.
+- O feed usa `audit:read` somente para Administrador da Organização e Gestor.
+  Perfis operacionais aguardam ABAC por evento/pátio/faixa e não recebem visão
+  tenant-wide por meio de `access:operate`.
 
 ## Módulos relacionados
 
@@ -116,3 +130,4 @@ OpenAPI e disputa concorrente da última vaga.
 | 2026-08-01 | Implementa UC715/UC718 com check-in QR online, presença, sessão e ocupação concorrente. |
 | 2026-08-01 | Implementa UC717/UC719 com check-out QR, reentrada explícita e encerramento transacional. |
 | 2026-08-01 | Serializa admissões e saídas concorrentes com o encerramento operacional da UC720. |
+| 2026-08-01 | Publica feed auditável tenant-aware de tentativas com cursor e filtros. |

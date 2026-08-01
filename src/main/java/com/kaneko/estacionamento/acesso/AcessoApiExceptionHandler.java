@@ -11,7 +11,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = {AcessoController.class, CheckoutController.class})
+@RestControllerAdvice(assignableTypes = {
+        AcessoController.class,
+        CheckoutController.class,
+        TentativaAcessoController.class
+})
 public class AcessoApiExceptionHandler {
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ProblemDetail handleCabecalhoObrigatorio(

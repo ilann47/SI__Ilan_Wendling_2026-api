@@ -166,6 +166,13 @@ executam o portão por implicação. A atribuição ainda usa escopo organizacio
 turno, evento, pátio, faixa e identidade de dispositivo permanecem controles
 ABAC pendentes.
 
+`audit:read` está implementada para `ADMIN_ORGANIZACAO` e `GESTOR` e protege o
+feed tenant-aware de tentativas de acesso. `SUPERVISOR`, `OPERADOR` e
+`FISCAL_ACESSO` não recebem leitura organizacional por implicação: a consulta
+operacional limitada a evento, pátio, faixa e turno aguarda os vínculos ABAC
+previstos nesta baseline. A permissão `access:operate` continua exclusiva para
+comandos de abertura e encerramento da operação.
+
 ## 18.5 Regras ABAC complementares
 
 1. Operador e fiscal de acesso atuam apenas no turno, evento, pátio e faixa atribuídos.

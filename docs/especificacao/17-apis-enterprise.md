@@ -208,7 +208,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /check-ins` | AS-IS: `qrToken`, `eventId`, `parkingFacilityId`, `lane` + `Idempotency-Key` | `200` decisão, tentativa e IDs dos efeitos | `access:checkin`; QR por hash; evento em operação; janela; tenant/pátio; idempotência; antiduplicidade; capacidade serializada; sem comando de barreira nesta etapa |
 | `POST /check-outs` | AS-IS: `qrToken`, `eventId`, `parkingFacilityId`, `lane` + `Idempotency-Key` | `200` decisão, tentativa, efeitos, ocupação e estado da credencial | `access:checkout`; evento em operação; QR por hash; presença/sessão abertas; política publicada; locks; idempotência; sem comando físico de barreira |
 | `POST /manual-admissions` | dados, motivo, aprovador | `201 Attempt` | exceção auditada |
-| `GET /access-attempts` | cursor, evento, decisão, motivo | feed | operação/auditoria |
+| `GET /access-attempts` | AS-IS: cursor numérico opcional, eventId, decision, reason e limit (1–100) | `200` com items, nextCursor e hasMore | `audit:read`; tenant ativo; Administrador da Organização/Gestor; ordem decrescente estável por ID; não expõe token nem hash QR |
 | `POST /movements` | somente fluxo legado/controlado | `201 Movement` | origem de direito obrigatória no target |
 | `POST /movements/{id}/closing` | saída, regra | `200 Movement` | aberta |
 | `POST /movements/{id}/cancellation` | motivo | `200` | aberta e supervisor conforme policy |
