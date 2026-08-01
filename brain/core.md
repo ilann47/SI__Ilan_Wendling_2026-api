@@ -4,7 +4,7 @@
 
 ## Fonte oficial
 
-A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/README.md), especialmente nos documentos 11 a 20. O `brain` registra somente o estado implementado e as relações entre módulos; ele não redefine a arquitetura aprovada.
+A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/README.md), especialmente nos documentos 11 a 20. O estado de execução e seus bloqueios são mantidos em [[../docs/especificacao/21-status-implementacao|21-status-implementacao]]. O `brain` registra somente o estado implementado e as relações entre módulos; ele não redefine a arquitetura aprovada.
 
 ## Arquitetura
 
@@ -73,3 +73,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-30 | Registro de UC711 com credencial ativa por unidade do pedido. |
 | 2026-07-30 | Registro de UC712 com QR opaco, hash persistido e concorrência por ETag. |
 | 2026-07-30 | Registro de UC713 com cancelamento compensatório e reembolso pendente. |
+| 2026-08-01 | UC714 registrada como bloqueada externamente; UC715 confirmada como executável e independente do gateway. |

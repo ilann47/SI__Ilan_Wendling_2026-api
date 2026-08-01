@@ -1,4 +1,4 @@
-> Links: [[01-introducao]] · [[03-der]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[20-roadmap-produto]] · [[relatorio-conformidade]]
+> Links: [[01-introducao]] · [[03-der]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[20-roadmap-produto]] · [[21-status-implementacao]] · [[relatorio-conformidade]]
 
 # Especificação de Requisitos — Sistema Estacionamento Kaneko
 
@@ -72,6 +72,7 @@ Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especifica�
 | 18 | [Permissões e RBAC](18-permissoes-rbac.md) | Papéis, permissões, escopos, ABAC e segregação de funções. |
 | 19 | [Equipamentos e Integrações](19-equipamentos-integracoes.md) | Portas canônicas, Edge, contingência, ACL, webhooks, retries e telemetria. |
 | 20 | [Roadmap do Produto](20-roadmap-produto.md) | Fundação, dez fases, riscos, impactos, NFRs e plano de evolução. |
+| 21 | [Estado de Implementação](21-status-implementacao.md) | Classificação das histórias, dependências, bloqueios externos e condições de retomada. |
 
 ### Regra de prevalência
 
