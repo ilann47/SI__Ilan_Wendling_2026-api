@@ -26,7 +26,10 @@ Estados utilizados:
 
 | História | Estado | Dependência | Parte concluída | Parte pendente | Condição para retomada |
 |---|---|---|---|---|---|
-| UC701–UC713 | `CONCLUIDA` | — | Fundação multiempresa até cancelamento compensatório de pedido, conforme relatório de conformidade | — | Reabrir somente por defeito ou mudança aprovada |
+| UC701–UC703 | `CONCLUIDA` | — | Fundação multiempresa, eventos e pátio tenant-aware | — | Reabrir somente por defeito ou mudança aprovada |
+| UC704 — Cadastrar setor | `CONCLUIDA` | — | Setor tenant-aware, taxonomia, capacidade serializada, auditoria, outbox e constraints | Coordenadas, alteração e bloqueio pertencem a recortes próprios | Reabrir somente por defeito ou mudança aprovada |
+| UC705 — Cadastrar vagas | `EXECUTAVEL` | UC704 concluída | Setor ativo e categorias físicas disponíveis | Vaga e importação em lote idempotente | Próximo recorte independente na ordem funcional |
+| UC706–UC713 | `CONCLUIDA` | — | Alocação multipátio até cancelamento compensatório de pedido, conforme relatório de conformidade | — | Reabrir somente por defeito ou mudança aprovada |
 | UC714 — Reembolsar pagamento | `BLOQUEADA_EXTERNAMENTE` | Pagamento capturado real, gateway, credenciais sandbox, assinatura de webhook e política comercial | UC713 preserva `EM_REEMBOLSO`, bloqueia o direito e registra os efeitos compensatórios | Solicitação vinculada a captura, aprovação, execução, retorno, conciliação e restituição real | Provider e contrato escolhidos; credenciais/segredos sandbox disponíveis; alçadas, prazo, multa, crédito e reembolso parcial definidos |
 | UC715 — Realizar check-in | `CONCLUIDA` | — | QR online tenant-aware, tentativa terminal, consumo, presença, sessão de evento, ocupação concorrente, auditoria, outbox e idempotência | Placa/RFID, override, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC716 — Check-in offline | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | UC715 e modelo canônico de decisão | QR seguro e contexto tenant existem | Pacote assinado, edge, sequência, armazenamento local e sincronização | Concluir UC715 e definir infraestrutura edge verificável |
@@ -82,8 +85,9 @@ configuração explícita e não podem ser publicados nessa condição.
 O encerramento operacional da UC720 valida sob locks presença, sessão e ocupação,
 transiciona o evento para `OPERACAO_ENCERRADA` e impede novas admissões. A parte
 financeira permanece explicitamente pendente, sem simular captura, reembolso,
-conciliação ou DRE. A próxima história independente do gateway é a UC729, sujeita
-à modelagem documentada de escala tenant-aware.
+conciliação ou DRE. A próxima história independente do gateway na ordem
+funcional é UC705, cadastro de vagas em lote sobre o setor agora implementado.
+UC729 permanece posterior e sujeita ao contrato de escala tenant-aware.
 
 O endurecimento transversal de segurança restringe `/actuator/metrics` e os
 demais endpoints administrativos a JWT válido. Somente `/actuator/health/**` e

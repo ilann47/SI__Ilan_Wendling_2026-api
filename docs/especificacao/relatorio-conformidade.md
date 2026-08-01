@@ -411,8 +411,9 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   campos explícitos; regras não foram escondidas em JSON genérico.
 - A criação é auditada. Não há evento de outbox nessa transição, pois o evento
   aprovado é `ProdutoEstacionamentoPublicado`, reservado ao comando de publicação.
-- Compatibilidade das categorias com setores físicos permanece pendente porque
-  setor/categoria física ainda não está implementado na primeira entrega.
+- Setor e categorias físicas passaram a existir na UC704. A vinculação explícita
+  do produto a um setor e a validação cruzada continuam pendentes porque o
+  contrato atual de `ProdutoEstacionamento` referencia somente a alocação/pátio.
 - A suíte passou de 393 para 406 testes sem regressões.
 
 ---

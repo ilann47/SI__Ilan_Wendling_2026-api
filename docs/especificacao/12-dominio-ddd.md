@@ -128,9 +128,11 @@ permanecem dependentes de contrato próprio.
 
 ### BC04 — Instalações e Capacidade Física
 
-**Situação implementada:** a raiz `Patio` e o comando `PatioCriado` estão
-implementados para organização ativa. Setor, vaga, faixa, interdição e alteração
-de capacidade permanecem nas histórias próprias.
+**Situação implementada:** as raízes `Patio` e `Setor` e os comandos
+`PatioCriado`/`SetorCriado` estão implementados para organização ativa. O setor
+possui código normalizado, categorias canônicas e capacidade agregada sob lock
+do pátio. Vaga, faixa, interdição e alteração de capacidade permanecem nas
+histórias próprias.
 
 - **Objetivo:** descrever pátio, setor, vaga, faixa e limites físicos.
 - **Agregados:** `Patio`, `Setor`, `Vaga` — separados para evitar coleções gigantes.

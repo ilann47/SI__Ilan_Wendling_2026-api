@@ -90,6 +90,13 @@ Publicação e abertura de vendas não habilitam acesso.
 **Exceções:** E1 código duplicado; E2 capacidade acima do pátio; E3 categoria inválida.  
 **Pós-condição:** setor utilizável em alocações e roteamento.
 
+**Situação implementada:** `POST /api/v1/parking-facilities/{id}/sectors`
+exige tenant contextual e `facilities:manage`, bloqueia o pátio ativo, normaliza
+o código, valida taxonomia e impede que a soma das capacidades físicas dos
+setores ultrapasse o pátio. A criação retorna `Location`/`ETag`, é auditada e
+persiste `SetorCriado` na outbox. Coordenadas, alteração e bloqueio permanecem
+em recortes próprios.
+
 ## UC705 — Cadastrar vagas
 
 **Objetivo:** individualizar vagas quando necessário.  

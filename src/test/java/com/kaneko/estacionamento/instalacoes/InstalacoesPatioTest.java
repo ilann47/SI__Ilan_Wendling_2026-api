@@ -137,6 +137,81 @@ class InstalacoesPatioTest {
         assertThat(((Number) dados.get("version")).longValue()).isZero();
     }
 
+    @Test
+    void criaSetorNoPatioAtivoComCategoriasAuditoriaEOutbox() throws Exception {
+        String patio = criarPatio(
+                tokenContextual, "Patio Setorizado", 100, 90, status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long patioId = ((Number) JsonPath.read(patio, "$.id")).longValue();
+
+        String setor = criarSetor(
+                tokenContextual, patioId, " vip-norte ", "Setor VIP Norte", 40,
+                "[\"VIP\",\"PCD\"]", status().isCreated())
+                .andExpect(header().string("ETag", "\"0\""))
+                .andExpect(header().exists("Location"))
+                .andExpect(jsonPath("$.organizationId").value(organizacaoId))
+                .andExpect(jsonPath("$.parkingFacilityId").value(patioId))
+                .andExpect(jsonPath("$.code").value("VIP-NORTE"))
+                .andExpect(jsonPath("$.name").value("Setor VIP Norte"))
+                .andExpect(jsonPath("$.capacity").value(40))
+                .andExpect(jsonPath("$.categories[0]").value("VIP"))
+                .andExpect(jsonPath("$.categories[1]").value("PCD"))
+                .andExpect(jsonPath("$.active").value(true))
+                .andReturn().getResponse().getContentAsString();
+        long setorId = ((Number) JsonPath.read(setor, "$.id")).longValue();
+
+        var auditoria = auditorias.findAll().stream()
+                .filter(a -> "SETOR_CRIADO".equals(a.getAcao()) && setorId == a.getRecursoId())
+                .findFirst().orElseThrow();
+        assertThat(auditoria.getOrganizacaoId()).isEqualTo(organizacaoId);
+        assertThat(auditoria.getPatioId()).isEqualTo(patioId);
+        assertThat(auditoria.getEstadoPosterior()).containsEntry("codigo", "VIP-NORTE");
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM evento_outbox
+                WHERE event_type = 'SetorCriado' AND aggregate_type = 'SETOR'
+                  AND aggregate_id = ? AND organizacao_id = ?
+                """, Integer.class, setorId, organizacaoId)).isEqualTo(1);
+    }
+
+    @Test
+    void setorExigePermissaoCamposCanonicosEProtegeCapacidadeAgregada() throws Exception {
+        String patio = criarPatio(
+                tokenContextual, "Patio Limites", 100, 90, status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long patioId = ((Number) JsonPath.read(patio, "$.id")).longValue();
+        criarSetor(tokenContextual, patioId, "NORTE", "Norte", 60,
+                "[\"COMUM\"]", status().isCreated());
+        criarSetor(tokenContextual, patioId, " norte ", "Duplicado", 20,
+                "[\"COMUM\"]", status().isConflict());
+        criarSetor(tokenContextual, patioId, "SUL", "Sul", 41,
+                "[\"COMUM\"]", status().isConflict());
+        criarSetor(tokenContextual, patioId, "INVALIDO", "Invalido", 10,
+                "[\"NAO_EXISTE\"]", status().isBadRequest());
+
+        Long outraOrganizacao = organizacoes.criar(new CriarOrganizacaoRequest(
+                "45.723.174/0001-10", "Outro Tenant Setores Ltda", null,
+                "BRL", "America/Sao_Paulo", "BR-SP", "ENTERPRISE")).id();
+        criarMembership(outraOrganizacao, admin.getId(), tokenAdmin);
+        String tokenOutroTenant = selecionar(outraOrganizacao, tokenAdmin);
+        criarSetor(tokenOutroTenant, patioId, "FORA", "Fora", 10,
+                "[\"COMUM\"]", status().isNotFound());
+
+        criarMembership(organizacaoId, operador.getId(), tokenContextual);
+        String tokenOperador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(operador.getLogin(), "ADMIN")));
+        criarSetor(tokenOperador, patioId, "OESTE", "Oeste", 10,
+                "[\"COMUM\"]", status().isForbidden());
+
+        mvc.perform(post("/api/v1/parking-facilities/{id}/sectors", patioId)
+                        .header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"organizationId":999999,"code":"FORJADO","name":"Forjado",
+                                 "capacity":10,"categories":["COMUM"]}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
     private org.springframework.test.web.servlet.ResultActions criarPatio(
             String token, String nome, int fisica, int operacional,
             org.springframework.test.web.servlet.ResultMatcher status) throws Exception {
@@ -152,6 +227,18 @@ class InstalacoesPatioTest {
                  "district":"Centro","postalCode":"80000-000","cityId":%d,
                  "physicalCapacity":%d,"operationalCapacity":%d,"active":true}
                 """.formatted(nome, cidadeId, fisica, operacional);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions criarSetor(
+            String token, long patioId, String codigo, String nome, int capacidade,
+            String categorias, org.springframework.test.web.servlet.ResultMatcher status)
+            throws Exception {
+        return mvc.perform(post("/api/v1/parking-facilities/{id}/sectors", patioId)
+                        .header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"code":"%s","name":"%s","capacity":%d,"categories":%s}
+                                """.formatted(codigo, nome, capacidade, categorias)))
+                .andExpect(status);
     }
 
     private long criarMembership(long orgId, long userId, String token) throws Exception {

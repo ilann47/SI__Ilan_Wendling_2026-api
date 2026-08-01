@@ -40,7 +40,7 @@
 | Entidade | Situação e responsabilidade | Atributos principais | Relacionamentos | Estados/validações | Histórico e auditoria |
 |---|---|---|---|---|---|
 | `Patio` | AS-IS/EVOLUÇÃO; raiz de instalação física tenant-aware | nome, endereço, cidade, capacidade física, capacidade operacional, observação | N:1 organização; unidade/venue e setores permanecem evoluções | ativo; física > 0; `0 ≤ operacional ≤ física`; nome normalizado único por organização | criação auditada e versão otimista; interdições permanecem futuras |
-| `Setor` | TARGET; divisão operacional | código, nome, capacidade, categorias, coordenadas | N:1 pátio; 1:N vagas/faixas | capacidade ≤ pátio; código único no pátio | alterações e bloqueios |
+| `Setor` | AS-IS/EVOLUÇÃO; divisão operacional | código, nome, capacidade, categorias; coordenadas permanecem TARGET | N:1 pátio tenant-aware; 1:N vagas/faixas futuras | ativo; soma das capacidades ≤ pátio sob lock; código normalizado único no pátio; categorias defendidas no banco | criação auditada/versionada e `SetorCriado` na outbox; alterações e bloqueios permanecem TARGET |
 | `Vaga` | TARGET; unidade individual opcional | código, tipo, acessibilidade, posição | N:1 setor | livre/bloqueada/manutenção; código único | mudanças de disponibilidade |
 | `FaixaAcesso` | TARGET; via física de entrada/saída | código, direção, modo de falha | N:1 pátio/setor; N:N equipamentos | entrada/saída/bidirecional; ativa | abertura manual e mudança de política |
 | `Interdicao` | TARGET; reduz capacidade | alvo, período, quantidade/motivo | pátio/setor/vaga | período e quantidade válidos | autor, aprovação e encerramento |

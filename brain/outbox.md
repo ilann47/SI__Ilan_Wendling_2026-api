@@ -1,4 +1,4 @@
-> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[reservas-inventario]] · [[pedidos]] · [[acesso]]
+> Links: [[core]] · [[eventos]] · [[organizacoes]] · [[instalacoes]] · [[reservas-inventario]] · [[pedidos]] · [[acesso]]
 
 # Outbox
 
@@ -9,7 +9,7 @@ futura não dependa de efeitos em memória ou de chamada externa na transação.
 
 ## Contexto
 
-A fundação persiste `EventoCriado`, `EventoConfigurado`, `EventoPublicado`,
+A fundação persiste `SetorCriado`, `EventoCriado`, `EventoConfigurado`, `EventoPublicado`,
 `VendasDoEventoAbertas`, `CapacidadeAlocadaAoEvento` e
 `ProdutoEstacionamentoPublicado`, além de `InventarioReservado`,
 `ReservaExpirada`, `InventarioLiberado`, `InventarioConfirmado`, `PedidoCriado`,
@@ -63,6 +63,7 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 
 - [[core]]
 - [[organizacoes]]
+- [[instalacoes]]
 - [[eventos]]
 - [[inventario]]
 - [[produtos-estacionamento]]
@@ -88,3 +89,4 @@ com o estado `RASCUNHO`, inclusive após replay idempotente.
 | 2026-08-01 | Persiste decisões e efeitos do check-in online sem segredo QR. |
 | 2026-08-01 | Persiste política, check-out, encerramento da sessão e ocupação resultante. |
 | 2026-08-01 | Persiste `OperacaoDoEventoEncerrada` com snapshot e ressalva financeira. |
+| 2026-08-01 | Persiste `SetorCriado` atomicamente com o setor físico. |

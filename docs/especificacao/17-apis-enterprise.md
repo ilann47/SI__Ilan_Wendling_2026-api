@@ -152,7 +152,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | Método e rota | Payload/Parâmetros | Resposta | Regras |
 |---|---|---|---|
 | `POST /parking-facilities` | AS-IS: organização implícita, nome, endereço, cidade, capacidade física/operacional | `201 Patio`, `Location`, `ETag` | `facilities:manage`; organização/cidade ativas; `0 ≤ operacional ≤ física`; nome único no tenant |
-| `POST /parking-facilities/{id}/sectors` | código, capacidade, categorias | `201 Sector` | limites físicos |
+| `POST /parking-facilities/{id}/sectors` | AS-IS: código, nome, capacidade e categorias; tenant implícito | `201 Sector`, `Location`, `ETag` | `facilities:manage`; pátio ativo no tenant; código normalizado único; categorias canônicas; soma das capacidades ≤ capacidade física; auditoria/outbox |
 | `POST /sectors/{id}/spaces:batch` | lista de vagas | `201/207` | importação idempotente |
 | `GET /parking-facilities/{id}/occupancy` | por setor/categoria | projeção atual + atraso | leitura no escopo |
 | `POST /events` | AS-IS: schema Evento + `Idempotency-Key`; tenant implícito | `201 Evento`, checklist, `Location`, `ETag` | `events:create`; venue ativo do tenant; período/fuso válidos; replay equivalente devolve o mesmo evento e conflito retorna `409` |

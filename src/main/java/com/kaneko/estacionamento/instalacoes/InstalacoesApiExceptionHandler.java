@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = InstalacoesController.class)
+@RestControllerAdvice(assignableTypes = {InstalacoesController.class, SetorController.class})
 public class InstalacoesApiExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
