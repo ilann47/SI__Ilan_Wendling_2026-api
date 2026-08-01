@@ -208,6 +208,9 @@ materializa presença e sessão, e incrementa a ocupação no mesmo commit. A sa
 encerra presença e sessão, decrementa a ocupação e executa `DENTRO → CONSUMIDA`
 ou `DENTRO → ATIVA` conforme a política publicada. Override,
 placa, RFID, leitura sem consumo e sincronização offline continuam TARGET.
+O bloqueio operacional `ATIVA → BLOQUEADA` também está implementado para
+Supervisor, com motivo, revogação do QR e replay sem novo efeito. Desbloqueio e
+reemissão continuam TARGET.
 
 ## 15.8 Movimentação/Sessão de estacionamento
 

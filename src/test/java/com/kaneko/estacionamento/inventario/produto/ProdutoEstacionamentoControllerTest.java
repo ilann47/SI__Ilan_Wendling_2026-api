@@ -988,6 +988,82 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     @Test
+    void supervisorBloqueiaCredencialAtivaRevogandoQrUmaVez() throws Exception {
+        long pedidoId = criarPedidoConfirmado("credential-block", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "credential-block",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+        gerarQr(tokenContextual, credencialId, "\"0\"", status().isCreated());
+
+        Usuario supervisor = usuario("credential_supervisor", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(supervisor.getId(), tokenContextual);
+        concederPapel(membershipId, "SUPERVISOR");
+        String tokenSupervisor = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(supervisor.getLogin(), "OPERADOR")));
+        String payload = "{\"reason\":\"SUSPEITA_DE_FRAUDE\"}";
+
+        bloquearCredencial(tokenSupervisor, credencialId, payload, status().isOk())
+                .andExpect(header().string("ETag", "\"2\""))
+                .andExpect(jsonPath("$.id").value(credencialId))
+                .andExpect(jsonPath("$.status").value("BLOQUEADA"))
+                .andExpect(jsonPath("$.version").value(2));
+        bloquearCredencial(tokenSupervisor, credencialId, payload, status().isOk())
+                .andExpect(header().string("ETag", "\"2\""));
+
+        assertThat(jdbc.queryForObject("""
+                select count(*) from representacao_qr
+                where credencial_id = ? and revogada_em is not null
+                """, Integer.class, credencialId)).isEqualTo(1);
+        assertThat(auditorias.findAll().stream()
+                .filter(a -> a.getAcao().equals("CREDENCIAL_BLOQUEADA"))
+                .filter(a -> a.getRecursoId().equals(credencialId)).count())
+                .isEqualTo(1);
+        assertThat(outbox.findAll().stream()
+                .filter(e -> e.getEventType().equals("CredencialBloqueada"))
+                .filter(e -> e.getAggregateId().equals(credencialId)).count())
+                .isEqualTo(1);
+    }
+
+    @Test
+    void bloqueioDeCredencialExigeSupervisorMotivoETenantCorreto() throws Exception {
+        long pedidoId = criarPedidoConfirmado("credential-block-rules", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "credential-block-rules",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+
+        bloquearCredencial(tokenContextual, credencialId,
+                "{\"reason\":\"OPERACAO\"}", status().isForbidden());
+
+        Usuario supervisor = usuario("credential_supervisor_rules", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(supervisor.getId(), tokenContextual);
+        concederPapel(membershipId, "SUPERVISOR");
+        String tokenSupervisor = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(supervisor.getLogin(), "OPERADOR")));
+        bloquearCredencial(tokenSupervisor, credencialId,
+                "{\"reason\":\"\"}", status().isBadRequest());
+        bloquearCredencial(tokenSupervisor, credencialId + 999999,
+                "{\"reason\":\"NAO_ENCONTRADA\"}", status().isNotFound());
+
+        Long outraOrganizacaoId = organizacoes.criar(new CriarOrganizacaoRequest(
+                "11.222.333/0001-81", "Outra Organizacao Credencial", null,
+                "BRL", "America/Sao_Paulo", "BR-PR", "ENTERPRISE")).id();
+        long outraMembershipId = criarMembership(
+                outraOrganizacaoId, supervisor.getId(), tokenGlobal);
+        String tokenOutraOrganizacao = selecionar(outraOrganizacaoId,
+                bearer(jwt.gerarToken(supervisor.getLogin(), "OPERADOR")));
+        concederPapel(outraOrganizacaoId, outraMembershipId,
+                tokenOutraOrganizacao, "SUPERVISOR");
+        bloquearCredencial(tokenOutraOrganizacao, credencialId,
+                "{\"reason\":\"OUTRO_TENANT\"}", status().isNotFound());
+    }
+
+    @Test
     void emissaoExigePedidoConfirmadoPermissaoOwnershipEContratoValido() throws Exception {
         long aguardandoId = criarPedidoPersistido("credential-waiting");
         String payload = "{\"preferredMedium\":\"QR\"}";
@@ -1594,6 +1670,15 @@ class ProdutoEstacionamentoControllerTest {
                 .andExpect(esperado);
     }
 
+    private org.springframework.test.web.servlet.ResultActions bloquearCredencial(
+            String token, long credencialId, String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/credentials/{id}/blocking", credencialId)
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
     private org.springframework.test.web.servlet.ResultActions cancelarPedido(
             String token, long pedidoId, String ifMatch, String chave,
             String body,
@@ -1813,9 +1898,14 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     private void concederPapel(long membershipId, String papel) throws Exception {
+        concederPapel(organizacaoId, membershipId, tokenContextual, papel);
+    }
+
+    private void concederPapel(
+            long orgId, long membershipId, String token, String papel) throws Exception {
         mvc.perform(post("/api/v1/organizations/{organizationId}/memberships/{membershipId}/role-assignments",
-                        organizacaoId, membershipId)
-                        .header("Authorization", tokenContextual).contentType(MediaType.APPLICATION_JSON)
+                        orgId, membershipId)
+                        .header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"roleCode\":\"" + papel + "\"}"))
                 .andExpect(status().isCreated());
     }

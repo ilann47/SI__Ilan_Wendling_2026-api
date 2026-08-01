@@ -629,6 +629,21 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   nunca o token ou seu hash.
 - Testes cobrem domínio, API, RBAC, ownership, precondição, segredo não
   persistido, constraints, OpenAPI e duas gerações concorrentes.
+
+---
+
+## Atualização — Bloqueio operacional de credencial (2026-08-01)
+
+- A migration `V35__bloqueio_operacional_credencial.sql` cria
+  `credentials:block` e a concede somente ao papel Supervisor.
+- `POST /api/v1/credentials/{id}/blocking` bloqueia credencial ativa no tenant,
+  exige motivo e devolve o novo `ETag`; recurso de outro tenant retorna `404`.
+- O caso de uso revoga a representação QR vigente na mesma transação e persiste
+  `CREDENCIAL_BLOQUEADA` e `CredencialBloqueada` sem token ou hash.
+- O replay sobre credencial já bloqueada devolve o estado atual sem repetir QR,
+  auditoria ou outbox. Desbloqueio e reemissão não foram antecipados.
+- A suíte passa de 504 para 506 testes sem regressões; Flyway valida 35
+  migrations e o build de pacote permanece verde.
 - A suíte passa de 456 para 462 testes sem regressões.
 
 ---

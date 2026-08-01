@@ -151,6 +151,12 @@ compensatória para UC714.
 limitadas aos pedidos/credenciais do próprio ator; operação administrativa sobre
 terceiros aguarda escopos contextuais próprios.
 
+`credentials:block` está implementada somente para `SUPERVISOR`. O bloqueio
+operacional alcança qualquer credencial ativa do tenant, exige motivo, revoga o
+QR vigente e é idempotente. Administrador, Gestor e Organizador não recebem esse
+poder operacional por implicação; desbloqueio e reemissão permanecem recortes
+separados.
+
 `access:operate`, `access:checkin` e `access:checkout` estão implementadas com os
 papéis de sistema `SUPERVISOR`, `OPERADOR` e `FISCAL_ACESSO`. O Supervisor recebe
 as três e usa `access:operate` tanto para iniciar quanto para encerrar a operação;

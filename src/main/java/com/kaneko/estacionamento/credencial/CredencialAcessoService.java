@@ -8,6 +8,7 @@ import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
+import com.kaneko.estacionamento.credencial.dto.BloquearCredencialRequest;
 import com.kaneko.estacionamento.credencial.dto.CredencialAcessoResponse;
 import com.kaneko.estacionamento.credencial.dto.EmitirCredencialRequest;
 import com.kaneko.estacionamento.credencial.dto.QrCodeResponse;
@@ -198,6 +199,42 @@ public class CredencialAcessoService {
                 emitidoEm, credencial.getFimValidade(), credencial.getVersion());
     }
 
+    @Transactional
+    public CredencialAcessoResponse bloquear(
+            Long organizacaoId, Long credencialId,
+            BloquearCredencialRequest request) {
+        CredencialAcesso credencial = credenciais.findByIdAndOrganizacaoIdForUpdate(
+                        credencialId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Credencial", credencialId));
+        if (credencial.getStatus() == StatusCredencial.BLOQUEADA) {
+            return CredencialAcessoResponse.from(credencial);
+        }
+
+        String motivo = request.reason().trim();
+        OffsetDateTime instante = OffsetDateTime.now(ZoneOffset.UTC);
+        Long versaoAnterior = credencial.getVersion();
+        Map<String, Object> anterior = snapshot(credencial);
+        credencial.bloquear(motivo, instante);
+        boolean qrRevogado = representacoesQr.findAtivaForUpdate(credencialId)
+                .map(qr -> qr.revogar(instante))
+                .orElse(false);
+        credenciais.flush();
+        representacoesQr.flush();
+
+        Map<String, Object> posterior = snapshot(credencial);
+        posterior.put("qrRevogado", qrRevogado);
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                organizacaoId, "CREDENCIAL_BLOQUEADA", RECURSO,
+                credencialId, credencial.getEventoId(), credencial.getPatioId(),
+                motivo, anterior, posterior, versaoAnterior,
+                credencial.getVersion(), ClasseRetencaoAuditoria.OPERACIONAL));
+        outbox.publicar(new PublicarEventoOutboxCommand(
+                "CredencialBloqueada", organizacaoId, RECURSO, credencialId,
+                credencial.getVersion(), null, 1, posterior));
+        return CredencialAcessoResponse.from(credencial);
+    }
+
     private ItemPedido proximoItem(Pedido pedido) {
         return pedido.getItens().stream()
                 .sorted(Comparator.comparing(ItemPedido::getId))
@@ -265,6 +302,10 @@ public class CredencialAcessoService {
         estado.put("status", credencial.getStatus().name());
         estado.put("inicioValidade", credencial.getInicioValidade().toString());
         estado.put("fimValidade", credencial.getFimValidade().toString());
+        if (credencial.getBloqueadaEm() != null) {
+            estado.put("bloqueadaEm", credencial.getBloqueadaEm().toString());
+            estado.put("motivoBloqueio", credencial.getMotivoBloqueio());
+        }
         return estado;
     }
 }

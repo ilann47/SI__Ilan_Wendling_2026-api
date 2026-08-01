@@ -46,6 +46,14 @@ cancelamento do pedido confirmado/atendido
   -> lock das credenciais do pedido
   -> ATIVA -> BLOQUEADA + revogação do QR vigente
   -> auditoria sem token/hash
+
+POST /api/v1/credentials/{credentialId}/blocking
+  -> JWT contextual + credentials:block (Supervisor)
+  -> lock da credencial no tenant
+  -> ATIVA -> BLOQUEADA + motivo
+  -> revoga QR vigente
+  -> auditoria + CredencialBloqueada
+  -> replay retorna estado sem repetir efeitos
 ```
 
 ## Endpoints (se houver)
@@ -55,6 +63,8 @@ cancelamento do pedido confirmado/atendido
 - `GET /api/v1/credentials/{credentialId}`: consulta credencial do próprio ator.
 - `POST /api/v1/credentials/{credentialId}/qr-code`: cria a representação QR
   única vigente e retorna o token somente nessa resposta.
+- `POST /api/v1/credentials/{credentialId}/blocking`: Supervisor bloqueia uma
+  credencial ativa do tenant com motivo e revogação do QR vigente.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -78,7 +88,7 @@ validação física no acesso permanecem fora deste caso de uso.
 - `400`: chave ausente/inválida, meio/campo controlado ou `If-Match` malformado.
 - `412`: versão da credencial divergente.
 - `428`: geração QR sem `If-Match`.
-- `403`: ausência de `credentials:issue` ou tenant ativo.
+- `403`: ausência de `credentials:issue`/`credentials:block` ou tenant ativo.
 - `404`: pedido/credencial de outro ator ou tenant.
 - `409`: pedido não confirmado/atendido, unidades esgotadas, replay divergente,
   meio QR não permitido, credencial inativa/expirada ou placa ambígua.
@@ -88,8 +98,9 @@ validação física no acesso permanecem fora deste caso de uso.
 Há testes de domínio, API, RBAC, ownership, idempotência, uma credencial por
 unidade, snapshot de pátio/direito/validade, transição do pedido, token opaco,
 ausência de segredo no banco, precondição, constraints, OpenAPI, Flyway,
-Hibernate validate, emissão concorrente, geração QR concorrente e bloqueio
-compensatório durante cancelamento.
+Hibernate validate, emissão concorrente, geração QR concorrente, bloqueio
+compensatório durante cancelamento e bloqueio operacional idempotente por
+Supervisor.
 
 ## Decisões Técnicas
 
@@ -108,6 +119,8 @@ compensatório durante cancelamento.
   `If-Match` e índice parcial garantem uma representação não revogada.
 - Cancelamento do pedido revoga a representação ativa no mesmo commit do
   bloqueio; o histórico e o hash permanecem para rastreabilidade.
+- O bloqueio operacional usa o lock da credencial como serializador e aceita
+  replay terminal sem reescrever o motivo ou duplicar auditoria/outbox.
 - `meioPreferido = QR` é a permissão efetiva enquanto não existir uma política
   de meios híbridos. QR rotativo, revogação e reemissão não foram antecipados.
 
@@ -132,3 +145,4 @@ compensatório durante cancelamento.
 | 2026-07-30 | UC713 bloqueia credenciais e revoga QR de pedido cancelado. |
 | 2026-08-01 | UC715 consome QR ativo uma única vez e registra a credencial como DENTRO. |
 | 2026-08-01 | UC717 consome ou reativa a credencial no check-out conforme a política do evento. |
+| 2026-08-01 | Implementa bloqueio operacional idempotente por Supervisor com revogação QR. |

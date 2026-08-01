@@ -77,7 +77,8 @@ proteção do último administrador.
   Administrador e Gestor; `orders:cancel` é concedida aos três papéis, sempre
   com ownership do pedido.
 - [[credenciais]] — emissão, leitura própria e geração QR exigem
-  `credentials:issue`, concedida a Administrador, Gestor e Organizador.
+  `credentials:issue`, concedida a Administrador, Gestor e Organizador;
+  bloqueio operacional exige `credentials:block`, restrita a Supervisor.
 - [[acesso]] — Supervisor recebe `access:operate`, `access:checkin` e
   `access:checkout`; Operador recebe entrada e saída; Fiscal de acesso recebe
   apenas `access:checkin`. `access:operate` protege abertura e encerramento
@@ -100,3 +101,4 @@ proteção do último administrador.
 | 2026-08-01 | Catálogo recebe `access:checkout` para Supervisor e Operador. |
 | 2026-08-01 | Reutiliza `access:operate` no encerramento operacional da UC720. |
 | 2026-08-01 | Catálogo recebe `orders:read` para consulta própria individual e paginada. |
+| 2026-08-01 | Catálogo recebe `credentials:block` restrita ao Supervisor. |

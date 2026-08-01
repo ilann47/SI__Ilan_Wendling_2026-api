@@ -80,4 +80,5 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-01 | UC715/UC718 implementadas com check-in QR online e ocupação concorrente. |
 | 2026-08-01 | UC717/UC719 implementadas com política explícita, check-out QR e encerramento da sessão. |
 | 2026-08-01 | UC720 recebe encerramento operacional seguro; fechamento financeiro permanece pendente. |
+| 2026-08-01 | Credencial recebe bloqueio operacional idempotente restrito ao Supervisor. |
 | 2026-08-01 | Restringe métricas e endpoints administrativos do Actuator a clientes autenticados. |

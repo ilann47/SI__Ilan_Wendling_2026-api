@@ -92,3 +92,8 @@ contra seu contrato antes de implementação, sem antecipar integração externa
 O endurecimento transversal de segurança restringe `/actuator/metrics` e os
 demais endpoints administrativos a JWT válido. Somente `/actuator/health/**` e
 `/actuator/info` permanecem públicos para probes sem credencial.
+
+O bloqueio manual de credencial ativa também é executável sem gateway ou
+hardware e foi concluído com `credentials:block` restrita ao Supervisor,
+revogação transacional do QR e replay sem efeitos duplicados. Desbloqueio e
+reemissão permanecem separados porque exigem política de alçada e substituição.

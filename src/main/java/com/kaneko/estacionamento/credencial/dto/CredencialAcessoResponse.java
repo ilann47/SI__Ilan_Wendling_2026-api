@@ -26,6 +26,8 @@ public record CredencialAcessoResponse(
         String vehiclePlate,
         StatusCredencial status,
         Integer qrVersion,
+        OffsetDateTime blockedAt,
+        String blockingReason,
         Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
@@ -39,7 +41,8 @@ public record CredencialAcessoResponse(
                 credencial.getDireito(), credencial.getInicioValidade(),
                 credencial.getFimValidade(), credencial.getMeioPreferido(),
                 credencial.getPlacaVeiculo(), credencial.getStatus(),
-                credencial.getQrVersao(), credencial.getVersion(),
+                credencial.getQrVersao(), credencial.getBloqueadaEm(),
+                credencial.getMotivoBloqueio(), credencial.getVersion(),
                 credencial.getCreatedAt(),
                 credencial.getUpdatedAt());
     }

@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.credencial;
 
 import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
+import com.kaneko.estacionamento.credencial.dto.BloquearCredencialRequest;
 import com.kaneko.estacionamento.credencial.dto.CredencialAcessoResponse;
 import com.kaneko.estacionamento.credencial.dto.EmitirCredencialRequest;
 import com.kaneko.estacionamento.credencial.dto.QrCodeResponse;
@@ -72,6 +73,19 @@ public class CredencialAcessoController {
                 .build().toUri();
         return ResponseEntity.created(location)
                 .eTag("\"" + response.credentialVersion() + "\"")
+                .body(response);
+    }
+
+    @PostMapping("/credentials/{credentialId}/blocking")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('credentials:block', authentication)")
+    public ResponseEntity<CredencialAcessoResponse> bloquear(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long credentialId,
+            @Valid @RequestBody BloquearCredencialRequest request) {
+        CredencialAcessoResponse response = service.bloquear(
+                principal.organizacaoId(), credentialId, request);
+        return ResponseEntity.ok()
+                .eTag("\"" + response.version() + "\"")
                 .body(response);
     }
 
