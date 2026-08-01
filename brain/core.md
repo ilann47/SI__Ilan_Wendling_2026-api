@@ -22,6 +22,8 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - Segurança atual: JWT HS256, RBAC contextual nas APIs `/api/v1` implementadas e perfis legados nas APIs `/api`.
 - Documentação de API: springdoc OpenAPI.
 - Testes de integração contra banco PostgreSQL separado.
+- Actuator expõe publicamente apenas `health` e `info`; `metrics` e demais
+  endpoints administrativos exigem JWT válido quando a segurança está ativa.
 
 ## Padrões globais
 
@@ -78,3 +80,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-01 | UC715/UC718 implementadas com check-in QR online e ocupação concorrente. |
 | 2026-08-01 | UC717/UC719 implementadas com política explícita, check-out QR e encerramento da sessão. |
 | 2026-08-01 | UC720 recebe encerramento operacional seguro; fechamento financeiro permanece pendente. |
+| 2026-08-01 | Restringe métricas e endpoints administrativos do Actuator a clientes autenticados. |

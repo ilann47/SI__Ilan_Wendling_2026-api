@@ -84,3 +84,7 @@ transiciona o evento para `OPERACAO_ENCERRADA` e impede novas admissões. A part
 financeira permanece explicitamente pendente, sem simular captura, reembolso,
 conciliação ou DRE. A próxima história independente do gateway é a UC729, sujeita
 à modelagem documentada de escala tenant-aware.
+
+O endurecimento transversal de segurança restringe `/actuator/metrics` e os
+demais endpoints administrativos a JWT válido. Somente `/actuator/health/**` e
+`/actuator/info` permanecem públicos para probes sem credencial.

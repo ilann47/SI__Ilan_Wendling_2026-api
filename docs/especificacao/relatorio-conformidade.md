@@ -716,3 +716,13 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   DRE e finalização do evento permanecem pendentes, sem dados sintéticos.
 - A evolução é aditiva e não requer migration após V31; o legado
   `Movimentacao` continua inalterado.
+
+---
+
+## Atualização — Endurecimento do Actuator (2026-08-01)
+
+- A regra ampla que liberava `/actuator/**` foi removida.
+- `health` e `info` continuam públicos para probes; `metrics` e qualquer outro
+  endpoint administrativo exigem autenticação JWT quando a segurança está ativa.
+- Teste integrado reproduz a exposição anterior e valida `200` nos probes,
+  `401` em métricas anônimas e `200` em métricas com token válido.

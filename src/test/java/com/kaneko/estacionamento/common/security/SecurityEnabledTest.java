@@ -21,7 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
  * Teste da protecao efetiva: com {@code app.security.enabled=true}, os endpoints
  * /api/** exigem token JWT. Valida 401 sem token e 200 com token valido.
  */
-@SpringBootTest(properties = "app.security.enabled=true")
+@SpringBootTest(properties = {
+        "app.security.enabled=true",
+        "management.endpoints.web.exposure.include=health,info,metrics"
+})
 @AutoConfigureMockMvc
 @Transactional
 class SecurityEnabledTest {
@@ -46,6 +49,23 @@ class SecurityEnabledTest {
     void acessoComTokenInvalidoRetorna401() throws Exception {
         mvc.perform(get("/api/usuarios").header("Authorization", "Bearer token.invalido.aqui"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void actuatorExpoeSaudeMasProtegeMetricas() throws Exception {
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+        mvc.perform(get("/actuator/info")).andExpect(status().isOk());
+        mvc.perform(get("/actuator/metrics")).andExpect(status().isUnauthorized());
+
+        String body = mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"login\": \"operador\", \"senha\": \"senha123\" }"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String token = JsonPath.read(body, "$.token");
+        mvc.perform(get("/actuator/metrics")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     @Test
