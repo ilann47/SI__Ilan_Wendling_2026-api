@@ -43,7 +43,7 @@ Estados utilizados:
 | UC725 — Venda PDV | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Caixa, pagamento transacional e razão de estoque | Cadastros legados de produto existem | Venda, recebimento, caixa, estoque e fiscal conciliáveis | Concluir pagamentos, estoque enterprise e UC728 |
 | UC726–UC727 — Mensalista e rotativo | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Fase de eventos e políticas próprias | APIs legadas permanecem preservadas | Evolução enterprise completa | Retomar após o critério de saída da fase exclusiva de eventos |
 | UC728 — Caixa | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Pagamentos e PDV | Financeiro legado existe | Sessão de caixa, diferenças e conciliação | Concluir pagamento transacional e preparar PDV |
-| UC729 — Escalas | `PARCIALMENTE_EXECUTAVEL` | Contexto organizacional e eventos | Usuário/funcionário/evento existem | Escala tenant-aware, vigência e autorização contextual | Pode ser iniciada após o núcleo operacional da fase de eventos |
+| UC729 — Escalas | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Identidade laboral canônica e contrato de escala | Usuário, funcionário e evento existem isoladamente | Vínculo usuário–funcionário–colaborador, catálogo de função/qualificação, API e máquina de estados executável | Definir o vínculo canônico e os contratos de criação/publicação/execução sem reutilizar o colaborador legado como identidade autenticável |
 | UC730 — Integração externa | `BLOQUEADA_EXTERNAMENTE` | Provider/contrato por categoria | Outbox transacional existe | Inbox, adapters, credenciais, retries e quarentena por integração | Escolher uma integração real e fornecer ambiente/credenciais de homologação |
 
 ## 21.3 Bloqueio formal da UC714
@@ -97,3 +97,37 @@ O bloqueio manual de credencial ativa também é executável sem gateway ou
 hardware e foi concluído com `credentials:block` restrita ao Supervisor,
 revogação transacional do QR e replay sem efeitos duplicados. Desbloqueio e
 reemissão permanecem separados porque exigem política de alçada e substituição.
+
+## 21.5 Auditoria dos recortes remanescentes
+
+Depois das entregas de setor, vaga, leitura própria de pedidos e bloqueio de
+credencial, os candidatos internos restantes foram confrontados novamente com
+código e baseline. Nenhum deles possui hoje contrato suficiente para uma nova
+história vertical segura:
+
+1. quota por canal não possui endpoint, catálogo canônico de canais nem regra
+   que relacione o `canal` textual da reserva aos limites do produto;
+2. ocupação por setor/categoria não pode ser derivada porque check-in e sessão
+   guardam evento/pátio, mas não setor/vaga, e produto/alocação também não roteiam
+   a entrada para um setor;
+3. `POST /access-validations` exige decisão sem consumo, enquanto a tentativa
+   persistida atual representa admissão/saída e sua autorização exige efeitos de
+   ocupação; a baseline não decide se a validação preliminar cria outra entidade
+   ou outra transição;
+4. `GET /access-attempts` define filtros, mas não fixa a permissão entre operação
+   e auditoria; conceder `access:operate` ampliaria comandos e `audit:read` ainda
+   não possui papel/contrato de consulta;
+5. desbloqueio precisa impedir reativação de credencial bloqueada por
+   cancelamento/fraude e definir alçada; reemissão precisa definir vínculo com a
+   substituída e migrar a unicidade por unidade; troca de placa depende da
+   política comercial aprovada;
+6. abertura agendada de vendas ainda não possui persistência, cancelamento,
+   reagendamento nem semântica multi-instância para um scheduler confiável;
+7. consoles administrativos enterprise dependem de contratos de consulta de
+   eventos, venues, pátios, produtos e alocações que a OpenAPI atual
+   deliberadamente não publica.
+
+Implementar qualquer um desses itens agora exigiria inventar regra de negócio,
+ampliar RBAC por inferência ou criar um modelo paralelo ao aprovado. Eles ficam
+formalmente bloqueados até que as condições acima sejam resolvidas. Os módulos
+legados de rotativo e mensalistas continuam fora da fase exclusiva de eventos.
