@@ -30,10 +30,10 @@ Estados utilizados:
 | UC714 — Reembolsar pagamento | `BLOQUEADA_EXTERNAMENTE` | Pagamento capturado real, gateway, credenciais sandbox, assinatura de webhook e política comercial | UC713 preserva `EM_REEMBOLSO`, bloqueia o direito e registra os efeitos compensatórios | Solicitação vinculada a captura, aprovação, execução, retorno, conciliação e restituição real | Provider e contrato escolhidos; credenciais/segredos sandbox disponíveis; alçadas, prazo, multa, crédito e reembolso parcial definidos |
 | UC715 — Realizar check-in | `CONCLUIDA` | — | QR online tenant-aware, tentativa terminal, consumo, presença, sessão de evento, ocupação concorrente, auditoria, outbox e idempotência | Placa/RFID, override, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC716 — Check-in offline | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | UC715 e modelo canônico de decisão | QR seguro e contexto tenant existem | Pacote assinado, edge, sequência, armazenamento local e sincronização | Concluir UC715 e definir infraestrutura edge verificável |
-| UC717 — Check-out | `EXECUTAVEL` | Presença e sessão abertas pela UC715 | Raízes enterprise, ocupação e credencial `DENTRO` disponíveis | Saída, política explícita de reentrada e decremento concorrente | Pode iniciar sem UC714/UC716 e habilita UC719 |
+| UC717 — Check-out | `CONCLUIDA` | — | Política explícita, saída QR idempotente, presença encerrada, credencial consumida/reativada e ocupação decrementada | Saída manual, placa/RFID, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC718 — Abrir movimentação | `CONCLUIDA` | — | Sessão enterprise com origem `PEDIDO_EVENTO`, snapshots e vínculos tenant-aware aberta no check-in | Origens rotativo/mensalista permanecem fora da fase de eventos | Reabrir somente por defeito ou nova origem aprovada |
-| UC719 — Encerrar movimentação | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | UC717/UC718 | Encerramento legado existe | Semântica enterprise de evento e efeitos de ocupação | Concluir sessão de evento e check-out |
-| UC720 — Fechar evento | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | UC715–UC719 e projeções operacionais | Ciclo de evento até vendas abertas existe | Fechamento versionado e ressalvas de fontes pendentes | Concluir operação de acesso, presença, sessão e ocupação |
+| UC719 — Encerrar movimentação | `CONCLUIDA` | — | Sessão `PEDIDO_EVENTO` encerrada atomicamente no check-out, sem alterar o legado | Tarifação rotativa permanece fora da fase exclusiva de eventos | Reabrir somente por defeito ou nova origem aprovada |
+| UC720 — Fechar evento | `EXECUTAVEL` | UC715–UC719 concluídas | Ciclo operacional, presença, sessão e ocupação estão disponíveis | Encerramento versionado e ressalvas explícitas para fontes financeiras pendentes | Pode iniciar sem UC714/UC716; fechamento financeiro autêntico permanece separado |
 | UC721 — DRE por evento | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Fontes financeiras e fechamento | Relatórios legados existem | Linhagem econômica por evento | Disponibilizar fontes financeiras canônicas ou modo preliminar formal |
 | UC722 — Documento fiscal | `BLOQUEADA_EXTERNAMENTE` | Provedor fiscal, certificado e contratos regulatórios | Registros fiscais legados permanecem preservados | Transmissão, protocolo, contingência e armazenamento fiscal seguro | Provider/ambiente/certificado e escopo fiscal definidos |
 | UC723–UC724 — Compra e venda administrativa | `PARCIALMENTE_EXECUTAVEL` | Evolução tenant-aware de estoque e financeiro | Fluxos legados de notas e estoque existem | Agregados enterprise, razão de estoque e isolamento organizacional | Concluir a fase de eventos e planejar migração aditiva dos módulos legados |
@@ -60,7 +60,7 @@ Por isso, enquanto as dependências externas não forem fornecidas:
 5. o pedido permanecerá em `EM_REEMBOLSO`, com credenciais bloqueadas, até que
    exista um processo financeiro autêntico.
 
-## 21.4 Check-in online concluído e próxima história executável
+## 21.4 Acesso online concluído e próxima história executável
 
 A UC715 é independente da conclusão financeira da UC714. O check-in opera sobre
 uma credencial já emitida e ativa, validando tenant, evento, pátio, janela,
@@ -73,8 +73,12 @@ vaga produzem uma autorização e uma recusa determinística. Barreira física e
 modo offline permanecem fora do recorte até existirem adapters, identidade de
 dispositivo e infraestrutura edge próprios.
 
-A próxima história independente e executável é a UC717. Ela consumirá a presença
-e a sessão abertas pela UC715 para registrar saída, aplicar a política explícita
-de reentrada, atualizar a credencial e decrementar ocupação. A UC719 será
-concluída como efeito transacional desse mesmo fluxo, assim como a UC718 foi
-concluída pelo check-in.
+As migrations V30/V31 tornam a política de reentrada explícita e implementam a
+saída QR online. UC717 encerra presença, atualiza a credencial e decrementa a
+ocupação; UC719 encerra a sessão `PEDIDO_EVENTO` no mesmo commit. A política não
+possui default comercial: eventos legados permanecem sem política até
+configuração explícita e não podem ser publicados nessa condição.
+
+A próxima história independente e executável é a UC720. O fechamento operacional
+pode validar presenças, sessões e ocupação sem simular captura, reembolso,
+conciliação ou DRE financeira.

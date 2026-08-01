@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.evento.dto;
 
 import com.kaneko.estacionamento.evento.Evento;
+import com.kaneko.estacionamento.evento.PoliticaReentrada;
 import com.kaneko.estacionamento.evento.StatusEvento;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -14,6 +15,7 @@ public record EventoResponse(
         OffsetDateTime endsAt,
         String timeZone,
         StatusEvento status,
+        PoliticaReentrada reentryPolicy,
         String externalId,
         Long version,
         OffsetDateTime createdAt,
@@ -37,7 +39,8 @@ public record EventoResponse(
                 evento.getId(), evento.getOrganizacaoId(), evento.getVenueId(), evento.getNome(),
                 evento.getInicio().atZoneSameInstant(fuso).toOffsetDateTime(),
                 evento.getFim().atZoneSameInstant(fuso).toOffsetDateTime(),
-                evento.getFusoHorario(), evento.getStatus(), evento.getExternalId(), evento.getVersion(),
+                evento.getFusoHorario(), evento.getStatus(), evento.getPoliticaReentrada(),
+                evento.getExternalId(), evento.getVersion(),
                 evento.getCreatedAt(), evento.getUpdatedAt(), checklist);
     }
 }

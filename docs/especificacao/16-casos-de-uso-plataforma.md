@@ -42,7 +42,9 @@ embora autenticação técnica dedicada permaneça futura.
 
 **Situação implementada:** `POST /api/v1/events/{id}/publication` exige
 confirmação, `If-Match`, `events:publish`, alocação com capacidade vendável e
-produto publicado. A primeira entrega usa o Gestor autenticado como responsável
+produto publicado. `PATCH /api/v1/events/{id}` define previamente a política
+explícita `ENTRADA_UNICA` ou `REENTRADA_PERMITIDA`; não existe default comercial.
+A primeira entrega usa o Gestor autenticado como responsável
 pela publicação. A abertura de vendas permanece um comando separado:
 `POST /api/v1/events/{id}/sales-opening` exige `If-Match` e executa imediatamente
 `PUBLICADO → VENDAS_ABERTAS`; instante futuro é recusado até existir scheduler.
@@ -286,6 +288,13 @@ RFID, override, barreira física e offline permanecem nos casos de uso próprios
 **Exceções:** E1 presença inexistente; E2 saída duplicada; E3 equipamento falhou.  
 **Pós-condição:** veículo fora, sessão encerrada e direito consumido ou reativado.
 
+**Situação implementada:** concluída para QR online em
+`POST /api/v1/check-outs`. O comando exige tenant contextual,
+`access:checkout` e `Idempotency-Key`, registra tentativa de direção `SAIDA`,
+encerra presença e sessão, decrementa a ocupação sob lock e aplica a política
+imutável do evento. Replays devolvem o mesmo resultado; saída repetida é uma
+recusa terminal auditada. Barreira física e saída manual permanecem futuras.
+
 ## UC718 — Abrir movimentação
 
 **Objetivo:** iniciar a permanência física.  
@@ -305,6 +314,11 @@ transacional da UC715. A movimentação legada não foi alterada.
 **Objetivo:** finalizar permanência e valor aplicável.  
 **Atores:** Policy pós-checkout; Operador.  
 **Pré-condições:** movimentação aberta.
+
+**Situação implementada:** concluída para `SessaoEstacionamento` com origem
+`PEDIDO_EVENTO` como efeito transacional da UC717. A sessão termina em
+`ENCERRADA`, registra a tentativa de saída e publica `MovimentacaoEncerrada`.
+O fluxo legado e o cálculo tarifário rotativo não foram alterados.
 
 **Fluxo principal:** registra saída; calcula permanência; aplica regra da modalidade; grava valor/snapshot; fecha; publica `MovimentacaoEncerrada`.  
 **Alternativos:** evento pré-pago, mensalista sem cobrança no ato, rotativo tarifado.  

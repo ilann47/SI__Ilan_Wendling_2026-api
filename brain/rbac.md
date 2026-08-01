@@ -77,8 +77,9 @@ proteção do último administrador.
   com ownership do pedido.
 - [[credenciais]] — emissão, leitura própria e geração QR exigem
   `credentials:issue`, concedida a Administrador, Gestor e Organizador.
-- [[acesso]] — Supervisor recebe `access:operate` e `access:checkin`; Operador e
-  Fiscal de acesso recebem apenas `access:checkin`.
+- [[acesso]] — Supervisor recebe `access:operate`, `access:checkin` e
+  `access:checkout`; Operador recebe entrada e saída; Fiscal de acesso recebe
+  apenas `access:checkin`.
 
 ## Histórico (data + ação)
 
@@ -94,3 +95,4 @@ proteção do último administrador.
 | 2026-07-30 | Catálogo recebe `credentials:issue` para Administrador, Gestor e Organizador. |
 | 2026-07-30 | Catálogo recebe `orders:cancel` para cancelamento do próprio pedido. |
 | 2026-08-01 | Catálogo recebe Supervisor, Operador, Fiscal de acesso e permissões operacionais de check-in. |
+| 2026-08-01 | Catálogo recebe `access:checkout` para Supervisor e Operador. |

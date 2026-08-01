@@ -113,4 +113,32 @@ class CredencialAcessoTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("ativa");
     }
+
+    @Test
+    void registraSaidaConsumindoOuReativandoConformePoliticaPublicada() {
+        CredencialAcesso entradaUnica = novaCredencial(
+                "CRD-0123456789ABCDEF0123456789ABCDEF");
+        entradaUnica.ativar();
+        entradaUnica.registrarEntrada();
+        entradaUnica.registrarSaida(false);
+        assertThat(entradaUnica.getStatus()).isEqualTo(StatusCredencial.CONSUMIDA);
+
+        CredencialAcesso reentrada = novaCredencial(
+                "CRD-FEDCBA9876543210FEDCBA9876543210");
+        reentrada.ativar();
+        reentrada.registrarEntrada();
+        reentrada.registrarSaida(true);
+        assertThat(reentrada.getStatus()).isEqualTo(StatusCredencial.ATIVA);
+        assertThatThrownBy(() -> entradaUnica.registrarSaida(false))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    private static CredencialAcesso novaCredencial(String codigo) {
+        OffsetDateTime inicio = OffsetDateTime.parse("2026-10-10T17:00:00-03:00");
+        return CredencialAcesso.criar(
+                1L, 2L, 3L, 4L, 5L, 6L, codigo, 1,
+                OrigemCredencial.PEDIDO, CategoriaProduto.COMUM,
+                DireitoProduto.ESTACIONAMENTO_EVENTO, inicio,
+                inicio.plusHours(8), MeioPreferidoCredencial.QR, null);
+    }
 }

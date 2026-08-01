@@ -156,7 +156,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | `POST /sectors/{id}/spaces:batch` | lista de vagas | `201/207` | importação idempotente |
 | `GET /parking-facilities/{id}/occupancy` | por setor/categoria | projeção atual + atraso | leitura no escopo |
 | `POST /events` | AS-IS: schema Evento + `Idempotency-Key`; tenant implícito | `201 Evento`, checklist, `Location`, `ETag` | `events:create`; venue ativo do tenant; período/fuso válidos; replay equivalente devolve o mesmo evento e conflito retorna `409` |
-| `PATCH /events/{id}` | campos + `If-Match` | `200 Evento` | permitido pelo estado |
+| `PATCH /events/{id}` | AS-IS: `reentryPolicy` + `If-Match` | `200 Evento`, `ETag` | `events:create`; somente `RASCUNHO`; lista fechada; política obrigatória antes da publicação |
 | `POST /events/{id}/publication` | AS-IS: confirmação + `If-Match` | `200 Evento`, checklist, `ETag` | `events:publish`; alocação vendável e produto publicado; ausência de versão retorna `428`, divergência `412`; auditoria e outbox atômicas |
 | `POST /events/{id}/sales-opening` | AS-IS: `startsAt` opcional + `If-Match` | `200 Evento`, `ETag`; `202` permanece TARGET | `events:publish`; evento publicado; abertura imediata auditada e com outbox; instante futuro retorna `409` até existir scheduler; ausência de versão `428`, divergência `412` |
 | `POST /events/{id}/sales-closing` | motivo | `200` | Organizador/Gestor |
@@ -206,7 +206,7 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 |---|---|---|---|
 | `POST /access-validations` | token/placa, evento, pátio, faixa | decisão sem consumo | operação/dispositivo |
 | `POST /check-ins` | AS-IS: `qrToken`, `eventId`, `parkingFacilityId`, `lane` + `Idempotency-Key` | `200` decisão, tentativa e IDs dos efeitos | `access:checkin`; QR por hash; evento em operação; janela; tenant/pátio; idempotência; antiduplicidade; capacidade serializada; sem comando de barreira nesta etapa |
-| `POST /check-outs` | presença/credencial/placa | saída e política de reentrada | presença aberta |
+| `POST /check-outs` | AS-IS: `qrToken`, `eventId`, `parkingFacilityId`, `lane` + `Idempotency-Key` | `200` decisão, tentativa, efeitos, ocupação e estado da credencial | `access:checkout`; evento em operação; QR por hash; presença/sessão abertas; política publicada; locks; idempotência; sem comando físico de barreira |
 | `POST /manual-admissions` | dados, motivo, aprovador | `201 Attempt` | exceção auditada |
 | `GET /access-attempts` | cursor, evento, decisão, motivo | feed | operação/auditoria |
 | `POST /movements` | somente fluxo legado/controlado | `201 Movement` | origem de direito obrigatória no target |

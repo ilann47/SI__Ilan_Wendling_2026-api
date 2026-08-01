@@ -37,6 +37,9 @@ public class Evento extends AuditableEntity {
     private StatusEvento status;
     @Column(name = "external_id", length = 160)
     private String externalId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "politica_reentrada", length = 30)
+    private PoliticaReentrada politicaReentrada;
     @Version
     @Column(nullable = false)
     private Long version;
@@ -68,7 +71,23 @@ public class Evento extends AuditableEntity {
             throw new IllegalStateException(
                     "Somente evento em rascunho pode ser configurado.");
         }
+        if (politicaReentrada == null) {
+            throw new IllegalStateException(
+                    "A politica de reentrada deve ser definida antes da configuracao.");
+        }
         status = StatusEvento.CONFIGURADO;
+    }
+
+    public void definirPoliticaReentrada(PoliticaReentrada politica) {
+        if (status != StatusEvento.RASCUNHO) {
+            throw new IllegalStateException(
+                    "A politica de reentrada so pode ser alterada em rascunho.");
+        }
+        if (politica == null) {
+            throw new IllegalArgumentException(
+                    "A politica de reentrada e obrigatoria.");
+        }
+        politicaReentrada = politica;
     }
 
     public void publicar() {

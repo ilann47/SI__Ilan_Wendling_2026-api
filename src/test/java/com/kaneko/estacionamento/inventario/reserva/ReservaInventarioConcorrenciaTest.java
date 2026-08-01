@@ -16,6 +16,8 @@ import com.kaneko.estacionamento.credencial.dto.EmitirCredencialRequest;
 import com.kaneko.estacionamento.credencial.dto.QrCodeResponse;
 import com.kaneko.estacionamento.evento.EventoService;
 import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
+import com.kaneko.estacionamento.evento.dto.AtualizarEventoRequest;
+import com.kaneko.estacionamento.evento.PoliticaReentrada;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
 import com.kaneko.estacionamento.geografia.CidadeService;
@@ -149,10 +151,12 @@ class ReservaInventarioConcorrenciaTest {
                         agora.minusDays(1), agora.plusDays(1), 1, 1));
         produtos.publicar(
                 organizacaoId, produtoId, 0L, new PublicarProdutoRequest(true));
+        eventos.atualizar(organizacaoId, eventoId, 0L,
+                new AtualizarEventoRequest(PoliticaReentrada.ENTRADA_UNICA));
         eventos.publicar(
-                organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
+                organizacaoId, eventoId, 1L, new PublicarEventoRequest(true));
         eventos.abrirVendas(
-                organizacaoId, eventoId, 2L, new AbrirVendasEventoRequest(null));
+                organizacaoId, eventoId, 3L, new AbrirVendasEventoRequest(null));
     }
 
     @Test
@@ -364,9 +368,9 @@ class ReservaInventarioConcorrenciaTest {
                 where credencial_id in (?, ?)
                 """, primeiraCredencial.id(), segundaCredencial.id());
         eventos.encerrarVendas(
-                organizacaoId, eventoId, 3L, new PublicarEventoRequest(true));
-        eventos.iniciarOperacao(
                 organizacaoId, eventoId, 4L, new PublicarEventoRequest(true));
+        eventos.iniciarOperacao(
+                organizacaoId, eventoId, 5L, new PublicarEventoRequest(true));
 
         CountDownLatch inicio = new CountDownLatch(1);
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {

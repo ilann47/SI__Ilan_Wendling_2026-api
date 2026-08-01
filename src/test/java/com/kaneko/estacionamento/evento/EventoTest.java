@@ -43,6 +43,7 @@ class EventoTest {
 
         assertThatIllegalStateException().isThrownBy(evento::publicar);
 
+        evento.definirPoliticaReentrada(PoliticaReentrada.ENTRADA_UNICA);
         evento.configurar();
         assertThat(evento.getStatus()).isEqualTo(StatusEvento.CONFIGURADO);
         assertThatIllegalStateException().isThrownBy(evento::configurar);
@@ -59,6 +60,7 @@ class EventoTest {
     @Test
     void encerraVendasEIniciaOperacaoSomenteNaOrdemAprovada() {
         Evento evento = novoEvento();
+        evento.definirPoliticaReentrada(PoliticaReentrada.ENTRADA_UNICA);
         evento.configurar();
         evento.publicar();
         evento.abrirVendas();
@@ -72,6 +74,23 @@ class EventoTest {
         evento.iniciarOperacao();
         assertThat(evento.getStatus()).isEqualTo(StatusEvento.EM_OPERACAO);
         assertThatIllegalStateException().isThrownBy(evento::iniciarOperacao);
+    }
+
+    @Test
+    void exigePoliticaExplicitaEImpedeAlteracaoDepoisDaPublicacao() {
+        Evento evento = novoEvento();
+
+        assertThatIllegalStateException().isThrownBy(evento::configurar)
+                .withMessageContaining("reentrada");
+
+        evento.definirPoliticaReentrada(PoliticaReentrada.REENTRADA_PERMITIDA);
+        assertThat(evento.getPoliticaReentrada())
+                .isEqualTo(PoliticaReentrada.REENTRADA_PERMITIDA);
+        evento.configurar();
+        evento.publicar();
+
+        assertThatIllegalStateException().isThrownBy(() ->
+                evento.definirPoliticaReentrada(PoliticaReentrada.ENTRADA_UNICA));
     }
 
     private static Evento novoEvento() {

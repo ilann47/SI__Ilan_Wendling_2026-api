@@ -165,6 +165,15 @@ public class CredencialAcesso extends AuditableEntity {
         status = StatusCredencial.DENTRO;
     }
 
+    public void registrarSaida(boolean permiteReentrada) {
+        if (status != StatusCredencial.DENTRO) {
+            throw new IllegalStateException(
+                    "Somente credencial dentro pode registrar saida.");
+        }
+        status = permiteReentrada
+                ? StatusCredencial.ATIVA : StatusCredencial.CONSUMIDA;
+    }
+
     private static String placa(String valor) {
         if (valor == null || valor.isBlank()) return null;
         String placa = valor.replaceAll("[^A-Za-z0-9]", "")

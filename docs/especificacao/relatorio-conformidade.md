@@ -671,3 +671,30 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   override e offline continuam fora deste recorte.
 - A suíte passa de 471 para 481 testes sem regressões; Flyway V29, Hibernate
   validate e OpenAPI permanecem verdes.
+
+---
+
+## Atualização — Política de reentrada, check-out e encerramento / UC717 e UC719 (2026-08-01)
+
+- A migration `V30__politica_reentrada_evento.sql` introduz a política explícita
+  `ENTRADA_UNICA/REENTRADA_PERMITIDA`. Eventos legados não recebem backfill
+  arbitrário; a constraint `NOT VALID` protege novas transições e a publicação
+  rejeita política ausente.
+- `PATCH /api/v1/events/{id}` usa `If-Match`, lista fechada e somente permite
+  definir a política enquanto o evento está em `RASCUNHO`; auditoria e
+  `PoliticaReentradaDefinida` registram a versão escolhida.
+- A migration `V31__checkout_evento_online.sql` amplia tentativas para direção
+  `SAIDA`, vincula tentativas de saída à presença e sessão por FKs compostas e
+  introduz `access:checkout` para Supervisor e Operador.
+- `POST /api/v1/check-outs` resolve QR somente por SHA-256, exige evento em
+  operação, credencial `DENTRO`, presença/sessão abertas e executa sob locks a
+  saída, o decremento da ocupação e `DENTRO → CONSUMIDA/ATIVA`.
+- Replay idempotente devolve a mesma tentativa; saída repetida termina como
+  `SAIDA_DUPLICADA`. `CheckoutRealizado`, `MovimentacaoEncerrada` e
+  `OcupacaoAlterada` são persistidos atomicamente. Nenhum comando físico de
+  barreira é simulado.
+- O legado `Movimentacao` permanece intacto e nenhuma tarifação rotativa foi
+  introduzida. Testes cobrem entrada única, reentrada, replay, duplicidade,
+  RBAC, domínio, banco e OpenAPI.
+- A suíte passa de 481 para 489 testes; Flyway V31, Hibernate validate e OpenAPI
+  permanecem sob regressão obrigatória.

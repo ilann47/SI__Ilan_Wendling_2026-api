@@ -9,6 +9,7 @@ import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
 import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
+import com.kaneko.estacionamento.evento.dto.AtualizarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.ChecklistConfiguracaoEventoResponse;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.EventoResponse;
@@ -57,6 +58,26 @@ public class EventoService {
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.outbox = outbox;
+    }
+
+    @Transactional
+    public EventoResponse atualizar(
+            Long organizacaoId, Long eventoId, long versaoEsperada,
+            AtualizarEventoRequest request) {
+        if (request == null || request.reentryPolicy() == null) {
+            throw new IllegalArgumentException(
+                    "A politica de reentrada e obrigatoria.");
+        }
+        Evento evento = buscarParaTransicao(
+                organizacaoId, eventoId, versaoEsperada);
+        Map<String, Object> anterior = snapshot(evento);
+        Long versaoAnterior = evento.getVersion();
+        evento.definirPoliticaReentrada(request.reentryPolicy());
+        eventos.flush();
+        registrarTransicao(
+                evento, "POLITICA_REENTRADA_DEFINIDA",
+                "PoliticaReentradaDefinida", anterior, versaoAnterior);
+        return EventoResponse.from(evento);
     }
 
     @Transactional
@@ -141,6 +162,10 @@ public class EventoService {
         if (!possuiProdutoPublicado) {
             throw new ConflitoException(
                     "O evento precisa possuir ao menos um produto publicado.");
+        }
+        if (evento.getPoliticaReentrada() == null) {
+            throw new ConflitoException(
+                    "O evento precisa possuir politica de reentrada explicita.");
         }
 
         Map<String, Object> anterior = snapshot(evento);
@@ -334,6 +359,9 @@ public class EventoService {
         estado.put("fim", evento.getFim().toInstant().toString());
         estado.put("fusoHorario", evento.getFusoHorario());
         estado.put("status", evento.getStatus().name());
+        if (evento.getPoliticaReentrada() != null) {
+            estado.put("politicaReentrada", evento.getPoliticaReentrada().name());
+        }
         if (evento.getExternalId() != null) estado.put("externalId", evento.getExternalId());
         return estado;
     }

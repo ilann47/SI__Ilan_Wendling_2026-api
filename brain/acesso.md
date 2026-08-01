@@ -4,12 +4,12 @@
 
 ## Objetivo
 
-Decidir e registrar check-in online de evento sem expor o segredo QR, consumindo
-o direito e materializando presença, sessão e ocupação de forma atômica.
+Decidir e registrar check-in/check-out online de evento sem expor o segredo QR,
+controlando direito, presença, sessão e ocupação de forma atômica.
 
 ## Contexto
 
-UC715 e UC718 estão implementadas para a origem QR de pedido de evento. O evento
+UC715, UC717, UC718 e UC719 estão implementadas para a origem QR de pedido de evento. O evento
 precisa alcançar `EM_OPERACAO` pelos comandos versionados de encerramento de
 vendas e início da operação. Placa, RFID, override, hardware e offline não foram
 antecipados.
@@ -26,12 +26,22 @@ POST /api/v1/check-ins + Idempotency-Key
   -> Presenca DENTRO + SessaoEstacionamento ABERTA
   -> ocupação da alocação incrementada sob lock pessimista
   -> auditoria + outbox + resposta idempotente
+
+POST /api/v1/check-outs + Idempotency-Key
+  -> JWT contextual + access:checkout
+  -> tentativa SAIDA RECEBIDA -> AVALIANDO
+  -> QR/credencial + presença/sessão + alocação sob locks
+  -> presença DENTRO -> FORA + sessão ABERTA -> ENCERRADA
+  -> credencial DENTRO -> CONSUMIDA ou ATIVA conforme política publicada
+  -> ocupação decrementada + auditoria + outbox + resposta idempotente
 ```
 
 ## Endpoints (se houver)
 
 - `POST /api/v1/check-ins`: recebe `qrToken`, `eventId`, `parkingFacilityId` e
   `lane`; retorna decisão, motivo estável, tentativa e IDs dos efeitos.
+- `POST /api/v1/check-outs`: usa o mesmo identificador QR e escopo, encerra os
+  efeitos abertos e retorna ocupação e estado resultantes.
 - `POST /api/v1/events/{eventoId}/sales-closing`: executa
   `VENDAS_ABERTAS → VENDAS_ENCERRADAS` com `If-Match`.
 - `POST /api/v1/events/{eventoId}/operation-start`: executa
@@ -44,18 +54,20 @@ resolvidos, decisão, motivo, ocupação resultante e instantes. `Presenca` repr
 o estado físico dentro do evento. `SessaoEstacionamento` preserva pedido, item,
 credencial, presença, tentativa, placa opcional e origem `PEDIDO_EVENTO`.
 `AlocacaoPatioEvento.ocupacaoAtual` é a projeção operacional concorrente.
+Presença e sessão guardam também a tentativa de saída que as encerrou.
 
 ## Integrações externas (se houver)
 
 Nenhuma. A resposta informa `barrierCommandRequested = false`; não existe adapter
 de cancela ou identidade de dispositivo nesta entrega. Os fatos
-`AcessoAutorizado`, `AcessoRecusado`, `CheckinRealizado`, `MovimentacaoAberta` e
-`OcupacaoAlterada` são persistidos em [[outbox]].
+`AcessoAutorizado`, `AcessoRecusado`, `CheckinRealizado`, `CheckoutRealizado`,
+`MovimentacaoAberta`, `MovimentacaoEncerrada` e `OcupacaoAlterada` são
+persistidos em [[outbox]].
 
 ## Tratamento de Erros
 
 - `400`: cabeçalho, token estrutural, payload ou campo desconhecido inválido.
-- `403`: ausência de `access:checkin`/`access:operate`.
+- `403`: ausência de `access:checkin`, `access:checkout` ou `access:operate`.
 - `404`: evento ou alocação invisível no tenant.
 - `409`: replay idempotente com payload divergente.
 - Recusas de negócio retornam `200` com `RECUSADA` e código estável; não são erro
@@ -64,8 +76,9 @@ de cancela ou identidade de dispositivo nesta entrega. Os fatos
 ## Testes (curl ou equivalente)
 
 Há testes de domínio, contrato HTTP, RBAC, idempotência, segredo QR, decisão
-autorizada/recusada, duplicidade, lotação, presença, sessão, ocupação, auditoria,
-outbox, Flyway, Hibernate validate, OpenAPI e disputa concorrente da última vaga.
+autorizada/recusada, duplicidade, lotação, presença, sessão, ocupação, política
+de entrada única/reentrada, auditoria, outbox, Flyway, Hibernate validate,
+OpenAPI e disputa concorrente da última vaga.
 
 ## Decisões Técnicas
 
@@ -78,6 +91,8 @@ outbox, Flyway, Hibernate validate, OpenAPI e disputa concorrente da última vag
 - Constraints compostas defendem organização, evento, pátio, credencial, QR,
   tentativa, presença e sessão também contra escrita fora da aplicação.
 - O legado `Movimentacao` não foi alterado; sessão enterprise é aditiva.
+- O portão nunca escolhe a política de reentrada; ele consome o snapshot
+  versionado no evento e não simula comando de barreira.
 
 ## Módulos relacionados
 
@@ -95,3 +110,4 @@ outbox, Flyway, Hibernate validate, OpenAPI e disputa concorrente da última vag
 | Data | Ação |
 |---|---|
 | 2026-08-01 | Implementa UC715/UC718 com check-in QR online, presença, sessão e ocupação concorrente. |
+| 2026-08-01 | Implementa UC717/UC719 com check-out QR, reentrada explícita e encerramento transacional. |

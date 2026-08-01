@@ -13,7 +13,8 @@ UC701 cria o evento em `RASCUNHO`. [[inventario]] associa pátios sem transferir
 essa responsabilidade ao agregado e [[produtos-estacionamento]] publica a oferta.
 UC702 publica o evento somente após validar capacidade vendável e produto
 publicado. Comandos explícitos abrem e encerram vendas; o Supervisor inicia a
-operação que habilita [[acesso]].
+operação que habilita [[acesso]]. Antes da publicação, uma política explícita de
+reentrada é definida sem default comercial.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -51,9 +52,15 @@ POST /api/v1/events/{eventoId}/operation-start + If-Match
   -> auditoria + OperacaoDoEventoIniciada
 ```
 
+`PATCH /api/v1/events/{eventoId}` define `reentryPolicy` somente em `RASCUNHO`,
+incrementa o ETag e registra auditoria/outbox. A publicação rejeita política
+ausente.
+
 ## Endpoints (se houver)
 
 - `POST /api/v1/events`: cria evento em `RASCUNHO` no tenant autenticado.
+- `PATCH /api/v1/events/{eventoId}`: define `ENTRADA_UNICA` ou
+  `REENTRADA_PERMITIDA` com `If-Match`.
 - `POST /api/v1/events/{eventoId}/publication`: publica evento pronto usando a
   versão atual.
 - `POST /api/v1/events/{eventoId}/sales-opening`: abre vendas imediatamente
@@ -66,6 +73,7 @@ POST /api/v1/events/{eventoId}/operation-start + If-Match
 ## Estrutura de Dados (DTOs, Entidades)
 
 `Evento` possui organização, venue, nome, início/fim, fuso IANA, estado,
+política de reentrada,
 `externalId` opcional, versão e timestamps. O DTO de resposta inclui checklist;
 na criação apenas venue está pronto e, na publicação, todos os requisitos da
 primeira entrega ficam satisfeitos.
@@ -110,6 +118,8 @@ PostgreSQL para período, estado e FK composta.
   esquecer um agendamento violaria o contrato operacional.
 - Encerramento de vendas preserva `events:publish`; início operacional exige o
   papel Supervisor com `access:operate` e não ocorre implicitamente no check-in.
+- A política não é inferida nem escolhida pelo operador no portão; fica
+  versionada no agregado antes da publicação.
 
 ## Módulos relacionados
 
@@ -132,3 +142,4 @@ PostgreSQL para período, estado e FK composta.
 | 2026-07-30 | Implementa UC702 com checklist, versão, auditoria e outbox transacional. |
 | 2026-07-30 | Implementa abertura imediata `PUBLICADO → VENDAS_ABERTAS` com ETag, auditoria e outbox. |
 | 2026-08-01 | Implementa fechamento de vendas e início explícito de operação para [[acesso]]. |
+| 2026-08-01 | Implementa política de reentrada explícita e imutável após o rascunho. |

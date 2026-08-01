@@ -14,6 +14,8 @@ import com.kaneko.estacionamento.common.security.JwtService;
 import com.kaneko.estacionamento.common.outbox.EventoOutboxRepository;
 import com.kaneko.estacionamento.evento.EventoService;
 import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
+import com.kaneko.estacionamento.evento.dto.AtualizarEventoRequest;
+import com.kaneko.estacionamento.evento.PoliticaReentrada;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
 import com.kaneko.estacionamento.geografia.CidadeService;
@@ -421,8 +423,10 @@ class ProdutoEstacionamentoControllerTest {
                 status().isCreated());
         publicarProduto(tokenContextual, produtoComum, "\"0\"", status().isOk());
         publicarProduto(tokenContextual, produtoVip, "\"0\"", status().isOk());
+        eventos.atualizar(organizacaoId, eventoId, 0L,
+                new AtualizarEventoRequest(PoliticaReentrada.ENTRADA_UNICA));
         eventos.publicar(
-                organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
+                organizacaoId, eventoId, 1L, new PublicarEventoRequest(true));
 
         mvc.perform(get("/api/v1/events/{id}/availability", eventoId)
                         .header("Authorization", tokenContextual)
@@ -557,7 +561,7 @@ class ProdutoEstacionamentoControllerTest {
         criarHold(tokenContextual, "hold-closed", payloadHold(produtoId, 1, null),
                 status().isConflict());
         eventos.abrirVendas(
-                organizacaoId, eventoId, 2L, new AbrirVendasEventoRequest(null));
+                organizacaoId, eventoId, 3L, new AbrirVendasEventoRequest(null));
         criarHold(tokenContextual, "hold-excess", payloadHold(produtoId, 3, null),
                 status().isConflict());
         criarHold(tokenContextual, "hold-field",
@@ -1148,6 +1152,8 @@ class ProdutoEstacionamentoControllerTest {
                 bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
         realizarCheckin(tokenMembro, "checkin-denied", payload,
                 status().isForbidden());
+        realizarCheckout(tokenMembro, "checkout-denied", payload,
+                status().isForbidden());
 
         mvc.perform(post("/api/v1/check-ins")
                         .header("Authorization", tokenContextual)
@@ -1163,6 +1169,102 @@ class ProdutoEstacionamentoControllerTest {
         assertThat(jdbc.queryForObject(
                 "select count(*) from tentativa_acesso where organizacao_id = ?",
                 Integer.class, organizacaoId)).isZero();
+    }
+
+    @Test
+    void realizaCheckoutQrIdempotenteEncerrandoPresencaSessaoEOcupacao()
+            throws Exception {
+        long pedidoId = criarPedidoConfirmado("checkout-online", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "checkout-credential",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+        String qrBody = gerarQr(tokenContextual, credencialId, "\"0\"",
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String qrToken = JsonPath.read(qrBody, "$.token");
+        prepararOperacaoEPermissaoCheckin();
+        String payload = payloadCheckin(
+                qrToken, eventoId, patioId, "PORTAO_SUL");
+        realizarCheckin(tokenContextual, "checkout-entry", payload, status().isOk())
+                .andExpect(jsonPath("$.decision").value("AUTORIZADA"));
+
+        String primeiro = realizarCheckout(
+                        tokenContextual, "checkout-online-1", payload, status().isOk())
+                .andExpect(jsonPath("$.decision").value("AUTORIZADA"))
+                .andExpect(jsonPath("$.credentialId").value(credencialId))
+                .andExpect(jsonPath("$.resultingOccupancy").value(0))
+                .andExpect(jsonPath("$.credentialStatus").value("CONSUMIDA"))
+                .andExpect(jsonPath("$.barrierCommandRequested").value(false))
+                .andReturn().getResponse().getContentAsString();
+        long tentativaId = JsonPath.<Number>read(
+                primeiro, "$.accessAttemptId").longValue();
+        String replay = realizarCheckout(
+                        tokenContextual, "checkout-online-1", payload, status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(replay, "$.accessAttemptId").longValue())
+                .isEqualTo(tentativaId);
+        realizarCheckout(tokenContextual, "checkout-online-2", payload, status().isOk())
+                .andExpect(jsonPath("$.decision").value("RECUSADA"))
+                .andExpect(jsonPath("$.reasonCode").value("SAIDA_DUPLICADA"));
+
+        assertThat(jdbc.queryForObject(
+                "select status from credencial_acesso where id = ?",
+                String.class, credencialId)).isEqualTo("CONSUMIDA");
+        assertThat(jdbc.queryForObject(
+                "select status from presenca where credencial_id = ?",
+                String.class, credencialId)).isEqualTo("FORA");
+        assertThat(jdbc.queryForObject(
+                "select status from sessao_estacionamento where credencial_id = ?",
+                String.class, credencialId)).isEqualTo("ENCERRADA");
+        assertThat(jdbc.queryForObject(
+                "select ocupacao_atual from alocacao_patio_evento where id = ?",
+                Integer.class, alocacaoId)).isZero();
+        assertThat(outbox.findAll().stream().map(e -> e.getEventType()).toList())
+                .contains("CheckoutRealizado", "MovimentacaoEncerrada",
+                        "OcupacaoAlterada");
+        assertThat(auditorias.findAll().stream().map(a -> a.getAcao()).toList())
+                .contains("CHECKOUT_AUTORIZADO");
+    }
+
+    @Test
+    void checkoutReativaCredencialQuandoEventoPermiteReentrada()
+            throws Exception {
+        eventos.atualizar(organizacaoId, eventoId, 0L,
+                new AtualizarEventoRequest(
+                        PoliticaReentrada.REENTRADA_PERMITIDA));
+        long pedidoId = criarPedidoConfirmado("checkout-reentry", 1);
+        String credencialBody = emitirCredencial(
+                        tokenContextual, pedidoId, "checkout-reentry-credential",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credencialId = JsonPath.<Number>read(
+                credencialBody, "$.id").longValue();
+        String qrBody = gerarQr(tokenContextual, credencialId, "\"0\"",
+                        status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String qrToken = JsonPath.read(qrBody, "$.token");
+        prepararOperacaoEPermissaoCheckin();
+        String payload = payloadCheckin(
+                qrToken, eventoId, patioId, "PORTAO_SUL");
+        realizarCheckin(tokenContextual, "reentry-entry", payload, status().isOk());
+
+        String saida = realizarCheckout(
+                        tokenContextual, "reentry-exit", payload, status().isOk())
+                .andExpect(jsonPath("$.decision").value("AUTORIZADA"))
+                .andExpect(jsonPath("$.credentialStatus").value("ATIVA"))
+                .andReturn().getResponse().getContentAsString();
+        realizarCheckin(tokenContextual, "reentry-second-entry", payload,
+                        status().isOk())
+                .andExpect(jsonPath("$.decision").value("AUTORIZADA"))
+                .andExpect(jsonPath("$.resultingOccupancy").value(1));
+        realizarCheckout(tokenContextual, "reentry-exit", payload, status().isOk())
+                .andExpect(jsonPath("$.accessAttemptId").value(
+                        JsonPath.<Number>read(
+                                saida, "$.accessAttemptId").longValue()))
+                .andExpect(jsonPath("$.credentialStatus").value("ATIVA"));
     }
 
     @Test
@@ -1313,11 +1415,26 @@ class ProdutoEstacionamentoControllerTest {
                         agora.minusDays(1).toString(), agora.plusDays(1).toString()),
                 status().isCreated());
         publicarProduto(tokenContextual, produtoId, "\"0\"", status().isOk());
+        String politica = jdbc.queryForObject(
+                "select politica_reentrada from evento where id = ?",
+                String.class, eventoId);
+        if (politica == null) {
+            long versao = jdbc.queryForObject(
+                    "select version from evento where id = ?", Long.class, eventoId);
+            eventos.atualizar(organizacaoId, eventoId, versao,
+                    new AtualizarEventoRequest(PoliticaReentrada.ENTRADA_UNICA));
+        }
+        long versaoPublicacao = jdbc.queryForObject(
+                "select version from evento where id = ?", Long.class, eventoId);
         eventos.publicar(
-                organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
+                organizacaoId, eventoId, versaoPublicacao,
+                new PublicarEventoRequest(true));
         if (abrirVendas) {
+            long versaoAbertura = jdbc.queryForObject(
+                    "select version from evento where id = ?", Long.class, eventoId);
             eventos.abrirVendas(
-                    organizacaoId, eventoId, 2L, new AbrirVendasEventoRequest(null));
+                    organizacaoId, eventoId, versaoAbertura,
+                    new AbrirVendasEventoRequest(null));
         }
         return produtoId;
     }
@@ -1405,6 +1522,16 @@ class ProdutoEstacionamentoControllerTest {
                 .andExpect(esperado);
     }
 
+    private org.springframework.test.web.servlet.ResultActions realizarCheckout(
+            String token, String chave, String body,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(post("/api/v1/check-outs")
+                        .header("Authorization", token)
+                        .header("Idempotency-Key", chave)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(esperado);
+    }
+
     private void prepararOperacaoEPermissaoCheckin() throws Exception {
         jdbc.update("""
                 update evento set inicio = now() - interval '1 hour',
@@ -1428,10 +1555,14 @@ class ProdutoEstacionamentoControllerTest {
                     select id from credencial_acesso where evento_id = ?)
                 """, eventoId);
         entityManager.clear();
+        long versaoEvento = jdbc.queryForObject(
+                "select version from evento where id = ?", Long.class, eventoId);
         eventos.encerrarVendas(
-                organizacaoId, eventoId, 3L, new PublicarEventoRequest(true));
+                organizacaoId, eventoId, versaoEvento,
+                new PublicarEventoRequest(true));
         eventos.iniciarOperacao(
-                organizacaoId, eventoId, 4L, new PublicarEventoRequest(true));
+                organizacaoId, eventoId, versaoEvento + 1,
+                new PublicarEventoRequest(true));
         long membershipId = jdbc.queryForObject("""
                 select id from membro_organizacao
                 where organizacao_id = ? and usuario_id = ? and status = 'ATIVO'

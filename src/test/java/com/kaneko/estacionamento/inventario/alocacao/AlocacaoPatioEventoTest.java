@@ -48,4 +48,16 @@ class AlocacaoPatioEventoTest {
                 () -> alocacao.alterarCapacidades(1, 1, 0))
                 .withMessageContaining("ocupacao");
     }
+
+    @Test
+    void decrementaOcupacaoSemPermitirValorNegativo() {
+        OffsetDateTime inicio = OffsetDateTime.parse("2026-10-10T17:00:00-03:00");
+        var alocacao = AlocacaoPatioEvento.criar(
+                1L, 2L, 3L, inicio, inicio.plusHours(4), 2, 2, 0);
+        alocacao.registrarEntrada();
+
+        assertThat(alocacao.registrarSaida()).isZero();
+        assertThatIllegalStateException().isThrownBy(alocacao::registrarSaida)
+                .withMessageContaining("ocupacao");
+    }
 }

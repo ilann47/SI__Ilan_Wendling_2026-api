@@ -33,6 +33,8 @@ public class SessaoEstacionamento extends AuditableEntity {
     private Long presencaId;
     @Column(name = "tentativa_entrada_id", nullable = false, updatable = false)
     private Long tentativaEntradaId;
+    @Column(name = "tentativa_saida_id")
+    private Long tentativaSaidaId;
     @Column(name = "origem_direito", nullable = false, updatable = false, length = 30)
     private String origemDireito;
     @Column(name = "placa_veiculo", updatable = false, length = 7)
@@ -74,5 +76,20 @@ public class SessaoEstacionamento extends AuditableEntity {
         sessao.entradaEm = instante;
         sessao.status = StatusSessaoEstacionamento.ABERTA;
         return sessao;
+    }
+
+    public void encerrar(Long tentativaSaidaId, OffsetDateTime instante) {
+        if (status != StatusSessaoEstacionamento.ABERTA) {
+            throw new IllegalStateException(
+                    "Somente sessao aberta pode registrar saida.");
+        }
+        if (tentativaSaidaId == null || instante == null
+                || instante.toInstant().isBefore(entradaEm.toInstant())) {
+            throw new IllegalArgumentException(
+                    "A tentativa e o instante da saida sao obrigatorios.");
+        }
+        this.tentativaSaidaId = tentativaSaidaId;
+        saidaEm = instante;
+        status = StatusSessaoEstacionamento.ENCERRADA;
     }
 }

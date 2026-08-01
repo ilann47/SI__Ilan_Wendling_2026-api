@@ -12,8 +12,9 @@
 
 ## 15.2 Evento
 
-**Situação implementada:** o evento entra em `RASCUNHO`; o comando explícito de
-publicação, protegido por versão, executa `RASCUNHO → CONFIGURADO → PUBLICADO`
+**Situação implementada:** o evento entra em `RASCUNHO`; `PATCH /events/{id}`
+define `ENTRADA_UNICA` ou `REENTRADA_PERMITIDA` com `If-Match`. O comando
+explícito de publicação exige essa política e executa `RASCUNHO → CONFIGURADO → PUBLICADO`
 somente com alocação vendável e produto publicado. Comandos também versionados
 executam `PUBLICADO → VENDAS_ABERTAS → VENDAS_ENCERRADAS → EM_OPERACAO`, com
 auditoria e outbox em cada etapa. Agendamento, suspensão e transições posteriores
@@ -197,11 +198,14 @@ stateDiagram-v2
 
 Toda decisão terminal contém código estável e motivo. Override exige usuário distinto do operador quando a política determinar.
 
-**Situação implementada:** o check-in QR online persiste `RECEBIDA → AVALIANDO`
+**Situação implementada:** check-in e check-out QR online persistem
+`RECEBIDA → AVALIANDO`
 e uma decisão terminal `AUTORIZADA` ou `RECUSADA`. As recusas usam códigos
 estáveis para representação inválida, credencial inativa, janela, estado do
 evento, pátio, duplicidade e lotação. A autorização consome a credencial,
-materializa presença e sessão, e incrementa a ocupação no mesmo commit. Override,
+materializa presença e sessão, e incrementa a ocupação no mesmo commit. A saída
+encerra presença e sessão, decrementa a ocupação e executa `DENTRO → CONSUMIDA`
+ou `DENTRO → ATIVA` conforme a política publicada. Override,
 placa, RFID, leitura sem consumo e sincronização offline continuam TARGET.
 
 ## 15.8 Movimentação/Sessão de estacionamento
@@ -223,7 +227,8 @@ stateDiagram-v2
 **Situação implementada:** `SessaoEstacionamento` enterprise é aberta como efeito
 da autorização QR, com organização, evento, pátio, credencial, pedido, item,
 presença, tentativa e origem `PEDIDO_EVENTO`. A tabela e a API legadas de
-`Movimentacao` permanecem inalteradas. Encerramento será realizado pela UC717/UC719.
+`Movimentacao` permanecem inalteradas. UC717/UC719 encerram a sessão enterprise
+no mesmo commit do check-out, sem cálculo tarifário para evento pré-pago.
 
 ## 15.9 Contrato mensalista
 

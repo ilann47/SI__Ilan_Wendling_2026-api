@@ -150,9 +150,10 @@ compensatória para UC714.
 limitadas aos pedidos/credenciais do próprio ator; operação administrativa sobre
 terceiros aguarda escopos contextuais próprios.
 
-`access:operate` e `access:checkin` estão implementadas com os papéis de sistema
-`SUPERVISOR`, `OPERADOR` e `FISCAL_ACESSO`. O Supervisor recebe ambas; Operador e
-Fiscal de acesso recebem somente check-in. `ADMIN_ORGANIZACAO` e `GESTOR` não
+`access:operate`, `access:checkin` e `access:checkout` estão implementadas com os
+papéis de sistema `SUPERVISOR`, `OPERADOR` e `FISCAL_ACESSO`. O Supervisor recebe
+as três; Operador recebe check-in e check-out; Fiscal de acesso recebe somente
+check-in. `ADMIN_ORGANIZACAO` e `GESTOR` não
 executam o portão por implicação. A atribuição ainda usa escopo organizacional;
 turno, evento, pátio, faixa e identidade de dispositivo permanecem controles
 ABAC pendentes.

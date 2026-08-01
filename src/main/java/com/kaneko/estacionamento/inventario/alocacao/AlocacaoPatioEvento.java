@@ -80,6 +80,15 @@ public class AlocacaoPatioEvento extends AuditableEntity {
         return ocupacaoAtual;
     }
 
+    public int registrarSaida() {
+        if (ocupacaoAtual == null || ocupacaoAtual <= 0) {
+            throw new IllegalStateException(
+                    "A ocupacao do patio nao pode ficar negativa.");
+        }
+        ocupacaoAtual--;
+        return ocupacaoAtual;
+    }
+
     static void validarDados(
             OffsetDateTime inicio, OffsetDateTime fim, Integer capacidadeOperacional,
             Integer capacidadeVendavel, Integer capacidadeReservada) {

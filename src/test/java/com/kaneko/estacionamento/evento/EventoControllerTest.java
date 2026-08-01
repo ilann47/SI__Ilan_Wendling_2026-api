@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.evento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,6 +11,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.kaneko.estacionamento.auditoria.RegistroAuditoriaRepository;
 import com.kaneko.estacionamento.common.security.JwtService;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
+import com.kaneko.estacionamento.evento.dto.AtualizarEventoRequest;
 import com.kaneko.estacionamento.geografia.CidadeService;
 import com.kaneko.estacionamento.geografia.EstadoService;
 import com.kaneko.estacionamento.geografia.PaisService;
@@ -226,10 +228,14 @@ class EventoControllerTest {
         String tokenGestor = selecionar(organizacaoId,
                 bearer(jwt.gerarToken(gestor.getLogin(), "OPERADOR")));
 
-        publicarEvento(tokenGestor, eventoId, "\"0\"", status().isOk())
-                .andExpect(header().string("ETag", "\"2\""))
+        definirPolitica(tokenGestor, eventoId, "\"0\"", "ENTRADA_UNICA", status().isOk())
+                .andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.reentryPolicy").value("ENTRADA_UNICA"));
+
+        publicarEvento(tokenGestor, eventoId, "\"1\"", status().isOk())
+                .andExpect(header().string("ETag", "\"3\""))
                 .andExpect(jsonPath("$.status").value("PUBLICADO"))
-                .andExpect(jsonPath("$.version").value(2))
+                .andExpect(jsonPath("$.version").value(3))
                 .andExpect(jsonPath("$.configurationChecklist.ready").value(true))
                 .andExpect(jsonPath("$.configurationChecklist.venue").value(true))
                 .andExpect(jsonPath("$.configurationChecklist.parkingAllocation").value(true))
@@ -252,12 +258,36 @@ class EventoControllerTest {
                 select aggregate_version from evento_outbox
                 where aggregate_type = 'EVENTO' and aggregate_id = ?
                   and event_type = 'EventoConfigurado'
-                """, Long.class, eventoId)).isEqualTo(1L);
+                """, Long.class, eventoId)).isEqualTo(2L);
         assertThat(jdbc.queryForObject("""
                 select aggregate_version from evento_outbox
                 where aggregate_type = 'EVENTO' and aggregate_id = ?
                   and event_type = 'EventoPublicado'
-                """, Long.class, eventoId)).isEqualTo(2L);
+                """, Long.class, eventoId)).isEqualTo(3L);
+    }
+
+    @Test
+    void politicaDeReentradaEhExplicitaVersionadaEAuditada() throws Exception {
+        Long eventoId = idEvento(criarEvento(
+                tokenContextual, "evento-politica", payload("Evento Politica", venueId),
+                status().isCreated()).andReturn().getResponse().getContentAsString());
+
+        definirPolitica(tokenContextual, eventoId, "\"0\"",
+                "REENTRADA_PERMITIDA", status().isOk())
+                .andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.reentryPolicy").value("REENTRADA_PERMITIDA"));
+        definirPolitica(tokenContextual, eventoId, "\"0\"",
+                "ENTRADA_UNICA", status().isPreconditionFailed());
+
+        assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
+            assertThat(auditoria.getAcao()).isEqualTo("POLITICA_REENTRADA_DEFINIDA");
+            assertThat(auditoria.getRecursoId()).isEqualTo(eventoId);
+        });
+        assertThat(jdbc.queryForObject("""
+                select count(*) from evento_outbox
+                where aggregate_type = 'EVENTO' and aggregate_id = ?
+                  and event_type = 'PoliticaReentradaDefinida'
+                """, Long.class, eventoId)).isEqualTo(1L);
     }
 
     @Test
@@ -271,6 +301,9 @@ class EventoControllerTest {
                 tokenContextual, "evento-versao", payload("Evento Versao", venueId),
                 status().isCreated()).andReturn().getResponse().getContentAsString());
         prepararProdutoPublicado(eventoId);
+        publicarEvento(tokenContextual, eventoId, "\"0\"", status().isConflict());
+        eventos.atualizar(organizacaoId, eventoId, 0L,
+                new AtualizarEventoRequest(PoliticaReentrada.ENTRADA_UNICA));
         mvc.perform(post("/api/v1/events/{id}/publication", eventoId)
                         .header("Authorization", tokenContextual)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -278,8 +311,8 @@ class EventoControllerTest {
                 .andExpect(status().isPreconditionRequired());
         publicarEvento(tokenContextual, eventoId, "\"99\"",
                 status().isPreconditionFailed());
-        publicarEvento(tokenContextual, eventoId, "\"0\"", status().isOk());
-        publicarEvento(tokenContextual, eventoId, "\"0\"",
+        publicarEvento(tokenContextual, eventoId, "\"1\"", status().isOk());
+        publicarEvento(tokenContextual, eventoId, "\"1\"",
                 status().isPreconditionFailed());
     }
 
@@ -308,12 +341,14 @@ class EventoControllerTest {
                 tokenContextual, "evento-abrir-vendas", payload("Evento Vendas", venueId),
                 status().isCreated()).andReturn().getResponse().getContentAsString());
         prepararProdutoPublicado(eventoId);
-        eventos.publicar(organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
+        eventos.atualizar(organizacaoId, eventoId, 0L,
+                new AtualizarEventoRequest(PoliticaReentrada.ENTRADA_UNICA));
+        eventos.publicar(organizacaoId, eventoId, 1L, new PublicarEventoRequest(true));
 
-        abrirVendas(tokenContextual, eventoId, "\"2\"", status().isOk())
-                .andExpect(header().string("ETag", "\"3\""))
+        abrirVendas(tokenContextual, eventoId, "\"3\"", status().isOk())
+                .andExpect(header().string("ETag", "\"4\""))
                 .andExpect(jsonPath("$.status").value("VENDAS_ABERTAS"))
-                .andExpect(jsonPath("$.version").value(3));
+                .andExpect(jsonPath("$.version").value(4));
 
         assertThat(auditorias.findAll()).anySatisfy(auditoria -> {
             assertThat(auditoria.getAcao()).isEqualTo("VENDAS_EVENTO_ABERTAS");
@@ -325,7 +360,7 @@ class EventoControllerTest {
                   and event_type = 'VendasDoEventoAbertas'
                 """, Long.class, eventoId)).isEqualTo(1L);
 
-        abrirVendas(tokenContextual, eventoId, "\"2\"",
+        abrirVendas(tokenContextual, eventoId, "\"3\"",
                 status().isPreconditionFailed());
     }
 
@@ -335,11 +370,13 @@ class EventoControllerTest {
                 tokenContextual, "evento-operacao", payload("Evento Operacao", venueId),
                 status().isCreated()).andReturn().getResponse().getContentAsString());
         prepararProdutoPublicado(eventoId);
-        eventos.publicar(organizacaoId, eventoId, 0L, new PublicarEventoRequest(true));
-        abrirVendas(tokenContextual, eventoId, "\"2\"", status().isOk());
+        eventos.atualizar(organizacaoId, eventoId, 0L,
+                new AtualizarEventoRequest(PoliticaReentrada.ENTRADA_UNICA));
+        eventos.publicar(organizacaoId, eventoId, 1L, new PublicarEventoRequest(true));
+        abrirVendas(tokenContextual, eventoId, "\"3\"", status().isOk());
 
-        encerrarVendas(tokenContextual, eventoId, "\"3\"", status().isOk())
-                .andExpect(header().string("ETag", "\"4\""))
+        encerrarVendas(tokenContextual, eventoId, "\"4\"", status().isOk())
+                .andExpect(header().string("ETag", "\"5\""))
                 .andExpect(jsonPath("$.status").value("VENDAS_ENCERRADAS"));
 
         long membershipSupervisor = criarMembership(operador.getId(), tokenContextual);
@@ -347,11 +384,11 @@ class EventoControllerTest {
         String tokenSupervisor = selecionar(organizacaoId,
                 bearer(jwt.gerarToken(operador.getLogin(), "OPERADOR")));
 
-        iniciarOperacao(tokenContextual, eventoId, "\"4\"", status().isForbidden());
-        iniciarOperacao(tokenSupervisor, eventoId, "\"4\"", status().isOk())
-                .andExpect(header().string("ETag", "\"5\""))
+        iniciarOperacao(tokenContextual, eventoId, "\"5\"", status().isForbidden());
+        iniciarOperacao(tokenSupervisor, eventoId, "\"5\"", status().isOk())
+                .andExpect(header().string("ETag", "\"6\""))
                 .andExpect(jsonPath("$.status").value("EM_OPERACAO"));
-        iniciarOperacao(tokenSupervisor, eventoId, "\"4\"",
+        iniciarOperacao(tokenSupervisor, eventoId, "\"5\"",
                 status().isPreconditionFailed());
 
         assertThat(auditorias.findAll().stream().map(a -> a.getAcao()).toList())
@@ -380,6 +417,16 @@ class EventoControllerTest {
                         .header("Authorization", token).header("If-Match", ifMatch)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"confirmed\":true}"))
+                .andExpect(esperado);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions definirPolitica(
+            String token, Long eventoId, String ifMatch, String politica,
+            org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+        return mvc.perform(patch("/api/v1/events/{id}", eventoId)
+                        .header("Authorization", token).header("If-Match", ifMatch)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reentryPolicy\":\"" + politica + "\"}"))
                 .andExpect(esperado);
     }
 

@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.evento;
 
 import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
 import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
+import com.kaneko.estacionamento.evento.dto.AtualizarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.CriarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.EventoResponse;
 import com.kaneko.estacionamento.evento.dto.PublicarEventoRequest;
@@ -15,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,6 +31,20 @@ public class EventoController {
 
     public EventoController(EventoService service) {
         this.service = service;
+    }
+
+    @PatchMapping("/{eventoId}")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('events:create', authentication)")
+    public ResponseEntity<EventoResponse> atualizar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long eventoId,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody AtualizarEventoRequest request) {
+        EventoResponse response = service.atualizar(
+                principal.organizacaoId(), eventoId, extrairVersao(ifMatch), request);
+        return ResponseEntity.ok()
+                .eTag("\"" + response.version() + "\"")
+                .body(response);
     }
 
     @PostMapping

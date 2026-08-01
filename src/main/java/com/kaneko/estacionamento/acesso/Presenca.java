@@ -27,6 +27,8 @@ public class Presenca extends AuditableEntity {
     private Long credencialId;
     @Column(name = "tentativa_checkin_id", nullable = false, updatable = false)
     private Long tentativaCheckinId;
+    @Column(name = "tentativa_checkout_id")
+    private Long tentativaCheckoutId;
     @Column(name = "checkin_em", nullable = false, updatable = false)
     private OffsetDateTime checkinEm;
     @Column(name = "checkout_em")
@@ -57,5 +59,20 @@ public class Presenca extends AuditableEntity {
         presenca.checkinEm = instante;
         presenca.status = StatusPresenca.DENTRO;
         return presenca;
+    }
+
+    public void sair(Long tentativaCheckoutId, OffsetDateTime instante) {
+        if (status != StatusPresenca.DENTRO) {
+            throw new IllegalStateException(
+                    "Somente presenca dentro pode registrar saida.");
+        }
+        if (tentativaCheckoutId == null || instante == null
+                || instante.toInstant().isBefore(checkinEm.toInstant())) {
+            throw new IllegalArgumentException(
+                    "A tentativa e o instante da saida sao obrigatorios.");
+        }
+        this.tentativaCheckoutId = tentativaCheckoutId;
+        checkoutEm = instante;
+        status = StatusPresenca.FORA;
     }
 }

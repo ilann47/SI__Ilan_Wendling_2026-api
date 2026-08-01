@@ -15,7 +15,8 @@ unidades recebem credencial, o pedido transiciona para `ATENDIDO`. UC712 gera
 uma representação QR para credencial própria ativa com meio QR. UC713 bloqueia
 credenciais de pedido cancelado e revoga o QR vigente. UC715 consome a
 credencial QR autorizada em [[acesso]], executando
-`ATIVA → DENTRO` sob lock pessimista.
+`ATIVA → DENTRO` sob lock pessimista. UC717 executa `DENTRO → CONSUMIDA` ou
+`DENTRO → ATIVA` conforme a política publicada do evento.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -130,3 +131,4 @@ compensatório durante cancelamento.
 | 2026-07-30 | Implementa UC712 com token QR de entrega única e hash persistido. |
 | 2026-07-30 | UC713 bloqueia credenciais e revoga QR de pedido cancelado. |
 | 2026-08-01 | UC715 consome QR ativo uma única vez e registra a credencial como DENTRO. |
+| 2026-08-01 | UC717 consome ou reativa a credencial no check-out conforme a política do evento. |

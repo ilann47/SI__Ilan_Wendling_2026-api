@@ -76,6 +76,15 @@ public class TentativaAcesso extends AuditableEntity {
         return tentativa;
     }
 
+    public static TentativaAcesso receberSaida(
+            Long organizacaoId, Long eventoId, Long patioId, Long atorId,
+            String faixa, OffsetDateTime recebidoEm) {
+        TentativaAcesso tentativa = receber(
+                organizacaoId, eventoId, patioId, atorId, faixa, recebidoEm);
+        tentativa.direcao = "SAIDA";
+        return tentativa;
+    }
+
     public void avaliar() {
         exigirStatus(StatusTentativaAcesso.RECEBIDA);
         status = StatusTentativaAcesso.AVALIANDO;
@@ -96,7 +105,7 @@ public class TentativaAcesso extends AuditableEntity {
             Integer ocupacaoResultante, OffsetDateTime instante) {
         vincularCredencial(credencialId, representacaoQrId);
         if (ocupacaoResultante == null
-                || ocupacaoResultante < 1 || instante == null) {
+                || ocupacaoResultante < 0 || instante == null) {
             throw new IllegalArgumentException(
                     "Os efeitos e o instante da autorizacao sao obrigatorios.");
         }
