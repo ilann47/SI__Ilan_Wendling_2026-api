@@ -184,8 +184,8 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 | Método e rota | Payload/Parâmetros | Resposta | Regras |
 |---|---|---|---|
 | `POST /orders` | AS-IS: inventoryHoldId, buyer, vehiclePlate, channel + `Idempotency-Key` | `201 Order`, `Location`, `ETag` | `orders:create`; hold mantido do próprio ator; canal coerente; snapshots e total derivados; idempotência, auditoria e outbox |
-| `GET /orders/{id}` | AS-IS: id | `200 Order`, `ETag` | tenant e proprietário autenticado com `orders:create`; outro ator/tenant recebe `404` |
-| `GET /orders` | cursor, evento, estado, canal | página por cursor | escopo e filtros publicados |
+| `GET /orders/{id}` | AS-IS: id | `200 Order`, `ETag` | tenant e proprietário autenticado com `orders:read`; outro ator/tenant recebe `404` |
+| `GET /orders` | AS-IS: cursor numérico opcional, eventId, status, channel e limit (1–100) | `200` com items, nextCursor e hasMore | `orders:read`; somente pedidos do ator no tenant ativo; ordem decrescente estável por ID e filtros normalizados |
 | `POST /orders/{id}/manual-confirmation` | AS-IS: paymentMethod, evidenceReference, reason + `If-Match` + `Idempotency-Key` | `202 Order` + `ETag` | `orders:manual-confirm`; Admin/Gestor; pedido aguardando e hold vigente; converte reservado em vendido; evidência `PENDENTE_CONCILIACAO`; auditoria/outbox/idempotência; não publica aprovação de gateway |
 | `POST /orders/{id}/cancellation` | AS-IS: reason + `If-Match` + `Idempotency-Key` | `202 CancellationProcess` + novo `ETag` do pedido | `orders:cancel`; tenant e proprietário; cancela diretamente antes da confirmação ou marca `EM_REEMBOLSO`; compensa inventário uma vez, bloqueia credenciais/QR quando aplicável; auditoria/outbox/idempotência; não executa reembolso |
 | `POST /orders/{id}/payments` | método, provider, return URLs | `201/202 Payment` | sem cartão bruto; idempotência |

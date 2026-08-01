@@ -653,6 +653,75 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     @Test
+    void listaPedidosPropriosComCursorEOrdenacaoEstavel() throws Exception {
+        Long produtoId = prepararVendaAberta(3, 3);
+        long primeiroId = criarPedidoDoProduto(produtoId, "list-1");
+        long segundoId = criarPedidoDoProduto(produtoId, "list-2");
+        long terceiroId = criarPedidoDoProduto(produtoId, "list-3");
+
+        String primeiraPagina = mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenContextual)
+                        .param("limit", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(terceiroId))
+                .andExpect(jsonPath("$.items[1].id").value(segundoId))
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andExpect(jsonPath("$.nextCursor").value(segundoId))
+                .andReturn().getResponse().getContentAsString();
+        long cursor = JsonPath.<Number>read(
+                primeiraPagina, "$.nextCursor").longValue();
+
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenContextual)
+                        .param("limit", "2")
+                        .param("cursor", Long.toString(cursor)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(primeiroId))
+                .andExpect(jsonPath("$.hasMore").value(false))
+                .andExpect(jsonPath("$.nextCursor").doesNotExist());
+    }
+
+    @Test
+    void listaPedidosAplicaFiltrosEValidaPaginacao() throws Exception {
+        Long produtoId = prepararVendaAberta(2, 2);
+        long pedidoId = criarPedidoDoProduto(produtoId, "filter-1");
+        criarPedidoDoProduto(produtoId, "filter-2");
+
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenContextual)
+                        .param("eventId", Long.toString(eventoId))
+                        .param("status", "AGUARDANDO_PAGAMENTO")
+                        .param("channel", "direct_web"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[1].id").value(pedidoId));
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenContextual)
+                        .param("eventId", Long.toString(eventoId + 1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenContextual)
+                        .param("status", "CONFIRMADO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenContextual)
+                        .param("cursor", "0"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenContextual)
+                        .param("limit", "101"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenContextual)
+                        .param("channel", "canal invalido"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void pedidoRejeitaHoldLiberadoCanalDivergenteECampoControlado() throws Exception {
         Long produtoId = prepararVendaAberta(3, 3);
         String holdBody = criarHold(tokenContextual, "hold-order-invalid",
@@ -692,6 +761,10 @@ class ProdutoEstacionamentoControllerTest {
         mvc.perform(get("/api/v1/orders/{id}", pedidoId)
                         .header("Authorization", tokenOrganizador))
                 .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenOrganizador))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
 
         Usuario membro = usuario("order_membro", PerfilUsuario.OPERADOR);
         criarMembership(membro.getId(), tokenContextual);
@@ -699,6 +772,9 @@ class ProdutoEstacionamentoControllerTest {
                 bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
         criarPedido(tokenMembro, "order-denied",
                 payloadPedido(holdId, "DIRECT_WEB"), status().isForbidden());
+        mvc.perform(get("/api/v1/orders")
+                        .header("Authorization", tokenMembro))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -1465,6 +1541,17 @@ class ProdutoEstacionamentoControllerTest {
 
     private long criarPedidoPersistido(String sufixo) throws Exception {
         Long produtoId = prepararVendaAberta(1, 1);
+        String holdBody = criarHold(tokenContextual, "hold-order-" + sufixo,
+                        payloadHold(produtoId, 1, null), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(holdBody, "$.id").longValue();
+        String orderBody = criarPedido(tokenContextual, "order-" + sufixo,
+                        payloadPedido(holdId, "DIRECT_WEB"), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.<Number>read(orderBody, "$.id").longValue();
+    }
+
+    private long criarPedidoDoProduto(Long produtoId, String sufixo) throws Exception {
         String holdBody = criarHold(tokenContextual, "hold-order-" + sufixo,
                         payloadHold(produtoId, 1, null), status().isCreated())
                 .andReturn().getResponse().getContentAsString();

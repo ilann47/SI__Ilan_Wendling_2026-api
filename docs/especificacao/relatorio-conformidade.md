@@ -547,6 +547,14 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   dados comerciais e deriva subtotal e total sem aceitar campos controlados.
 - `GET /api/v1/orders/{id}` aplica tenant e ownership; documento do comprador é
   devolvido mascarado.
+- A migration `V34__leitura_paginada_pedido.sql` cria `orders:read`, concede-a
+  a Administrador da Organização, Gestor e Organizador e adiciona índice
+  tenant/ator/ID. `GET /api/v1/orders` usa cursor keyset, filtros opcionais de
+  evento, estado e canal e nunca amplia a leitura além do próprio ator.
+- A hidratação da página ocorre em consulta separada com comprador e itens,
+  evitando N+1 sem paginar sobre uma coleção JPA.
+- A suíte passa de 502 para 504 testes sem regressões; Flyway valida 34
+  migrations e o build de pacote permanece verde.
 - `PedidoCriado`, `PedidoAguardandoPagamento` e `PedidoExpirado` entram na
   outbox; criação e expiração também são auditadas.
 - Um job interno expira pedidos aguardando pagamento no prazo do hold. O hold

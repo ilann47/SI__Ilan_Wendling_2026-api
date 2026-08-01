@@ -6,6 +6,7 @@ import com.kaneko.estacionamento.pedido.dto.CancelamentoPedidoResponse;
 import com.kaneko.estacionamento.pedido.dto.CancelarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.CriarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.PedidoResponse;
+import com.kaneko.estacionamento.pedido.dto.PaginaPedidosResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.regex.Matcher;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -48,8 +50,22 @@ public class PedidoController {
                 .body(response);
     }
 
+    @GetMapping
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('orders:read', authentication)")
+    public ResponseEntity<PaginaPedidosResponse> listar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(required = false) Long eventId,
+            @RequestParam(required = false) StatusPedido status,
+            @RequestParam(required = false) String channel,
+            @RequestParam(defaultValue = "50") int limit) {
+        return ResponseEntity.ok(service.listar(
+                principal.organizacaoId(), principal.userId(), cursor,
+                eventId, status, channel, limit));
+    }
+
     @GetMapping("/{orderId}")
-    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('orders:create', authentication)")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('orders:read', authentication)")
     public ResponseEntity<PedidoResponse> consultar(
             @AuthenticationPrincipal UsuarioAutenticado principal,
             @PathVariable Long orderId) {

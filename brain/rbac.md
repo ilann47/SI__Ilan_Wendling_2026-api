@@ -12,8 +12,8 @@ permissão e escopo, sem confiar no perfil legado ou em IDs enviados pelo client
 A implementação atual usa exclusivamente o escopo `ORGANIZACAO`. O papel de
 sistema `ADMIN_ORGANIZACAO` reúne `organizations:admin`, `users:invite`,
 `roles:grant`, `roles:revoke`, `facilities:manage`, `events:create` e as demais
-permissões de gestão já migradas. `orders:create` integra Administrador, Gestor
-e Organizador; escopo por evento permanece futuro.
+permissões de gestão já migradas. `orders:create` e `orders:read` integram
+Administrador, Gestor e Organizador; escopo por evento permanece futuro.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -71,8 +71,9 @@ proteção do último administrador.
 - [[eventos]] — criação exige `events:create`; Gestor e Organizador integram o catálogo.
 - [[inventario]] — alocações exigem `inventory:manage`, concedida a Administrador da Organização e Gestor.
 - [[produtos-estacionamento]] — criação exige `pricing:manage`, concedida também ao Organizador.
-- [[pedidos]] — criação e leitura própria exigem `orders:create`, concedida a
-  Administrador, Gestor e Organizador; `orders:manual-confirm` é restrita a
+- [[pedidos]] — criação exige `orders:create` e leitura própria exige
+  `orders:read`, ambas concedidas a Administrador, Gestor e Organizador;
+  `orders:manual-confirm` é restrita a
   Administrador e Gestor; `orders:cancel` é concedida aos três papéis, sempre
   com ownership do pedido.
 - [[credenciais]] — emissão, leitura própria e geração QR exigem
@@ -98,3 +99,4 @@ proteção do último administrador.
 | 2026-08-01 | Catálogo recebe Supervisor, Operador, Fiscal de acesso e permissões operacionais de check-in. |
 | 2026-08-01 | Catálogo recebe `access:checkout` para Supervisor e Operador. |
 | 2026-08-01 | Reutiliza `access:operate` no encerramento operacional da UC720. |
+| 2026-08-01 | Catálogo recebe `orders:read` para consulta própria individual e paginada. |

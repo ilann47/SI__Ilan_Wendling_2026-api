@@ -61,7 +61,7 @@
     {"id": "rbac-reservas", "fromNode": "rbac", "fromSide": "right", "toNode": "reservas-inventario", "toSide": "left", "label": "inventory:hold"},
     {"id": "reservas-pedidos", "fromNode": "reservas-inventario", "fromSide": "right", "toNode": "pedidos", "toSide": "left", "label": "hold mantido + snapshot"},
     {"id": "pedidos-outbox", "fromNode": "pedidos", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "criado/aguardando/expirado"},
-    {"id": "rbac-pedidos", "fromNode": "rbac", "fromSide": "right", "toNode": "pedidos", "toSide": "left", "label": "orders:create"},
+    {"id": "rbac-pedidos", "fromNode": "rbac", "fromSide": "right", "toNode": "pedidos", "toSide": "left", "label": "orders:create/read"},
     {"id": "pedidos-credenciais", "fromNode": "pedidos", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "pedido confirmado"},
     {"id": "instalacoes-credenciais", "fromNode": "instalacoes", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "escopo do patio"},
     {"id": "rbac-credenciais", "fromNode": "rbac", "fromSide": "right", "toNode": "credenciais", "toSide": "left", "label": "credentials:issue"},

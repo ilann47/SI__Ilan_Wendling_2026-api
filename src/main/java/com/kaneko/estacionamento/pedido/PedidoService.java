@@ -14,6 +14,7 @@ import com.kaneko.estacionamento.pedido.dto.CancelamentoPedidoResponse;
 import com.kaneko.estacionamento.pedido.dto.CancelarPedidoRequest;
 import com.kaneko.estacionamento.pedido.dto.ConfirmarPedidoManualmenteRequest;
 import com.kaneko.estacionamento.pedido.dto.CriarPedidoRequest;
+import com.kaneko.estacionamento.pedido.dto.PaginaPedidosResponse;
 import com.kaneko.estacionamento.pedido.dto.PedidoResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -22,6 +23,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.UUID;
 import java.util.List;
@@ -134,6 +137,38 @@ public class PedidoService {
                         pedidoId, organizacaoId, atorId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Pedido", pedidoId)));
+    }
+
+    @Transactional(readOnly = true)
+    public PaginaPedidosResponse listar(
+            Long organizacaoId, Long atorId, Long cursor, Long eventoId,
+            StatusPedido status, String canal, int limite) {
+        if (cursor != null && cursor < 1) {
+            throw new IllegalArgumentException("O cursor deve ser positivo.");
+        }
+        if (eventoId != null && eventoId < 1) {
+            throw new IllegalArgumentException("O evento deve ser positivo.");
+        }
+        if (limite < 1 || limite > 100) {
+            throw new IllegalArgumentException("O limite deve estar entre 1 e 100.");
+        }
+        String canalNormalizado = normalizarCanal(canal);
+        List<Long> ids = pedidos.buscarIdsDoAtor(
+                organizacaoId, atorId, cursor, eventoId, status, canalNormalizado,
+                PageRequest.of(0, limite + 1));
+        boolean temMais = ids.size() > limite;
+        List<Long> idsPagina = temMais ? ids.subList(0, limite) : ids;
+        if (idsPagina.isEmpty()) {
+            return new PaginaPedidosResponse(List.of(), null, false);
+        }
+        Map<Long, Pedido> porId = pedidos.buscarComDetalhes(idsPagina).stream()
+                .collect(Collectors.toMap(Pedido::getId, Function.identity()));
+        List<PedidoResponse> itens = idsPagina.stream()
+                .map(porId::get)
+                .map(PedidoResponse::from)
+                .toList();
+        Long proximoCursor = temMais ? idsPagina.getLast() : null;
+        return new PaginaPedidosResponse(itens, proximoCursor, temMais);
     }
 
     @Transactional
@@ -325,6 +360,16 @@ public class PedidoService {
                 || request.channel().isBlank()) {
             throw new IllegalArgumentException("O pedido esta incompleto.");
         }
+    }
+
+    private static String normalizarCanal(String valor) {
+        if (valor == null) return null;
+        String canal = valor.trim().toUpperCase(Locale.ROOT);
+        if (canal.isEmpty() || canal.length() > 30
+                || !canal.matches("[A-Z][A-Z0-9_-]{0,29}")) {
+            throw new IllegalArgumentException("O canal e invalido.");
+        }
+        return canal;
     }
 
     private static void validarConfirmacaoManual(

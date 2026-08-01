@@ -31,6 +31,12 @@ POST /api/v1/orders + Idempotency-Key
   -> auditoria + outbox + idempotência
   -> 201 + Location + ETag
 
+GET /api/v1/orders?cursor=&eventId=&status=&channel=&limit=
+  -> JWT contextual + orders:read + ownership
+  -> IDs por keyset (tenant + ator + ID decrescente)
+  -> comprador e itens carregados em uma segunda consulta
+  -> 200 items + nextCursor + hasMore
+
 job de expiração
   -> pedidos vencidos sob lock
   -> EXPIRADO + auditoria + PedidoExpirado
@@ -56,6 +62,8 @@ POST /api/v1/orders/{id}/cancellation + If-Match + Idempotency-Key
 ## Endpoints (se houver)
 
 - `POST /api/v1/orders`: cria pedido idempotente a partir de um hold próprio.
+- `GET /api/v1/orders`: lista somente pedidos do ator no tenant ativo, por
+  cursor e com filtros opcionais de evento, estado e canal.
 - `GET /api/v1/orders/{orderId}`: consulta somente pedido do ator autenticado.
 - `POST /api/v1/orders/{orderId}/manual-confirmation`: confirmação excepcional
   por Admin/Gestor, com versão esperada, evidência e chave idempotente.
@@ -95,7 +103,8 @@ Há testes de domínio, API, snapshots, total, idempotência, RBAC, ownership,
 campos controlados, canal, hold terminal, expiração, confirmação manual,
 cancelamento direto/compensatório, bloqueio de credencial/QR, concorrência pela
 confirmação e pelo cancelamento, auditoria, outbox, OpenAPI, Flyway e Hibernate
-validate.
+validate. A coleção cobre cursor sem repetição, ordem estável, filtros,
+validação de limite e isolamento do ator.
 
 ## Decisões Técnicas
 
@@ -117,6 +126,9 @@ validate.
 - O processo compensatório é único por pedido e o replay é resolvido pelo
   registro idempotente, sem repetir inventário ou bloqueio.
 - O documento é persistido normalizado e retornado somente mascarado.
+- A listagem usa keyset por ID e índice `(organizacao_id, ator_id, id DESC)`;
+  a busca dos detalhes é separada para evitar N+1 e paginação com fetch de
+  coleção.
 
 ## Módulos relacionados
 
@@ -139,3 +151,4 @@ validate.
 | 2026-07-30 | Implementa confirmação manual versionada, idempotente e pendente de conciliação. |
 | 2026-07-30 | Snapshot do item inclui pátio e pedido atendido depende de todas as credenciais. |
 | 2026-07-30 | Implementa UC713 com cancelamento próprio, compensação única e pendência de reembolso. |
+| 2026-08-01 | Implementa leitura própria paginada por cursor com `orders:read` e filtros. |

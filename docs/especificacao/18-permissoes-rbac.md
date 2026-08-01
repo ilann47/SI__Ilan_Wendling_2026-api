@@ -130,10 +130,11 @@ do catálogo já publicado.
 Integração, o hold pertence ao usuário autenticado e não pode ser consultado ou
 liberado por outro ator, mesmo no mesmo tenant.
 
-`orders:create` está implementada para os mesmos três papéis. Nesta etapa, o
-pedido somente pode usar hold e ser consultado pelo próprio usuário
-autenticado; leitura administrativa, cliente público e escopos de caixa ou
-parceiro permanecem no backlog de identidade contextual.
+`orders:create` e `orders:read` estão implementadas para os mesmos três papéis.
+Nesta etapa, o pedido somente pode usar hold e ser consultado, individualmente
+ou por cursor, pelo próprio usuário autenticado; leitura administrativa,
+cliente público e escopos de caixa ou parceiro permanecem no backlog de
+identidade contextual.
 
 `orders:manual-confirm` está implementada somente para `ADMIN_ORGANIZACAO` e
 `GESTOR`. A permissão não é concedida ao `ORGANIZADOR`, exige evidência e cria
