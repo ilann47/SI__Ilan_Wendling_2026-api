@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]]
 
 # Core do Estacionamento Kaneko
 
@@ -51,6 +51,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[acesso]] — decisão QR online, presença, sessão e ocupação de evento.
 - [[idempotencia]] — execução única de comandos críticos por tenant e identidade.
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
+- [[bloqueios]] — condições externas e decisões pendentes que limitam a entrega.
 
 ## Histórico
 
@@ -85,3 +86,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-01 | Restringe métricas e endpoints administrativos do Actuator a clientes autenticados. |
 | 2026-08-01 | Expõe o feed tenant-aware de tentativas de acesso sob `audit:read`. |
 | 2026-08-01 | Distingue validação, check-in e check-out no agregado de tentativa. |
+| 2026-08-02 | Centraliza bloqueios e condições objetivas de retomada da fase de eventos. |

@@ -799,3 +799,14 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   movimentação ou alteração de ocupação.
 - Testes cobrem domínio, não consumo, check-in posterior, replay, conflito de
   payload, contrato estrito, RBAC e OpenAPI; a suíte passa de 508 para 511 testes.
+
+---
+
+## Atualização — Registro central de bloqueios (2026-08-02)
+
+- `bloqueios-externos.md` consolida provider, credenciais, infraestrutura e
+  decisões de negócio ausentes sem reclassificar capacidades TARGET como AS-IS.
+- Pagamento manual permanece evidência `PENDENTE_CONCILIACAO`; nenhum pagamento,
+  reembolso, documento fiscal externo ou comando de equipamento é simulado.
+- O registro define condições objetivas de retomada e passa a orientar avisos
+  informativos no frontend, sem expor ações que o backend não consegue concluir.

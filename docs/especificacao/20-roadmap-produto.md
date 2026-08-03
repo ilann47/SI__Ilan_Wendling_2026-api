@@ -57,6 +57,14 @@
 **Impacto:** estabelece o posicionamento event-first e primeiro ciclo ponta a ponta.  
 **Critério de saída:** evento real executado da configuração ao fechamento; operação online/offline; reconciliação individual por pedido → pagamento → credencial → acesso → movimentação; nenhum controle crítico paralelo em planilha.
 
+### Bloqueios formais da fase
+
+As dependências que impedem o critério integral de saída são mantidas no
+[[bloqueios-externos|Registro Central de Bloqueios]]. Histórias independentes
+continuam executáveis, mas pagamento/reembolso, offline, fechamento financeiro,
+fiscal externo, equipamentos e integrações não podem ser declarados concluídos
+antes das respectivas condições de retomada.
+
 ## 20.4 Fase 2 — Rotativo
 
 **Objetivos:** tarifas por pátio, categoria, calendário, faixa e permanência; tolerância; teto diário; tickets; placa; caixa; validação/desconto; ticket perdido; reserva cotidiana; pagamento na saída; estorno e comprovante.

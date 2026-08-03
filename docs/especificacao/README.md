@@ -73,6 +73,7 @@ Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especifica�
 | 19 | [Equipamentos e Integrações](19-equipamentos-integracoes.md) | Portas canônicas, Edge, contingência, ACL, webhooks, retries e telemetria. |
 | 20 | [Roadmap do Produto](20-roadmap-produto.md) | Fundação, dez fases, riscos, impactos, NFRs e plano de evolução. |
 | 21 | [Estado de Implementação](21-status-implementacao.md) | Classificação das histórias, dependências, bloqueios externos e condições de retomada. |
+| — | [Registro Central de Bloqueios](bloqueios-externos.md) | Dependências externas, decisões de negócio e infraestrutura que impedem histórias específicas. |
 
 ### Regra de prevalência
 
