@@ -26,7 +26,7 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
    implicitamente a papéis operacionais.
 4. Criar o padrão de teste de isolamento reutilizável. **Concluído em 2026-08-03.**
 5. Migrar formas e condições de pagamento como primeira dependência empresarial. **Concluído na V38.**
-6. Migrar clientes, logística e fornecedores. **Cliente V40, Transportadora V41 e Fornecedor V42 concluídos; frota logística pendente.**
+6. Migrar clientes, logística e fornecedores. **Cliente V40, Transportadora V41, Fornecedor V42 e hardening V44 concluídos; frota logística pendente.**
 7. Migrar RH incrementalmente. **Cargo concluído na V43; Funcionário e vínculo laboral permanecem pendentes.**
 8. Prosseguir pela ordem registrada em `22-unificacao-multitenant.md`.
 

@@ -66,6 +66,10 @@ payload hostil, auditoria sem contatos, constraints e upgrade V41→V42.
 
 - Dados históricos permanecem sem owner, preservados e invisíveis na API tenant.
 - Trigger transitório fecha `NULL -> tenant` para condição e transportadora.
+- A V44 fecha também o caminho inverso: consumers globais recusam fornecedor
+  tenant-aware e backfills parciais do grafo são bloqueados até a migration do consumer.
+- Documento é comparado no PostgreSQL pela forma somente-dígitos, inclusive para
+  escritas externas à aplicação.
 - Nota de Entrada, contas a pagar e Produto–Fornecedor resolvem somente
   fornecedores históricos até migrarem seus próprios agregados.
 - A auditoria omite documento, endereço, e-mail e telefone dos snapshots.
@@ -83,3 +87,4 @@ payload hostil, auditoria sem contatos, constraints e upgrade V41→V42.
 | Data | Ação |
 |---|---|
 | 2026-08-03 | V42 migra Fornecedor e preserva o grafo histórico de contatos e referências. |
+| 2026-08-03 | V44 endurece consumers globais, unicidade normalizada, backfill e redação da auditoria. |

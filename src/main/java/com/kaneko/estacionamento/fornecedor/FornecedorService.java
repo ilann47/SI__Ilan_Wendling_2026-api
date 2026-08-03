@@ -203,14 +203,12 @@ public class FornecedorService {
 
     private static Map<String, Object> snapshot(Fornecedor fornecedor) {
         Map<String, Object> estado = new LinkedHashMap<>();
-        estado.put("nome", fornecedor.getNome());
         estado.put("tipo", fornecedor.getTipo().name());
         estado.put("cidadeId", fornecedor.getCidade() == null ? null : fornecedor.getCidade().getId());
         estado.put("condicaoPagamentoId", fornecedor.getCondicaoPagamento() == null
                 ? null : fornecedor.getCondicaoPagamento().getId());
         estado.put("transportadoraId", fornecedor.getTransportadora() == null
                 ? null : fornecedor.getTransportadora().getId());
-        estado.put("limiteCredito", fornecedor.getLimiteCredito());
         estado.put("ativo", fornecedor.getAtivo());
         return estado;
     }

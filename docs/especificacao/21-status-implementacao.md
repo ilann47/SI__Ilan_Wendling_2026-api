@@ -161,3 +161,12 @@ nenhum dado histórico foi associado automaticamente. A V43 migra Cargo com nome
 normalizado único por organização, `workforce:read/manage`, auditoria RH e
 compatibilidade explícita: Funcionário global resolve somente Cargo sem owner.
 Nenhum cargo histórico foi associado automaticamente.
+
+A V44 complementa Fornecedor sem alterar a V42: normaliza documento também na
+unicidade do PostgreSQL, impede que Nota de Entrada, contas a pagar e
+Produto–Fornecedor globais apontem para fornecedor tenant-aware, bloqueia
+backfill parcial do grafo e fecha campos desconhecidos nos contatos. A auditoria
+deixa de persistir nome e limite de crédito nos snapshots. O rollout desta etapa
+é operacionalmente **sem overlap**: todas as instâncias antigas devem ser
+drenadas antes de habilitar escrita tenant-aware, pois a versão antiga não conhece
+o filtro de organização.

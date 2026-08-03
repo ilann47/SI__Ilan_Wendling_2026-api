@@ -126,8 +126,11 @@ class FornecedorTenantApiTest {
         mvc.perform(put("/api/fornecedores/{id}", id)
                         .header("Authorization", tenantA.tokenContextual())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nome\":\"Atualizado\",\"documento\":\"77777777000177\","
-                                + "\"emails\":[{\"email\":\"privado@teste.com\",\"principal\":true}]}"))
+                        .content("{\"nome\":\"Pessoa Privada\",\"documento\":\"77777777000177\","
+                                + "\"endereco\":\"Rua Privada\",\"observacao\":\"Segredo\","
+                                + "\"limiteCredito\":9999,"
+                                + "\"emails\":[{\"email\":\"privado@teste.com\",\"principal\":true}],"
+                                + "\"telefones\":[{\"telefone\":\"44999999999\",\"principal\":true}]}"))
                 .andExpect(status().isOk());
         mvc.perform(delete("/api/fornecedores/{id}", id)
                         .header("Authorization", tenantA.tokenContextual()))
@@ -137,10 +140,20 @@ class FornecedorTenantApiTest {
                 SELECT count(*) FROM registro_auditoria
                 WHERE organizacao_id = ? AND ator_id = ? AND recurso_id = ?
                   AND acao IN ('FORNECEDOR_CRIADO', 'FORNECEDOR_ATUALIZADO', 'FORNECEDOR_DESATIVADO')
-                  AND coalesce(estado_anterior::text, '') NOT LIKE '%privado@teste.com%'
-                  AND coalesce(estado_posterior::text, '') NOT LIKE '%privado@teste.com%'
+                  AND concat_ws(' ', estado_anterior::text, estado_posterior::text)
+                      !~ '(Pessoa Privada|77777777000177|Rua Privada|Segredo|9999|privado@teste.com|44999999999)'
                 """, Integer.class, tenantA.organizacaoId(), tenantA.usuarioId(), id);
         assertThat(total).isEqualTo(3);
+    }
+
+    @Test
+    void rejeitaTenantEmContatoAninhado() throws Exception {
+        mvc.perform(post("/api/fornecedores").header("Authorization", tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Hostil\",\"documento\":\"12121212000112\","
+                                + "\"emails\":[{\"email\":\"a@b.com\",\"organizationId\":"
+                                + tenantB.organizacaoId() + "}]}"))
+                .andExpect(status().isBadRequest());
     }
 
     private long criar(TenantFixture fixture, String nome, String documento,

@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.fornecedor.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.kaneko.estacionamento.fornecedor.TipoEmail;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -19,4 +20,9 @@ public record EmailRequest(
 
         Boolean principal
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito no contato de e-mail.");
+    }
 }

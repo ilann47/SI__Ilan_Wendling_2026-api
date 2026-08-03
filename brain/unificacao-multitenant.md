@@ -70,6 +70,8 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 - Coluna por tenant no banco compartilhado.
 - Sem filtro Hibernate global; ownership fica explícito em métodos e queries.
 - Sem associação automática de dados históricos.
+- O rollout dos retrofits exige drenagem das instâncias da versão anterior; não
+  é suportada sobreposição old/new enquanto a escrita tenant-aware é habilitada.
 - Sem remoção de menus como substituto de autorização.
 - `Usuario.funcionario_id` é compatibilidade; vínculo laboral TARGET usa Membership.
 - Ordem de Compra e Ordem de Serviço exigem contrato/ADR próprios.
@@ -98,4 +100,5 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 | 2026-08-03 | Migra Cliente como primeira raiz de pessoas da Onda 1. |
 | 2026-08-03 | Migra Transportadora antes de Fornecedor para fechar a dependência logística. |
 | 2026-08-03 | Migra Fornecedor e fecha condition/transportadora com FKs compostas. |
+| 2026-08-03 | Fecha consumers globais e torna explícito o rollout sem overlap das versões. |
 | 2026-08-03 | Migra Cargo e mantém Funcionário global restrito ao catálogo histórico. |

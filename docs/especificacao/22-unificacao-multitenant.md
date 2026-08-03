@@ -519,6 +519,13 @@ protege condição de pagamento e transportadora com FKs compostas e trigger de
 compatibilidade. A API preservada exige `suppliers:read/manage`; documentos
 permanecem únicos no tenant e no conjunto histórico separado.
 
+A V44 adiciona a segunda defesa de compatibilidade: tabelas ainda globais só
+podem referenciar fornecedores sem owner, e a reconciliação futura deve migrar o
+grafo de forma atômica. A unicidade documental usa representação somente-dígitos
+no banco. Como binários anteriores fazem consultas globais, o procedimento de
+implantação dos retrofits exige drenagem completa da versão anterior; rolling
+deployment com overlap old/new não é suportado nesta transição.
+
 A V43 migra Cargo como primeira raiz de RH. A rota preservada `/api/cargos`
 deriva owner do JWT, exige `workforce:read/manage`, normaliza a unicidade de nome
 por organização e registra mutações com retenção RH. Cargos históricos continuam
