@@ -128,6 +128,8 @@ PostgreSQL para período, estado e FK composta.
   papel Supervisor com `access:operate` e não ocorre implicitamente no check-in.
 - A política não é inferida nem escolhida pelo operador no portão; fica
   versionada no agregado antes da publicação.
+- Repetir o PATCH com a mesma política e a versão atual é um no-op idempotente:
+  não incrementa versão nem duplica auditoria ou fato na outbox.
 - O encerramento operacional não cria números financeiros. O reconhecimento da
   ressalva fica no contrato, auditoria e outbox até existirem fontes canônicas.
 
@@ -154,3 +156,4 @@ PostgreSQL para período, estado e FK composta.
 | 2026-08-01 | Implementa fechamento de vendas e início explícito de operação para [[acesso]]. |
 | 2026-08-01 | Implementa política de reentrada explícita e imutável após o rascunho. |
 | 2026-08-01 | Implementa encerramento operacional concorrente e ressalva financeira explícita da UC720. |
+| 2026-08-03 | Evita duplicidade de outbox ao repetir a mesma política de reentrada. |

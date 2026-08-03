@@ -81,6 +81,9 @@ public class EventoService {
         }
         Evento evento = buscarParaTransicao(
                 organizacaoId, eventoId, versaoEsperada);
+        if (evento.getPoliticaReentrada() == request.reentryPolicy()) {
+            return EventoResponse.from(evento);
+        }
         Map<String, Object> anterior = snapshot(evento);
         Long versaoAnterior = evento.getVersion();
         evento.definirPoliticaReentrada(request.reentryPolicy());

@@ -276,6 +276,10 @@ class EventoControllerTest {
                 "REENTRADA_PERMITIDA", status().isOk())
                 .andExpect(header().string("ETag", "\"1\""))
                 .andExpect(jsonPath("$.reentryPolicy").value("REENTRADA_PERMITIDA"));
+        definirPolitica(tokenContextual, eventoId, "\"1\"",
+                "REENTRADA_PERMITIDA", status().isOk())
+                .andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.version").value(1));
         definirPolitica(tokenContextual, eventoId, "\"0\"",
                 "ENTRADA_UNICA", status().isPreconditionFailed());
 
@@ -283,6 +287,10 @@ class EventoControllerTest {
             assertThat(auditoria.getAcao()).isEqualTo("POLITICA_REENTRADA_DEFINIDA");
             assertThat(auditoria.getRecursoId()).isEqualTo(eventoId);
         });
+        assertThat(auditorias.findAll().stream()
+                .filter(auditoria -> "POLITICA_REENTRADA_DEFINIDA".equals(auditoria.getAcao()))
+                .filter(auditoria -> eventoId.equals(auditoria.getRecursoId()))
+                .count()).isEqualTo(1L);
         assertThat(jdbc.queryForObject("""
                 select count(*) from evento_outbox
                 where aggregate_type = 'EVENTO' and aggregate_id = ?
