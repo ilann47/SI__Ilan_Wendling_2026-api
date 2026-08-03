@@ -486,3 +486,12 @@ Cada história deve entregar verticalmente migration, entidade, repository,
 service, RBAC, controller, OpenAPI, frontend, auditoria, testes e `brain`. Nenhuma
 onda autoriza transmissão fiscal, pagamento real ou integração externa sem as
 dependências registradas em [[bloqueios-externos]].
+
+### 10.9 Estado de execução
+
+Em 2026-08-03, a V38 concluiu a primeira fatia da Onda 1: formas, condições e
+parcelas de pagamento agora possuem ownership aditivo, unicidade normalizada por
+organização, RBAC contextual e proteção de FK composta dentro do agregado. O
+backfill e o `NOT NULL` permanecem condicionados ao mapeamento explícito dos
+dados históricos. Consumers fiscais e financeiros serão endurecidos nas ondas
+próprias, sem remover o catálogo já migrado.

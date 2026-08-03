@@ -1,7 +1,10 @@
 package com.kaneko.estacionamento.pagamento;
 
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repositorio de {@link FormaPagamento}. As operacoes basicas de CRUD e
@@ -11,9 +14,16 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface FormaPagamentoRepository extends JpaRepository<FormaPagamento, Long>,
         JpaSpecificationExecutor<FormaPagamento> {
 
-    /** Indica se ja existe uma forma de pagamento com o nome informado (unicidade uq_forma_pagamento_nome). */
-    boolean existsByNome(String nome);
+    Optional<FormaPagamento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
-    /** Indica se existe OUTRA forma de pagamento (id diferente) com o mesmo nome — usado em alteracoes. */
-    boolean existsByNomeAndIdNot(String nome, Long id);
+    @Query("""
+            select count(f) > 0 from FormaPagamento f
+            where f.organizacaoId = :organizacaoId
+              and lower(trim(f.nome)) = lower(trim(:nome))
+              and (:idIgnorado is null or f.id <> :idIgnorado)
+            """)
+    boolean existeNomeNormalizado(
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("nome") String nome,
+            @Param("idIgnorado") Long idIgnorado);
 }

@@ -4,6 +4,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repositorio de {@link CondicaoPagamento}. Suporta filtros dinamicos via
@@ -14,13 +16,17 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface CondicaoPagamentoRepository extends JpaRepository<CondicaoPagamento, Long>,
         JpaSpecificationExecutor<CondicaoPagamento> {
 
-    /** Indica se ja existe uma condicao com o nome informado (uq_condicao_pagamento_nome). */
-    boolean existsByNome(String nome);
-
-    /** Indica se existe OUTRA condicao (id diferente) com o mesmo nome — usado em alteracoes. */
-    boolean existsByNomeAndIdNot(String nome, Long id);
-
-    @Override
     @EntityGraph(attributePaths = {"parcelas", "parcelas.formaPagamento"})
-    Optional<CondicaoPagamento> findById(Long id);
+    Optional<CondicaoPagamento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    @Query("""
+            select count(c) > 0 from CondicaoPagamento c
+            where c.organizacaoId = :organizacaoId
+              and lower(trim(c.nome)) = lower(trim(:nome))
+              and (:idIgnorado is null or c.id <> :idIgnorado)
+            """)
+    boolean existeNomeNormalizado(
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("nome") String nome,
+            @Param("idIgnorado") Long idIgnorado);
 }

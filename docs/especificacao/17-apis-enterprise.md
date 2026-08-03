@@ -287,3 +287,16 @@ módulo. Ela exige aviso, telemetria, prazo e substituição documentada. Dados
 históricos sem owner são tratados somente pelo processo de reconciliação de
 [[22-unificacao-multitenant]], nunca por dual read silencioso em uma consulta de
 tenant.
+
+O primeiro contrato legado migrado é o catálogo cadastral de pagamento:
+
+| Método e rota preservada | Permissão | Semântica tenant-aware |
+|---|---|---|
+| `GET /api/formas-pagamento[/{id}]` | `payments:read` | lista/busca somente formas da organização ativa |
+| `POST/PUT/DELETE /api/formas-pagamento[/{id}]` | `payments:manage` | cria e altera somente no contexto ativo |
+| `GET /api/condicoes-pagamento[/{id}]` | `payments:read` | lista/busca somente condições da organização ativa |
+| `POST/PUT/DELETE /api/condicoes-pagamento[/{id}]` | `payments:manage` | parcelas e formas referenciadas devem pertencer ao mesmo tenant |
+
+Esses contratos rejeitam contexto global por RBAC, respondem `404` para recurso
+de outra organização e não expõem `organizationId` no payload. Registros
+históricos sem owner ficam preservados, mas fora das consultas tenant.

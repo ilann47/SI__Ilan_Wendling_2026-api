@@ -20,7 +20,8 @@
     {"id": "bloqueios", "type": "file", "file": "bloqueios.md", "x": 5000, "y": 320, "width": 360, "height": 220},
     {"id": "dados-demo", "type": "file", "file": "dados-demo.md", "x": 0, "y": 640, "width": 360, "height": 220},
     {"id": "unificacao-multitenant", "type": "file", "file": "unificacao-multitenant.md", "x": 5500, "y": 160, "width": 360, "height": 220},
-    {"id": "testes-multitenancy", "type": "file", "file": "testes-multitenancy.md", "x": 5500, "y": 480, "width": 360, "height": 220}
+    {"id": "testes-multitenancy", "type": "file", "file": "testes-multitenancy.md", "x": 5500, "y": 480, "width": 360, "height": 220},
+    {"id": "pagamentos-cadastrais", "type": "file", "file": "pagamentos-cadastrais.md", "x": 6000, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -83,6 +84,9 @@
     {"id": "unificacao-auditoria", "fromNode": "unificacao-multitenant", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "backfill e mutações"},
     {"id": "unificacao-testes", "fromNode": "unificacao-multitenant", "fromSide": "bottom", "toNode": "testes-multitenancy", "toSide": "top", "label": "provas por onda"},
     {"id": "testes-membership", "fromNode": "testes-multitenancy", "fromSide": "left", "toNode": "membership", "toSide": "right", "label": "JWT contextual"},
-    {"id": "testes-rbac", "fromNode": "testes-multitenancy", "fromSide": "left", "toNode": "rbac", "toSide": "right", "label": "permissões reais"}
+    {"id": "testes-rbac", "fromNode": "testes-multitenancy", "fromSide": "left", "toNode": "rbac", "toSide": "right", "label": "permissões reais"},
+    {"id": "unificacao-pagamentos", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "pagamentos-cadastrais", "toSide": "left", "label": "primeira fatia"},
+    {"id": "rbac-pagamentos", "fromNode": "rbac", "fromSide": "right", "toNode": "pagamentos-cadastrais", "toSide": "left", "label": "payments:read/manage"},
+    {"id": "testes-pagamentos", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "pagamentos-cadastrais", "toSide": "left", "label": "isolamento e FKs"}
   ]
 }

@@ -25,7 +25,7 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 3. Introduzir permissões contextuais dos domínios empresariais sem concedê-las
    implicitamente a papéis operacionais.
 4. Criar o padrão de teste de isolamento reutilizável. **Concluído em 2026-08-03.**
-5. Migrar formas e condições de pagamento como primeira dependência empresarial.
+5. Migrar formas e condições de pagamento como primeira dependência empresarial. **Concluído na V38.**
 6. Migrar clientes e fornecedores.
 7. Prosseguir pela ordem registrada em `22-unificacao-multitenant.md`.
 

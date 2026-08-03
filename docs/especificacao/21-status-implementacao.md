@@ -141,9 +141,10 @@ permanecem contextos distintos de Evento, mas fazem parte do produto unificado.
 
 ## 21.6 Estado da unificação multi-tenant
 
-A Onda 0 está `EM_EXECUCAO`. O inventário comprova que os módulos originados em
-V1/V6/V7 mantêm entidades, repositories, unicidades e autorização globais. O
-primeiro critério de saída é publicar a matriz de ownership e os padrões de
-migration, RBAC e testes; em seguida, formas/condições de pagamento, clientes e
-fornecedores iniciam a adaptação vertical. Nenhum dado histórico será associado
-automaticamente a uma organização.
+A Onda 0 está `EM_EXECUCAO`. A matriz de ownership e a fundação reutilizável de
+testes tenant-aware foram concluídas. A V38 migra formas, condições e parcelas de
+pagamento: novas escritas recebem o tenant do JWT, nomes são únicos por
+organização, referências de parcela usam FKs compostas e as URLs legadas exigem
+`payments:read/manage`. Linhas históricas permanecem com owner nulo e invisíveis
+às consultas tenant. Clientes e fornecedores são as próximas raízes da adaptação
+vertical; nenhum dado histórico será associado automaticamente a uma organização.
