@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[eventos]] · [[dados-demo]] · [[bloqueios]]
+> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[eventos]] · [[dados-demo]] · [[bloqueios]] · [[testes-multitenancy]]
 
 # Unificação Multi-Tenant
 
@@ -93,3 +93,4 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 | Data | Ação |
 |---|---|
 | 2026-08-03 | Consolida a Onda 0, ownership AS-IS/TARGET e estratégia de migração aditiva. |
+| 2026-08-03 | Cria suporte de teste para login, Membership, contexto JWT e constraints nomeadas. |

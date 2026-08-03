@@ -19,7 +19,8 @@
     {"id": "acesso", "type": "file", "file": "acesso.md", "x": 5000, "y": 0, "width": 360, "height": 220},
     {"id": "bloqueios", "type": "file", "file": "bloqueios.md", "x": 5000, "y": 320, "width": 360, "height": 220},
     {"id": "dados-demo", "type": "file", "file": "dados-demo.md", "x": 0, "y": 640, "width": 360, "height": 220},
-    {"id": "unificacao-multitenant", "type": "file", "file": "unificacao-multitenant.md", "x": 5500, "y": 160, "width": 360, "height": 220}
+    {"id": "unificacao-multitenant", "type": "file", "file": "unificacao-multitenant.md", "x": 5500, "y": 160, "width": 360, "height": 220},
+    {"id": "testes-multitenancy", "type": "file", "file": "testes-multitenancy.md", "x": 5500, "y": 480, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -79,6 +80,9 @@
     {"id": "dados-demo-eventos", "fromNode": "dados-demo", "fromSide": "right", "toNode": "eventos", "toSide": "bottom", "label": "cenário executável"},
     {"id": "core-unificacao", "fromNode": "core", "fromSide": "right", "toNode": "unificacao-multitenant", "toSide": "left", "label": "ownership transversal"},
     {"id": "unificacao-rbac", "fromNode": "unificacao-multitenant", "fromSide": "left", "toNode": "rbac", "toSide": "right", "label": "permissões por domínio"},
-    {"id": "unificacao-auditoria", "fromNode": "unificacao-multitenant", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "backfill e mutações"}
+    {"id": "unificacao-auditoria", "fromNode": "unificacao-multitenant", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "backfill e mutações"},
+    {"id": "unificacao-testes", "fromNode": "unificacao-multitenant", "fromSide": "bottom", "toNode": "testes-multitenancy", "toSide": "top", "label": "provas por onda"},
+    {"id": "testes-membership", "fromNode": "testes-multitenancy", "fromSide": "left", "toNode": "membership", "toSide": "right", "label": "JWT contextual"},
+    {"id": "testes-rbac", "fromNode": "testes-multitenancy", "fromSide": "left", "toNode": "rbac", "toSide": "right", "label": "permissões reais"}
   ]
 }
