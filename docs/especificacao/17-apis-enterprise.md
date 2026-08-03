@@ -349,3 +349,24 @@ Cargos e funcionários compõem o cadastro tenant-aware de RH:
 Os payloads são fechados e não aceitam `organizationId`. Registros históricos
 permanecem sem owner e invisíveis à API contextual. `Usuario` continua identidade
 global e, durante a transição, só pode referenciar funcionários históricos.
+
+O catálogo-base de conveniência preserva suas rotas e passa a exigir contexto:
+
+| Método e rota preservada | Permissão | Semântica tenant-aware |
+|---|---|---|
+| `GET /api/categorias[/{id}]` | `catalog:read` | lista/busca somente categorias da organização ativa |
+| `POST/PUT/DELETE /api/categorias[/{id}]` | `catalog:manage` | cria, altera ou inativa somente no tenant ativo |
+| `GET /api/marcas[/{id}]` | `catalog:read` | lista/busca somente marcas da organização ativa |
+| `POST/PUT/DELETE /api/marcas[/{id}]` | `catalog:manage` | cria, altera ou inativa somente no tenant ativo |
+| `GET /api/unidades-medida[/{id}]` | `catalog:read` | lista/busca somente unidades da organização ativa |
+| `POST/PUT/DELETE /api/unidades-medida[/{id}]` | `catalog:manage` | cria, altera ou inativa somente no tenant ativo |
+
+Nomes de Categoria/Marca e siglas de Unidade são únicos de forma normalizada
+dentro da organização. Os contratos rejeitam campos desconhecidos; histórico
+sem owner permanece invisível. Enquanto Produto ainda é global, ele somente
+resolve pais históricos sem owner.
+
+A V51 completa o contrato: respostas individuais expõem `version` e `ETag`
+derivado exclusivamente dela. `PUT` e `DELETE` exigem `If-Match`; ausência retorna
+`428`, formato inválido `400` e versão divergente `412`. Unidade de Medida também
+possui nome normalizado único por tenant e pelo conjunto histórico separado.

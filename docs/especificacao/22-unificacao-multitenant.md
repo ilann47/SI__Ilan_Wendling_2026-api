@@ -595,3 +595,16 @@ overlap com binários globais anteriores: todas as instâncias antigas devem ser
 drenadas antes da nova escrita. UC732 é o único caminho futuro autorizado para
 substituir temporariamente os guards e reconciliar o grafo completo na mesma
 transação auditada.
+
+A V50 inicia a Onda 2 pelo catálogo-base de Conveniência. `categoria`, `marca` e
+`unidade_medida` recebem owner imutável, unicidades normalizadas separadas por
+tenant e legado, RBAC `catalog:read/manage` e auditoria `CONFIGURACAO`. Produto
+permanece global somente durante a transição e é protegido no service e no
+PostgreSQL para resolver exclusivamente pais sem owner. Não há overlap seguro
+entre o frontend tenant-aware desses catálogos e Produto global: o rollout deve
+coordenar V50 com a migration seguinte de Produto antes de ativar a interface.
+
+A V51 complementa obrigatoriamente a V50 com versionamento otimista, precondição
+HTTP, unicidade normalizada do nome de Unidade de Medida e guards reversos para
+os pais consumidos por Produto. V50 e V51 constituem uma única unidade de rollout;
+Produto passa a ser a V52 e o frontend não deve ser ativado antes dela.

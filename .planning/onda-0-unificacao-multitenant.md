@@ -31,6 +31,8 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
    Transportadora V49 concluídos.**
 7. Migrar RH incrementalmente. **Cargo V43, Funcionário V45 e hardening de ownership V46 concluídos; vínculo laboral canônico permanece pendente.**
 8. Prosseguir pela ordem registrada em `22-unificacao-multitenant.md`.
+9. Migrar catálogo-base de conveniência. **Categoria, Marca e Unidade de Medida
+   concluídas em V50/V51; Produto é a próxima fatia obrigatória na V52.**
 
 ## Verificação por entrega
 
@@ -54,6 +56,9 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
   da reabertura; não reiniciar binário antigo após dados tenant-aware.
 - Nenhuma migration aplicada ao banco local com checksum divergente.
 - Rollout V48/V49 sem overlap; backfill somente pelo procedimento UC732.
+- V50 e V51 não são publicáveis isoladamente; o rollout backend V50/V51 e V52
+  de Produto deve ser coordenado antes
+  da ativação do frontend tenant-aware do catálogo.
 - Nenhuma remoção de rota ou menu como substituto de autorização.
 - Nenhuma criação de Ordem de Compra/Serviço antes do respectivo contrato de domínio.
 - O arquivo local `Nio2WebServerCustomizer.java` permanece fora de todos os commits.

@@ -11,6 +11,7 @@ public record CategoriaResponse(
         String nome,
         String descricao,
         Boolean ativo,
+        Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -22,6 +23,7 @@ public record CategoriaResponse(
                 categoria.getNome(),
                 categoria.getDescricao(),
                 categoria.getAtivo(),
+                categoria.getVersion(),
                 categoria.getCreatedAt(),
                 categoria.getUpdatedAt());
     }

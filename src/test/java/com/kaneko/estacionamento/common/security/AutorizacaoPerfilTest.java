@@ -98,17 +98,17 @@ class AutorizacaoPerfilTest {
                 .andExpect(status().isForbidden());
     }
 
-    // ---- OPERADOR continua operando o dia a dia ----
+    // ---- Perfil global nao substitui permissoes contextuais ----
 
     @Test
-    void operadorAcessaCadastrosGerais() throws Exception {
+    void operadorGlobalNaoAcessaCatalogoMasMantemOperacaoLegada() throws Exception {
         mvc.perform(get("/api/categorias").header("Authorization", tokenOperador))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
         mvc.perform(get("/api/movimentacoes/patio").header("Authorization", tokenOperador))
                 .andExpect(status().isOk());
     }
 
-    // ---- ADMIN passa pela autorizacao ----
+    // ---- ADMIN global permanece administrador somente das APIs legadas ----
 
     @Test
     void adminCriaUsuario() throws Exception {
@@ -124,10 +124,11 @@ class AutorizacaoPerfilTest {
     }
 
     @Test
-    void adminPassaNaAutorizacaoDeExclusao() throws Exception {
-        // Admin nao e barrado por role; o 404 prova que chegou ao handler (id inexistente).
-        mvc.perform(delete("/api/categorias/999999").header("Authorization", tokenAdmin))
-                .andExpect(status().isNotFound());
+    void adminGlobalNaoSubstituiCatalogManage() throws Exception {
+        // O perfil ADMIN global nao cria contexto nem permissoes de Membership.
+        mvc.perform(delete("/api/categorias/999999").header("Authorization", tokenAdmin)
+                        .header("If-Match", "\"0\""))
+                .andExpect(status().isForbidden());
     }
 
     // ---- Sem token continua 401 (autenticacao antes de autorizacao) ----

@@ -107,17 +107,17 @@ public class ProdutoService {
     }
 
     private Marca buscarMarca(Long id) {
-        return marcaRepository.findById(id)
+        return marcaRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Marca", id));
     }
 
     private UnidadeMedida buscarUnidade(Long id) {
-        return unidadeMedidaRepository.findById(id)
+        return unidadeMedidaRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("UnidadeMedida", id));
     }
 
     private Categoria buscarCategoria(Long id) {
-        return categoriaRepository.findById(id)
+        return categoriaRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria", id));
     }
 }

@@ -25,7 +25,8 @@
     {"id": "clientes", "type": "file", "file": "clientes.md", "x": 6500, "y": 160, "width": 360, "height": 220},
     {"id": "logistica", "type": "file", "file": "logistica.md", "x": 7000, "y": 160, "width": 360, "height": 220},
     {"id": "fornecedores", "type": "file", "file": "fornecedores.md", "x": 7500, "y": 160, "width": 360, "height": 220},
-    {"id": "rh", "type": "file", "file": "rh.md", "x": 8000, "y": 160, "width": 360, "height": 220}
+    {"id": "rh", "type": "file", "file": "rh.md", "x": 8000, "y": 160, "width": 360, "height": 220},
+    {"id": "conveniencia", "type": "file", "file": "conveniencia.md", "x": 8500, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -103,6 +104,9 @@
     {"id": "rbac-fornecedores", "fromNode": "rbac", "fromSide": "right", "toNode": "fornecedores", "toSide": "left", "label": "suppliers:read/manage"},
     {"id": "unificacao-rh", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "rh", "toSide": "left", "label": "ownership de RH"},
     {"id": "rbac-rh", "fromNode": "rbac", "fromSide": "right", "toNode": "rh", "toSide": "left", "label": "workforce:read/manage"},
-    {"id": "rh-auditoria", "fromNode": "rh", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção RH"}
+    {"id": "rh-auditoria", "fromNode": "rh", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção RH"},
+    {"id": "unificacao-conveniencia", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "conveniencia", "toSide": "left", "label": "ownership de catálogo"},
+    {"id": "rbac-conveniencia", "fromNode": "rbac", "fromSide": "right", "toNode": "conveniencia", "toSide": "left", "label": "catalog:read/manage"},
+    {"id": "conveniencia-auditoria", "fromNode": "conveniencia", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção CONFIGURACAO"}
   ]
 }

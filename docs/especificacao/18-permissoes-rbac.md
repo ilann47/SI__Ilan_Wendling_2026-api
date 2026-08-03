@@ -255,5 +255,10 @@ Compras e Estoque devem ser criados junto dos primeiros casos de uso que os
 exijam, sem antecipar privilégios. Auditor recebe apenas leituras explicitamente
 aprovadas. O perfil global do `Usuario` nunca substitui essas permissões.
 
+Na primeira fatia da Onda 2, `catalog:read` e `catalog:manage` são concedidas ao
+`ADMIN_ORGANIZACAO` e protegem Categoria, Marca e Unidade de Medida. Tokens
+globais e papéis operacionais não recebem acesso por implicação. A ampliação para
+Gestor será feita somente junto dos casos de uso comerciais correspondentes.
+
 A matriz detalhada por onda, inclusive testes 401/403/404 e referências
 cross-tenant, está em [[22-unificacao-multitenant]].

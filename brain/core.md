@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]]
 
 # Core do Estacionamento Kaneko
 
@@ -60,6 +60,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[logistica]] — transportadoras, veículos de carga e vínculos de frota isolados por organização.
 - [[fornecedores]] — fornecedores, contatos e referências comerciais do tenant.
 - [[rh]] — cargos e funcionários tenant-aware com compatibilidade histórica controlada.
+- [[conveniencia]] — categorias, marcas e unidades de medida isoladas por organização.
 
 ## Histórico
 
@@ -102,6 +103,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Migra clientes e sua referência de condição de pagamento para tenancy real. |
 | 2026-08-03 | Migra transportadoras e sua condição de pagamento para tenancy real. |
 | 2026-08-03 | Migra fornecedores, contatos derivados e referências comerciais para tenancy real. |
+| 2026-08-03 | Inicia a Onda 2 com o catálogo-base de conveniência tenant-aware na V50. |
 | 2026-08-03 | Migra Cargo para ownership organizacional e RBAC contextual de RH. |
 | 2026-08-03 | Migra Funcionário para ownership organizacional e preserva Usuário global. |
 | 2026-08-03 | Valida o grafo legado de Fornecedor e bloqueia mudança direta de owner na V47. |

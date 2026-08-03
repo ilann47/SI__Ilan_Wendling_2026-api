@@ -113,3 +113,5 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 | 2026-08-03 | Endurece Fornecedor na V47 com preflight retroativo e owner imutável. |
 | 2026-08-03 | Conclui a frota logística tenant-aware na V48. |
 | 2026-08-03 | Torna owner de Transportadora imutável na V49 e reafirma UC732. |
+| 2026-08-03 | Inicia a Onda 2 com Categoria, Marca e Unidade de Medida na V50. |
+| 2026-08-03 | Endurece o catálogo-base na V51; Produto tenant-aware passa a ser a V52. |

@@ -11,6 +11,7 @@ public record UnidadeMedidaResponse(
         String nome,
         String sigla,
         Boolean ativo,
+        Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -22,6 +23,7 @@ public record UnidadeMedidaResponse(
                 unidade.getNome(),
                 unidade.getSigla(),
                 unidade.getAtivo(),
+                unidade.getVersion(),
                 unidade.getCreatedAt(),
                 unidade.getUpdatedAt());
     }

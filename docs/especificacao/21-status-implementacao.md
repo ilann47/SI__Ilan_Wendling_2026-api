@@ -199,3 +199,17 @@ A V49 torna `transportadora.organizacao_id` incondicionalmente imutável, inclus
 nos caminhos `NULL → tenant`, tenant A → B e tenant → `NULL`. Os guards específicos
 da V48 permanecem instalados. O rollout V48/V49 exige drenagem total dos binários
 anteriores; reconciliação e backfill continuam reservados à UC732.
+
+A V50 inicia a Onda 2 com Categoria, Marca e Unidade de Medida tenant-aware. As
+rotas existentes derivam owner do JWT e exigem `catalog:read/manage`; nomes e
+siglas são únicos de forma normalizada por organização, mutações usam auditoria
+`CONFIGURACAO` e o histórico sem owner permanece invisível. Produto continua
+global e, temporariamente, somente aceita esses três pais também históricos.
+Por isso, V50 e a próxima fatia de Produto devem ser implantadas de forma
+coordenada antes de habilitar o frontend tenant-aware do catálogo.
+
+A V51 endurece a V50 sem modificá-la: adiciona `@Version`, `ETag` e `If-Match`
+obrigatório às três raízes, torna também o nome de Unidade único de forma
+normalizada e instala reverse guards contra backfill de pais referenciados por
+Produto. V50/V51 não são publicáveis isoladamente e o frontend permanece
+desativado até Produto ser migrado na V52.
