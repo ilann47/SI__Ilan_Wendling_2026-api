@@ -111,3 +111,5 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 | 2026-08-03 | Migra Funcionário e restringe o consumer global de Usuário ao histórico. |
 | 2026-08-03 | Bloqueia troca/backfill direto de owner em Cargo e Funcionário até UC732. |
 | 2026-08-03 | Endurece Fornecedor na V47 com preflight retroativo e owner imutável. |
+| 2026-08-03 | Conclui a frota logística tenant-aware na V48. |
+| 2026-08-03 | Torna owner de Transportadora imutável na V49 e reafirma UC732. |

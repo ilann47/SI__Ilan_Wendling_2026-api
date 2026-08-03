@@ -57,7 +57,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[testes-multitenancy]] — fixtures de JWT contextual e asserções de integridade PostgreSQL.
 - [[pagamentos-cadastrais]] — formas, condições e parcelas isoladas por organização.
 - [[clientes]] — cadastro de clientes com privacidade e ownership organizacional.
-- [[logistica]] — transportadoras isoladas por organização e preparadas para frota e fornecedores.
+- [[logistica]] — transportadoras, veículos de carga e vínculos de frota isolados por organização.
 - [[fornecedores]] — fornecedores, contatos e referências comerciais do tenant.
 - [[rh]] — cargos e funcionários tenant-aware com compatibilidade histórica controlada.
 
@@ -105,4 +105,6 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Migra Cargo para ownership organizacional e RBAC contextual de RH. |
 | 2026-08-03 | Migra Funcionário para ownership organizacional e preserva Usuário global. |
 | 2026-08-03 | Valida o grafo legado de Fornecedor e bloqueia mudança direta de owner na V47. |
+| 2026-08-03 | Migra Veículo de Frota e vínculo N:N para tenancy real na V48. |
+| 2026-08-03 | Fecha owner imutável de Transportadora na V49. |
 | 2026-08-03 | Torna imutável no PostgreSQL o ownership de Cargo e Funcionário. |

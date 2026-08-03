@@ -318,10 +318,14 @@ Transportadoras preservam a rota anterior e passam a compor o contexto de Logís
 |---|---|---|
 | `GET /api/transportadoras[/{id}]` | `logistics:read` | lista/busca somente transportadoras da organização ativa |
 | `POST/PUT/DELETE /api/transportadoras[/{id}]` | `logistics:manage` | cria, altera ou inativa no tenant; condição deve pertencer à mesma organização |
+| `GET /api/veiculos-frota[/{id}]` | `logistics:read` | lista/busca somente veículos de carga da organização ativa |
+| `POST/PUT/DELETE /api/veiculos-frota[/{id}]` | `logistics:manage` | cria, altera ou inativa veículo no tenant ativo |
+| `GET /api/transportadora-veiculos[/{id}]` | `logistics:read` | lista/busca somente vínculos de frota da organização ativa |
+| `POST/PUT/DELETE /api/transportadora-veiculos[/{id}]` | `logistics:manage` | vincula, altera ou inativa; ambas as pontas devem pertencer ao tenant |
 
 Cidade continua global. Registros históricos sem owner não entram nas consultas
-contextuais; frota e vínculos antigos continuam restritos a transportadoras
-históricas até a migração vertical correspondente.
+contextuais. Placa é normalizada por trim e maiúsculas e permanece única no tenant.
+Os payloads não aceitam `organizationId` nem campos desconhecidos.
 
 Fornecedores seguem o mesmo contrato compatível:
 

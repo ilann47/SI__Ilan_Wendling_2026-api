@@ -189,3 +189,13 @@ fornecedor tenant-aware ou se condição de pagamento/transportadora tiver owner
 divergente. `organizacao_id` de Fornecedor torna-se fisicamente imutável, inclusive
 no caminho `NULL -> tenant`; a reconciliação permanece reservada à UC732. O rollout
 continua coordenado e sem overlap de binários antigos.
+
+A V48 conclui a frota logística tenant-aware. `veiculo_frota` e
+`transportadora_veiculo_frota` recebem owner imutável, placa/par únicos por
+organização e FKs compostas para as duas pontas. As rotas preservadas usam
+`logistics:read/manage`, auditam mutações e mantêm o histórico sem owner invisível.
+
+A V49 torna `transportadora.organizacao_id` incondicionalmente imutável, inclusive
+nos caminhos `NULL → tenant`, tenant A → B e tenant → `NULL`. Os guards específicos
+da V48 permanecem instalados. O rollout V48/V49 exige drenagem total dos binários
+anteriores; reconciliação e backfill continuam reservados à UC732.

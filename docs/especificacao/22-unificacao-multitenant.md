@@ -581,3 +581,17 @@ mesmo ocorre quando condição de pagamento ou transportadora divergem do owner 
 raiz. Após os preflights, `ck_fornecedor_owner_imutavel` bloqueia troca, remoção ou
 atribuição direta de owner. O mecanismo futuro de UC732 deverá substituir o guard
 somente dentro do procedimento transacional descrito acima.
+
+A V48 migra Veículo de Frota e o vínculo Transportadora–Veículo como uma única
+fatia logística. A placa usa unicidade normalizada por organização; o vínculo
+carrega owner direto e FKs compostas garantem as duas pontas no mesmo tenant.
+Preflights recusam colisões e grafos históricos já divergentes. Owners de veículo
+e vínculo tornam-se imutáveis e o backfill isolado de Transportadora com frota é
+bloqueado até UC732. Nenhum registro histórico recebe tenant automaticamente.
+
+A V49 fecha a raiz Transportadora com `ck_transportadora_owner_imutavel`, sem
+remover os guards específicos do grafo. A implantação de V48 e V49 não suporta
+overlap com binários globais anteriores: todas as instâncias antigas devem ser
+drenadas antes da nova escrita. UC732 é o único caminho futuro autorizado para
+substituir temporariamente os guards e reconciliar o grafo completo na mesma
+transação auditada.

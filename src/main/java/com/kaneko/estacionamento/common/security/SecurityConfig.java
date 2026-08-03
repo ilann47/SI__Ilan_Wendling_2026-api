@@ -63,6 +63,8 @@ public class SecurityConfig {
                             .requestMatchers("/api/condicoes-pagamento/**").authenticated()
                             .requestMatchers("/api/clientes/**").authenticated()
                             .requestMatchers("/api/transportadoras/**").authenticated()
+                            .requestMatchers("/api/veiculos-frota/**").authenticated()
+                            .requestMatchers("/api/transportadora-veiculos/**").authenticated()
                             .requestMatchers("/api/fornecedores/**").authenticated()
                             .requestMatchers("/api/cargos/**").authenticated()
                             .requestMatchers("/api/funcionarios/**").authenticated()
