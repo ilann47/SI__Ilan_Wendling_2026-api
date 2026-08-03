@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {
-        CategoriaController.class, MarcaController.class, UnidadeMedidaController.class})
+        CategoriaController.class, MarcaController.class, UnidadeMedidaController.class,
+        ProdutoController.class, ServicoController.class})
 public class CatalogoConvenienciaApiExceptionHandler {
 
     @ExceptionHandler(MissingRequestHeaderException.class)

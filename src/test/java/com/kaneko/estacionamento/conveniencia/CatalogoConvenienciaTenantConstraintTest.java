@@ -89,7 +89,7 @@ class CatalogoConvenienciaTenantConstraintTest {
         Long marca = inserirMarca(tenantA.organizacaoId(), "Tenant");
         Long unidade = inserirUnidade(null, "Historica", "HIS");
         assertViolation(() -> inserirProduto(marca, unidade, null),
-                "23503", "fk_produto_marca_owner");
+                "23503", "fk_produto_marca_organizacao");
     }
 
     @Test
@@ -97,7 +97,7 @@ class CatalogoConvenienciaTenantConstraintTest {
         Long marca = inserirMarca(null, "Historica");
         Long unidade = inserirUnidade(tenantA.organizacaoId(), "Tenant", "TEN");
         assertViolation(() -> inserirProduto(marca, unidade, null),
-                "23503", "fk_produto_unidade_owner");
+                "23503", "fk_produto_unidade_organizacao");
     }
 
     @Test
@@ -106,7 +106,7 @@ class CatalogoConvenienciaTenantConstraintTest {
         Long unidade = inserirUnidade(null, "Historica", "HIS");
         Long categoria = inserirCategoria(tenantA.organizacaoId(), "Tenant");
         assertViolation(() -> inserirProduto(marca, unidade, categoria),
-                "23503", "fk_produto_categoria_owner");
+                "23503", "fk_produto_categoria_organizacao");
     }
 
     @Test
@@ -209,7 +209,7 @@ class CatalogoConvenienciaTenantConstraintTest {
         Long marcaTenant = inserirMarca(tenantA.organizacaoId(), "Marca tenant");
         assertViolation(() -> jdbc.update("UPDATE produto SET marca_id=? WHERE id=?",
                         marcaTenant, produto),
-                "23503", "fk_produto_marca_owner");
+                "23503", "fk_produto_marca_organizacao");
     }
 
     @Test
@@ -220,7 +220,7 @@ class CatalogoConvenienciaTenantConstraintTest {
         Long unidadeTenant = inserirUnidade(tenantA.organizacaoId(), "Unidade tenant", "UT1");
         assertViolation(() -> jdbc.update("UPDATE produto SET unidade_medida_id=? WHERE id=?",
                         unidadeTenant, produto),
-                "23503", "fk_produto_unidade_owner");
+                "23503", "fk_produto_unidade_organizacao");
     }
 
     @Test
@@ -231,9 +231,110 @@ class CatalogoConvenienciaTenantConstraintTest {
         Long categoriaTenant = inserirCategoria(tenantA.organizacaoId(), "Categoria tenant");
         assertViolation(() -> jdbc.update("UPDATE produto SET categoria_id=? WHERE id=?",
                         categoriaTenant, produto),
-                "23503", "fk_produto_categoria_owner");
+                "23503", "fk_produto_categoria_organizacao");
     }
 
+    @Test
+    void bancoIsolaCodigoDeBarrasPorTenant() {
+        Long marcaA = inserirMarca(tenantA.organizacaoId(), "Marca A");
+        Long unidadeA = inserirUnidade(tenantA.organizacaoId(), "Unidade A", "UA1");
+        Long marcaB = inserirMarca(tenantB.organizacaoId(), "Marca B");
+        Long unidadeB = inserirUnidade(tenantB.organizacaoId(), "Unidade B", "UB1");
+        inserirProduto(tenantA.organizacaoId(), marcaA, unidadeA, null, "COD-52");
+        inserirProduto(tenantB.organizacaoId(), marcaB, unidadeB, null, " COD-52 ");
+        assertViolation(() -> inserirProduto(
+                        tenantA.organizacaoId(), marcaA, unidadeA, null, " COD-52 "),
+                "23505", "uq_produto_organizacao_codigo_barras");
+    }
+
+    @Test
+    void bancoIsolaNomeDeServicoPorTenant() {
+        inserirServico(tenantA.organizacaoId(), "Lavagem");
+        inserirServico(tenantB.organizacaoId(), " lavagem ");
+        assertViolation(() -> inserirServico(tenantA.organizacaoId(), " LAVAGEM "),
+                "23505", "uq_servico_organizacao_nome");
+    }
+
+    @Test
+    void produtoFornecedorGlobalAceitaSomenteProdutoHistorico() {
+        Long marcaHistorica = inserirMarca(null, "Marca consumer");
+        Long unidadeHistorica = inserirUnidade(null, "Unidade consumer", "UHC");
+        Long produtoHistorico = inserirProduto(marcaHistorica, unidadeHistorica, null);
+        Long marcaTenant = inserirMarca(tenantA.organizacaoId(), "Marca tenant consumer");
+        Long unidadeTenant = inserirUnidade(
+                tenantA.organizacaoId(), "Unidade tenant consumer", "UTC");
+        Long produtoTenant = inserirProduto(
+                tenantA.organizacaoId(), marcaTenant, unidadeTenant, null, "TEN-CONS");
+        Long fornecedor = jdbc.queryForObject("""
+                INSERT INTO fornecedor (nome,documento,tipo,ativo,created_at,updated_at)
+                VALUES ('Fornecedor historico','52000000000152','JURIDICA',true,now(),now())
+                RETURNING id
+                """, Long.class);
+        jdbc.update("INSERT INTO produto_fornecedor (produto_id,fornecedor_id) VALUES (?,?)",
+                produtoHistorico, fornecedor);
+        assertViolation(() -> jdbc.update(
+                        "INSERT INTO produto_fornecedor (produto_id,fornecedor_id) VALUES (?,?)",
+                        produtoTenant, fornecedor),
+                "23503", "fk_produto_fornecedor_produto_owner");
+    }
+
+    @Test
+    void notaServicoGlobalAceitaSomenteServicoHistorico() {
+        Long cliente = jdbc.queryForObject("""
+                INSERT INTO cliente (nome,documento,tipo,ativo,created_at,updated_at)
+                VALUES ('Cliente historico','52000000052','FISICA',true,now(),now())
+                RETURNING id
+                """, Long.class);
+        Long servicoHistorico = inserirServico(null, "Servico historico consumer");
+        Long servicoTenant = inserirServico(
+                tenantA.organizacaoId(), "Servico tenant consumer");
+        jdbc.update("INSERT INTO nota_servico (numero,cliente_id,servico_id) VALUES (?,?,?)",
+                "NS-HIST-52", cliente, servicoHistorico);
+        assertViolation(() -> jdbc.update(
+                        "INSERT INTO nota_servico (numero,cliente_id,servico_id) VALUES (?,?,?)",
+                        "NS-TEN-52", cliente, servicoTenant),
+                "23503", "fk_nota_servico_servico_owner");
+    }
+
+    @Test
+    void itemEntradaRecusaInsertComProdutoTenant() {
+        Long produtoTenant = inserirProdutoTenantParaConsumer("ENT-I");
+        Long nota = inserirNotaEntradaHistorica("NE-I");
+        assertViolation(() -> inserirItemEntrada(nota, produtoTenant),
+                "23503", "fk_item_entrada_produto_owner");
+    }
+
+    @Test
+    void itemEntradaRecusaUpdateParaProdutoTenant() {
+        Long produtoHistorico = inserirProdutoHistoricoParaConsumer("ENT-UH");
+        Long produtoTenant = inserirProdutoTenantParaConsumer("ENT-UT");
+        Long nota = inserirNotaEntradaHistorica("NE-U");
+        Long item = inserirItemEntrada(nota, produtoHistorico);
+        assertViolation(() -> jdbc.update(
+                        "UPDATE item_nota_entrada SET produto_id=? WHERE id=?",
+                        produtoTenant, item),
+                "23503", "fk_item_entrada_produto_owner");
+    }
+
+    @Test
+    void itemSaidaRecusaInsertComProdutoTenant() {
+        Long produtoTenant = inserirProdutoTenantParaConsumer("SAI-I");
+        Long nota = inserirNotaSaidaHistorica("NS-I");
+        assertViolation(() -> inserirItemSaida(nota, produtoTenant),
+                "23503", "fk_item_saida_produto_owner");
+    }
+
+    @Test
+    void itemSaidaRecusaUpdateParaProdutoTenant() {
+        Long produtoHistorico = inserirProdutoHistoricoParaConsumer("SAI-UH");
+        Long produtoTenant = inserirProdutoTenantParaConsumer("SAI-UT");
+        Long nota = inserirNotaSaidaHistorica("NS-U");
+        Long item = inserirItemSaida(nota, produtoHistorico);
+        assertViolation(() -> jdbc.update(
+                        "UPDATE item_nota_saida SET produto_id=? WHERE id=?",
+                        produtoTenant, item),
+                "23503", "fk_item_saida_produto_owner");
+    }
     private Long inserirCategoria(Long organizacaoId, String nome) {
         return jdbc.queryForObject("""
                 INSERT INTO categoria (organizacao_id,nome,ativo,created_at,updated_at)
@@ -257,10 +358,76 @@ class CatalogoConvenienciaTenantConstraintTest {
     }
 
     private Long inserirProduto(Long marcaId, Long unidadeId, Long categoriaId) {
+        return inserirProduto(null, marcaId, unidadeId, categoriaId, null);
+    }
+
+    private Long inserirProduto(
+            Long organizacaoId, Long marcaId, Long unidadeId, Long categoriaId, String codigo) {
         return jdbc.queryForObject("""
                 INSERT INTO produto
-                    (nome,marca_id,unidade_medida_id,categoria_id,ativo,created_at,updated_at)
-                VALUES ('Produto global',?,?,?,true,now(),now()) RETURNING id
-                """, Long.class, marcaId, unidadeId, categoriaId);
+                    (organizacao_id,nome,codigo_barras,marca_id,unidade_medida_id,categoria_id,
+                     ativo,created_at,updated_at)
+                VALUES (?,'Produto global',?,?,?,?,true,now(),now()) RETURNING id
+                """, Long.class, organizacaoId, codigo, marcaId, unidadeId, categoriaId);
+    }
+
+    private Long inserirServico(Long organizacaoId, String nome) {
+        return jdbc.queryForObject("""
+                INSERT INTO servico (organizacao_id,nome,ativo,created_at,updated_at)
+                VALUES (?,?,true,now(),now()) RETURNING id
+                """, Long.class, organizacaoId, nome);
+    }
+
+    private Long inserirProdutoHistoricoParaConsumer(String sufixo) {
+        Long marca = inserirMarca(null, "Marca historica " + sufixo);
+        Long unidade = inserirUnidade(null, "Unidade historica " + sufixo,
+                sufixo.substring(0, Math.min(6, sufixo.length())));
+        return inserirProduto(null, marca, unidade, null, "H-" + sufixo);
+    }
+
+    private Long inserirProdutoTenantParaConsumer(String sufixo) {
+        Long marca = inserirMarca(tenantA.organizacaoId(), "Marca tenant " + sufixo);
+        Long unidade = inserirUnidade(tenantA.organizacaoId(), "Unidade tenant " + sufixo,
+                sufixo.substring(0, Math.min(6, sufixo.length())));
+        return inserirProduto(
+                tenantA.organizacaoId(), marca, unidade, null, "T-" + sufixo);
+    }
+
+    private Long inserirNotaEntradaHistorica(String numero) {
+        Long fornecedor = jdbc.queryForObject("""
+                INSERT INTO fornecedor (nome,documento,tipo,ativo,created_at,updated_at)
+                VALUES (?,?,'JURIDICA',true,now(),now()) RETURNING id
+                """, Long.class, "Fornecedor " + numero, "52" + Math.abs(numero.hashCode()));
+        return jdbc.queryForObject("""
+                INSERT INTO nota_entrada (numero,fornecedor_id)
+                VALUES (?,?) RETURNING id
+                """, Long.class, numero, fornecedor);
+    }
+
+    private Long inserirNotaSaidaHistorica(String numero) {
+        Long cliente = jdbc.queryForObject("""
+                INSERT INTO cliente (nome,documento,tipo,ativo,created_at,updated_at)
+                VALUES (?,?,'FISICA',true,now(),now()) RETURNING id
+                """, Long.class, "Cliente " + numero, "53" + Math.abs(numero.hashCode()));
+        return jdbc.queryForObject("""
+                INSERT INTO nota_saida (numero,cliente_id)
+                VALUES (?,?) RETURNING id
+                """, Long.class, numero, cliente);
+    }
+
+    private Long inserirItemEntrada(Long nota, Long produto) {
+        return jdbc.queryForObject("""
+                INSERT INTO item_nota_entrada
+                    (nota_entrada_id,produto_id,sequencia,quantidade,valor_unitario,valor_total)
+                VALUES (?,?,1,1,1,1) RETURNING id
+                """, Long.class, nota, produto);
+    }
+
+    private Long inserirItemSaida(Long nota, Long produto) {
+        return jdbc.queryForObject("""
+                INSERT INTO item_nota_saida
+                    (nota_saida_id,produto_id,sequencia,quantidade,valor_unitario,valor_total)
+                VALUES (?,?,1,1,1,1) RETURNING id
+                """, Long.class, nota, produto);
     }
 }

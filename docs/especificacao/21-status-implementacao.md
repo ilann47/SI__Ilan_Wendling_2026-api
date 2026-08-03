@@ -213,3 +213,15 @@ obrigatório às três raízes, torna também o nome de Unidade único de forma
 normalizada e instala reverse guards contra backfill de pais referenciados por
 Produto. V50/V51 não são publicáveis isoladamente e o frontend permanece
 desativado até Produto ser migrado na V52.
+
+A V52 migra Produto e Serviço para ownership organizacional, versionamento
+otimista e RBAC `catalog:read/manage`. Produto exige Marca, Unidade e Categoria
+opcional do mesmo tenant; código de barras e nome de Serviço possuem unicidade
+normalizada por organização e conjunto histórico separado. Notas de entrada e
+saída, Nota de Serviço, ProdutoFornecedor e relatório de estoque mínimo continuam
+globais e resolvem somente registros históricos. `produto.quantidade` permanece
+compatibilidade legada, sem ledger novo. V50/V51/V52 compõem um único rollout.
+Marca, Unidade e Categoria precisam estar ativas na criação ou alteração de
+Produto. O saldo legado usa `@Version`: confirmações fiscais concorrentes falham
+com `409` e retry explícito, preservando o rollback atômico de nota, estoque e
+títulos.

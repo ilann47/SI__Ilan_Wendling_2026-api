@@ -608,3 +608,10 @@ A V51 complementa obrigatoriamente a V50 com versionamento otimista, precondiç�
 HTTP, unicidade normalizada do nome de Unidade de Medida e guards reversos para
 os pais consumidos por Produto. V50 e V51 constituem uma única unidade de rollout;
 Produto passa a ser a V52 e o frontend não deve ser ativado antes dela.
+
+A V52 conclui esta fatia com Produto e Serviço tenant-aware. O owner é imutável,
+Produto referencia somente pais do mesmo tenant e as APIs preservadas adotam
+`@Version`, `ETag` e `If-Match`. Consumers fiscais e comerciais ainda globais
+aceitam exclusivamente Produto/Serviço históricos no service e no PostgreSQL;
+sua migração ocorrerá em fatias próprias. Nenhum saldo é recalculado ou migrado:
+`produto.quantidade` permanece apenas como compatibilidade histórica.

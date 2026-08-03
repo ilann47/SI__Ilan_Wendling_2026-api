@@ -4,19 +4,20 @@
 
 ## Objetivo
 
-Administrar o catálogo-base de categorias, marcas e unidades de medida com
-ownership organizacional explícito e preparar a migração incremental de Produto.
+Administrar categorias, marcas, unidades de medida, produtos e serviços com
+ownership organizacional explícito.
 
 ## Contexto
 
-A V50 migra `categoria`, `marca` e `unidade_medida`. O `produto` legado continua
-global nesta história e somente pode referenciar pais históricos sem owner.
+A V50/V51 migra e endurece `categoria`, `marca` e `unidade_medida`; a V52 completa
+o recorte com `produto` e `servico`. Registros anteriores continuam sem owner.
 
 ## Fluxo (camadas da arquitetura)
 
 ```text
 JWT contextual + catalog:read/manage
-  -> controllers preservados /api/categorias, /api/marcas, /api/unidades-medida
+  -> controllers preservados /api/categorias, /api/marcas, /api/unidades-medida,
+     /api/produtos e /api/servicos
   -> services(organizacaoId, comando/filtro)
   -> repositories por id + organizacaoId
   -> uniques normalizadas e owner imutável no PostgreSQL
@@ -28,6 +29,8 @@ JWT contextual + catalog:read/manage
 - `GET /api/categorias[/{id}]`, `/api/marcas[/{id}]` e
   `/api/unidades-medida[/{id}]`: `catalog:read`.
 - `POST/PUT/DELETE` nas mesmas raízes: `catalog:manage`.
+- `GET/POST/PUT/DELETE /api/produtos` e `/api/servicos` seguem as mesmas
+  permissões e semântica de concorrência.
 - DELETE preserva a inativação lógica existente.
 
 ## Estrutura de Dados (DTOs, Entidades)
@@ -37,10 +40,17 @@ JWT contextual + catalog:read/manage
 - Unidade de Medida também tem sigla normalizada única por organização.
 - Os três agregados usam `@Version`; respostas individuais expõem `version` e `ETag`.
 - DTOs rejeitam `organizationId` e qualquer campo desconhecido.
+- Produto exige Marca e Unidade do mesmo tenant; Categoria é opcional e deve ter
+  o mesmo owner quando informada. Os três pais precisam estar ativos.
+- Código de barras de Produto e nome de Serviço são normalizados e únicos por tenant.
+- `produto.quantidade` permanece somente como compatibilidade histórica; a V52 não
+  cria ledger nem permite controlar esse saldo pelo payload contextual.
 
 ## Integrações externas (se houver)
 
-Não há integração externa neste recorte. Produto é um consumer interno temporário.
+Não há integração externa neste recorte. Notas fiscais, ProdutoFornecedor e o
+relatório de estoque mínimo continuam globais e resolvem somente Produto/Serviço
+históricos, tanto no service quanto por guards no PostgreSQL.
 
 ## Tratamento de Erros
 
@@ -54,18 +64,22 @@ Não há integração externa neste recorte. Produto é um consumer interno temp
 
 ## Testes (curl ou equivalente)
 
-`CatalogoConvenienciaTenantApiTest` cobre RBAC, isolamento, contrato fechado,
-histórico e auditoria. `CatalogoConvenienciaTenantConstraintTest` cobre uniques,
-FKs e guards. Os testes de migration executam V49→V50 e preflights atômicos.
+`CatalogoConvenienciaTenantApiTest` e `ProdutoServicoTenantApiTest` cobrem RBAC,
+isolamento, contrato fechado, ETag e auditoria. Os testes de constraint cobrem
+uniques, FKs same-owner e consumers globais. `ProdutoServicoMigrationTest` cobre
+V51→V52, preflight atômico e preservação dos registros históricos.
 
 ## Decisões Técnicas
 
 - Nenhum dado histórico recebe owner automaticamente; UC732 fará reconciliação.
-- Produto global resolve apenas Categoria, Marca e Unidade sem owner, também por trigger.
+- Produto tenant-aware resolve apenas Categoria, Marca e Unidade do mesmo owner.
 - Reverse guards impedem promover um pai histórico ainda referenciado por Produto.
-- V50 e V51 formam uma unidade não publicável isoladamente.
-- O rollout backend deve aplicar V50/V51 e a futura V52 de Produto de forma coordenada
-  antes de habilitar o frontend tenant-aware, evitando referências incompatíveis.
+- V50, V51 e V52 formam uma unidade de rollout backend coordenada.
+- Consumers ainda globais usam somente registros históricos; migrá-los exige uma
+  história própria, sem backfill implícito.
+- Confirmações fiscais fazem flush explícito da alteração versionada do Produto.
+  Concorrência otimista retorna `409` com retry explícito e reverte integralmente
+  estoque, nota e títulos da transação perdedora.
 - A API preserva rotas e DTOs de resposta; `organizationId` não é exposto.
 
 ## Módulos relacionados
@@ -81,3 +95,5 @@ FKs e guards. Os testes de migration executam V49→V50 e preflights atômicos.
 |---|---|
 | 2026-08-03 | V50 migra Categoria, Marca e Unidade de Medida para tenancy contextual. |
 | 2026-08-03 | V51 adiciona concorrência HTTP/JPA, unique de nome da Unidade e reverse guards. |
+| 2026-08-03 | V52 migra Produto e Serviço, protege parents same-owner e consumers globais. |
+| 2026-08-03 | Revisão V52 valida parents ativos, snapshots completos e concorrência fiscal. |

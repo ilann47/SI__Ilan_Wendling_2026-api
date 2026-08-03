@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -54,6 +55,12 @@ public class ApiExceptionHandler {
     public ProblemDetail handleIntegridade(DataIntegrityViolationException ex) {
         return problem(HttpStatus.CONFLICT, "Conflito de integridade",
                 "A operacao viola uma restricao de integridade (por exemplo, registro vinculado a outros ou valor duplicado).");
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ProblemDetail handleConcorrenciaOtimista(OptimisticLockingFailureException ex) {
+        return problem(HttpStatus.CONFLICT, "Conflito de concorrencia",
+                "O registro foi alterado concorrentemente. Recarregue os dados e tente novamente; a operacao atual foi revertida.");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

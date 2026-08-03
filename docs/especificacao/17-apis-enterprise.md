@@ -360,13 +360,23 @@ O catálogo-base de conveniência preserva suas rotas e passa a exigir contexto:
 | `POST/PUT/DELETE /api/marcas[/{id}]` | `catalog:manage` | cria, altera ou inativa somente no tenant ativo |
 | `GET /api/unidades-medida[/{id}]` | `catalog:read` | lista/busca somente unidades da organização ativa |
 | `POST/PUT/DELETE /api/unidades-medida[/{id}]` | `catalog:manage` | cria, altera ou inativa somente no tenant ativo |
+| `GET /api/produtos[/{id}]` | `catalog:read` | lista/busca somente produtos da organização ativa |
+| `POST/PUT/DELETE /api/produtos[/{id}]` | `catalog:manage` | cria, altera ou inativa; pais devem pertencer ao mesmo tenant |
+| `GET /api/servicos[/{id}]` | `catalog:read` | lista/busca somente serviços da organização ativa |
+| `POST/PUT/DELETE /api/servicos[/{id}]` | `catalog:manage` | cria, altera ou inativa somente no tenant ativo |
 
 Nomes de Categoria/Marca e siglas de Unidade são únicos de forma normalizada
 dentro da organização. Os contratos rejeitam campos desconhecidos; histórico
-sem owner permanece invisível. Enquanto Produto ainda é global, ele somente
-resolve pais históricos sem owner.
+sem owner permanece invisível. Produto exige Marca e Unidade ativas do mesmo
+tenant; Categoria é opcional e, quando presente, deve possuir o mesmo owner e
+estar ativa.
 
 A V51 completa o contrato: respostas individuais expõem `version` e `ETag`
 derivado exclusivamente dela. `PUT` e `DELETE` exigem `If-Match`; ausência retorna
 `428`, formato inválido `400` e versão divergente `412`. Unidade de Medida também
 possui nome normalizado único por tenant e pelo conjunto histórico separado.
+A V52 estende `version`, `ETag` e `If-Match` a Produto e Serviço. Código de barras
+de Produto e nome de Serviço são únicos de forma normalizada por tenant; os
+conjuntos históricos sem owner mantêm unicidades separadas.
+Conflito otimista durante confirmação fiscal retorna `409` e orienta recarregar e
+tentar novamente; a transação perdedora é revertida integralmente.

@@ -106,7 +106,7 @@ public class NotaEntradaService {
         BigDecimal valorProdutos = BigDecimal.ZERO;
         int seq = 1;
         for (ItemNotaEntradaRequest ir : req.itens()) {
-            Produto produto = produtoRepository.findById(ir.produtoId())
+            Produto produto = produtoRepository.findByIdAndOrganizacaoIdIsNull(ir.produtoId())
                     .orElseThrow(() -> new RecursoNaoEncontradoException("Produto", ir.produtoId()));
             ItemNotaEntrada item = new ItemNotaEntrada();
             item.setProduto(produto);
@@ -156,7 +156,7 @@ public class NotaEntradaService {
                 produto.setCusto(item.getCustoPrecoFinal());
             }
             produto.recalcularLucro();
-            produtoRepository.save(produto);
+            produtoRepository.saveAndFlush(produto);
         }
         gerarTitulos(nota);
         nota.setSituacao(SituacaoNota.CONFIRMADA);

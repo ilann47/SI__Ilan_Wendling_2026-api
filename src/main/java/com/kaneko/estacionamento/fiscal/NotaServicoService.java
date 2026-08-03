@@ -120,7 +120,7 @@ public class NotaServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", req.clienteId()));
         nota.setCliente(cliente);
         nota.setServico(req.servicoId() != null
-                ? servicoRepository.findById(req.servicoId())
+                ? servicoRepository.findByIdAndOrganizacaoIdIsNull(req.servicoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Servico", req.servicoId())) : null);
         nota.setMovimentacao(req.movimentacaoId() != null
                 ? movimentacaoRepository.findById(req.movimentacaoId())

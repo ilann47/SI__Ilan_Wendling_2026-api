@@ -79,7 +79,7 @@ public class ProdutoFornecedorService {
     }
 
     private Produto buscarProduto(Long id) {
-        return produtoRepository.findById(id)
+        return produtoRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Produto", id));
     }
 

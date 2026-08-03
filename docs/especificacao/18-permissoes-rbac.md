@@ -256,7 +256,8 @@ exijam, sem antecipar privilégios. Auditor recebe apenas leituras explicitament
 aprovadas. O perfil global do `Usuario` nunca substitui essas permissões.
 
 Na primeira fatia da Onda 2, `catalog:read` e `catalog:manage` são concedidas ao
-`ADMIN_ORGANIZACAO` e protegem Categoria, Marca e Unidade de Medida. Tokens
+`ADMIN_ORGANIZACAO` e protegem Categoria, Marca, Unidade de Medida, Produto e
+Serviço. Tokens
 globais e papéis operacionais não recebem acesso por implicação. A ampliação para
 Gestor será feita somente junto dos casos de uso comerciais correspondentes.
 
