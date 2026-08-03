@@ -322,3 +322,13 @@ Transportadoras preservam a rota anterior e passam a compor o contexto de Logís
 Cidade continua global. Registros históricos sem owner não entram nas consultas
 contextuais; frota e vínculos antigos continuam restritos a transportadoras
 históricas até a migração vertical correspondente.
+
+Fornecedores seguem o mesmo contrato compatível:
+
+| Método e rota preservada | Permissão | Semântica tenant-aware |
+|---|---|---|
+| `GET /api/fornecedores[/{id}]` | `suppliers:read` | lista/busca somente fornecedores da organização ativa |
+| `POST/PUT/DELETE /api/fornecedores[/{id}]` | `suppliers:manage` | cria, altera ou inativa; condição e transportadora devem pertencer ao tenant |
+
+E-mails e telefones permanecem componentes do agregado. Cidade é global; dados
+históricos sem owner ficam fora das consultas contextuais.

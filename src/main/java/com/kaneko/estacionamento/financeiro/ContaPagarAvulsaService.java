@@ -130,7 +130,7 @@ public class ContaPagarAvulsaService {
     }
 
     private Fornecedor buscarFornecedor(Long id) {
-        return fornecedorRepository.findById(id)
+        return fornecedorRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor", id));
     }
 

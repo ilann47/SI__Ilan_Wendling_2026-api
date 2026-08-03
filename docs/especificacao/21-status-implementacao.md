@@ -153,5 +153,8 @@ catálogos históricos. A V40 migra Cliente com `customers:read/manage`, documen
 Consumers ainda globais resolvem apenas clientes históricos. A V41 migra
 Transportadora com `logistics:read/manage`, documento local ao tenant, condição
 composta e auditoria de privacidade. Fornecedor e o vínculo de frota ainda
-global resolvem somente transportadoras históricas. Fornecedor é a próxima raiz
-da adaptação vertical; nenhum dado histórico será associado automaticamente.
+global resolvem somente transportadoras históricas. A V42 migra Fornecedor com
+`suppliers:read/manage`, documento local, referências compostas, contatos filhos
+preservados e auditoria de privacidade. Consumers de compras, fiscal, financeiro
+e conveniência resolvem apenas fornecedores históricos até suas migrations;
+nenhum dado histórico foi associado automaticamente.

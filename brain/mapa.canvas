@@ -23,7 +23,8 @@
     {"id": "testes-multitenancy", "type": "file", "file": "testes-multitenancy.md", "x": 5500, "y": 480, "width": 360, "height": 220},
     {"id": "pagamentos-cadastrais", "type": "file", "file": "pagamentos-cadastrais.md", "x": 6000, "y": 160, "width": 360,"height": 220},
     {"id": "clientes", "type": "file", "file": "clientes.md", "x": 6500, "y": 160, "width": 360, "height": 220},
-    {"id": "logistica", "type": "file", "file": "logistica.md", "x": 7000, "y": 160, "width": 360, "height": 220}
+    {"id": "logistica", "type": "file", "file": "logistica.md", "x": 7000, "y": 160, "width": 360, "height": 220},
+    {"id": "fornecedores", "type": "file", "file": "fornecedores.md", "x": 7500, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -95,6 +96,9 @@
     {"id": "testes-clientes", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "clientes", "toSide": "left", "label": "isolamento e privacidade"},
     {"id": "pagamentos-logistica", "fromNode": "pagamentos-cadastrais", "fromSide": "right", "toNode": "logistica", "toSide": "left", "label": "condição tenant"},
     {"id": "rbac-logistica", "fromNode": "rbac", "fromSide": "right", "toNode": "logistica", "toSide": "left", "label": "logistics:read/manage"},
-    {"id": "testes-logistica", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "logistica", "toSide": "left", "label": "isolamento e FKs"}
+    {"id": "testes-logistica", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "logistica", "toSide": "left", "label": "isolamento e FKs"},
+    {"id": "logistica-fornecedores", "fromNode": "logistica", "fromSide": "right", "toNode": "fornecedores", "toSide": "left", "label": "transportadora padrão"},
+    {"id": "pagamentos-fornecedores", "fromNode": "pagamentos-cadastrais", "fromSide": "right", "toNode": "fornecedores", "toSide": "left", "label": "condição tenant"},
+    {"id": "rbac-fornecedores", "fromNode": "rbac", "fromSide": "right", "toNode": "fornecedores", "toSide": "left", "label": "suppliers:read/manage"}
   ]
 }

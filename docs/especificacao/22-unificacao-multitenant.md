@@ -513,3 +513,8 @@ fica único por organização, a condição de pagamento exige o mesmo owner e a
 rotas `/api/transportadoras` passam a usar `logistics:read/manage`. Frota e o
 vínculo N:N não foram antecipados: seus serviços continuam aceitando somente
 transportadoras históricas até a próxima fatia de Logística.
+
+A V42 migra Fornecedor, preserva os filhos de contato por ownership derivado e
+protege condição de pagamento e transportadora com FKs compostas e trigger de
+compatibilidade. A API preservada exige `suppliers:read/manage`; documentos
+permanecem únicos no tenant e no conjunto histórico separado.

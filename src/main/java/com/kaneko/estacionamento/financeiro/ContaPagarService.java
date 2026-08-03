@@ -53,7 +53,7 @@ public class ContaPagarService {
     @Transactional
     public ContaPagar criar(ContaPagarRequest req) {
         ContaPagar conta = new ContaPagar();
-        Fornecedor fornecedor = fornecedorRepository.findById(req.fornecedorId())
+        Fornecedor fornecedor = fornecedorRepository.findByIdAndOrganizacaoIdIsNull(req.fornecedorId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor", req.fornecedorId()));
         conta.setFornecedor(fornecedor);
         if (req.condicaoPagamentoId() != null) {

@@ -66,7 +66,7 @@ public class NotaEntradaService {
 
     @Transactional
     public NotaEntrada criar(NotaEntradaRequest req) {
-        Fornecedor fornecedor = fornecedorRepository.findById(req.fornecedorId())
+        Fornecedor fornecedor = fornecedorRepository.findByIdAndOrganizacaoIdIsNull(req.fornecedorId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor", req.fornecedorId()));
         if (Boolean.FALSE.equals(fornecedor.getAtivo())) {
             throw new ConflitoException("O fornecedor está inativo e não pode receber notas.");

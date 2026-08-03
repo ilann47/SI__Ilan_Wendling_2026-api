@@ -1,5 +1,8 @@
 package com.kaneko.estacionamento.fornecedor;
 
+import com.kaneko.estacionamento.auditoria.AuditoriaService;
+import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
+import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.util.Documentos;
@@ -16,7 +19,9 @@ import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -38,20 +43,25 @@ public class FornecedorService {
     private final CidadeRepository cidadeRepository;
     private final CondicaoPagamentoRepository condicaoPagamentoRepository;
     private final TransportadoraRepository transportadoraRepository;
+    private final AuditoriaService auditoria;
 
     public FornecedorService(FornecedorRepository repository,
                              CidadeRepository cidadeRepository,
                              CondicaoPagamentoRepository condicaoPagamentoRepository,
-                             TransportadoraRepository transportadoraRepository) {
+                             TransportadoraRepository transportadoraRepository,
+                             AuditoriaService auditoria) {
         this.repository = repository;
         this.cidadeRepository = cidadeRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
         this.transportadoraRepository = transportadoraRepository;
+        this.auditoria = auditoria;
     }
 
     @Transactional(readOnly = true)
-    public Page<FornecedorResponse> listar(String nome, String documento, Boolean ativo, Pageable pageable) {
+    public Page<FornecedorResponse> listar(
+            Long organizacaoId, String nome, String documento, Boolean ativo, Pageable pageable) {
         Specification<Fornecedor> filtro = FiltroSpecs.todos(
+                FiltroSpecs.igual("organizacaoId", organizacaoId),
                 FiltroSpecs.contemIgnoreCase("nome", nome),
                 FiltroSpecs.contemIgnoreCase("documento", documento),
                 FiltroSpecs.igual("ativo", ativo));
@@ -59,39 +69,49 @@ public class FornecedorService {
     }
 
     @Transactional(readOnly = true)
-    public Fornecedor buscar(Long id) {
-        return repository.findById(id)
+    public Fornecedor buscar(Long organizacaoId, Long id) {
+        return repository.findByIdAndOrganizacaoId(id, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor", id));
     }
 
     @Transactional
-    public Fornecedor criar(FornecedorRequest req) {
+    public Fornecedor criar(Long organizacaoId, FornecedorRequest req) {
         String documento = Documentos.soDigitos(req.documento());
-        if (repository.existsByDocumento(documento)) {
+        if (repository.existeDocumento(organizacaoId, documento, null)) {
             throw new ConflitoException("Ja existe um fornecedor cadastrado com este documento.");
         }
         Fornecedor fornecedor = new Fornecedor();
-        aplicar(fornecedor, req, documento);
-        return repository.save(fornecedor);
+        fornecedor.setOrganizacaoId(organizacaoId);
+        aplicar(organizacaoId, fornecedor, req, documento);
+        fornecedor = repository.saveAndFlush(fornecedor);
+        registrar(fornecedor, "FORNECEDOR_CRIADO", null, snapshot(fornecedor));
+        return fornecedor;
     }
 
     @Transactional
-    public Fornecedor atualizar(Long id, FornecedorRequest req) {
-        Fornecedor fornecedor = buscar(id);
+    public Fornecedor atualizar(Long organizacaoId, Long id, FornecedorRequest req) {
+        Fornecedor fornecedor = buscar(organizacaoId, id);
         String documento = Documentos.soDigitos(req.documento());
-        if (repository.existsByDocumentoAndIdNot(documento, id)) {
+        if (repository.existeDocumento(organizacaoId, documento, id)) {
             throw new ConflitoException("Ja existe um fornecedor cadastrado com este documento.");
         }
-        aplicar(fornecedor, req, documento);
-        return repository.save(fornecedor);
+        Map<String, Object> anterior = snapshot(fornecedor);
+        aplicar(organizacaoId, fornecedor, req, documento);
+        fornecedor = repository.saveAndFlush(fornecedor);
+        registrar(fornecedor, "FORNECEDOR_ATUALIZADO", anterior, snapshot(fornecedor));
+        return fornecedor;
     }
 
     @Transactional
-    public void excluir(Long id) {
-        buscar(id).setAtivo(false);
+    public void excluir(Long organizacaoId, Long id) {
+        Fornecedor fornecedor = buscar(organizacaoId, id);
+        Map<String, Object> anterior = snapshot(fornecedor);
+        fornecedor.setAtivo(false);
+        repository.flush();
+        registrar(fornecedor, "FORNECEDOR_DESATIVADO", anterior, snapshot(fornecedor));
     }
 
-    private void aplicar(Fornecedor f, FornecedorRequest req, String documento) {
+    private void aplicar(Long organizacaoId, Fornecedor f, FornecedorRequest req, String documento) {
         f.setNome(req.nome().trim());
         f.setNomeFantasia(req.nomeFantasia());
         f.setApelido(req.apelido());
@@ -104,8 +124,10 @@ public class FornecedorService {
         f.setBairro(req.bairro());
         f.setCep(req.cep());
         f.setCidade(req.cidadeId() != null ? buscarCidade(req.cidadeId()) : null);
-        f.setCondicaoPagamento(req.condicaoPagamentoId() != null ? buscarCondicao(req.condicaoPagamentoId()) : null);
-        f.setTransportadora(req.transportadoraId() != null ? buscarTransportadora(req.transportadoraId()) : null);
+        f.setCondicaoPagamento(req.condicaoPagamentoId() != null
+                ? buscarCondicao(organizacaoId, req.condicaoPagamentoId()) : null);
+        f.setTransportadora(req.transportadoraId() != null
+                ? buscarTransportadora(organizacaoId, req.transportadoraId()) : null);
         f.setLimiteCredito(req.limiteCredito() != null ? req.limiteCredito() : BigDecimal.ZERO);
         f.setObservacao(req.observacao());
         if (req.ativo() != null) {
@@ -158,13 +180,38 @@ public class FornecedorService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cidade", id));
     }
 
-    private CondicaoPagamento buscarCondicao(Long id) {
-        return condicaoPagamentoRepository.findByIdAndOrganizacaoIdIsNull(id)
+    private CondicaoPagamento buscarCondicao(Long organizacaoId, Long id) {
+        return condicaoPagamentoRepository.findByIdAndOrganizacaoId(id, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", id));
     }
 
-    private Transportadora buscarTransportadora(Long id) {
-        return transportadoraRepository.findByIdAndOrganizacaoIdIsNull(id)
+    private Transportadora buscarTransportadora(Long organizacaoId, Long id) {
+        return transportadoraRepository.findByIdAndOrganizacaoId(id, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Transportadora", id));
+    }
+
+    private void registrar(
+            Fornecedor fornecedor,
+            String acao,
+            Map<String, Object> anterior,
+            Map<String, Object> posterior) {
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                fornecedor.getOrganizacaoId(), acao, "FORNECEDOR", fornecedor.getId(),
+                null, null, null, anterior, posterior, null, null,
+                ClasseRetencaoAuditoria.PRIVACIDADE));
+    }
+
+    private static Map<String, Object> snapshot(Fornecedor fornecedor) {
+        Map<String, Object> estado = new LinkedHashMap<>();
+        estado.put("nome", fornecedor.getNome());
+        estado.put("tipo", fornecedor.getTipo().name());
+        estado.put("cidadeId", fornecedor.getCidade() == null ? null : fornecedor.getCidade().getId());
+        estado.put("condicaoPagamentoId", fornecedor.getCondicaoPagamento() == null
+                ? null : fornecedor.getCondicaoPagamento().getId());
+        estado.put("transportadoraId", fornecedor.getTransportadora() == null
+                ? null : fornecedor.getTransportadora().getId());
+        estado.put("limiteCredito", fornecedor.getLimiteCredito());
+        estado.put("ativo", fornecedor.getAtivo());
+        return estado;
     }
 }

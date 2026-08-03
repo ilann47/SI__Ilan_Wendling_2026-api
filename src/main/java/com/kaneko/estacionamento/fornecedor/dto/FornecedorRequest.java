@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.fornecedor.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -47,4 +48,9 @@ public record FornecedorRequest(
         @Valid List<EmailRequest> emails,
         @Valid List<TelefoneRequest> telefones
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }
