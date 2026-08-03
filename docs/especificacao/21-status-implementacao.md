@@ -1,4 +1,4 @@
-> Links: [[README]] · [[16-casos-de-uso-plataforma]] · [[18-permissoes-rbac]] · [[19-equipamentos-integracoes]] · [[20-roadmap-produto]] · [[relatorio-conformidade]]
+> Links: [[README]] · [[16-casos-de-uso-plataforma]] · [[18-permissoes-rbac]] · [[19-equipamentos-integracoes]] · [[20-roadmap-produto]] · [[22-unificacao-multitenant]] · [[relatorio-conformidade]]
 
 # 21. Estado de Implementação e Dependências
 
@@ -26,7 +26,7 @@ Estados utilizados:
 
 | História | Estado | Dependência | Parte concluída | Parte pendente | Condição para retomada |
 |---|---|---|---|---|---|
-| UC701–UC703 | `CONCLUIDA` | — | Fundação multiempresa, eventos e pátio tenant-aware | — | Reabrir somente por defeito ou mudança aprovada |
+| UC701–UC703 | `CONCLUIDA` | — | Fundação multiempresa do slice enterprise, eventos e pátio tenant-aware | Unificação dos módulos anteriores permanece na Onda 0 | Reabrir o slice somente por defeito; acompanhar retrofit no documento 22 |
 | UC704 — Cadastrar setor | `CONCLUIDA` | — | Setor tenant-aware, taxonomia, capacidade serializada, auditoria, outbox e constraints | Coordenadas, alteração e bloqueio pertencem a recortes próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC705 — Cadastrar vagas | `CONCLUIDA` | — | Vaga tenant-aware, batch idempotente, capacidade serializada, conflitos parciais, auditoria, outbox e constraints | Coordenadas e mudanças de disponibilidade pertencem a recortes próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC706–UC713 | `CONCLUIDA` | — | Alocação multipátio até cancelamento compensatório de pedido, conforme relatório de conformidade | — | Reabrir somente por defeito ou mudança aprovada |
@@ -34,14 +34,14 @@ Estados utilizados:
 | UC715 — Realizar check-in | `CONCLUIDA` | — | Validação QR sem consumo e check-in QR tenant-aware, tentativa terminal, consumo, presença, sessão de evento, ocupação concorrente, auditoria, outbox e idempotência | Placa/RFID, override, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
 | UC716 — Check-in offline | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | UC715 e modelo canônico de decisão | QR seguro e contexto tenant existem | Pacote assinado, edge, sequência, armazenamento local e sincronização | Concluir UC715 e definir infraestrutura edge verificável |
 | UC717 — Check-out | `CONCLUIDA` | — | Política explícita, saída QR idempotente, presença encerrada, credencial consumida/reativada e ocupação decrementada | Saída manual, placa/RFID, hardware e offline pertencem a contratos próprios | Reabrir somente por defeito ou mudança aprovada |
-| UC718 — Abrir movimentação | `CONCLUIDA` | — | Sessão enterprise com origem `PEDIDO_EVENTO`, snapshots e vínculos tenant-aware aberta no check-in | Origens rotativo/mensalista permanecem fora da fase de eventos | Reabrir somente por defeito ou nova origem aprovada |
-| UC719 — Encerrar movimentação | `CONCLUIDA` | — | Sessão `PEDIDO_EVENTO` encerrada atomicamente no check-out, sem alterar o legado | Tarifação rotativa permanece fora da fase exclusiva de eventos | Reabrir somente por defeito ou nova origem aprovada |
+| UC718 — Abrir movimentação | `CONCLUIDA` | — | Sessão enterprise com origem `PEDIDO_EVENTO`, snapshots e vínculos tenant-aware aberta no check-in | Origens rotativo/mensalista pertencem à Onda 3 da unificação | Reabrir o agregado somente por defeito; implementar novas origens no contexto próprio |
+| UC719 — Encerrar movimentação | `CONCLUIDA` | — | Sessão `PEDIDO_EVENTO` encerrada atomicamente no check-out | Tarifação rotativa tenant-aware pertence à Onda 3 | Preservar o fluxo de evento e integrar as demais origens sem reutilizar sua tarifa |
 | UC720 — Fechar evento | `PARCIALMENTE_CONCLUIDA` | Fontes financeiras canônicas para a parte restante | Encerramento operacional versionado, bloqueio de ocupação/presença/sessão aberta e ressalva financeira auditável | Conciliação, aprovação, relatório de fechamento e finalização | Pagamento, reembolso, caixa, fiscal e repasse autênticos disponíveis |
 | UC721 — DRE por evento | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Fontes financeiras e fechamento | Relatórios legados existem | Linhagem econômica por evento | Disponibilizar fontes financeiras canônicas ou modo preliminar formal |
 | UC722 — Documento fiscal | `BLOQUEADA_EXTERNAMENTE` | Provedor fiscal, certificado e contratos regulatórios | Registros fiscais legados permanecem preservados | Transmissão, protocolo, contingência e armazenamento fiscal seguro | Provider/ambiente/certificado e escopo fiscal definidos |
-| UC723–UC724 — Compra e venda administrativa | `PARCIALMENTE_EXECUTAVEL` | Evolução tenant-aware de estoque e financeiro | Fluxos legados de notas e estoque existem | Agregados enterprise, razão de estoque e isolamento organizacional | Concluir a fase de eventos e planejar migração aditiva dos módulos legados |
+| UC723–UC724 — Compra e venda administrativa | `EXECUTAVEL` | Ondas 1 e 2 da unificação | Fluxos atuais de notas, estoque e financeiro existem | Ownership, razão de estoque, Ordem de Compra e Venda Administrativa | Concluir a Onda 0 e executar a migração aditiva definida no documento 22 |
 | UC725 — Venda PDV | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Caixa, pagamento transacional e razão de estoque | Cadastros legados de produto existem | Venda, recebimento, caixa, estoque e fiscal conciliáveis | Concluir pagamentos, estoque enterprise e UC728 |
-| UC726–UC727 — Mensalista e rotativo | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Fase de eventos e políticas próprias | APIs legadas permanecem preservadas | Evolução enterprise completa | Retomar após o critério de saída da fase exclusiva de eventos |
+| UC726–UC727 — Mensalista e rotativo | `PARCIALMENTE_EXECUTAVEL` | Onda 3 e políticas próprias | Serviços atuais de mensalista, tarifa e movimentação existem | Ownership, planos versionados, origens e integração financeira | Migrar o grafo operacional após os cadastros empresariais necessários |
 | UC728 — Caixa | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Pagamentos e PDV | Financeiro legado existe | Sessão de caixa, diferenças e conciliação | Concluir pagamento transacional e preparar PDV |
 | UC729 — Escalas | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Identidade laboral canônica e contrato de escala | Usuário, funcionário e evento existem isoladamente | Vínculo usuário–funcionário–colaborador, catálogo de função/qualificação, API e máquina de estados executável | Definir o vínculo canônico e os contratos de criação/publicação/execução sem reutilizar o colaborador legado como identidade autenticável |
 | UC730 — Integração externa | `BLOQUEADA_EXTERNAMENTE` | Provider/contrato por categoria | Outbox transacional existe | Inbox, adapters, credenciais, retries e quarentena por integração | Escolher uma integração real e fornecer ambiente/credenciais de homologação |
@@ -85,9 +85,9 @@ configuração explícita e não podem ser publicados nessa condição.
 O encerramento operacional da UC720 valida sob locks presença, sessão e ocupação,
 transiciona o evento para `OPERACAO_ENCERRADA` e impede novas admissões. A parte
 financeira permanece explicitamente pendente, sem simular captura, reembolso,
-conciliação ou DRE. Com UC704/UC705 concluídas, os próximos candidatos internos
-da fase são quota por canal, projeção de ocupação e UC729; cada um será validado
-contra seu contrato antes de implementação, sem antecipar integração externa.
+conciliação ou DRE. A execução corrente inicia a Fundação da unificação
+multi-tenant descrita no documento 22; quotas por canal, projeção por setor e
+UC729 continuam dependentes de seus contratos específicos.
 
 O endurecimento transversal de segurança restringe `/actuator/metrics` e os
 demais endpoints administrativos a JWT válido. Somente `/actuator/health/**` e
@@ -133,7 +133,17 @@ deles possui hoje contrato suficiente para uma nova história vertical segura:
    eventos, venues, pátios, produtos e alocações que a OpenAPI atual
    deliberadamente não publica.
 
-Implementar qualquer um desses itens agora exigiria inventar regra de negócio,
-ampliar RBAC por inferência ou criar um modelo paralelo ao aprovado. Eles ficam
-formalmente bloqueados até que as condições acima sejam resolvidas. Os módulos
-legados de rotativo e mensalistas continuam fora da fase exclusiva de eventos.
+Implementar os itens enumerados sem seus contratos ainda exigiria inventar regra
+de negócio. Essa conclusão não se aplica à migração de ownership dos módulos
+empresariais já existentes: ela foi autorizada como fundação transversal e deve
+prosseguir pela matriz de [[22-unificacao-multitenant]]. Rotativo e mensalistas
+permanecem contextos distintos de Evento, mas fazem parte do produto unificado.
+
+## 21.6 Estado da unificação multi-tenant
+
+A Onda 0 está `EM_EXECUCAO`. O inventário comprova que os módulos originados em
+V1/V6/V7 mantêm entidades, repositories, unicidades e autorização globais. O
+primeiro critério de saída é publicar a matriz de ownership e os padrões de
+migration, RBAC e testes; em seguida, formas/condições de pagamento, clientes e
+fornecedores iniciam a adaptação vertical. Nenhum dado histórico será associado
+automaticamente a uma organização.

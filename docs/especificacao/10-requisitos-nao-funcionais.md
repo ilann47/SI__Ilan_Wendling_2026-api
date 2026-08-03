@@ -2,6 +2,11 @@
 
 # 10. Requisitos Não Funcionais
 
+> **Classificação histórica:** os requisitos desta seção nasceram sobre a v1 de
+> 34 tabelas. A autenticação, o RBAC contextual e o isolamento multiempresa
+> vigentes/complementares estão nos documentos 18, 21 e 22; Flyway, e não
+> `database/schema.sql`, define o schema executável atual.
+
 Os requisitos não funcionais (RNF) descrevem as restrições de qualidade impostas ao Sistema de Controle de Estacionamento Kaneko — atributos que não se traduzem em funcionalidades isoladas, mas que condicionam a maneira como todas as funcionalidades devem se comportar. Diferentemente dos requisitos funcionais, que respondem à pergunta "o que o sistema faz", os requisitos não funcionais respondem à pergunta "com que qualidade o sistema faz". Esta seção foi elaborada de modo a ser concreta e verificável, ancorando cada requisito em elementos reais já presentes na arquitetura do projeto: a plataforma tecnológica adotada (Spring Boot 4.0.7 sobre Java 25, persistência em PostgreSQL 17), o esquema relacional definido em `database/schema.sql` (trinta e quatro tabelas, restrições de integridade do tipo `CHECK`, índices declarados e a tabela de controle de acesso `usuario`) e as dependências declaradas no `pom.xml` (entre elas o módulo de validação `spring-boot-starter-validation` e o módulo de observabilidade `spring-boot-starter-actuator`).
 
 O sistema integra dois domínios complementares: o controle de pátio do estacionamento propriamente dito (mensalistas, avulsos, movimentação de entrada e saída, tarifação) e o módulo de conveniência e comercial (produtos, notas de entrada e saída, notas de serviço e financeiro de contas a pagar e a receber). Essa dualidade impõe exigências de qualidade que precisam considerar tanto a operação de balcão de alta frequência — onde a latência percebida pelo operador é crítica — quanto a integridade contábil e fiscal do módulo comercial, onde a consistência dos dados é inegociável.

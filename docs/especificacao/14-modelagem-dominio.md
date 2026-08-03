@@ -172,3 +172,20 @@
 ## 14.10 Regra de preservação do legado
 
 As 36 entidades JPA atuais continuam válidas como modelo AS-IS. A evolução pode especializar conceitos, adicionar referências e introduzir novos agregados, mas não deve eliminar cadastros ou processos existentes sem migração de dados, compatibilidade de API, decisão de produto e plano de descontinuação aprovados.
+
+## 14.11 Ownership obrigatório na plataforma unificada
+
+A preservação do AS-IS não autoriza ownership global permanente. `Usuario`,
+`Pais`, `Estado`, `Cidade`, `Permissao` e `Papel` permanecem globais. Os demais
+agregados empresariais recebem organização direta ou derivação inequívoca de um
+pai tenant-aware. Filhos que relacionam dois agregados — itens fiscais, parcelas
+com forma de pagamento e vínculos N:N — carregam owner suficiente para FKs
+compostas e rejeição de relações cross-tenant.
+
+`Usuario.funcionario_id` é compatibilidade histórica incompatível com uma
+identidade global que pode participar de múltiplas organizações. O vínculo
+laboral TARGET é contextual à Membership. `patio.organizacao_id` deixa de ser
+opcional após reconciliação. Ordem de Compra e Ordem de Serviço são agregados
+TARGET novos e não podem ser substituídos conceitualmente por Nota de Entrada ou
+Nota de Serviço. A matriz física e a ordem de cutover estão em
+[[22-unificacao-multitenant]].

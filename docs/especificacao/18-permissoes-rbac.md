@@ -225,3 +225,35 @@ permissões necessárias à fundação: `organizations:admin`, `users:invite`,
 `roles:grant` e `roles:revoke`. APIs legadas continuam em `ADMIN/OPERADOR`; novos
 papéis e escopos serão adicionados junto dos respectivos módulos, sem permissões
 antecipadas ou confiança em autorização da interface.
+
+## 18.9 Catálogo da unificação dos módulos empresariais
+
+O acesso `ADMIN/OPERADOR` descrito no AS-IS é transitório. Cada controller
+empresarial migrado deve exigir JWT contextual e uma permissão atômica. O catálogo
+TARGET mínimo é:
+
+| Domínio | Leitura | Gestão/transição |
+|---|---|---|
+| Pagamento cadastral | `payments:read` | `payments:manage` |
+| Clientes | `customers:read` | `customers:manage` |
+| Fornecedores | `suppliers:read` | `suppliers:manage` |
+| RH | `workforce:read` | `workforce:manage` |
+| Logística | `logistics:read` | `logistics:manage` |
+| Catálogo de conveniência | `catalog:read` | `catalog:manage` |
+| Estoque | `stock:read` | `stock:manage` |
+| Operação tradicional | `parking:read` | `parking:operate`, `parking:manage` |
+| Compras | `purchasing:read` | `purchasing:manage`, `purchasing:receive` |
+| Vendas administrativas | `sales:read` | `sales:manage` |
+| Fiscal | `fiscal:read` | `fiscal:manage` |
+| Financeiro | `finance:read` | `finance:manage` |
+| Relatórios | `reports:read` | — |
+
+`ADMIN_ORGANIZACAO` recebe o catálogo à medida que cada permissão entra em uma
+migration executável. Gestor recebe gestão operacional/comercial e leitura
+financeira; papéis especializados recebem somente seu domínio. Novos papéis de
+Compras e Estoque devem ser criados junto dos primeiros casos de uso que os
+exijam, sem antecipar privilégios. Auditor recebe apenas leituras explicitamente
+aprovadas. O perfil global do `Usuario` nunca substitui essas permissões.
+
+A matriz detalhada por onda, inclusive testes 401/403/404 e referências
+cross-tenant, está em [[22-unificacao-multitenant]].

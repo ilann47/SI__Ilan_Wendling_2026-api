@@ -1,4 +1,4 @@
-> Links: [[README]] · [[16-casos-de-uso-plataforma]] · [[17-apis-enterprise]] · [[19-equipamentos-integracoes]] · [[20-roadmap-produto]] · [[21-status-implementacao]] · [[relatorio-conformidade]]
+> Links: [[README]] · [[16-casos-de-uso-plataforma]] · [[17-apis-enterprise]] · [[19-equipamentos-integracoes]] · [[20-roadmap-produto]] · [[21-status-implementacao]] · [[22-unificacao-multitenant]] · [[relatorio-conformidade]]
 
 # Registro Central de Bloqueios
 
@@ -26,6 +26,7 @@ Nenhum item bloqueado deve aparecer como ação executável no frontend.
 | BLK-011 | Equipamentos e barreiras | `BLOQUEADA_POR_INFRAESTRUTURA` | Hardware e identidade | Fabricante/SDK, cancela/leitor/LPR/RFID, site controller, telemetria e política de falha | API responde explicitamente `barrierCommandRequested=false` | Provisionamento, comando físico, confirmação e contingência | Equipamento alvo, protocolo, ambiente de teste e política operacional aprovados | Check-in/check-out registram o acesso, mas não acionam barreira física |
 | BLK-012 | Quota por canal e ocupação por setor/categoria | `BLOQUEADA_POR_DECISAO_DE_NEGOCIO` | Modelo comercial/físico | Catálogo canônico de canais; roteamento produto–setor–vaga | Quota total, capacidade por pátio e ocupação da alocação são concorrentes e seguras | Limites por canal e projeção física granular | Regras de canal e vínculo de roteamento aprovados com contratos de leitura | Frontend não pode exibir granularidade que o banco não registra |
 | BLK-013 | Abertura agendada de vendas | `BLOQUEADA_POR_INFRAESTRUTURA` | Scheduler confiável | Persistência, cancelamento/reagendamento, eleição multi-instância e recuperação | Abertura imediata versionada está concluída | Execução futura exatamente uma vez e observável | Contrato do agendamento e estratégia transacional multi-instância definidos | Frontend aceita somente abertura imediata |
+| BLK-014 | Cutover dos dados históricos multi-tenant | `BLOQUEADA_POR_DECISAO_DE_DADOS` | Mapa explícito de ownership | Organização proprietária de cada grafo V1/V6/V7; política para conflitos e registros órfãos | Inventário, estratégia nullable e ordem de migration estão definidos | Backfill, validação de constraints e aplicação final de `NOT NULL` | Mapa registro/grafo → organização aprovado e relatório de conflitos sem ambiguidades | Não impede adicionar colunas, adaptar código ou migrar novas escritas; impede somente backfill definitivo e cutover |
 
 ## Regras de produto enquanto houver bloqueio
 
@@ -48,3 +49,4 @@ Nenhum item bloqueado deve aparecer como ação executável no frontend.
 | Data | Ação |
 |---|---|
 | 2026-08-02 | Centraliza bloqueios externos, de infraestrutura e de decisão de negócio da fase de eventos. |
+| 2026-08-03 | Registra que somente o cutover histórico depende do mapa explícito de ownership; a migração incremental pode prosseguir. |

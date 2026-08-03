@@ -1,10 +1,10 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]]
 
 # Core do Estacionamento Kaneko
 
 ## Fonte oficial
 
-A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/README.md), especialmente nos documentos 11 a 20. O estado de execução e seus bloqueios são mantidos em [[../docs/especificacao/21-status-implementacao|21-status-implementacao]]. O `brain` registra somente o estado implementado e as relações entre módulos; ele não redefine a arquitetura aprovada.
+A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/README.md), especialmente nos documentos 11 a 22. O estado de execução e seus bloqueios são mantidos em [[../docs/especificacao/21-status-implementacao|21-status-implementacao]]. O `brain` registra somente o estado implementado e as relações entre módulos; ele não redefine a arquitetura aprovada.
 
 ## Arquitetura
 
@@ -53,6 +53,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
 - [[bloqueios]] — condições externas e decisões pendentes que limitam a entrega.
 - [[dados-demo]] — cenário local opt-in criado pelos serviços reais do domínio.
+- [[unificacao-multitenant]] — retrofit de ownership dos módulos empresariais permanentes.
 
 ## Histórico
 
@@ -89,3 +90,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-01 | Distingue validação, check-in e check-out no agregado de tentativa. |
 | 2026-08-02 | Centraliza bloqueios e condições objetivas de retomada da fase de eventos. |
 | 2026-08-03 | Adiciona seed local idempotente do fluxo de eventos, desativado por padrão. |
+| 2026-08-03 | Inicia Onda 0 da unificação multi-tenant dos módulos empresariais. |

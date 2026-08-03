@@ -1,4 +1,4 @@
-> Links: [[core]] · [[eventos]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[outbox]]
+> Links: [[core]] · [[eventos]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[outbox]] · [[unificacao-multitenant]]
 
 # Bloqueios
 
@@ -40,6 +40,10 @@ As integrações listadas são dependências ausentes; nenhuma é chamada.
 Uma funcionalidade bloqueada não gera requisição. A interface apresenta aviso
 informativo e nunca simula êxito.
 
+O bloqueio de ownership histórico impede somente backfill definitivo e `NOT
+NULL`. Ele não impede migrations aditivas, adaptação tenant-aware das novas
+escritas ou testes de isolamento.
+
 ## Testes (curl ou equivalente)
 
 Validar links, status permitidos e ausência de ações executáveis associadas aos
@@ -59,9 +63,11 @@ bloqueios no frontend.
 - [[credenciais]]
 - [[acesso]]
 - [[outbox]]
+- [[unificacao-multitenant]]
 
 ## Histórico
 
 | Data | Ação |
 |---|---|
 | 2026-08-02 | Cria referência central dos bloqueios da fase de eventos. |
+| 2026-08-03 | Registra o mapa de ownership histórico como condição exclusiva do cutover multi-tenant. |

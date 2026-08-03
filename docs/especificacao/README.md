@@ -1,8 +1,8 @@
-> Links: [[01-introducao]] · [[03-der]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[20-roadmap-produto]] · [[21-status-implementacao]] · [[relatorio-conformidade]]
+> Links: [[01-introducao]] · [[03-der]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[20-roadmap-produto]] · [[21-status-implementacao]] · [[22-unificacao-multitenant]] · [[relatorio-conformidade]]
 
 # Especificação de Requisitos — Sistema Estacionamento Kaneko
 
-Este diretório reúne a especificação de requisitos do **Sistema de Controle do Estacionamento Kaneko**, elaborada segundo o modelo de prática profissional de Sistemas de Informação (Documento de Visão e Especificação de Requisitos orientada a Casos de Uso). Trata-se de um **projeto acadêmico**, proposto para uma **empresa fictícia** — o Estacionamento Kaneko —, cujo objetivo é registrar de forma completa e não ambígua os requisitos do produto de software, servindo como referência única e formal para a equipe de desenvolvimento, para os responsáveis pela operação do estabelecimento e para os avaliadores acadêmicos. Toda a delimitação de escopo está fundamentada no modelo físico de dados materializado em `database/schema.sql` (PostgreSQL 17, banco `estacionamento_kaneko`, 34 tabelas).
+Este diretório reúne a especificação de requisitos do **Sistema de Controle do Estacionamento Kaneko**, elaborada segundo o modelo de prática profissional de Sistemas de Informação (Documento de Visão e Especificação de Requisitos orientada a Casos de Uso). Trata-se de um **projeto acadêmico**, proposto para uma **empresa fictícia** — o Estacionamento Kaneko —, cujo objetivo é registrar de forma completa e não ambígua os requisitos do produto de software, servindo como referência única e formal para a equipe de desenvolvimento, para os responsáveis pela operação do estabelecimento e para os avaliadores acadêmicos. `database/schema.sql` e os documentos 01 a 10 registram a baseline histórica original de 34 tabelas; o modelo físico executável atual é definido exclusivamente pelas migrations Flyway versionadas.
 
 ---
 
@@ -41,16 +41,16 @@ As convenções a seguir são aplicadas de forma uniforme a todos os documentos 
 - **Mensagens parametrizadas.** Mensagens que dependem do campo em validação utilizam o marcador `[nome do campo]` como ponto de substituição (por exemplo, `O campo [nome do campo] é obrigatório.`).
 - **Hierarquia de cabeçalhos.** O título do arquivo é `H1`; o caso de uso e suas seções internas são `H2`; as sub-ações de manutenção (**Inserir**, **Alterar**, **Excluir**) são `H3`.
 - **Diagramas.** Todos os diagramas são expressos em **Mermaid**, utilizando `erDiagram` (entidade-relacionamento), `classDiagram` (classes) e `sequenceDiagram` (sequência).
-- **Modelo físico.** O modelo físico está definido em `database/schema.sql` (PostgreSQL 17, **34 tabelas**), com chave primária `id` do tipo `IDENTITY`, unicidade de negócio aplicada ao trio fiscal, campos de auditoria em `TIMESTAMPTZ`, exclusão lógica por meio do campo `ativo` e chaves estrangeiras com políticas `ON DELETE RESTRICT` / `CASCADE` / `SET NULL` conforme a semântica de cada relacionamento.
+- **Modelo físico.** `database/schema.sql` documenta a baseline original de 34 tabelas. O modelo executável vigente é a sequência `src/main/resources/db/migration/V*`, validada por Flyway e Hibernate; nenhuma alteração deve ser aplicada diretamente ao arquivo histórico como substituto de migration.
 
 ---
 
-## Divergências Deliberadas do Modelo
+## Divergências Deliberadas da baseline histórica
 
-A especificação adota, de forma consciente, algumas divergências em relação ao modelo de prática profissional. Cada uma está justificada em detalhe no [Relatório de Conformidade](relatorio-conformidade.md); em resumo:
+A lista abaixo descreve decisões da v1 acadêmica original, não o estado atual da aplicação. A evolução implementada e TARGET está nos documentos 11 a 22 e no [Relatório de Conformidade](relatorio-conformidade.md).
 
-1. **Sem telas próprias na v1.** A interface da versão 1 é a **API REST documentada via Swagger/OpenAPI**, e não um conjunto de telas de aplicação; os protótipos têm caráter ilustrativo.
-2. **Autenticação modelada, não implementada.** O módulo de autenticação/login foi **modelado** (tabela `usuario`, perfis `ADMIN` e `OPERADOR`), porém **não é implementado** no v1.
+1. **Sem telas próprias na baseline v1.** A interface original era a **API REST documentada via Swagger/OpenAPI**; o AS-IS atual possui frontend React.
+2. **Autenticação inicialmente apenas modelada.** A baseline continha `usuario`, `ADMIN` e `OPERADOR`; o AS-IS atual implementa JWT, Membership e RBAC contextual.
 3. **Empresa fictícia.** O Estacionamento Kaneko é uma empresa fictícia, criada exclusivamente para fins acadêmicos.
 4. **Escopo reduzido.** O sistema não contempla operação **multifilial** nem **integração fiscal** de transmissão à SEFAZ (as notas são registros internos). O **frete** é modelado: além do tipo (CIF/FOB) e dos valores rateáveis na nota, o sistema possui o **Módulo de Logística** (transportadora, veículo de frota e a frota N:N), com o fornecedor apontando para a sua transportadora padrão — sem, contudo, emissão de conhecimento de transporte eletrônico (CT-e).
 
@@ -58,7 +58,7 @@ A especificação adota, de forma consciente, algumas divergências em relação
 
 ## Arquitetura de Produto Enterprise (visão evolutiva)
 
-Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especificação do comportamento **AS-IS**. A arquitetura definitiva de evolução, com foco inicial em eventos e preservação dos módulos existentes, está nos documentos 11 a 20:
+Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especificação do comportamento **AS-IS**. A arquitetura definitiva de evolução, com foco inicial em eventos e preservação dos módulos existentes, está nos documentos 11 a 22:
 
 | # | Documento | Conteúdo |
 |---|---|---|
@@ -73,11 +73,12 @@ Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especifica�
 | 19 | [Equipamentos e Integrações](19-equipamentos-integracoes.md) | Portas canônicas, Edge, contingência, ACL, webhooks, retries e telemetria. |
 | 20 | [Roadmap do Produto](20-roadmap-produto.md) | Fundação, dez fases, riscos, impactos, NFRs e plano de evolução. |
 | 21 | [Estado de Implementação](21-status-implementacao.md) | Classificação das histórias, dependências, bloqueios externos e condições de retomada. |
+| 22 | [Unificação Multi-Tenant](22-unificacao-multitenant.md) | Ownership, migração aditiva, RBAC e integração dos módulos empresariais permanentes. |
 | — | [Registro Central de Bloqueios](bloqueios-externos.md) | Dependências externas, decisões de negócio e infraestrutura que impedem histórias específicas. |
 
 ### Regra de prevalência
 
 - Para saber o que o software **faz hoje**, prevalecem código, migrations e documentos AS-IS.
-- Para orientar novas decisões e implementações, prevalecem os documentos 11 a 20.
+- Para orientar novas decisões e implementações, prevalecem os documentos 11 a 22.
 - Uma capacidade TARGET não deve ser apresentada como implementada até ser incorporada ao código, testes e documentação AS-IS.
 - Nenhuma evolução elimina funcionalidades existentes sem plano explícito de compatibilidade e migração.

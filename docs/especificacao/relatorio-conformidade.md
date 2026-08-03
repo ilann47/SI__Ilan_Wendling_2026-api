@@ -810,3 +810,20 @@ alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo
   reembolso, documento fiscal externo ou comando de equipamento é simulado.
 - O registro define condições objetivas de retomada e passa a orientar avisos
   informativos no frontend, sem expor ações que o backend não consegue concluir.
+
+---
+
+## Atualização — Fundação da unificação multi-tenant (2026-08-03)
+
+- `22-unificacao-multitenant.md` transforma a preservação dos módulos anteriores
+  em obrigação de migração: Fiscal, Financeiro, Conveniência, Pessoas,
+  Fornecedores, Logística, RH e Operação de Pátio são capacidades permanentes.
+- O inventário confirma ownership global indevido nas entidades de V1/V6/V7 e
+  preserva como globais somente identidade, geografia e catálogo estrutural de
+  RBAC.
+- O retrofit tenant-aware é Fundação transversal e não depende de gateway,
+  provedor fiscal ou conclusão integral do evento.
+- Nenhum backfill é inferido: linhas históricas permanecem intactas até existir
+  mapa explícito e auditável de organização.
+- Ordem de Compra e Ordem de Serviço são requisitos TARGET novos; notas atuais
+  não são renomeadas nem reinterpretadas como esses agregados.

@@ -275,4 +275,15 @@ Entrega é ao menos uma vez. Destinos deduplicam `eventId`. O Kaneko mantém ass
 
 ## 17.12 Compatibilidade com API atual
 
-Os endpoints atuais `/api/**` permanecem durante transição. Uma facade de compatibilidade traduz chamadas legadas para casos de uso novos. Não deve haver migração “big bang”. Deprecações exigem aviso, telemetria de uso, prazo e documentação de substituição.
+Os endpoints atuais `/api/**` permanecem durante a transição como compatibilidade
+de transporte, não como autorização para consultas globais. À medida que um
+módulo é migrado, sua rota existente deve exigir JWT contextual, derivar o tenant
+do `UsuarioAutenticado` e delegar ao mesmo service tenant-aware utilizado por
+qualquer contrato `/api/v1` equivalente. Não existe fallback global para operação
+empresarial.
+
+A eventual depreciação de uma URL não representa depreciação funcional do
+módulo. Ela exige aviso, telemetria, prazo e substituição documentada. Dados
+históricos sem owner são tratados somente pelo processo de reconciliação de
+[[22-unificacao-multitenant]], nunca por dual read silencioso em uma consulta de
+tenant.

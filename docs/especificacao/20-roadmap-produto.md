@@ -1,4 +1,4 @@
-> Links: [[README]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[19-equipamentos-integracoes]] · [[10-requisitos-nao-funcionais]]
+> Links: [[README]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[19-equipamentos-integracoes]] · [[22-unificacao-multitenant]] · [[10-requisitos-nao-funcionais]]
 
 # 20. Roadmap do Produto e Evolução Arquitetural
 
@@ -6,10 +6,20 @@
 
 1. O roadmap amplia a especificação definitiva; não reduz a visão do produto.
 2. Nenhuma fase remove os módulos atuais.
-3. Eventos são o primeiro domínio de expansão. Rotativo permanece TODO durante essa fase.
+3. Eventos são o primeiro domínio de expansão; rotativo, mensalistas e módulos
+   empresariais permanecem bounded contexts próprios e não são descartados.
 4. Fundação transversal é entregue antes ou junto das capacidades que dela dependem.
 5. Uma fase só termina quando os critérios operacionais e arquiteturais forem comprovados, não apenas quando houver telas.
 6. Mudanças são incrementais, com compatibilidade e migração; não há reescrita big bang.
+
+### 20.1.1 Diretriz transversal de unificação
+
+A evolução tenant-aware dos módulos empresariais é parte da Fundação transversal
+e pode avançar em paralelo às capacidades de evento que não dependam dela. A
+ordem das fases continua expressando dependências de produto, mas não autoriza
+ocultar, remover ou manter globalmente Fiscal, Financeiro, Conveniência, Pessoas,
+Fornecedores, Logística, RH ou Operação de Pátio. A matriz e o procedimento de
+migração vinculantes estão em [[22-unificacao-multitenant]].
 
 ## 20.2 Fase 0 — Fundação transversal
 

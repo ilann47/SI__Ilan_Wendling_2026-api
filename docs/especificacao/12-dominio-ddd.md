@@ -379,7 +379,7 @@ administrativo, reemissão e consumo continuam TARGET.
 - Consultas de dashboard usam projeções; não percorrem agregados transacionais.
 - Falhas externas não mantêm transações de banco abertas.
 
-## 12.7 Problemas arquiteturais atuais a resolver
+## 12.7 Problemas arquiteturais da baseline e lacunas remanescentes
 
 1. `patio` concentra instalação, operação, tarifa, mensalista e colaborador.
 2. `MovimentacaoService` decide mensalista, tarifa, entrada, saída e persistência.
@@ -388,7 +388,8 @@ administrativo, reemissão e consumo continuam TARGET.
 5. `pagamento` atual contém cadastros, não pagamentos transacionais.
 6. `Usuario`, `Funcionario` e `Colaborador` são identidades sobrepostas sem vínculo coerente.
 7. Relatórios sincrônicos consultam vários repositórios e não servem ao pico de eventos.
-8. Não existem tenant, domain events, outbox, inbox ou idempotência.
+8. Tenant, domain events, outbox e idempotência já existem nos módulos enterprise;
+   ainda faltam sua extensão aos módulos empresariais anteriores e a inbox.
 9. Integrações futuras ainda não possuem portas/ACL.
 
 Essas correções são evolutivas. Nenhuma funcionalidade atual é removida.
