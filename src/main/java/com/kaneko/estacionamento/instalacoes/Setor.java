@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -49,7 +50,8 @@ public class Setor extends AuditableEntity {
         if (capacidade == null || capacidade < 1) {
             throw new IllegalArgumentException("A capacidade do setor deve ser positiva.");
         }
-        if (categorias == null || categorias.isEmpty() || categorias.contains(null)) {
+        if (categorias == null || categorias.isEmpty()
+                || categorias.stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("O setor deve possuir ao menos uma categoria valida.");
         }
         Setor setor = new Setor();

@@ -103,6 +103,8 @@ tenant, RBAC, contrato fechado e constraints de vaga.
   soma entre setores é uma invariante transacional protegida pelo lock da raiz.
 - O batch normaliza todos os itens antes da primeira escrita e busca códigos em
   lote; o lock do setor serializa o limite sem uma query por item.
+- A validação de categorias rejeita elementos nulos por iteração, preservando
+  compatibilidade com conjuntos imutáveis (`Set.of`) usados pelos serviços.
 - Posição é um identificador textual opcional. Geometria e coordenadas aguardam
   contrato de layout explícito.
 
@@ -123,3 +125,4 @@ tenant, RBAC, contrato fechado e constraints de vaga.
 | 2026-07-30 | Expõe lock pessimista tenant-aware para serializar alocações concorrentes do pátio. |
 | 2026-08-01 | Implementa UC704 com setores tenant-aware, auditoria e outbox. |
 | 2026-08-01 | Implementa UC705 com importação idempotente de vagas em lote. |
+| 2026-08-03 | Corrige a validação de categorias para aceitar conjuntos imutáveis sem lançar `NullPointerException`. |
