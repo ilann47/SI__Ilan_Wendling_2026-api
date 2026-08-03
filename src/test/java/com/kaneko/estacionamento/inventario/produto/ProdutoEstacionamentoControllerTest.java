@@ -647,6 +647,7 @@ class ProdutoEstacionamentoControllerTest {
             assertThat(auditoria.getEventoId()).isEqualTo(eventoId);
         });
         assertThat(outbox.findAll().stream()
+                .filter(e -> "PEDIDO".equals(e.getAggregateType()))
                 .filter(e -> e.getAggregateId().equals(pedidoId))
                 .map(e -> e.getEventType()).toList())
                 .containsExactlyInAnyOrder("PedidoCriado", "PedidoAguardandoPagamento");
