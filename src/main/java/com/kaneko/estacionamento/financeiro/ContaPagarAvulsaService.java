@@ -135,7 +135,7 @@ public class ContaPagarAvulsaService {
     }
 
     private FormaPagamento buscarForma(Long id) {
-        return formaPagamentoRepository.findById(id)
+        return formaPagamentoRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("FormaPagamento", id));
     }
 }

@@ -19,6 +19,13 @@ public interface CondicaoPagamentoRepository extends JpaRepository<CondicaoPagam
     @EntityGraph(attributePaths = {"parcelas", "parcelas.formaPagamento"})
     Optional<CondicaoPagamento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    @EntityGraph(attributePaths = {"parcelas", "parcelas.formaPagamento"})
+    Optional<CondicaoPagamento> findByIdAndOrganizacaoIdIsNull(Long id);
+
+    @Override
+    @EntityGraph(attributePaths = {"parcelas", "parcelas.formaPagamento"})
+    Optional<CondicaoPagamento> findById(Long id);
+
     @Query("""
             select count(c) > 0 from CondicaoPagamento c
             where c.organizacaoId = :organizacaoId

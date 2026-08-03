@@ -123,12 +123,12 @@ public class ContaPagarService {
     }
 
     private CondicaoPagamento buscarCondicao(Long id) {
-        return condicaoPagamentoRepository.findById(id)
+        return condicaoPagamentoRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", id));
     }
 
     private FormaPagamento buscarForma(Long id) {
-        return formaPagamentoRepository.findById(id)
+        return formaPagamentoRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("FormaPagamento", id));
     }
 

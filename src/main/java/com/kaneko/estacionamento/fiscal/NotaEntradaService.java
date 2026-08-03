@@ -260,7 +260,7 @@ public class NotaEntradaService {
     }
 
     private CondicaoPagamento buscarCondicao(Long id) {
-        return condicaoPagamentoRepository.findById(id)
+        return condicaoPagamentoRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", id));
     }
 

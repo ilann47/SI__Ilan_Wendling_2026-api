@@ -63,9 +63,12 @@ CRUD anteriores agora usam JWT contextual real.
 - Mesma forma/condição pode existir em organizações diferentes.
 - Linhas históricas com `organizacao_id IS NULL` são preservadas e invisíveis às APIs tenant.
 - A V38 não faz backfill nem aplica `NOT NULL`.
+- A V39 preserva unicidade para linhas históricas, rejeita campos desconhecidos
+  e impede parcelas ownerless de apontarem para catálogos tenant.
 - `ADMIN_ORGANIZACAO` recebe as duas permissões; demais papéis não recebem acesso implícito.
 - Consumers fiscais/financeiros ainda globais são compatibilidade temporária e
-  receberão FKs compostas nas respectivas ondas.
+  resolvem exclusivamente catálogos históricos sem owner até receberem FKs
+  compostas nas respectivas ondas.
 
 ## Módulos relacionados
 
@@ -81,3 +84,4 @@ CRUD anteriores agora usam JWT contextual real.
 | Data | Ação |
 |---|---|
 | 2026-08-03 | Migra o catálogo de pagamentos para tenancy real na V38. |
+| 2026-08-03 | Endurece compatibilidade histórica e ownership de parcelas na V39. |

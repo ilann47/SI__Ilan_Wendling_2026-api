@@ -16,6 +16,8 @@ public interface FormaPagamentoRepository extends JpaRepository<FormaPagamento, 
 
     Optional<FormaPagamento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    Optional<FormaPagamento> findByIdAndOrganizacaoIdIsNull(Long id);
+
     @Query("""
             select count(f) > 0 from FormaPagamento f
             where f.organizacaoId = :organizacaoId

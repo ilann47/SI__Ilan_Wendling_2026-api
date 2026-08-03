@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.pagamento.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Min;
@@ -41,4 +42,9 @@ public record CondicaoPagamentoRequest(
         @Valid
         List<ParcelaRequest> parcelas
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

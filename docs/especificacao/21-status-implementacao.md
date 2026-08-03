@@ -146,5 +146,7 @@ testes tenant-aware foram concluídas. A V38 migra formas, condições e parcela
 pagamento: novas escritas recebem o tenant do JWT, nomes são únicos por
 organização, referências de parcela usam FKs compostas e as URLs legadas exigem
 `payments:read/manage`. Linhas históricas permanecem com owner nulo e invisíveis
-às consultas tenant. Clientes e fornecedores são as próximas raízes da adaptação
+às consultas tenant. A V39 mantém a unicidade anterior das linhas sem owner,
+fecha o caminho `NULL → tenant` nas parcelas e limita consumers ainda globais a
+catálogos históricos. Clientes e fornecedores são as próximas raízes da adaptação
 vertical; nenhum dado histórico será associado automaticamente a uma organização.

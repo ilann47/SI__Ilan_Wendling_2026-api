@@ -495,3 +495,9 @@ organização, RBAC contextual e proteção de FK composta dentro do agregado. O
 backfill e o `NOT NULL` permanecem condicionados ao mapeamento explícito dos
 dados históricos. Consumers fiscais e financeiros serão endurecidos nas ondas
 próprias, sem remover o catálogo já migrado.
+
+A V39 complementa o recorte sem modificar a V38: mantém uniques parciais para o
+legado sem owner, rejeita `NULL → tenant` no agregado de parcelas, fecha DTOs
+contra campos desconhecidos e restringe consumers ainda globais a formas e
+condições também históricas. Um teste de schema isolado executa V1→V37, persiste
+o grafo histórico e valida V38→V39 sem alterar IDs ou relacionamentos.

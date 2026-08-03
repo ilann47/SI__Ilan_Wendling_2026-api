@@ -132,10 +132,10 @@ public class NotaServicoService {
             throw new ConflitoException("A origem não pode ser movimentação e mensalista ao mesmo tempo.");
         }
         nota.setCondicaoPagamento(req.condicaoPagamentoId() != null
-                ? condicaoPagamentoRepository.findById(req.condicaoPagamentoId())
+                ? condicaoPagamentoRepository.findByIdAndOrganizacaoIdIsNull(req.condicaoPagamentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", req.condicaoPagamentoId())) : null);
         nota.setFormaPagamento(req.formaPagamentoId() != null
-                ? formaPagamentoRepository.findById(req.formaPagamentoId())
+                ? formaPagamentoRepository.findByIdAndOrganizacaoIdIsNull(req.formaPagamentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("FormaPagamento", req.formaPagamentoId())) : null);
 
         LocalDate emissao = req.dataEmissao() != null ? req.dataEmissao() : LocalDate.now();
