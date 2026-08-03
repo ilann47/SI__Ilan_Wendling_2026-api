@@ -72,6 +72,83 @@ class FornecedorLegacyConsumerConstraintTest {
                     (numero, fornecedor_id, created_at, updated_at)
                 VALUES ('N-HIST', ?, now(), now())
                 """, historico)).doesNotThrowAnyException();
+        assertThatCode(() -> jdbc.update("""
+                INSERT INTO conta_pagar
+                    (fornecedor_id, valor_original, valor_total, data_vencimento,
+                     created_at, updated_at)
+                VALUES (?, 10, 10, CURRENT_DATE, now(), now())
+                """, historico)).doesNotThrowAnyException();
+        assertThatCode(() -> jdbc.update("""
+                INSERT INTO contas_pagar_avulsa
+                    (descricao, fornecedor_id, valor_original, valor_total,
+                     data_vencimento, created_at, updated_at)
+                VALUES ('Historica', ?, 10, 10, CURRENT_DATE, now(), now())
+                """, historico)).doesNotThrowAnyException();
+        Long produtoId = inserirProdutoHistorico();
+        assertThatCode(() -> jdbc.update("""
+                INSERT INTO produto_fornecedor
+                    (produto_id, fornecedor_id, ativo, created_at, updated_at)
+                VALUES (?, ?, true, now(), now())
+                """, produtoId, historico)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void updateAdversarialDaNotaEntradaERecusado() {
+        Long historico = inserirFornecedor(null, "77665544000133");
+        Long notaId = jdbc.queryForObject("""
+                INSERT INTO nota_entrada
+                    (numero, fornecedor_id, created_at, updated_at)
+                VALUES ('N-UPD', ?, now(), now()) RETURNING id
+                """, Long.class, historico);
+        assertViolation(
+                () -> jdbc.update("UPDATE nota_entrada SET fornecedor_id = ? WHERE id = ?",
+                        fornecedorTenant, notaId),
+                "23503", "fk_nota_entrada_fornecedor_owner");
+    }
+
+    @Test
+    void updateAdversarialDaContaPagarERecusado() {
+        Long historico = inserirFornecedor(null, "77665544000134");
+        Long contaId = jdbc.queryForObject("""
+                INSERT INTO conta_pagar
+                    (fornecedor_id, valor_original, valor_total, data_vencimento,
+                     created_at, updated_at)
+                VALUES (?, 10, 10, CURRENT_DATE, now(), now()) RETURNING id
+                """, Long.class, historico);
+        assertViolation(
+                () -> jdbc.update("UPDATE conta_pagar SET fornecedor_id = ? WHERE id = ?",
+                        fornecedorTenant, contaId),
+                "23503", "fk_conta_pagar_fornecedor_owner");
+    }
+
+    @Test
+    void updateAdversarialDaContaPagarAvulsaERecusado() {
+        Long historico = inserirFornecedor(null, "77665544000135");
+        Long avulsaId = jdbc.queryForObject("""
+                INSERT INTO contas_pagar_avulsa
+                    (descricao, fornecedor_id, valor_original, valor_total,
+                     data_vencimento, created_at, updated_at)
+                VALUES ('Update', ?, 10, 10, CURRENT_DATE, now(), now()) RETURNING id
+                """, Long.class, historico);
+        assertViolation(
+                () -> jdbc.update("UPDATE contas_pagar_avulsa SET fornecedor_id = ? WHERE id = ?",
+                        fornecedorTenant, avulsaId),
+                "23503", "fk_contas_pagar_avulsa_fornecedor_owner");
+    }
+
+    @Test
+    void updateAdversarialDoProdutoFornecedorERecusado() {
+        Long historico = inserirFornecedor(null, "77665544000136");
+        Long produtoId = inserirProdutoHistorico();
+        Long produtoFornecedorId = jdbc.queryForObject("""
+                INSERT INTO produto_fornecedor
+                    (produto_id, fornecedor_id, ativo, created_at, updated_at)
+                VALUES (?, ?, true, now(), now()) RETURNING id
+                """, Long.class, produtoId, historico);
+        assertViolation(
+                () -> jdbc.update("UPDATE produto_fornecedor SET fornecedor_id = ? WHERE id = ?",
+                        fornecedorTenant, produtoFornecedorId),
+                "23503", "fk_produto_fornecedor_fornecedor_owner");
     }
 
     @Test
@@ -88,7 +165,7 @@ class FornecedorLegacyConsumerConstraintTest {
                 () -> jdbc.update(
                         "UPDATE fornecedor SET organizacao_id = ? WHERE id = ?",
                         organizacaoId, historico),
-                "23514", "ck_fornecedor_backfill_dependencias");
+                "23514", "ck_fornecedor_owner_imutavel");
     }
 
     @Test

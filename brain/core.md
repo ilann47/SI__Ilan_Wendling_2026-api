@@ -104,4 +104,5 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Migra fornecedores, contatos derivados e referências comerciais para tenancy real. |
 | 2026-08-03 | Migra Cargo para ownership organizacional e RBAC contextual de RH. |
 | 2026-08-03 | Migra Funcionário para ownership organizacional e preserva Usuário global. |
+| 2026-08-03 | Valida o grafo legado de Fornecedor e bloqueia mudança direta de owner na V47. |
 | 2026-08-03 | Torna imutável no PostgreSQL o ownership de Cargo e Funcionário. |

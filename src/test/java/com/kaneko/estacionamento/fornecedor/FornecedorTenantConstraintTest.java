@@ -79,6 +79,39 @@ class FornecedorTenantConstraintTest {
                 "23505", "uq_fornecedor_legado_documento");
     }
 
+    @Test
+    void ownerDoFornecedorNaoPodeMudarDeTenant() {
+        Long fornecedorA = inserirFornecedor(
+                tenantA.organizacaoId(), "77777777000177", null, null);
+        assertViolation(
+                () -> jdbc.update(
+                        "UPDATE fornecedor SET organizacao_id = ? WHERE id = ?",
+                        tenantB.organizacaoId(), fornecedorA),
+                "23514", "ck_fornecedor_owner_imutavel");
+    }
+
+    @Test
+    void ownerDoFornecedorNaoPodeSerRemovido() {
+        Long fornecedorA = inserirFornecedor(
+                tenantA.organizacaoId(), "77777777000178", null, null);
+        assertViolation(
+                () -> jdbc.update(
+                        "UPDATE fornecedor SET organizacao_id = NULL WHERE id = ?",
+                        fornecedorA),
+                "23514", "ck_fornecedor_owner_imutavel");
+    }
+
+    @Test
+    void fornecedorHistoricoExigeBackfillControlado() {
+        Long fornecedorHistorico = inserirFornecedor(
+                null, "88888888000188", null, null);
+        assertViolation(
+                () -> jdbc.update(
+                        "UPDATE fornecedor SET organizacao_id = ? WHERE id = ?",
+                        tenantA.organizacaoId(), fornecedorHistorico),
+                "23514", "ck_fornecedor_owner_imutavel");
+    }
+
     private Long inserirFornecedor(Long organizacaoId, String documento, Long condicaoId, Long transportadoraId) {
         return jdbc.queryForObject("""
                 INSERT INTO fornecedor

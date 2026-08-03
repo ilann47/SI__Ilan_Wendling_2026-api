@@ -72,6 +72,12 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 - Sem associação automática de dados históricos.
 - O rollout dos retrofits exige drenagem das instâncias da versão anterior; não
   é suportada sobreposição old/new enquanto a escrita tenant-aware é habilitada.
+- O rollout coordenado executa backup/checkpoint, drena instâncias e workers,
+  aplica/valida Flyway com as escritas fechadas, sobe apenas o binário compatível
+  e só então reabre tráfego; binário anterior não pode ser reiniciado depois disso.
+- Guards de owner não são ferramenta de backfill. UC732 deverá migrar um grafo
+  previamente bloqueado em uma única transação administrativa, com ator, motivo,
+  lote e relatório de conflitos, restabelecendo todas as invariantes antes do commit.
 - Sem remoção de menus como substituto de autorização.
 - `Usuario.funcionario_id` é compatibilidade; vínculo laboral TARGET usa Membership.
 - Ordem de Compra e Ordem de Serviço exigem contrato/ADR próprios.
@@ -104,3 +110,4 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 | 2026-08-03 | Migra Cargo e mantém Funcionário global restrito ao catálogo histórico. |
 | 2026-08-03 | Migra Funcionário e restringe o consumer global de Usuário ao histórico. |
 | 2026-08-03 | Bloqueia troca/backfill direto de owner em Cargo e Funcionário até UC732. |
+| 2026-08-03 | Endurece Fornecedor na V47 com preflight retroativo e owner imutável. |

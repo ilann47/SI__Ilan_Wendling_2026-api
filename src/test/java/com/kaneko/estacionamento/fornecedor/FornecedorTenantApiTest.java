@@ -139,11 +139,30 @@ class FornecedorTenantApiTest {
         Integer total = jdbc.queryForObject("""
                 SELECT count(*) FROM registro_auditoria
                 WHERE organizacao_id = ? AND ator_id = ? AND recurso_id = ?
+                  AND recurso_tipo = 'FORNECEDOR'
+                  AND classe_retencao = 'PRIVACIDADE'
                   AND acao IN ('FORNECEDOR_CRIADO', 'FORNECEDOR_ATUALIZADO', 'FORNECEDOR_DESATIVADO')
-                  AND concat_ws(' ', estado_anterior::text, estado_posterior::text)
-                      !~ '(Pessoa Privada|77777777000177|Rua Privada|Segredo|9999|privado@teste.com|44999999999)'
+                """, Integer.class, tenantA.organizacaoId(), tenantA.usuarioId(), id);
+        Integer snapshotsExatos = jdbc.queryForObject("""
+                SELECT count(*) FROM registro_auditoria
+                WHERE organizacao_id = ? AND ator_id = ? AND recurso_id = ?
+                  AND recurso_tipo = 'FORNECEDOR'
+                  AND classe_retencao = 'PRIVACIDADE'
+                  AND acao IN ('FORNECEDOR_CRIADO', 'FORNECEDOR_ATUALIZADO', 'FORNECEDOR_DESATIVADO')
+                  AND (estado_anterior IS NULL OR (
+                      (SELECT count(*) FROM jsonb_object_keys(estado_anterior)) = 5
+                      AND NOT EXISTS (
+                          SELECT 1 FROM jsonb_object_keys(estado_anterior) AS chaves(chave)
+                          WHERE chave NOT IN ('tipo', 'cidadeId', 'condicaoPagamentoId',
+                                             'transportadoraId', 'ativo'))))
+                  AND (SELECT count(*) FROM jsonb_object_keys(estado_posterior)) = 5
+                  AND NOT EXISTS (
+                      SELECT 1 FROM jsonb_object_keys(estado_posterior) AS chaves(chave)
+                      WHERE chave NOT IN ('tipo', 'cidadeId', 'condicaoPagamentoId',
+                                         'transportadoraId', 'ativo'))
                 """, Integer.class, tenantA.organizacaoId(), tenantA.usuarioId(), id);
         assertThat(total).isEqualTo(3);
+        assertThat(snapshotsExatos).isEqualTo(3);
     }
 
     @Test
@@ -152,6 +171,16 @@ class FornecedorTenantApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nome\":\"Hostil\",\"documento\":\"12121212000112\","
                                 + "\"emails\":[{\"email\":\"a@b.com\",\"organizationId\":"
+                                + tenantB.organizacaoId() + "}]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejeitaTenantEmTelefoneAninhado() throws Exception {
+        mvc.perform(post("/api/fornecedores").header("Authorization", tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Hostil\",\"documento\":\"34343434000134\","
+                                + "\"telefones\":[{\"telefone\":\"44999999999\",\"organizationId\":"
                                 + tenantB.organizacaoId() + "}]}"))
                 .andExpect(status().isBadRequest());
     }

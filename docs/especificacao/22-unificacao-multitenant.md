@@ -233,6 +233,22 @@ rejeição; E3 conflito de unicidade no destino: relatório sem backfill parcial
 
 Esse caso de uso é TARGET. Nenhum endpoint ou job correspondente existe no AS-IS.
 
+Os guards imediatos instalados durante os retrofits proíbem qualquer sequência
+manual de `UPDATE organizacao_id`; eles não implementam este caso de uso. A futura
+UC732 deverá operar por migration ou procedure administrativa versionada:
+
+1. identificar e bloquear o grafo completo e impedir novas escritas concorrentes;
+2. exigir organização de destino ativa, ator, motivo e identificador do lote;
+3. simular unicidades normalizadas e validar owners de todos os pais e consumers;
+4. adicionar primeiro os carriers de owner nullable que ainda não existirem;
+5. substituir os guards somente dentro da transação controlada e migrar raiz,
+   filhos e consumers como uma unidade indivisível;
+6. persistir auditoria e relatório de conflitos sem copiar PII desnecessária;
+7. restabelecer e validar FKs/guards antes do commit; qualquer falha desfaz o lote.
+
+Depois da reconciliação completa e comprovada, migrations próprias podem aplicar
+`NOT NULL` e remover guards temporários. Até lá, não existe backfill manual seguro.
+
 ### 5.4 UC733 — Executar rota compatível com contexto organizacional
 
 **Atores:** consumidor existente autenticado.
@@ -429,6 +445,16 @@ sequenceDiagram
 - backfill reiniciável, auditável e sem efeitos parciais;
 - ausência de owner não pode derrubar a aplicação nem aparecer no tenant errado.
 
+Para os retrofits marcados como incompatíveis com overlap, o rollout é coordenado:
+
+1. produzir backup/checkpoint recuperável e executar consultas de invariantes;
+2. fechar escritas e drenar todas as instâncias HTTP, schedulers e workers antigos;
+3. confirmar zero processos da versão anterior antes de executar Flyway;
+4. aplicar a migration e executar `flyway validate`, Hibernate `validate` e smoke tests;
+5. iniciar somente binários compatíveis e verificar as invariantes novamente;
+6. reabrir escritas e tráfego. O rollback é lógico; a versão antiga não deve ser
+   reiniciada depois que existirem linhas tenant-aware.
+
 ### 10.4 Usabilidade
 
 - shell único, sem esconder capacidades permanentes;
@@ -547,3 +573,11 @@ de `organizacao_id` em Cargo ou Funcionário. Como os guards são imediatos, ele
 constituem um mecanismo de backfill: UC732 deverá substituí-los somente dentro de
 uma migration/procedure administrativa auditada, migrar o grafo inteiro na mesma
 unidade transacional e restabelecer as invariantes antes do commit.
+
+A V47 aplica a mesma disciplina ao agregado de Fornecedor. Se Nota de Entrada,
+`conta_pagar`, `contas_pagar_avulsa` ou `produto_fornecedor` já apontarem para um
+Fornecedor tenant-aware, o upgrade falha com a constraint lógica específica. O
+mesmo ocorre quando condição de pagamento ou transportadora divergem do owner da
+raiz. Após os preflights, `ck_fornecedor_owner_imutavel` bloqueia troca, remoção ou
+atribuição direta de owner. O mecanismo futuro de UC732 deverá substituir o guard
+somente dentro do procedimento transacional descrito acima.

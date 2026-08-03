@@ -182,3 +182,10 @@ upgrade qualquer grafo Cargo–Funcionário com owners divergentes e torna fisic
 imutável `organizacao_id` de Cargo e Funcionário. O backfill histórico permanece
 bloqueado até UC732 oferecer operação administrativa explícita, auditável e
 transacional; nenhuma associação automática é realizada.
+
+A V47 complementa Fornecedor sem alterar V42/V44: antes de instalar o guard de
+owner, aborta o upgrade se algum dos quatro consumers globais já apontar para
+fornecedor tenant-aware ou se condição de pagamento/transportadora tiver owner
+divergente. `organizacao_id` de Fornecedor torna-se fisicamente imutável, inclusive
+no caminho `NULL -> tenant`; a reconciliação permanece reservada à UC732. O rollout
+continua coordenado e sem overlap de binários antigos.

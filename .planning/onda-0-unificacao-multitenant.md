@@ -26,7 +26,8 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
    implicitamente a papéis operacionais.
 4. Criar o padrão de teste de isolamento reutilizável. **Concluído em 2026-08-03.**
 5. Migrar formas e condições de pagamento como primeira dependência empresarial. **Concluído na V38.**
-6. Migrar clientes, logística e fornecedores. **Cliente V40, Transportadora V41, Fornecedor V42 e hardening V44 concluídos; frota logística pendente.**
+6. Migrar clientes, logística e fornecedores. **Cliente V40, Transportadora V41,
+   Fornecedor V42 e hardenings V44/V47 concluídos; frota logística pendente.**
 7. Migrar RH incrementalmente. **Cargo V43, Funcionário V45 e hardening de ownership V46 concluídos; vínculo laboral canônico permanece pendente.**
 8. Prosseguir pela ordem registrada em `22-unificacao-multitenant.md`.
 
@@ -45,6 +46,11 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 ## Riscos controlados
 
 - Nenhum backfill automático de ownership.
+- Backfill futuro somente por UC732 transacional: grafo bloqueado, simulação de
+  conflitos, ator/motivo/lote auditados e invariantes restabelecidas antes do commit.
+- Rollout de retrofit coordenado e sem overlap: backup, bloqueio de escrita,
+  drenagem de HTTP/workers, Flyway/validate, subida do binário novo e smoke antes
+  da reabertura; não reiniciar binário antigo após dados tenant-aware.
 - Nenhuma migration aplicada ao banco local com checksum divergente.
 - Nenhuma remoção de rota ou menu como substituto de autorização.
 - Nenhuma criação de Ordem de Compra/Serviço antes do respectivo contrato de domínio.
