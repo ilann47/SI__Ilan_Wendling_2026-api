@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]]
 
 # Core do Estacionamento Kaneko
 
@@ -52,6 +52,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[idempotencia]] — execução única de comandos críticos por tenant e identidade.
 - [[outbox]] — fatos de domínio persistidos atomicamente para publicação confiável.
 - [[bloqueios]] — condições externas e decisões pendentes que limitam a entrega.
+- [[dados-demo]] — cenário local opt-in criado pelos serviços reais do domínio.
 
 ## Histórico
 
@@ -87,3 +88,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-01 | Expõe o feed tenant-aware de tentativas de acesso sob `audit:read`. |
 | 2026-08-01 | Distingue validação, check-in e check-out no agregado de tentativa. |
 | 2026-08-02 | Centraliza bloqueios e condições objetivas de retomada da fase de eventos. |
+| 2026-08-03 | Adiciona seed local idempotente do fluxo de eventos, desativado por padrão. |

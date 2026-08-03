@@ -17,7 +17,8 @@
     {"id": "pedidos", "type": "file", "file": "pedidos.md", "x": 4000, "y": 0, "width": 360, "height": 220},
     {"id": "credenciais", "type": "file", "file": "credenciais.md", "x": 4500, "y": 0, "width": 360, "height": 220},
     {"id": "acesso", "type": "file", "file": "acesso.md", "x": 5000, "y": 0, "width": 360, "height": 220},
-    {"id": "bloqueios", "type": "file", "file": "bloqueios.md", "x": 5000, "y": 320, "width": 360, "height": 220}
+    {"id": "bloqueios", "type": "file", "file": "bloqueios.md", "x": 5000, "y": 320, "width": 360, "height": 220},
+    {"id": "dados-demo", "type": "file", "file": "dados-demo.md", "x": 0, "y": 640, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -72,6 +73,8 @@
     {"id": "inventario-acesso", "fromNode": "inventario", "fromSide": "right", "toNode": "acesso", "toSide": "left", "label": "ocupação serializada"},
     {"id": "rbac-acesso", "fromNode": "rbac", "fromSide": "right", "toNode": "acesso", "toSide": "left", "label": "access:operate/checkin"},
     {"id": "acesso-outbox", "fromNode": "acesso", "fromSide": "left", "toNode": "outbox", "toSide": "right", "label": "decisões e efeitos"},
-    {"id": "core-bloqueios", "fromNode": "core", "fromSide": "bottom", "toNode": "bloqueios", "toSide": "top", "label": "condições de retomada"}
+    {"id": "core-bloqueios", "fromNode": "core", "fromSide": "bottom", "toNode": "bloqueios", "toSide": "top", "label": "condições de retomada"},
+    {"id": "core-dados-demo", "fromNode": "core", "fromSide": "bottom", "toNode": "dados-demo", "toSide": "top", "label": "inicialização local"},
+    {"id": "dados-demo-eventos", "fromNode": "dados-demo", "fromSide": "right", "toNode": "eventos", "toSide": "bottom", "label": "cenário executável"}
   ]
 }

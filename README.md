@@ -112,6 +112,7 @@ Todas têm um valor padrão de desenvolvimento (nada é obrigatório para rodar 
 | `APP_JWT_EXP_MIN`      | `480`                           | Validade do token, em minutos               |
 | `APP_JWT_ISSUER`       | `estacionamento-kaneko`         | Emissor esperado nos novos tokens           |
 | `APP_JWT_AUDIENCE`     | `estacionamento-kaneko-api`     | Audiência esperada nos novos tokens          |
+| `APP_DEMO_DATA_ENABLED` | `false`                         | Cria o cenário local idempotente de eventos  |
 | `APP_INVENTORY_HOLD_MINUTES` | `15`                    | Duração de um hold de inventário              |
 | `APP_INVENTORY_EXPIRATION_ENABLED` | `true`              | Habilita o job interno de expiração           |
 | `APP_INVENTORY_EXPIRATION_SWEEP_MS` | `30000`             | Intervalo do job de expiração, em ms          |
@@ -128,6 +129,26 @@ A API sobe em `http://localhost:8086`.
 - **Swagger UI:** http://localhost:8086/swagger-ui.html
 - **OpenAPI JSON:** http://localhost:8086/v3/api-docs
 - **Health check:** http://localhost:8086/actuator/health
+
+### Dados de demonstração para eventos
+
+O seed local é opt-in e usa os mesmos application services, validações,
+auditoria, idempotência e outbox do fluxo HTTP. Para ativá-lo no PowerShell:
+
+```powershell
+$env:APP_DEMO_DATA_ENABLED='true'
+.\mvnw.cmd spring-boot:run
+```
+
+Em banco vazio, defina `APP_ADMIN_LOGIN` e `APP_ADMIN_SENHA` no ambiente antes
+da primeira subida; nenhuma senha do seed é versionada. O cenário vincula esse
+administrador a uma organização demo e cria geografia, venue, pátio, setor,
+12 vagas, evento, alocação, produto e lote. O evento termina em
+`VENDAS_ABERTAS`. Os IDs são registrados no log, mas senhas e tokens nunca são.
+
+O marcador idempotente é o CNPJ da organização demo. Repetir a inicialização
+não duplica o cenário. O arquivo legado `database/seed.sql` não participa desse
+fluxo e não deve ser usado sobre o schema Flyway atual.
 
 ## Autenticação
 
