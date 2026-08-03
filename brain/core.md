@@ -59,7 +59,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[clientes]] — cadastro de clientes com privacidade e ownership organizacional.
 - [[logistica]] — transportadoras isoladas por organização e preparadas para frota e fornecedores.
 - [[fornecedores]] — fornecedores, contatos e referências comerciais do tenant.
-- [[rh]] — cargos tenant-aware e compatibilidade controlada com funcionários históricos.
+- [[rh]] — cargos e funcionários tenant-aware com compatibilidade histórica controlada.
 
 ## Histórico
 
@@ -103,3 +103,5 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Migra transportadoras e sua condição de pagamento para tenancy real. |
 | 2026-08-03 | Migra fornecedores, contatos derivados e referências comerciais para tenancy real. |
 | 2026-08-03 | Migra Cargo para ownership organizacional e RBAC contextual de RH. |
+| 2026-08-03 | Migra Funcionário para ownership organizacional e preserva Usuário global. |
+| 2026-08-03 | Torna imutável no PostgreSQL o ownership de Cargo e Funcionário. |

@@ -101,7 +101,7 @@
     {"id": "logistica-fornecedores", "fromNode": "logistica", "fromSide": "right", "toNode": "fornecedores", "toSide": "left", "label": "transportadora padrão"},
     {"id": "pagamentos-fornecedores", "fromNode": "pagamentos-cadastrais", "fromSide": "right", "toNode": "fornecedores", "toSide": "left", "label": "condição tenant"},
     {"id": "rbac-fornecedores", "fromNode": "rbac", "fromSide": "right", "toNode": "fornecedores", "toSide": "left", "label": "suppliers:read/manage"},
-    {"id": "unificacao-rh", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "rh", "toSide": "left", "label": "ownership de Cargo"},
+    {"id": "unificacao-rh", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "rh", "toSide": "left", "label": "ownership de RH"},
     {"id": "rbac-rh", "fromNode": "rbac", "fromSide": "right", "toNode": "rh", "toSide": "left", "label": "workforce:read/manage"},
     {"id": "rh-auditoria", "fromNode": "rh", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção RH"}
   ]

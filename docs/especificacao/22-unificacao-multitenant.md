@@ -532,3 +532,18 @@ por organização e registra mutações com retenção RH. Cargos históricos co
 com owner nulo; `FuncionarioService` e a proteção temporária no PostgreSQL não
 permitem que Funcionário global referencie Cargo tenant-owned antes de sua
 própria migração.
+
+A V45 conclui o retrofit cadastral de Funcionário: a rota preservada
+`/api/funcionarios` deriva owner do JWT, reutiliza `workforce:read/manage`, exige
+Cargo do mesmo tenant e aplica CPF normalizado único por organização. O histórico
+sem owner permanece intacto e invisível; `Usuario`, identidade global, só resolve
+Funcionário também histórico até o vínculo laboral canônico por Membership.
+Condição de pagamento não existe no modelo AS-IS/TARGET de Funcionário e, por
+isso, não foi criada nem relacionada nesta migration.
+
+A V46 executa preflight retroativo do grafo Cargo–Funcionário e aborta o upgrade
+se houver owners divergentes. Também proíbe no PostgreSQL qualquer mudança direta
+de `organizacao_id` em Cargo ou Funcionário. Como os guards são imediatos, eles não
+constituem um mecanismo de backfill: UC732 deverá substituí-los somente dentro de
+uma migration/procedure administrativa auditada, migrar o grafo inteiro na mesma
+unidade transacional e restabelecer as invariantes antes do commit.

@@ -102,3 +102,5 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 | 2026-08-03 | Migra Fornecedor e fecha condition/transportadora com FKs compostas. |
 | 2026-08-03 | Fecha consumers globais e torna explícito o rollout sem overlap das versões. |
 | 2026-08-03 | Migra Cargo e mantém Funcionário global restrito ao catálogo histórico. |
+| 2026-08-03 | Migra Funcionário e restringe o consumer global de Usuário ao histórico. |
+| 2026-08-03 | Bloqueia troca/backfill direto de owner em Cargo e Funcionário até UC732. |

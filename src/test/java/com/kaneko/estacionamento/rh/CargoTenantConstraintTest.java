@@ -59,7 +59,7 @@ class CargoTenantConstraintTest {
                     (nome, tipo, cpf, cargo_id, data_admissao, ativo, created_at, updated_at)
                 VALUES ('Funcionario', 'FISICA', '12345678901', ?, CURRENT_DATE,
                         true, now(), now())
-                """, cargoId), "23503", "fk_funcionario_cargo_owner");
+                """, cargoId), "23503", "fk_funcionario_cargo_organizacao");
     }
 
     private Long inserir(Long organizacaoId, String nome) {

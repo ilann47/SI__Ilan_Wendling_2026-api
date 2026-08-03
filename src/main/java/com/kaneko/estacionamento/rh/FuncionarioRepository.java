@@ -4,20 +4,32 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-/**
- * Repositorio de {@link Funcionario}. Suporta filtros dinamicos via
- * {@link JpaSpecificationExecutor}; a busca por id carrega cargo, cidade e
- * nacionalidade via {@link EntityGraph}.
- */
+/** Repositorio tenant-aware de {@link Funcionario}. */
 public interface FuncionarioRepository extends JpaRepository<Funcionario, Long>,
         JpaSpecificationExecutor<Funcionario> {
 
-    /** Unicidade do CPF (uq_funcionario_cpf). */
-    boolean existsByCpf(String cpf);
+    @EntityGraph(attributePaths = {"cargo", "cidade"})
+    Optional<Funcionario> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
-    /** Mesma checagem, ignorando o proprio registro — usado em alteracoes. */
-    boolean existsByCpfAndIdNot(String cpf, Long id);
+    @EntityGraph(attributePaths = {"cargo", "cidade"})
+    Optional<Funcionario> findByIdAndOrganizacaoIdIsNull(Long id);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM funcionario f
+                WHERE f.organizacao_id = :organizacaoId
+                  AND regexp_replace(f.cpf, '[^0-9]', '', 'g') = :cpf
+                  AND (CAST(:idIgnorado AS BIGINT) IS NULL OR f.id <> :idIgnorado)
+            )
+            """, nativeQuery = true)
+    boolean existeCpf(
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("cpf") String cpf,
+            @Param("idIgnorado") Long idIgnorado);
 
     @Override
     @EntityGraph(attributePaths = {"cargo", "cidade"})

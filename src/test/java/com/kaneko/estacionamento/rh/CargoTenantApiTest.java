@@ -112,14 +112,15 @@ class CargoTenantApiTest {
     }
 
     @Test
-    void funcionarioGlobalNaoReferenciaCargoTenant() throws Exception {
+    void funcionarioTenantReferenciaCargoDoMesmoTenant() throws Exception {
         long cargoId = criar(tenantA, "Cargo tenant");
         mvc.perform(post("/api/funcionarios")
                         .header("Authorization", tenantA.tokenContextual())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nome\":\"Funcionario\",\"cpf\":\"12345678901\","
                                 + "\"cargoId\":" + cargoId + "}"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.cargoId").value(cargoId));
     }
 
     @Test

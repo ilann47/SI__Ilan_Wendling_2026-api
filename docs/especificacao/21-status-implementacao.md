@@ -170,3 +170,15 @@ deixa de persistir nome e limite de crédito nos snapshots. O rollout desta etap
 é operacionalmente **sem overlap**: todas as instâncias antigas devem ser
 drenadas antes de habilitar escrita tenant-aware, pois a versão antiga não conhece
 o filtro de organização.
+
+A V45 migra Funcionário para ownership organizacional, CPF normalizado único por
+tenant, Cargo do mesmo owner, RBAC `workforce:read/manage` e auditoria RH com
+snapshot mínimo. Funcionários históricos permanecem sem owner; `UsuarioService`
+e constraints temporárias permitem ao Usuário global somente esse histórico.
+`condicao_pagamento` não integra o modelo de Funcionário e não foi adicionada.
+
+A V46 complementa a fronteira de RH sem alterar migrations anteriores: recusa no
+upgrade qualquer grafo Cargo–Funcionário com owners divergentes e torna fisicamente
+imutável `organizacao_id` de Cargo e Funcionário. O backfill histórico permanece
+bloqueado até UC732 oferecer operação administrativa explícita, auditável e
+transacional; nenhuma associação automática é realizada.
