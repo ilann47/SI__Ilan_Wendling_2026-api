@@ -29,6 +29,9 @@ import lombok.Setter;
 @Setter
 public class Transportadora extends BaseEntity {
 
+    @Column(name = "organizacao_id")
+    private Long organizacaoId;
+
     @Column(name = "nome", nullable = false, length = 150)
     private String nome;
 

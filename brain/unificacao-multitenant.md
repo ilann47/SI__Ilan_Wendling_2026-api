@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[eventos]] · [[dados-demo]] · [[bloqueios]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]]
+> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[eventos]] · [[dados-demo]] · [[bloqueios]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]]
 
 # Unificação Multi-Tenant
 
@@ -96,3 +96,4 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 | 2026-08-03 | Cria suporte de teste para login, Membership, contexto JWT e constraints nomeadas. |
 | 2026-08-03 | Conclui a primeira fatia vertical com formas, condições e parcelas tenant-aware. |
 | 2026-08-03 | Migra Cliente como primeira raiz de pessoas da Onda 1. |
+| 2026-08-03 | Migra Transportadora antes de Fornecedor para fechar a dependência logística. |

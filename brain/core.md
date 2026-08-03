@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]]
 
 # Core do Estacionamento Kaneko
 
@@ -57,6 +57,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[testes-multitenancy]] — fixtures de JWT contextual e asserções de integridade PostgreSQL.
 - [[pagamentos-cadastrais]] — formas, condições e parcelas isoladas por organização.
 - [[clientes]] — cadastro de clientes com privacidade e ownership organizacional.
+- [[logistica]] — transportadoras isoladas por organização e preparadas para frota e fornecedores.
 
 ## Histórico
 
@@ -97,3 +98,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Adiciona a fundação reutilizável de testes tenant-aware e constraints PostgreSQL. |
 | 2026-08-03 | Migra formas e condições de pagamento para ownership e RBAC contextual. |
 | 2026-08-03 | Migra clientes e sua referência de condição de pagamento para tenancy real. |
+| 2026-08-03 | Migra transportadoras e sua condição de pagamento para tenancy real. |

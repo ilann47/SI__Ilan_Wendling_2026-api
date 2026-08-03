@@ -26,7 +26,7 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
    implicitamente a papéis operacionais.
 4. Criar o padrão de teste de isolamento reutilizável. **Concluído em 2026-08-03.**
 5. Migrar formas e condições de pagamento como primeira dependência empresarial. **Concluído na V38.**
-6. Migrar clientes e fornecedores. **Cliente concluído na V40; fornecedor pendente.**
+6. Migrar clientes, logística e fornecedores. **Cliente concluído na V40; Transportadora concluída na V41 para fechar a dependência; fornecedor pendente.**
 7. Prosseguir pela ordem registrada em `22-unificacao-multitenant.md`.
 
 ## Verificação por entrega

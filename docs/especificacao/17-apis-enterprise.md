@@ -311,3 +311,14 @@ O cadastro de clientes mantém a mesma estratégia:
 Condição de pagamento é validada pelo mesmo `organizacaoId`; cidade permanece
 catálogo global. O contrato rejeita campos desconhecidos e retorna `404` para
 cliente ou condição de outro tenant.
+
+Transportadoras preservam a rota anterior e passam a compor o contexto de Logística:
+
+| Método e rota preservada | Permissão | Semântica tenant-aware |
+|---|---|---|
+| `GET /api/transportadoras[/{id}]` | `logistics:read` | lista/busca somente transportadoras da organização ativa |
+| `POST/PUT/DELETE /api/transportadoras[/{id}]` | `logistics:manage` | cria, altera ou inativa no tenant; condição deve pertencer à mesma organização |
+
+Cidade continua global. Registros históricos sem owner não entram nas consultas
+contextuais; frota e vínculos antigos continuam restritos a transportadoras
+históricas até a migração vertical correspondente.

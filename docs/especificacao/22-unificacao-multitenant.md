@@ -507,3 +507,9 @@ fecha o DTO contra campos desconhecidos, aplica `customers:read/manage` e exige
 condição de pagamento da mesma organização. Documento continua único dentro do
 tenant e também entre linhas históricas enquanto o backfill não ocorre. Consumers
 globais aceitam somente clientes sem owner até suas respectivas migrations.
+
+A V41 migra Transportadora como dependência imediata de Fornecedor. O documento
+fica único por organização, a condição de pagamento exige o mesmo owner e as
+rotas `/api/transportadoras` passam a usar `logistics:read/manage`. Frota e o
+vínculo N:N não foram antecipados: seus serviços continuam aceitando somente
+transportadoras históricas até a próxima fatia de Logística.

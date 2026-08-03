@@ -150,6 +150,8 @@ organização, referências de parcela usam FKs compostas e as URLs legadas exig
 fecha o caminho `NULL → tenant` nas parcelas e limita consumers ainda globais a
 catálogos históricos. A V40 migra Cliente com `customers:read/manage`, documento
 único por organização, condição de pagamento composta e auditoria de privacidade.
-Consumers ainda globais resolvem apenas clientes históricos. Fornecedor é a
-próxima raiz da adaptação vertical; nenhum dado histórico será associado
-automaticamente a uma organização.
+Consumers ainda globais resolvem apenas clientes históricos. A V41 migra
+Transportadora com `logistics:read/manage`, documento local ao tenant, condição
+composta e auditoria de privacidade. Fornecedor e o vínculo de frota ainda
+global resolvem somente transportadoras históricas. Fornecedor é a próxima raiz
+da adaptação vertical; nenhum dado histórico será associado automaticamente.

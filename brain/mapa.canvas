@@ -22,7 +22,8 @@
     {"id": "unificacao-multitenant", "type": "file", "file": "unificacao-multitenant.md", "x": 5500, "y": 160, "width": 360, "height": 220},
     {"id": "testes-multitenancy", "type": "file", "file": "testes-multitenancy.md", "x": 5500, "y": 480, "width": 360, "height": 220},
     {"id": "pagamentos-cadastrais", "type": "file", "file": "pagamentos-cadastrais.md", "x": 6000, "y": 160, "width": 360,"height": 220},
-    {"id": "clientes", "type": "file", "file": "clientes.md", "x": 6500, "y": 160, "width": 360, "height": 220}
+    {"id": "clientes", "type": "file", "file": "clientes.md", "x": 6500, "y": 160, "width": 360, "height": 220},
+    {"id": "logistica", "type": "file", "file": "logistica.md", "x": 7000, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -91,6 +92,9 @@
     {"id": "testes-pagamentos", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "pagamentos-cadastrais", "toSide": "left", "label": "isolamento e FKs"},
     {"id": "pagamentos-clientes", "fromNode": "pagamentos-cadastrais", "fromSide": "right", "toNode": "clientes", "toSide": "left", "label": "condição tenant"},
     {"id": "rbac-clientes", "fromNode": "rbac", "fromSide": "right", "toNode": "clientes", "toSide": "left", "label": "customers:read/manage"},
-    {"id": "testes-clientes", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "clientes", "toSide": "left", "label": "isolamento e privacidade"}
+    {"id": "testes-clientes", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "clientes", "toSide": "left", "label": "isolamento e privacidade"},
+    {"id": "pagamentos-logistica", "fromNode": "pagamentos-cadastrais", "fromSide": "right", "toNode": "logistica", "toSide": "left", "label": "condição tenant"},
+    {"id": "rbac-logistica", "fromNode": "rbac", "fromSide": "right", "toNode": "logistica", "toSide": "left", "label": "logistics:read/manage"},
+    {"id": "testes-logistica", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "logistica", "toSide": "left", "label": "isolamento e FKs"}
   ]
 }

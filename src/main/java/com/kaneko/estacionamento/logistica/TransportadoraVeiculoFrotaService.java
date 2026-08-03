@@ -71,7 +71,7 @@ public class TransportadoraVeiculoFrotaService {
     }
 
     private Transportadora buscarTransportadora(Long id) {
-        return transportadoraRepository.findById(id)
+        return transportadoraRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Transportadora", id));
     }
 
