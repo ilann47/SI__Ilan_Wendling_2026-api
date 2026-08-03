@@ -1,11 +1,14 @@
 package com.kaneko.estacionamento.pessoas;
 
+import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
 import com.kaneko.estacionamento.pessoas.dto.ClienteRequest;
 import com.kaneko.estacionamento.pessoas.dto.ClienteResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,33 +34,48 @@ public class ClienteController {
     }
 
     @GetMapping
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('customers:read', authentication)")
     public Page<ClienteResponse> listar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) String documento,
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable) {
-        return service.listar(nome, documento, ativo, pageable);
+        return service.listar(principal.organizacaoId(), nome, documento, ativo, pageable);
     }
 
     @GetMapping("/{id}")
-    public ClienteResponse buscar(@PathVariable Long id) {
-        return ClienteResponse.from(service.buscar(id));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('customers:read', authentication)")
+    public ClienteResponse buscar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        return ClienteResponse.from(service.buscar(principal.organizacaoId(), id));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ClienteResponse criar(@Valid @RequestBody ClienteRequest req) {
-        return ClienteResponse.from(service.criar(req));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('customers:manage', authentication)")
+    public ClienteResponse criar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @Valid @RequestBody ClienteRequest req) {
+        return ClienteResponse.from(service.criar(principal.organizacaoId(), req));
     }
 
     @PutMapping("/{id}")
-    public ClienteResponse atualizar(@PathVariable Long id, @Valid @RequestBody ClienteRequest req) {
-        return ClienteResponse.from(service.atualizar(id, req));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('customers:manage', authentication)")
+    public ClienteResponse atualizar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id,
+            @Valid @RequestBody ClienteRequest req) {
+        return ClienteResponse.from(service.atualizar(principal.organizacaoId(), id, req));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void excluir(@PathVariable Long id) {
-        service.excluir(id);
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('customers:manage', authentication)")
+    public void excluir(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        service.excluir(principal.organizacaoId(), id);
     }
 }

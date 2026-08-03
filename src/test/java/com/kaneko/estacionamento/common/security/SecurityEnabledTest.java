@@ -80,7 +80,7 @@ class SecurityEnabledTest {
         // /api/usuarios e ADMIN-only; o operador prova o token contra uma rota
         // acessivel a ele (cadastro geral). A autorizacao por perfil tem cobertura
         // dedicada em AutorizacaoPerfilTest.
-        mvc.perform(get("/api/clientes").header("Authorization", "Bearer " + token))
+        mvc.perform(get("/api/categorias").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }
 }

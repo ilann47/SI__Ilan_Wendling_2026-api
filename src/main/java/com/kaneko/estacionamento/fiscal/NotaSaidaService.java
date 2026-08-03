@@ -65,7 +65,7 @@ public class NotaSaidaService {
 
     @Transactional
     public NotaSaida criar(NotaSaidaRequest req) {
-        Cliente cliente = clienteRepository.findById(req.clienteId())
+        Cliente cliente = clienteRepository.findByIdAndOrganizacaoIdIsNull(req.clienteId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", req.clienteId()));
         if (Boolean.FALSE.equals(cliente.getAtivo())) {
             throw new ConflitoException("O cliente está inativo e não pode receber notas.");

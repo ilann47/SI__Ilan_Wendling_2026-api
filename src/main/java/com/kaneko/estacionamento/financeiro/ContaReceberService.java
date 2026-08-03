@@ -53,7 +53,7 @@ public class ContaReceberService {
     @Transactional
     public ContaReceber criar(ContaReceberRequest req) {
         ContaReceber conta = new ContaReceber();
-        Cliente cliente = clienteRepository.findById(req.clienteId())
+        Cliente cliente = clienteRepository.findByIdAndOrganizacaoIdIsNull(req.clienteId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", req.clienteId()));
         conta.setCliente(cliente);
         if (req.condicaoPagamentoId() != null) {

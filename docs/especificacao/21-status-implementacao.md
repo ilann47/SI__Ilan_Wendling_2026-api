@@ -148,5 +148,8 @@ organização, referências de parcela usam FKs compostas e as URLs legadas exig
 `payments:read/manage`. Linhas históricas permanecem com owner nulo e invisíveis
 às consultas tenant. A V39 mantém a unicidade anterior das linhas sem owner,
 fecha o caminho `NULL → tenant` nas parcelas e limita consumers ainda globais a
-catálogos históricos. Clientes e fornecedores são as próximas raízes da adaptação
-vertical; nenhum dado histórico será associado automaticamente a uma organização.
+catálogos históricos. A V40 migra Cliente com `customers:read/manage`, documento
+único por organização, condição de pagamento composta e auditoria de privacidade.
+Consumers ainda globais resolvem apenas clientes históricos. Fornecedor é a
+próxima raiz da adaptação vertical; nenhum dado histórico será associado
+automaticamente a uma organização.

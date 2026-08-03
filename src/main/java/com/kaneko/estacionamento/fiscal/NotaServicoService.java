@@ -116,7 +116,7 @@ public class NotaServicoService {
     }
 
     private void aplicar(NotaServico nota, NotaServicoRequest req) {
-        Cliente cliente = clienteRepository.findById(req.clienteId())
+        Cliente cliente = clienteRepository.findByIdAndOrganizacaoIdIsNull(req.clienteId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", req.clienteId()));
         nota.setCliente(cliente);
         nota.setServico(req.servicoId() != null

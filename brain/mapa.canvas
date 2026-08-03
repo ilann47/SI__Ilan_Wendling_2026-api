@@ -21,7 +21,8 @@
     {"id": "dados-demo", "type": "file", "file": "dados-demo.md", "x": 0, "y": 640, "width": 360, "height": 220},
     {"id": "unificacao-multitenant", "type": "file", "file": "unificacao-multitenant.md", "x": 5500, "y": 160, "width": 360, "height": 220},
     {"id": "testes-multitenancy", "type": "file", "file": "testes-multitenancy.md", "x": 5500, "y": 480, "width": 360, "height": 220},
-    {"id": "pagamentos-cadastrais", "type": "file", "file": "pagamentos-cadastrais.md", "x": 6000, "y": 160, "width": 360, "height": 220}
+    {"id": "pagamentos-cadastrais", "type": "file", "file": "pagamentos-cadastrais.md", "x": 6000, "y": 160, "width": 360,"height": 220},
+    {"id": "clientes", "type": "file", "file": "clientes.md", "x": 6500, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -87,6 +88,9 @@
     {"id": "testes-rbac", "fromNode": "testes-multitenancy", "fromSide": "left", "toNode": "rbac", "toSide": "right", "label": "permissões reais"},
     {"id": "unificacao-pagamentos", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "pagamentos-cadastrais", "toSide": "left", "label": "primeira fatia"},
     {"id": "rbac-pagamentos", "fromNode": "rbac", "fromSide": "right", "toNode": "pagamentos-cadastrais", "toSide": "left", "label": "payments:read/manage"},
-    {"id": "testes-pagamentos", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "pagamentos-cadastrais", "toSide": "left", "label": "isolamento e FKs"}
+    {"id": "testes-pagamentos", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "pagamentos-cadastrais", "toSide": "left", "label": "isolamento e FKs"},
+    {"id": "pagamentos-clientes", "fromNode": "pagamentos-cadastrais", "fromSide": "right", "toNode": "clientes", "toSide": "left", "label": "condição tenant"},
+    {"id": "rbac-clientes", "fromNode": "rbac", "fromSide": "right", "toNode": "clientes", "toSide": "left", "label": "customers:read/manage"},
+    {"id": "testes-clientes", "fromNode": "testes-multitenancy", "fromSide": "right", "toNode": "clientes", "toSide": "left", "label": "isolamento e privacidade"}
   ]
 }

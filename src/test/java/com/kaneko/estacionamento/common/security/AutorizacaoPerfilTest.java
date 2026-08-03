@@ -102,7 +102,7 @@ class AutorizacaoPerfilTest {
 
     @Test
     void operadorAcessaCadastrosGerais() throws Exception {
-        mvc.perform(get("/api/clientes").header("Authorization", tokenOperador))
+        mvc.perform(get("/api/categorias").header("Authorization", tokenOperador))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/movimentacoes/patio").header("Authorization", tokenOperador))
                 .andExpect(status().isOk());
@@ -126,7 +126,7 @@ class AutorizacaoPerfilTest {
     @Test
     void adminPassaNaAutorizacaoDeExclusao() throws Exception {
         // Admin nao e barrado por role; o 404 prova que chegou ao handler (id inexistente).
-        mvc.perform(delete("/api/clientes/999999").header("Authorization", tokenAdmin))
+        mvc.perform(delete("/api/categorias/999999").header("Authorization", tokenAdmin))
                 .andExpect(status().isNotFound());
     }
 

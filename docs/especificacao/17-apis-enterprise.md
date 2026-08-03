@@ -300,3 +300,14 @@ O primeiro contrato legado migrado é o catálogo cadastral de pagamento:
 Esses contratos rejeitam contexto global por RBAC, respondem `404` para recurso
 de outra organização e não expõem `organizationId` no payload. Registros
 históricos sem owner ficam preservados, mas fora das consultas tenant.
+
+O cadastro de clientes mantém a mesma estratégia:
+
+| Método e rota preservada | Permissão | Semântica tenant-aware |
+|---|---|---|
+| `GET /api/clientes[/{id}]` | `customers:read` | lista/busca somente clientes da organização ativa |
+| `POST/PUT/DELETE /api/clientes[/{id}]` | `customers:manage` | cria, altera ou inativa somente no contexto ativo |
+
+Condição de pagamento é validada pelo mesmo `organizacaoId`; cidade permanece
+catálogo global. O contrato rejeita campos desconhecidos e retorna `404` para
+cliente ou condição de outro tenant.

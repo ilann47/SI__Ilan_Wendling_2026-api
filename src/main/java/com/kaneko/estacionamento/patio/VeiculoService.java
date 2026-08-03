@@ -89,7 +89,7 @@ public class VeiculoService {
     }
 
     private Cliente buscarCliente(Long clienteId) {
-        return clienteRepository.findById(clienteId)
+        return clienteRepository.findByIdAndOrganizacaoIdIsNull(clienteId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", clienteId));
     }
 }

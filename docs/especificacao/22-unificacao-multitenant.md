@@ -501,3 +501,9 @@ legado sem owner, rejeita `NULL → tenant` no agregado de parcelas, fecha DTOs
 contra campos desconhecidos e restringe consumers ainda globais a formas e
 condições também históricas. Um teste de schema isolado executa V1→V37, persiste
 o grafo histórico e valida V38→V39 sem alterar IDs ou relacionamentos.
+
+A V40 migra Cliente como raiz tenant direta, conserva a URL `/api/clientes`,
+fecha o DTO contra campos desconhecidos, aplica `customers:read/manage` e exige
+condição de pagamento da mesma organização. Documento continua único dentro do
+tenant e também entre linhas históricas enquanto o backfill não ocorre. Consumers
+globais aceitam somente clientes sem owner até suas respectivas migrations.

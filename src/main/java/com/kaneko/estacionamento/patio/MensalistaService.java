@@ -134,7 +134,7 @@ public class MensalistaService {
     }
 
     private Cliente buscarCliente(Long clienteId) {
-        Cliente cliente = clienteRepository.findById(clienteId)
+        Cliente cliente = clienteRepository.findByIdAndOrganizacaoIdIsNull(clienteId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", clienteId));
         if (Boolean.FALSE.equals(cliente.getAtivo())) {
             throw new ConflitoException(
