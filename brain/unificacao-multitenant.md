@@ -1,4 +1,4 @@
-> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[eventos]] · [[dados-demo]] · [[bloqueios]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]]
+> Links: [[core]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[eventos]] · [[dados-demo]] · [[bloqueios]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]]
 
 # Unificação Multi-Tenant
 
@@ -98,3 +98,4 @@ Flyway deve ser testado em banco limpo e em upgrade V37 → latest; Hibernate
 | 2026-08-03 | Migra Cliente como primeira raiz de pessoas da Onda 1. |
 | 2026-08-03 | Migra Transportadora antes de Fornecedor para fechar a dependência logística. |
 | 2026-08-03 | Migra Fornecedor e fecha condition/transportadora com FKs compostas. |
+| 2026-08-03 | Migra Cargo e mantém Funcionário global restrito ao catálogo histórico. |

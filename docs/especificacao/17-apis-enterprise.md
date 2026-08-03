@@ -332,3 +332,14 @@ Fornecedores seguem o mesmo contrato compatível:
 
 E-mails e telefones permanecem componentes do agregado. Cidade é global; dados
 históricos sem owner ficam fora das consultas contextuais.
+
+Cargos iniciam a migração vertical de RH sem antecipar o ownership de Funcionário:
+
+| Método e rota preservada | Permissão | Semântica tenant-aware |
+|---|---|---|
+| `GET /api/cargos[/{id}]` | `workforce:read` | lista/busca somente cargos da organização ativa |
+| `POST/PUT/DELETE /api/cargos[/{id}]` | `workforce:manage` | cria, altera ou inativa somente no tenant ativo |
+
+O payload é fechado e não aceita `organizationId`. Cargos históricos permanecem
+sem owner e invisíveis à API contextual; enquanto Funcionário não for migrado,
+seu fluxo global aceita somente cargos também históricos.

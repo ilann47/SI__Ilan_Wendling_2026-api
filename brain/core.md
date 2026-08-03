@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]]
 
 # Core do Estacionamento Kaneko
 
@@ -59,6 +59,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[clientes]] — cadastro de clientes com privacidade e ownership organizacional.
 - [[logistica]] — transportadoras isoladas por organização e preparadas para frota e fornecedores.
 - [[fornecedores]] — fornecedores, contatos e referências comerciais do tenant.
+- [[rh]] — cargos tenant-aware e compatibilidade controlada com funcionários históricos.
 
 ## Histórico
 
@@ -101,3 +102,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Migra clientes e sua referência de condição de pagamento para tenancy real. |
 | 2026-08-03 | Migra transportadoras e sua condição de pagamento para tenancy real. |
 | 2026-08-03 | Migra fornecedores, contatos derivados e referências comerciais para tenancy real. |
+| 2026-08-03 | Migra Cargo para ownership organizacional e RBAC contextual de RH. |

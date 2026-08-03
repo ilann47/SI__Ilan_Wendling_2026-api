@@ -109,7 +109,7 @@ public class FuncionarioService {
     }
 
     private Cargo buscarCargo(Long cargoId) {
-        return cargoRepository.findById(cargoId)
+        return cargoRepository.findByIdAndOrganizacaoIdIsNull(cargoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cargo", cargoId));
     }
 

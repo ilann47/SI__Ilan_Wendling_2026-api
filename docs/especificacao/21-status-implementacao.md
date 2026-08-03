@@ -157,4 +157,7 @@ global resolvem somente transportadoras históricas. A V42 migra Fornecedor com
 `suppliers:read/manage`, documento local, referências compostas, contatos filhos
 preservados e auditoria de privacidade. Consumers de compras, fiscal, financeiro
 e conveniência resolvem apenas fornecedores históricos até suas migrations;
-nenhum dado histórico foi associado automaticamente.
+nenhum dado histórico foi associado automaticamente. A V43 migra Cargo com nome
+normalizado único por organização, `workforce:read/manage`, auditoria RH e
+compatibilidade explícita: Funcionário global resolve somente Cargo sem owner.
+Nenhum cargo histórico foi associado automaticamente.

@@ -11,14 +11,17 @@ import lombok.Setter;
 /**
  * Cargo (funcao) do funcionario. Mapeia a tabela {@code cargo}.
  *
- * <p>O nome e unico ({@code uq_cargo_nome}); valores nao-negativos garantidos
- * por {@code ck_cargo_valores}.
+ * <p>O nome e unico dentro da organizacao proprietaria. Registros historicos
+ * podem permanecer sem owner ate a reconciliacao explicita.
  */
 @Entity
 @Table(name = "cargo")
 @Getter
 @Setter
 public class Cargo extends BaseEntity {
+
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
 
     @Column(name = "nome", nullable = false, length = 100)
     private String nome;
