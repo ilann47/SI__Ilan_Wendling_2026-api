@@ -81,11 +81,10 @@ public class SecurityConfig {
                             .requestMatchers("/api/contas-receber/**").authenticated()
                             .requestMatchers("/api/notas-servico/**").authenticated()
                             .requestMatchers("/api/veiculos/**").authenticated()
+                            .requestMatchers("/api/tarifas/**").authenticated()
                             // Gestao de usuarios e exclusivamente administrativa.
                             .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                             // Manutencao de tarifa (preco) e administrativa.
-                            .requestMatchers(HttpMethod.POST, "/api/tarifas/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.PUT, "/api/tarifas/**").hasRole("ADMIN")
                             // Qualquer exclusao e administrativa.
                             .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
                             .anyRequest().authenticated())

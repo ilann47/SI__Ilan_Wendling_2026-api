@@ -117,3 +117,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-04 | Integra Nota de Saída, baixa e Conta a Receber na V56. |
 | 2026-08-04 | Integra Nota de Serviço e faturamento na V57. |
 | 2026-08-04 | Inicia a operação tradicional tenant-aware com Veículo na V58. |
+| 2026-08-04 | Migra Tarifa para tenancy contextual na V59. |

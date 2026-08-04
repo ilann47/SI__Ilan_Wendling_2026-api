@@ -527,6 +527,10 @@ tenant. Placa é normalizada e única por organização, com conjunto histórico
 separado e ownership imutável. Mensalista e Movimentação continuam restritos a
 Veículos históricos até suas migrations próprias.
 
+A V59 migra `Tarifa` com o mesmo RBAC e ownership imutável. A descrição não
+recebe unicidade nova, preservando o comportamento legado. Movimentações globais
+continuam aceitando exclusivamente tarifas históricas até sua migration.
+
 Em 2026-08-03, a V38 concluiu a primeira fatia da Onda 1: formas, condições e
 parcelas de pagamento agora possuem ownership aditivo, unicidade normalizada por
 organização, RBAC contextual e proteção de FK composta dentro do agregado. O
