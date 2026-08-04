@@ -41,3 +41,4 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 | 2026-08-04 | Nota de entrada e conta a pagar migradas na V55. |
 | 2026-08-04 | Nota de saída e conta a receber migradas na V56. |
 | 2026-08-04 | Nota de serviço e faturamento a receber migrados na V57. |
+| 2026-08-04 | Despesa Avulsa, baixa e cancelamento migrados na V62. |

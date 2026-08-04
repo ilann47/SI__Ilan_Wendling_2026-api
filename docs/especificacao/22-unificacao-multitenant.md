@@ -539,6 +539,9 @@ A V61 migra `Movimentacao`, exige Pátio e todas as referências no mesmo tenant
 preserva cálculo, saída e cancelamento legados. O frontend passa a isolar cache,
 menu e listagens por organização ativa.
 
+A V62 migra `ContaPagarAvulsa`, incluindo baixa e cancelamento, com Fornecedor
+e Forma de Pagamento do mesmo tenant. Registros históricos permanecem separados.
+
 Em 2026-08-03, a V38 concluiu a primeira fatia da Onda 1: formas, condições e
 parcelas de pagamento agora possuem ownership aditivo, unicidade normalizada por
 organização, RBAC contextual e proteção de FK composta dentro do agregado. O

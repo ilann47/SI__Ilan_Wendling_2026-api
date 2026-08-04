@@ -76,3 +76,4 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 - V59 migra Tarifa e mantém Movimentação global restrita a tarifas históricas.
 - V60 migra Mensalista e integra a mensalidade à Conta a Receber tenant-aware.
 - V61 migra Movimentação e fecha o núcleo operacional tradicional tenant-aware.
+- V62 migra Despesa Avulsa, baixa e cancelamento financeiro tenant-aware.

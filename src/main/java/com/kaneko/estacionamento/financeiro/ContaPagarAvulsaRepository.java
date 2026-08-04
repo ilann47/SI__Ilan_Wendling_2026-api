@@ -14,16 +14,23 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface ContaPagarAvulsaRepository extends JpaRepository<ContaPagarAvulsa, Long> {
 
+    @EntityGraph(attributePaths = {"fornecedor", "formaPagamento"})
+    Page<ContaPagarAvulsa> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
+    @EntityGraph(attributePaths = {"fornecedor", "formaPagamento"})
+    Page<ContaPagarAvulsa> findAllByOrganizacaoIdIsNull(Pageable pageable);
+    @EntityGraph(attributePaths = {"fornecedor", "formaPagamento"})
+    Optional<ContaPagarAvulsa> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+    @EntityGraph(attributePaths = {"fornecedor", "formaPagamento"})
+    Optional<ContaPagarAvulsa> findByIdAndOrganizacaoIdIsNull(Long id);
+
+    @EntityGraph(attributePaths = "fornecedor")
+    List<ContaPagarAvulsa> findByOrganizacaoIdAndSituacaoInAndDataVencimentoBetween(
+            Long organizacaoId, Collection<SituacaoContaPagar> situacoes,
+            LocalDate inicio, LocalDate fim);
+
     /** Despesas avulsas em aberto vencendo no intervalo — base do relatorio 4.28. */
     @EntityGraph(attributePaths = "fornecedor")
     List<ContaPagarAvulsa> findBySituacaoInAndDataVencimentoBetween(
             Collection<SituacaoContaPagar> situacoes, LocalDate inicio, LocalDate fim);
 
-    @Override
-    @EntityGraph(attributePaths = {"fornecedor", "formaPagamento"})
-    Page<ContaPagarAvulsa> findAll(Pageable pageable);
-
-    @Override
-    @EntityGraph(attributePaths = {"fornecedor", "formaPagamento"})
-    Optional<ContaPagarAvulsa> findById(Long id);
 }

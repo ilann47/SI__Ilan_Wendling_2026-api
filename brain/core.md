@@ -120,3 +120,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-04 | Migra Tarifa para tenancy contextual na V59. |
 | 2026-08-04 | Migra Mensalista e seu faturamento na V60. |
 | 2026-08-04 | Conclui o núcleo da operação tradicional tenant-aware na V61. |
+| 2026-08-04 | Migra Despesa Avulsa e baixa financeira na V62. |

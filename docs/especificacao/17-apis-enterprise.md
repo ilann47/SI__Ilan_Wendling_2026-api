@@ -330,6 +330,9 @@ Veículos da operação preservam a rota anterior e passam a usar o contexto ati
 | `GET /api/movimentacoes[/{id}]` | `operations:read` | lista/busca somente tickets da organização ativa |
 | `POST /api/movimentacoes/entrada` | `operations:manage` | abre ticket com Veículo, Pátio e contrato/tarifa do mesmo tenant |
 | `POST /api/movimentacoes/{id}/saida` | `operations:manage` | fecha ticket e calcula cobrança no contexto ativo |
+| `GET /api/contas-pagar-avulsas[/{id}]` | `finance:read` | consulta despesas da organização ativa |
+| `POST/PUT/DELETE /api/contas-pagar-avulsas[/{id}]` | `finance:manage` | mantém despesas e referências no mesmo tenant |
+| `POST /api/contas-pagar-avulsas/{id}/baixa` | `finance:manage` | registra pagamento no contexto ativo |
 
 A placa é normalizada e única por organização. Registros históricos sem owner
 permanecem preservados e invisíveis à API contextual.
