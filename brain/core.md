@@ -123,3 +123,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-04 | Migra Despesa Avulsa e baixa financeira na V62. |
 | 2026-08-04 | Consolida relatórios gerenciais tenant-aware sem nova migration. |
 | 2026-08-04 | Completa auditoria das transições da movimentação tradicional. |
+| 2026-08-04 | Amplia o seed local idempotente para cobrir perfis e todas as áreas funcionais. |

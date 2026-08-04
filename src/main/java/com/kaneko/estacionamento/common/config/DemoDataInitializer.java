@@ -16,20 +16,27 @@ public class DemoDataInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DemoDataInitializer.class);
 
     private final DemoDataSeedService seedService;
+    private final DemoAllScreensSeedService allScreensSeedService;
     private final String adminLogin;
+    private final String operatorLogin;
 
     public DemoDataInitializer(
             DemoDataSeedService seedService,
-            @Value("${app.bootstrap-admin.login:admin}") String adminLogin) {
+            DemoAllScreensSeedService allScreensSeedService,
+            @Value("${app.bootstrap-admin.login:admin}") String adminLogin,
+            @Value("${app.demo-data.operator-login:operador}") String operatorLogin) {
         this.seedService = seedService;
+        this.allScreensSeedService = allScreensSeedService;
         this.adminLogin = adminLogin;
+        this.operatorLogin = operatorLogin;
     }
 
     @Override
     public void run(String... args) {
         DemoDataSeedResult result = seedService.seed(adminLogin);
+        allScreensSeedService.seed(adminLogin, operatorLogin);
         if (!result.created()) {
-            log.info("Cenario demo ja existe; seed nao executado novamente.");
+            log.info("Cenario demo atualizado sem duplicar dados; perfis admin e operador disponiveis.");
             return;
         }
         log.info(
@@ -39,5 +46,6 @@ public class DemoDataInitializer implements CommandLineRunner {
                 result.organizationId(), result.membershipId(), result.venueId(),
                 result.parkingFacilityId(), result.sectorId(), result.eventId(),
                 result.parkingAllocationId(), result.parkingProductId(), result.priceTierId());
+        log.info("Dados demo de todas as telas criados; operador local={}.", operatorLogin);
     }
 }
