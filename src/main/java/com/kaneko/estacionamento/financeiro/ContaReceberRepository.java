@@ -24,11 +24,18 @@ public interface ContaReceberRepository extends JpaRepository<ContaReceber, Long
     /** Recebimentos efetivados no intervalo — regime de caixa (relatorio 4.27). */
     @EntityGraph(attributePaths = "cliente")
     List<ContaReceber> findByOrganizacaoIdIsNullAndDataRecebimentoBetween(LocalDate inicio, LocalDate fim);
+    @EntityGraph(attributePaths = "cliente")
+    List<ContaReceber> findByOrganizacaoIdAndDataRecebimentoBetween(
+            Long organizacaoId, LocalDate inicio, LocalDate fim);
 
     /** Titulos a receber em aberto vencendo no intervalo — base do relatorio 4.28. */
     @EntityGraph(attributePaths = "cliente")
     List<ContaReceber> findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
             Collection<SituacaoContaReceber> situacoes, LocalDate inicio, LocalDate fim);
+    @EntityGraph(attributePaths = "cliente")
+    List<ContaReceber> findByOrganizacaoIdAndSituacaoInAndDataVencimentoBetween(
+            Long organizacaoId, Collection<SituacaoContaReceber> situacoes,
+            LocalDate inicio, LocalDate fim);
 
     @EntityGraph(attributePaths = {"cliente", "notaSaida", "notaServico", "formaPagamento"})
     Page<ContaReceber> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);

@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.estoque;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,21 @@ import org.springframework.data.jpa.repository.Query;
 import jakarta.persistence.LockModeType;
 
 public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque, Long> {
+
+    @Query(value = """
+            SELECT p.id AS produtoId, p.nome AS produto, m.nome AS marca,
+                   c.nome AS categoria, COALESCE(sum(s.quantidade),0) AS quantidade,
+                   p.quantidade_minima AS quantidadeMinima
+            FROM produto p
+            JOIN marca m ON m.id=p.marca_id AND m.organizacao_id=p.organizacao_id
+            LEFT JOIN categoria c ON c.id=p.categoria_id AND c.organizacao_id=p.organizacao_id
+            LEFT JOIN saldo_estoque s ON s.produto_id=p.id AND s.organizacao_id=p.organizacao_id
+            WHERE p.organizacao_id=:organizacaoId AND p.ativo=true
+            GROUP BY p.id,p.nome,m.nome,c.nome,p.quantidade_minima
+            HAVING COALESCE(sum(s.quantidade),0)<=p.quantidade_minima
+            ORDER BY p.nome
+            """, nativeQuery = true)
+    List<EstoqueMinimoTenantView> listarEstoqueMinimo(Long organizacaoId);
 
     @Modifying
     @Query(value = """

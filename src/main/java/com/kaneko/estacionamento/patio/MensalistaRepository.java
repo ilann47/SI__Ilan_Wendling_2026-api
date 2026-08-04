@@ -43,6 +43,9 @@ public interface MensalistaRepository extends JpaRepository<Mensalista, Long> {
     /** Contratos num status, ordenados pelo inicio — base do relatorio 4.30. */
     @EntityGraph(attributePaths = {"cliente", "veiculo"})
     List<Mensalista> findByStatusOrderByDataInicioAsc(StatusMensalista status);
+    @EntityGraph(attributePaths = {"cliente", "veiculo"})
+    List<Mensalista> findByOrganizacaoIdAndStatusOrderByDataInicioAsc(
+            Long organizacaoId, StatusMensalista status);
 
     @Override
     @EntityGraph(attributePaths = {"cliente", "veiculo"})

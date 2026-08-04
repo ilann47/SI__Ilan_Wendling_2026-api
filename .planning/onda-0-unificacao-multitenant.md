@@ -77,3 +77,4 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 - V60 migra Mensalista e integra a mensalidade à Conta a Receber tenant-aware.
 - V61 migra Movimentação e fecha o núcleo operacional tradicional tenant-aware.
 - V62 migra Despesa Avulsa, baixa e cancelamento financeiro tenant-aware.
+- Relatórios de operação, faturamento, contas, estoque e mensalistas concluídos por tenant após V62.

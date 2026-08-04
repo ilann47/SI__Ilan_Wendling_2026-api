@@ -19,6 +19,8 @@ public interface NotaServicoRepository extends JpaRepository<NotaServico, Long> 
     /** Notas de servico numa situacao, emitidas no intervalo — base do faturamento (4.27). */
     List<NotaServico> findBySituacaoAndDataEmissaoBetween(
             SituacaoNotaServico situacao, LocalDate inicio, LocalDate fim);
+    List<NotaServico> findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
+            Long organizacaoId, SituacaoNotaServico situacao, LocalDate inicio, LocalDate fim);
 
     @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
     Page<NotaServico> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);

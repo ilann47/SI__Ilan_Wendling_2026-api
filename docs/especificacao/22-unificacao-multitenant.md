@@ -542,6 +542,10 @@ menu e listagens por organização ativa.
 A V62 migra `ContaPagarAvulsa`, incluindo baixa e cancelamento, com Fornecedor
 e Forma de Pagamento do mesmo tenant. Registros históricos permanecem separados.
 
+Após a V62, os cinco relatórios gerenciais preservados passam a resolver o owner
+exclusivamente pelo JWT. Estoque mínimo usa a soma do razão V54, e não o campo
+legado `produto.quantidade`; caches do frontend incluem a organização ativa.
+
 Em 2026-08-03, a V38 concluiu a primeira fatia da Onda 1: formas, condições e
 parcelas de pagamento agora possuem ownership aditivo, unicidade normalizada por
 organização, RBAC contextual e proteção de FK composta dentro do agregado. O

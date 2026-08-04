@@ -22,6 +22,8 @@ public interface NotaSaidaRepository extends JpaRepository<NotaSaida, Long> {
     /** Notas de saida numa situacao, emitidas no intervalo — base do faturamento (4.27). */
     List<NotaSaida> findBySituacaoAndDataEmissaoBetween(
             SituacaoNota situacao, LocalDate inicio, LocalDate fim);
+    List<NotaSaida> findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
+            Long organizacaoId, SituacaoNota situacao, LocalDate inicio, LocalDate fim);
 
     @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
     Page<NotaSaida> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);

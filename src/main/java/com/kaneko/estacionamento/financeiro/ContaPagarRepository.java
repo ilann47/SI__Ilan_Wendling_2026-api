@@ -21,6 +21,10 @@ public interface ContaPagarRepository extends JpaRepository<ContaPagar, Long> {
     @EntityGraph(attributePaths = "fornecedor")
     List<ContaPagar> findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
             Collection<SituacaoContaPagar> situacoes, LocalDate inicio, LocalDate fim);
+    @EntityGraph(attributePaths = "fornecedor")
+    List<ContaPagar> findByOrganizacaoIdAndSituacaoInAndDataVencimentoBetween(
+            Long organizacaoId, Collection<SituacaoContaPagar> situacoes,
+            LocalDate inicio, LocalDate fim);
 
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
     Page<ContaPagar> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);

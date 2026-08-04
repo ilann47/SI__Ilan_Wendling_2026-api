@@ -25,11 +25,18 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
     /** Patio atual: movimentacoes abertas, ordenadas pela entrada (relatorio 4.26). */
     @EntityGraph(attributePaths = {"veiculo", "mensalista"})
     List<Movimentacao> findByStatusOrderByDataEntradaAsc(StatusMovimentacao status);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista"})
+    List<Movimentacao> findByOrganizacaoIdAndStatusOrderByDataEntradaAsc(
+            Long organizacaoId, StatusMovimentacao status);
 
     /** Saidas de patio (fechadas) num intervalo — base do faturamento (relatorio 4.27). */
     @EntityGraph(attributePaths = "veiculo")
     List<Movimentacao> findByStatusAndDataSaidaBetween(
             StatusMovimentacao status, OffsetDateTime inicio, OffsetDateTime fim);
+    @EntityGraph(attributePaths = "veiculo")
+    List<Movimentacao> findByOrganizacaoIdAndStatusAndDataSaidaBetween(
+            Long organizacaoId, StatusMovimentacao status,
+            OffsetDateTime inicio, OffsetDateTime fim);
 
     @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
     Page<Movimentacao> findByStatus(StatusMovimentacao status, Pageable pageable);

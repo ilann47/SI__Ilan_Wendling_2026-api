@@ -333,6 +333,11 @@ Veículos da operação preservam a rota anterior e passam a usar o contexto ati
 | `GET /api/contas-pagar-avulsas[/{id}]` | `finance:read` | consulta despesas da organização ativa |
 | `POST/PUT/DELETE /api/contas-pagar-avulsas[/{id}]` | `finance:manage` | mantém despesas e referências no mesmo tenant |
 | `POST /api/contas-pagar-avulsas/{id}/baixa` | `finance:manage` | registra pagamento no contexto ativo |
+| `GET /api/relatorios/patio` | `operations:read` | ocupação da organização ativa |
+| `GET /api/relatorios/faturamento` | `operations:read` + `fiscal:read` + `finance:read` | consolidação tenant-aware do período |
+| `GET /api/relatorios/contas-a-vencer` | `finance:read` | títulos e despesas do tenant |
+| `GET /api/relatorios/estoque-minimo` | `stock:read` | posição canônica do razão V54 |
+| `GET /api/relatorios/mensalistas-ativos` | `operations:read` | contratos ativos do tenant |
 
 A placa é normalizada e única por organização. Registros históricos sem owner
 permanecem preservados e invisíveis à API contextual.

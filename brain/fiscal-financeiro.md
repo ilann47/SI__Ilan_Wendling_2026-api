@@ -30,7 +30,7 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 
 ## Decisões Técnicas
 - Tenant usa razão V54; `produto.quantidade` permanece histórico.
-- Relatórios legados veem somente contas sem owner até a onda de fechamento.
+- Relatórios consolidados selecionam contas e documentos pela organização ativa.
 
 ## Módulos relacionados
 [[estoque]], [[conveniencia]], [[fornecedores]], [[pagamentos-cadastrais]], [[rbac]].
@@ -42,3 +42,4 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 | 2026-08-04 | Nota de saída e conta a receber migradas na V56. |
 | 2026-08-04 | Nota de serviço e faturamento a receber migrados na V57. |
 | 2026-08-04 | Despesa Avulsa, baixa e cancelamento migrados na V62. |
+| 2026-08-04 | Relatórios gerenciais passam a consolidar operação, fiscal, financeiro e estoque por tenant. |
