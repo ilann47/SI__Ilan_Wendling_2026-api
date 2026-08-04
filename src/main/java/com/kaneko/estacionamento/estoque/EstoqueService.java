@@ -132,6 +132,23 @@ public class EstoqueService {
                 origemTipo, origemChave, null, motivo).getId();
     }
 
+    /** Registra a baixa confirmada por um documento comercial/fiscal do tenant. */
+    @Transactional
+    public Long registrarBaixa(Long organizacaoId, Long atorId, Long produtoId,
+            Long localId, BigDecimal quantidade, BigDecimal custoUnitario,
+            String origemTipo, String origemChave, String motivo) {
+        validarDelta(quantidade);
+        if (quantidade.signum() <= 0) {
+            throw new IllegalArgumentException("A quantidade baixada deve ser positiva.");
+        }
+        bloquearProduto(organizacaoId, produtoId);
+        Produto produto = buscarProdutoAtivo(organizacaoId, produtoId);
+        LocalEstoque local = buscarLocalAtivo(organizacaoId, localId);
+        return aplicarMovimento(organizacaoId, atorId, produto, local,
+                TipoMovimentoEstoque.BAIXA, quantidade.negate(), custoUnitario,
+                origemTipo, origemChave, null, motivo).getId();
+    }
+
     @Transactional
     public MovimentoEstoqueResponse compensar(Long organizacaoId, Long atorId,
             Long movimentoId, String chaveIdempotencia, CompensarMovimentoRequest request) {

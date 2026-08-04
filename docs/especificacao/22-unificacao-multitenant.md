@@ -5,6 +5,7 @@
 > Execução V55: Nota de Entrada, itens e Conta a Pagar possuem owner aditivo.
 > A confirmação contextual exige Local de Estoque, cria `RECEBIMENTO` no razão
 > V54 e não altera `produto.quantidade`; o histórico sem owner foi preservado.
+> A V56 aplica o mesmo modelo à saída, usando movimento `BAIXA` e Conta a Receber.
 
 ## 1. Introdução
 

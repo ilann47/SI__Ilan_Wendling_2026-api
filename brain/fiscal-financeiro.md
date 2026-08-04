@@ -3,7 +3,7 @@
 # Fiscal e Financeiro de Entrada
 
 ## Objetivo
-Registrar notas de entrada por organização, recebimentos no razão e contas a pagar.
+Registrar notas de entrada/saída por organização, movimentos no razão e títulos financeiros.
 
 ## Contexto
 A V55 migra `nota_entrada`, `item_nota_entrada` e `conta_pagar` de forma aditiva.
@@ -39,3 +39,4 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 | Data | Ação |
 |---|---|
 | 2026-08-04 | Nota de entrada e conta a pagar migradas na V55. |
+| 2026-08-04 | Nota de saída e conta a receber migradas na V56. |

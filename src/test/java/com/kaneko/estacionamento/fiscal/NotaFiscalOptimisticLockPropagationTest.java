@@ -49,14 +49,15 @@ class NotaFiscalOptimisticLockPropagationTest {
         ContaReceberRepository titulos = mock(ContaReceberRepository.class);
         NotaSaidaService service = new NotaSaidaService(notas,
                 mock(ClienteRepository.class), mock(CondicaoPagamentoRepository.class),
-                produtos, titulos);
+                produtos, titulos, mock(LocalEstoqueRepository.class),
+                mock(EstoqueService.class), mock(AuditoriaService.class));
         NotaSaida nota = notaSaidaPendente();
         OptimisticLockingFailureException conflito =
                 new OptimisticLockingFailureException("produto concorrente");
-        when(notas.findById(1L)).thenReturn(Optional.of(nota));
+        when(notas.findByIdAndOrganizacaoIdIsNull(1L)).thenReturn(Optional.of(nota));
         when(produtos.saveAndFlush(any(Produto.class))).thenThrow(conflito);
 
-        assertThatThrownBy(() -> service.confirmar(1L)).isSameAs(conflito);
+        assertThatThrownBy(() -> service.confirmar(null, null, 1L)).isSameAs(conflito);
         verifyNoInteractions(titulos);
     }
 

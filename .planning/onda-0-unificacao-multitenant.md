@@ -68,3 +68,4 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 - Nenhuma criação de Ordem de Compra/Serviço antes do respectivo contrato de domínio.
 - O arquivo local `Nio2WebServerCustomizer.java` permanece fora de todos os commits.
 - V55 conclui Nota de Entrada, integração de recebimento no razão e Conta a Pagar tenant-aware.
+- V56 conclui Nota de Saída, baixa no razão e Conta a Receber tenant-aware.

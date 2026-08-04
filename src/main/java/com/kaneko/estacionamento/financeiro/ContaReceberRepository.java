@@ -15,22 +15,24 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ContaReceberRepository extends JpaRepository<ContaReceber, Long> {
 
     @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
-    List<ContaReceber> findByNotaSaidaId(Long notaSaidaId);
+    List<ContaReceber> findByNotaSaidaIdAndOrganizacaoId(Long notaSaidaId, Long organizacaoId);
 
     /** Recebimentos efetivados no intervalo — regime de caixa (relatorio 4.27). */
     @EntityGraph(attributePaths = "cliente")
-    List<ContaReceber> findByDataRecebimentoBetween(LocalDate inicio, LocalDate fim);
+    List<ContaReceber> findByOrganizacaoIdIsNullAndDataRecebimentoBetween(LocalDate inicio, LocalDate fim);
 
     /** Titulos a receber em aberto vencendo no intervalo — base do relatorio 4.28. */
     @EntityGraph(attributePaths = "cliente")
-    List<ContaReceber> findBySituacaoInAndDataVencimentoBetween(
+    List<ContaReceber> findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
             Collection<SituacaoContaReceber> situacoes, LocalDate inicio, LocalDate fim);
 
-    @Override
     @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
-    Page<ContaReceber> findAll(Pageable pageable);
+    Page<ContaReceber> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
+    @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
+    Page<ContaReceber> findAllByOrganizacaoIdIsNull(Pageable pageable);
 
-    @Override
     @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
-    Optional<ContaReceber> findById(Long id);
+    Optional<ContaReceber> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+    @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
+    Optional<ContaReceber> findByIdAndOrganizacaoIdIsNull(Long id);
 }

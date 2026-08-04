@@ -114,3 +114,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Migra ProdutoFornecedor para tenancy contextual e concorrência otimista na V53. |
 | 2026-08-03 | Introduz Local, Saldo e Razão tenant-aware de Estoque na V54. |
 | 2026-08-04 | Integra Nota de Entrada, recebimento e Conta a Pagar na V55. |
+| 2026-08-04 | Integra Nota de Saída, baixa e Conta a Receber na V56. |

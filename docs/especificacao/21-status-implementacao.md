@@ -4,6 +4,7 @@
 
 > Atualização 2026-08-04: a V55 tornou Nota de Entrada e Conta a Pagar
 > tenant-aware e conectou a confirmação ao razão de estoque V54.
+> A V56 acrescenta Nota de Saída, baixa no razão e Conta a Receber tenant-aware.
 
 ## 21.1 Finalidade
 

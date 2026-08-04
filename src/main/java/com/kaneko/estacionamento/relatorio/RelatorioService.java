@@ -121,7 +121,7 @@ public class RelatorioService {
                 .map(NotaServico::getValorTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal recebimentos = contaReceberRepository
-                .findByDataRecebimentoBetween(inicio, fim).stream()
+                .findByOrganizacaoIdIsNullAndDataRecebimentoBetween(inicio, fim).stream()
                 .map(ContaReceber::getValorRecebido).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalFaturado = estacionamento.add(vendas).add(servicos);
@@ -155,7 +155,8 @@ public class RelatorioService {
 
         List<ContasAVencerResponse.Titulo> aReceber = new ArrayList<>();
         for (ContaReceber c : contaReceberRepository
-                .findBySituacaoInAndDataVencimentoBetween(ABERTAS_RECEBER, inicio, fim)) {
+                .findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
+                        ABERTAS_RECEBER, inicio, fim)) {
             aReceber.add(new ContasAVencerResponse.Titulo("CONTA_RECEBER", c.getId(),
                     c.getCliente().getNome(), c.getDataVencimento(),
                     c.getValorTotal().subtract(c.getValorRecebido()),

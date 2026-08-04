@@ -14,6 +14,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.Getter;
@@ -29,6 +30,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ContaReceber extends AuditableEntity {
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Version @Column(name = "version", nullable = false)
+    private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)
