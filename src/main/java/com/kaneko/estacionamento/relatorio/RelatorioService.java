@@ -136,7 +136,8 @@ public class RelatorioService {
 
         List<ContasAVencerResponse.Titulo> aPagar = new ArrayList<>();
         for (ContaPagar c : contaPagarRepository
-                .findBySituacaoInAndDataVencimentoBetween(ABERTAS_PAGAR, inicio, fim)) {
+                .findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
+                        ABERTAS_PAGAR, inicio, fim)) {
             aPagar.add(new ContasAVencerResponse.Titulo("CONTA_PAGAR", c.getId(),
                     c.getFornecedor().getNome(), c.getDataVencimento(),
                     c.getValorTotal().subtract(c.getValorPago()),

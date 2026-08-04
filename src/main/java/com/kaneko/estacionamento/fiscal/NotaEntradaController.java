@@ -2,10 +2,13 @@ package com.kaneko.estacionamento.fiscal;
 
 import com.kaneko.estacionamento.fiscal.dto.NotaEntradaRequest;
 import com.kaneko.estacionamento.fiscal.dto.NotaEntradaResponse;
+import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,34 +33,51 @@ public class NotaEntradaController {
     }
 
     @GetMapping
-    public Page<NotaEntradaResponse> listar(Pageable pageable) {
-        return service.listar(pageable).map(NotaEntradaResponse::from);
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:read', authentication)")
+    public Page<NotaEntradaResponse> listar(
+            @AuthenticationPrincipal UsuarioAutenticado principal, Pageable pageable) {
+        return service.listar(org(principal), pageable).map(NotaEntradaResponse::from);
     }
 
     @GetMapping("/{id}")
-    public NotaEntradaResponse buscar(@PathVariable Long id) {
-        return NotaEntradaResponse.from(service.buscar(id));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:read', authentication)")
+    public NotaEntradaResponse buscar(
+            @AuthenticationPrincipal UsuarioAutenticado principal, @PathVariable Long id) {
+        return NotaEntradaResponse.from(service.buscar(org(principal), id));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public NotaEntradaResponse criar(@Valid @RequestBody NotaEntradaRequest req) {
-        return NotaEntradaResponse.from(service.criar(req));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:manage', authentication)")
+    public NotaEntradaResponse criar(@AuthenticationPrincipal UsuarioAutenticado principal,
+            @Valid @RequestBody NotaEntradaRequest req) {
+        return NotaEntradaResponse.from(service.criar(org(principal), req));
     }
 
     @PostMapping("/{id}/confirmacao")
-    public NotaEntradaResponse confirmar(@PathVariable Long id) {
-        return NotaEntradaResponse.from(service.confirmar(id));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:manage', authentication)")
+    public NotaEntradaResponse confirmar(@AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        return NotaEntradaResponse.from(service.confirmar(
+                org(principal), principal == null ? null : principal.userId(), id));
     }
 
     @PostMapping("/{id}/cancelamento")
-    public NotaEntradaResponse cancelar(@PathVariable Long id) {
-        return NotaEntradaResponse.from(service.cancelar(id));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:manage', authentication)")
+    public NotaEntradaResponse cancelar(@AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        return NotaEntradaResponse.from(service.cancelar(org(principal), id));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void excluir(@PathVariable Long id) {
-        service.excluir(id);
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:manage', authentication)")
+    public void excluir(@AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        service.excluir(org(principal), id);
+    }
+
+    private static Long org(UsuarioAutenticado principal) {
+        return principal == null ? null : principal.organizacaoId();
     }
 }

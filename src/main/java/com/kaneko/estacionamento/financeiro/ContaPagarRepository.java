@@ -15,18 +15,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ContaPagarRepository extends JpaRepository<ContaPagar, Long> {
 
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
-    List<ContaPagar> findByNotaEntradaId(Long notaEntradaId);
+    List<ContaPagar> findByNotaEntradaIdAndOrganizacaoId(Long notaEntradaId, Long organizacaoId);
 
     /** Titulos a pagar em aberto vencendo no intervalo — base do relatorio 4.28. */
     @EntityGraph(attributePaths = "fornecedor")
-    List<ContaPagar> findBySituacaoInAndDataVencimentoBetween(
+    List<ContaPagar> findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
             Collection<SituacaoContaPagar> situacoes, LocalDate inicio, LocalDate fim);
 
-    @Override
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
-    Page<ContaPagar> findAll(Pageable pageable);
+    Page<ContaPagar> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
 
-    @Override
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
-    Optional<ContaPagar> findById(Long id);
+    Page<ContaPagar> findAllByOrganizacaoIdIsNull(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
+    Optional<ContaPagar> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
+    Optional<ContaPagar> findByIdAndOrganizacaoIdIsNull(Long id);
 }

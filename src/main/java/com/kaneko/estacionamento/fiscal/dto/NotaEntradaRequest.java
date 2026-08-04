@@ -29,6 +29,8 @@ public record NotaEntradaRequest(
 
         Long condicaoPagamentoId,
 
+        Long localEstoqueId,
+
         LocalDate dataEmissao,
         LocalDate dataChegada,
 

@@ -2,6 +2,10 @@
 
 # 17. Arquitetura de APIs
 
+> Compatibilidade V55: `/api/notas-entrada` e `/api/contas-pagar` preservam as
+> URLs, derivam a organização do JWT e ocultam recursos cross-tenant. Nota de
+> entrada contextual exige `localEstoqueId`.
+
 > Este documento projeta contratos; não descreve endpoints já implementados, exceto quando explicitamente marcado AS-IS.
 
 ## 17.1 Contrato geral

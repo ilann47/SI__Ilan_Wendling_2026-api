@@ -113,3 +113,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Completa o catálogo de conveniência tenant-aware com Produto e Serviço na V52. |
 | 2026-08-03 | Migra ProdutoFornecedor para tenancy contextual e concorrência otimista na V53. |
 | 2026-08-03 | Introduz Local, Saldo e Razão tenant-aware de Estoque na V54. |
+| 2026-08-04 | Integra Nota de Entrada, recebimento e Conta a Pagar na V55. |

@@ -2,6 +2,10 @@
 
 # 18. Permissões e RBAC Enterprise
 
+V55 acrescenta `fiscal:read/manage` para Nota de Entrada e
+`finance:read/manage` para Conta a Pagar, concedidas inicialmente ao papel
+`ADMIN_ORGANIZACAO`.
+
 ## 18.1 Modelo de autorização
 
 A autorização efetiva combina:

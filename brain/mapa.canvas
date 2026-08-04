@@ -27,7 +27,8 @@
     {"id": "fornecedores", "type": "file", "file": "fornecedores.md", "x": 7500, "y": 160, "width": 360, "height": 220},
     {"id": "rh", "type": "file", "file": "rh.md", "x": 8000, "y": 160, "width": 360, "height": 220},
     {"id": "conveniencia", "type": "file", "file": "conveniencia.md", "x": 8500, "y": 160, "width": 360, "height": 220},
-    {"id": "estoque", "type": "file", "file": "estoque.md", "x": 9000, "y": 160, "width": 360, "height": 220}
+    {"id": "estoque", "type": "file", "file": "estoque.md", "x": 9000, "y": 160, "width": 360, "height": 220},
+    {"id": "fiscal-financeiro", "type": "file", "file": "fiscal-financeiro.md", "x": 9500, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -113,6 +114,8 @@
     {"id": "rbac-estoque", "fromNode": "rbac", "fromSide": "right", "toNode": "estoque", "toSide": "left", "label": "stock:read/manage"},
     {"id": "estoque-auditoria", "fromNode": "estoque", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção OPERACIONAL"},
     {"id": "estoque-idempotencia", "fromNode": "estoque", "fromSide": "left", "toNode": "idempotencia", "toSide": "right", "label": "ajuste/compensação"},
-    {"id": "estoque-outbox", "fromNode": "estoque", "fromSide": "top", "toNode": "outbox", "toSide": "bottom", "label": "ajuste/limiar"}
+    {"id": "estoque-outbox", "fromNode": "estoque", "fromSide": "top", "toNode": "outbox", "toSide": "bottom", "label": "ajuste/limiar"},
+    {"id": "estoque-fiscal-financeiro", "fromNode": "estoque", "fromSide": "right", "toNode": "fiscal-financeiro", "toSide": "left", "label": "recebimento V55"},
+    {"id": "rbac-fiscal-financeiro", "fromNode": "rbac", "fromSide": "right", "toNode": "fiscal-financeiro", "toSide": "left", "label": "fiscal/finance"}
   ]
 }

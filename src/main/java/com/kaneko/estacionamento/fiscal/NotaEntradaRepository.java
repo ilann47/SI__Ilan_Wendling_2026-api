@@ -12,13 +12,25 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface NotaEntradaRepository extends JpaRepository<NotaEntrada, Long> {
 
-    boolean existsByNumeroAndSerieAndFornecedorId(String numero, String serie, Long fornecedorId);
+    boolean existsByOrganizacaoIdAndNumeroAndSerieAndFornecedorId(
+            Long organizacaoId, String numero, String serie, Long fornecedorId);
 
-    @Override
-    @EntityGraph(attributePaths = {"fornecedor", "condicaoPagamento", "itens", "itens.produto"})
-    Page<NotaEntrada> findAll(Pageable pageable);
+    @EntityGraph(attributePaths = {"fornecedor", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
+    Page<NotaEntrada> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
 
-    @Override
-    @EntityGraph(attributePaths = {"fornecedor", "condicaoPagamento", "itens", "itens.produto"})
-    Optional<NotaEntrada> findById(Long id);
+    @EntityGraph(attributePaths = {"fornecedor", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
+    Page<NotaEntrada> findAllByOrganizacaoIdIsNull(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"fornecedor", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
+    Optional<NotaEntrada> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    @EntityGraph(attributePaths = {"fornecedor", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
+    Optional<NotaEntrada> findByIdAndOrganizacaoIdIsNull(Long id);
+
+    boolean existsByOrganizacaoIdIsNullAndNumeroAndSerieAndFornecedorId(
+            String numero, String serie, Long fornecedorId);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select n from NotaEntrada n where n.id=:id and n.organizacaoId=:organizacaoId")
+    Optional<NotaEntrada> findParaAtualizar(Long id, Long organizacaoId);
 }

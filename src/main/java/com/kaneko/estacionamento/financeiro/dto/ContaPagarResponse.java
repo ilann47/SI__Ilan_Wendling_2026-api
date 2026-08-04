@@ -11,6 +11,8 @@ import java.time.OffsetDateTime;
  */
 public record ContaPagarResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         Long fornecedorId,
         String fornecedorNome,
         Long notaEntradaId,
@@ -38,6 +40,8 @@ public record ContaPagarResponse(
     public static ContaPagarResponse from(ContaPagar c) {
         return new ContaPagarResponse(
                 c.getId(),
+                c.getOrganizacaoId(),
+                c.getVersion(),
                 c.getFornecedor().getId(),
                 c.getFornecedor().getNome(),
                 c.getNotaEntrada() != null ? c.getNotaEntrada().getId() : null,

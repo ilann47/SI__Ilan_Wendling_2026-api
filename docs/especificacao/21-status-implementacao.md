@@ -2,6 +2,9 @@
 
 # 21. Estado de Implementação e Dependências
 
+> Atualização 2026-08-04: a V55 tornou Nota de Entrada e Conta a Pagar
+> tenant-aware e conectou a confirmação ao razão de estoque V54.
+
 ## 21.1 Finalidade
 
 Este documento registra o estado verificável dos casos de uso enterprise e

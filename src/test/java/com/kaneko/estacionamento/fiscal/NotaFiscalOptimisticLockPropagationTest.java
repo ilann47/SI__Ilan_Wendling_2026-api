@@ -7,9 +7,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.kaneko.estacionamento.conveniencia.Produto;
+import com.kaneko.estacionamento.auditoria.AuditoriaService;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.financeiro.ContaPagarRepository;
 import com.kaneko.estacionamento.financeiro.ContaReceberRepository;
+import com.kaneko.estacionamento.estoque.EstoqueService;
+import com.kaneko.estacionamento.estoque.LocalEstoqueRepository;
 import com.kaneko.estacionamento.fornecedor.FornecedorRepository;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
@@ -27,14 +30,15 @@ class NotaFiscalOptimisticLockPropagationTest {
         ContaPagarRepository titulos = mock(ContaPagarRepository.class);
         NotaEntradaService service = new NotaEntradaService(notas,
                 mock(FornecedorRepository.class), mock(CondicaoPagamentoRepository.class),
-                produtos, titulos);
+                produtos, titulos, mock(LocalEstoqueRepository.class),
+                mock(EstoqueService.class), mock(AuditoriaService.class));
         NotaEntrada nota = notaEntradaPendente();
         OptimisticLockingFailureException conflito =
                 new OptimisticLockingFailureException("produto concorrente");
-        when(notas.findById(1L)).thenReturn(Optional.of(nota));
+        when(notas.findByIdAndOrganizacaoIdIsNull(1L)).thenReturn(Optional.of(nota));
         when(produtos.saveAndFlush(any(Produto.class))).thenThrow(conflito);
 
-        assertThatThrownBy(() -> service.confirmar(1L)).isSameAs(conflito);
+        assertThatThrownBy(() -> service.confirmar(null, null, 1L)).isSameAs(conflito);
         verifyNoInteractions(titulos);
     }
 

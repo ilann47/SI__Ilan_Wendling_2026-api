@@ -2,6 +2,10 @@
 
 # 22. Unificação dos Módulos Empresariais e Multi-Tenancy
 
+> Execução V55: Nota de Entrada, itens e Conta a Pagar possuem owner aditivo.
+> A confirmação contextual exige Local de Estoque, cria `RECEBIMENTO` no razão
+> V54 e não altera `produto.quantidade`; o histórico sem owner foi preservado.
+
 ## 1. Introdução
 
 ### 1.1 Finalidade

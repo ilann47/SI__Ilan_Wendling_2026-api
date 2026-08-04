@@ -115,6 +115,23 @@ public class EstoqueService {
         return buscarMovimento(organizacaoId, movimento.getId());
     }
 
+    /** Registra o recebimento confirmado por um documento fiscal do mesmo tenant. */
+    @Transactional
+    public Long registrarRecebimento(Long organizacaoId, Long atorId, Long produtoId,
+            Long localId, BigDecimal quantidade, BigDecimal custoUnitario,
+            String origemTipo, String origemChave, String motivo) {
+        validarDelta(quantidade);
+        if (quantidade.signum() <= 0) {
+            throw new IllegalArgumentException("A quantidade recebida deve ser positiva.");
+        }
+        bloquearProduto(organizacaoId, produtoId);
+        Produto produto = buscarProdutoAtivo(organizacaoId, produtoId);
+        LocalEstoque local = buscarLocalAtivo(organizacaoId, localId);
+        return aplicarMovimento(organizacaoId, atorId, produto, local,
+                TipoMovimentoEstoque.RECEBIMENTO, quantidade, custoUnitario,
+                origemTipo, origemChave, null, motivo).getId();
+    }
+
     @Transactional
     public MovimentoEstoqueResponse compensar(Long organizacaoId, Long atorId,
             Long movimentoId, String chaveIdempotencia, CompensarMovimentoRequest request) {
