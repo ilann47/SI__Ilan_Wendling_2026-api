@@ -13,17 +13,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface NotaServicoRepository extends JpaRepository<NotaServico, Long> {
 
-    boolean existsByNumeroAndSerie(String numero, String serie);
+    boolean existsByOrganizacaoIdAndNumeroAndSerie(Long organizacaoId, String numero, String serie);
+    boolean existsByOrganizacaoIdIsNullAndNumeroAndSerie(String numero, String serie);
 
     /** Notas de servico numa situacao, emitidas no intervalo — base do faturamento (4.27). */
     List<NotaServico> findBySituacaoAndDataEmissaoBetween(
             SituacaoNotaServico situacao, LocalDate inicio, LocalDate fim);
 
-    @Override
     @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
-    Page<NotaServico> findAll(Pageable pageable);
+    Page<NotaServico> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
+    @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
+    Page<NotaServico> findAllByOrganizacaoIdIsNull(Pageable pageable);
 
-    @Override
     @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
-    Optional<NotaServico> findById(Long id);
+    Optional<NotaServico> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+    @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
+    Optional<NotaServico> findByIdAndOrganizacaoIdIsNull(Long id);
 }

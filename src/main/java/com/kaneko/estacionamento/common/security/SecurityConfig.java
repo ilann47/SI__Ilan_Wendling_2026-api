@@ -79,6 +79,7 @@ public class SecurityConfig {
                             .requestMatchers("/api/contas-pagar/**").authenticated()
                             .requestMatchers("/api/notas-saida/**").authenticated()
                             .requestMatchers("/api/contas-receber/**").authenticated()
+                            .requestMatchers("/api/notas-servico/**").authenticated()
                             // Gestao de usuarios e exclusivamente administrativa.
                             .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                             // Manutencao de tarifa (preco) e administrativa.

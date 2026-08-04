@@ -69,3 +69,4 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 - O arquivo local `Nio2WebServerCustomizer.java` permanece fora de todos os commits.
 - V55 conclui Nota de Entrada, integração de recebimento no razão e Conta a Pagar tenant-aware.
 - V56 conclui Nota de Saída, baixa no razão e Conta a Receber tenant-aware.
+- V57 conclui Nota de Serviço e faturamento tenant-aware.

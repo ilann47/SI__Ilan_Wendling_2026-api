@@ -14,8 +14,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface ContaReceberRepository extends JpaRepository<ContaReceber, Long> {
 
-    @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
+    @EntityGraph(attributePaths = {"cliente", "notaSaida", "notaServico", "formaPagamento"})
     List<ContaReceber> findByNotaSaidaIdAndOrganizacaoId(Long notaSaidaId, Long organizacaoId);
+    @EntityGraph(attributePaths = {"cliente", "notaServico", "formaPagamento"})
+    List<ContaReceber> findByNotaServicoIdAndOrganizacaoId(Long notaServicoId, Long organizacaoId);
+    @EntityGraph(attributePaths = {"cliente", "notaServico", "formaPagamento"})
+    List<ContaReceber> findByNotaServicoIdAndOrganizacaoIdIsNull(Long notaServicoId);
 
     /** Recebimentos efetivados no intervalo — regime de caixa (relatorio 4.27). */
     @EntityGraph(attributePaths = "cliente")
@@ -26,13 +30,13 @@ public interface ContaReceberRepository extends JpaRepository<ContaReceber, Long
     List<ContaReceber> findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
             Collection<SituacaoContaReceber> situacoes, LocalDate inicio, LocalDate fim);
 
-    @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
+    @EntityGraph(attributePaths = {"cliente", "notaSaida", "notaServico", "formaPagamento"})
     Page<ContaReceber> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
-    @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
+    @EntityGraph(attributePaths = {"cliente", "notaSaida", "notaServico", "formaPagamento"})
     Page<ContaReceber> findAllByOrganizacaoIdIsNull(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
+    @EntityGraph(attributePaths = {"cliente", "notaSaida", "notaServico", "formaPagamento"})
     Optional<ContaReceber> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
-    @EntityGraph(attributePaths = {"cliente", "notaSaida", "formaPagamento"})
+    @EntityGraph(attributePaths = {"cliente", "notaSaida", "notaServico", "formaPagamento"})
     Optional<ContaReceber> findByIdAndOrganizacaoIdIsNull(Long id);
 }

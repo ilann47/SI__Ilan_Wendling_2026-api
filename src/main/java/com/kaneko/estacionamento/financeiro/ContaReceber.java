@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.financeiro;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.fiscal.NotaSaida;
+import com.kaneko.estacionamento.fiscal.NotaServico;
 import com.kaneko.estacionamento.patio.Mensalista;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
@@ -43,6 +44,10 @@ public class ContaReceber extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nota_saida_id")
     private NotaSaida notaSaida;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nota_servico_id")
+    private NotaServico notaServico;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mensalista_id")

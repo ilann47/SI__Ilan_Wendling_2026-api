@@ -11,6 +11,8 @@ import java.time.OffsetDateTime;
  */
 public record NotaServicoResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         String numero,
         String modelo,
         String serie,
@@ -36,6 +38,8 @@ public record NotaServicoResponse(
     public static NotaServicoResponse from(NotaServico n) {
         return new NotaServicoResponse(
                 n.getId(),
+                n.getOrganizacaoId(),
+                n.getVersion(),
                 n.getNumero(),
                 n.getModelo(),
                 n.getSerie(),
