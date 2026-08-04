@@ -1,11 +1,16 @@
 package com.kaneko.estacionamento.patio;
 
+import com.kaneko.estacionamento.auditoria.AuditoriaService;
+import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
+import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.patio.dto.EntradaRequest;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,17 +34,20 @@ public class MovimentacaoService {
     private final MensalistaRepository mensalistaRepository;
     private final TarifaRepository tarifaRepository;
     private final PatioRepository patioRepository;
+    private final AuditoriaService auditoria;
 
     public MovimentacaoService(MovimentacaoRepository repository,
                                VeiculoRepository veiculoRepository,
                                MensalistaRepository mensalistaRepository,
                                TarifaRepository tarifaRepository,
-                               PatioRepository patioRepository) {
+                               PatioRepository patioRepository,
+                               AuditoriaService auditoria) {
         this.repository = repository;
         this.veiculoRepository = veiculoRepository;
         this.mensalistaRepository = mensalistaRepository;
         this.tarifaRepository = tarifaRepository;
         this.patioRepository = patioRepository;
+        this.auditoria = auditoria;
     }
 
     @Transactional(readOnly = true)
@@ -106,7 +114,9 @@ public class MovimentacaoService {
                             "Nenhuma tarifa vigente cadastrada para a cobranca avulsa."));
             mov.setTarifa(tarifa);
         }
-        return repository.save(mov);
+        mov = repository.saveAndFlush(mov);
+        auditar(mov, "MOVIMENTACAO_ABERTA", null, snapshot(mov));
+        return mov;
     }
 
     @Transactional
@@ -115,6 +125,7 @@ public class MovimentacaoService {
         if (mov.getStatus() != StatusMovimentacao.ABERTO) {
             throw new ConflitoException("Esta movimentacao nao esta aberta e nao pode receber saida.");
         }
+        Map<String, Object> anterior = snapshot(mov);
         OffsetDateTime saida = OffsetDateTime.now();
 
         BigDecimal valor;
@@ -129,7 +140,9 @@ public class MovimentacaoService {
         mov.setDataSaida(saida);
         mov.setValorCobrado(valor);
         mov.setStatus(StatusMovimentacao.FECHADO);
-        return repository.save(mov);
+        mov = repository.saveAndFlush(mov);
+        auditar(mov, "MOVIMENTACAO_FECHADA", anterior, snapshot(mov));
+        return mov;
     }
 
     /**
@@ -144,13 +157,40 @@ public class MovimentacaoService {
             throw new ConflitoException(
                     "Apenas uma movimentacao ABERTA pode ser cancelada.");
         }
+        Map<String, Object> anterior = snapshot(mov);
         mov.setStatus(StatusMovimentacao.CANCELADO);
-        return repository.save(mov);
+        mov = repository.saveAndFlush(mov);
+        auditar(mov, "MOVIMENTACAO_CANCELADA", anterior, snapshot(mov));
+        return mov;
     }
 
     private Veiculo buscarVeiculo(Long organizacaoId, Long veiculoId) {
         return (organizacaoId == null ? veiculoRepository.findByIdAndOrganizacaoIdIsNull(veiculoId)
                 : veiculoRepository.findByIdAndOrganizacaoId(veiculoId, organizacaoId))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Veiculo", veiculoId));
+    }
+
+    private void auditar(Movimentacao mov, String acao,
+            Map<String, Object> anterior, Map<String, Object> posterior) {
+        if (mov.getOrganizacaoId() == null) return;
+        auditoria.registrar(new RegistrarAuditoriaCommand(mov.getOrganizacaoId(), acao,
+                "MOVIMENTACAO", mov.getId(), null,
+                mov.getPatio() != null ? mov.getPatio().getId() : null,
+                null, anterior, posterior, null, mov.getVersion(),
+                ClasseRetencaoAuditoria.OPERACIONAL));
+    }
+
+    private static Map<String, Object> snapshot(Movimentacao mov) {
+        Map<String, Object> dados = new LinkedHashMap<>();
+        dados.put("veiculoId", mov.getVeiculo().getId());
+        dados.put("patioId", mov.getPatio() != null ? mov.getPatio().getId() : null);
+        dados.put("mensalistaId", mov.getMensalista() != null ? mov.getMensalista().getId() : null);
+        dados.put("tarifaId", mov.getTarifa() != null ? mov.getTarifa().getId() : null);
+        dados.put("tipo", mov.getTipo().name());
+        dados.put("status", mov.getStatus().name());
+        dados.put("dataEntrada", mov.getDataEntrada());
+        dados.put("dataSaida", mov.getDataSaida());
+        dados.put("valorCobrado", mov.getValorCobrado());
+        return dados;
     }
 }

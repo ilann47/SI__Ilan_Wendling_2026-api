@@ -59,3 +59,4 @@ Recurso ou Cliente fora do tenant retorna `404`; placa duplicada no mesmo tenant
 | 2026-08-04 | V60 migra Mensalista e a geração tenant-aware de Conta a Receber. |
 | 2026-08-04 | V61 migra entrada, saída, cancelamento e ocupação por pátio. |
 | 2026-08-04 | Relatórios de pátio, faturamento e mensalistas passam a respeitar a organização ativa. |
+| 2026-08-04 | Entrada, saída e cancelamento passam a registrar trilha operacional tenant-aware. |

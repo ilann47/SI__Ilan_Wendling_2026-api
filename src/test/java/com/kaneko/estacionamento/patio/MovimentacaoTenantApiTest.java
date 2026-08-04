@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
 import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
@@ -47,6 +48,24 @@ class MovimentacaoTenantApiTest {
         mvc.perform(post("/api/movimentacoes/{id}/saida",id)
                 .header("Authorization",tenantA.tokenContextual()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FECHADO"));
+
+        long veiculoCancelado=criarVeiculo(tenantA,"BBB-2B22",cliente);
+        String cancelBody=mvc.perform(post("/api/movimentacoes/entrada")
+                .header("Authorization",tenantA.tokenContextual())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"veiculoId\":"+veiculoCancelado+",\"patioId\":"+patio+"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long cancelId=((Number)JsonPath.read(cancelBody,"$.id")).longValue();
+        mvc.perform(post("/api/movimentacoes/{id}/cancelamento",cancelId)
+                .header("Authorization",tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELADO"));
+
+        Integer auditorias=jdbc.queryForObject("""
+                SELECT count(*) FROM registro_auditoria
+                WHERE organizacao_id=? AND ator_id=? AND recurso_tipo='MOVIMENTACAO'
+                  AND acao IN ('MOVIMENTACAO_ABERTA','MOVIMENTACAO_FECHADA','MOVIMENTACAO_CANCELADA')
+                """,Integer.class,tenantA.organizacaoId(),tenantA.usuarioId());
+        assertThat(auditorias).isEqualTo(4);
     }
 
     private long criarCliente(TenantFixture f,String doc)throws Exception{
