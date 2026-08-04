@@ -12,6 +12,8 @@ import java.time.OffsetDateTime;
  */
 public record MensalistaResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         Long clienteId,
         String clienteNome,
         Long veiculoId,
@@ -27,6 +29,8 @@ public record MensalistaResponse(
     public static MensalistaResponse from(Mensalista m) {
         return new MensalistaResponse(
                 m.getId(),
+                m.getOrganizacaoId(),
+                m.getVersion(),
                 m.getCliente().getId(),
                 m.getCliente().getNome(),
                 m.getVeiculo().getId(),

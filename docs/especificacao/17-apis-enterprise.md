@@ -324,6 +324,9 @@ Veículos da operação preservam a rota anterior e passam a usar o contexto ati
 | `POST/PUT/DELETE /api/veiculos[/{id}]` | `operations:manage` | cria, altera ou inativa no tenant; Cliente deve pertencer à mesma organização |
 | `GET /api/tarifas[/{id}]` | `operations:read` | lista/busca somente tarifas da organização ativa |
 | `POST/PUT/DELETE /api/tarifas[/{id}]` | `operations:manage` | cria, altera ou inativa tarifa no tenant ativo |
+| `GET /api/mensalistas[/{id}]` | `operations:read` | lista/busca somente contratos da organização ativa |
+| `POST/PUT/DELETE /api/mensalistas[/{id}]` | `operations:manage` | mantém contrato com Cliente e Veículo do mesmo tenant |
+| `POST /api/mensalistas/{id}/mensalidade` | `operations:manage` + `finance:manage` | gera Conta a Receber no mesmo owner |
 
 A placa é normalizada e única por organização. Registros históricos sem owner
 permanecem preservados e invisíveis à API contextual.

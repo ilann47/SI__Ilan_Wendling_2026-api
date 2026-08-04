@@ -8,7 +8,7 @@ Manter os cadastros e fluxos operacionais do estacionamento isolados pela organi
 
 ## Contexto
 
-As V58 e V59 iniciam a migração incremental da operação tradicional pelos agregados `Veiculo` e `Tarifa`. Dados históricos sem organização continuam preservados e acessíveis somente pelo contrato legado sem contexto tenant.
+As V58 a V60 migram incrementalmente `Veiculo`, `Tarifa` e `Mensalista`. Dados históricos sem organização continuam preservados e acessíveis somente pelo contrato legado sem contexto tenant.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -20,6 +20,8 @@ As V58 e V59 iniciam a migração incremental da operação tradicional pelos ag
 - `POST/PUT/DELETE /api/veiculos[/{id}]`: requer `operations:manage`.
 - `GET /api/tarifas[/{id}]`: requer `operations:read`.
 - `POST/PUT/DELETE /api/tarifas[/{id}]`: requer `operations:manage`.
+- `GET /api/mensalistas[/{id}]`: requer `operations:read`.
+- Mutações e geração de mensalidade exigem `operations:manage`; o faturamento também exige `finance:manage`.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -54,3 +56,4 @@ Recurso ou Cliente fora do tenant retorna `404`; placa duplicada no mesmo tenant
 |---|---|
 | 2026-08-04 | V58 migra Veículo e o frontend correspondente para tenancy contextual. |
 | 2026-08-04 | V59 migra Tarifa preservando descrições repetidas permitidas pelo legado. |
+| 2026-08-04 | V60 migra Mensalista e a geração tenant-aware de Conta a Receber. |
