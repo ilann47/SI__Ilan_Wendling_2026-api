@@ -38,6 +38,8 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 10. Introduzir estoque tenant-aware. **Local, saldo, razão, ajuste, compensação,
     limiar agregado, auditoria, outbox, idempotência e hardenings transacionais
     de cadeia/concorrência concluídos na V54.**
+11. Migrar operação tradicional em fatias dependentes. **Veículo concluído na
+    V58; Tarifa, Mensalista e Movimentação permanecem nas próximas fatias.**
 
 ## Verificação por entrega
 
@@ -70,3 +72,4 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 - V55 conclui Nota de Entrada, integração de recebimento no razão e Conta a Pagar tenant-aware.
 - V56 conclui Nota de Saída, baixa no razão e Conta a Receber tenant-aware.
 - V57 conclui Nota de Serviço e faturamento tenant-aware.
+- V58 inicia a operação tenant-aware com Veículo, mantendo consumidores operacionais legados restritos ao histórico.

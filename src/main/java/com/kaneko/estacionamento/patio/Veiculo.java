@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,6 +25,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Veiculo extends BaseEntity {
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Version @Column(name = "version", nullable = false)
+    private Long version;
 
     @Column(name = "placa", nullable = false, length = 10)
     private String placa;

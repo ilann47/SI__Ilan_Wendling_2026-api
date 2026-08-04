@@ -521,6 +521,12 @@ dependências registradas em [[bloqueios-externos]].
 
 ### 10.9 Estado de execução
 
+A V58 inicia a migração da operação tradicional por `Veiculo`. A API preservada
+usa `operations:read/manage`, resolve o owner pelo JWT e valida Cliente no mesmo
+tenant. Placa é normalizada e única por organização, com conjunto histórico
+separado e ownership imutável. Mensalista e Movimentação continuam restritos a
+Veículos históricos até suas migrations próprias.
+
 Em 2026-08-03, a V38 concluiu a primeira fatia da Onda 1: formas, condições e
 parcelas de pagamento agora possuem ownership aditivo, unicidade normalizada por
 organização, RBAC contextual e proteção de FK composta dentro do agregado. O

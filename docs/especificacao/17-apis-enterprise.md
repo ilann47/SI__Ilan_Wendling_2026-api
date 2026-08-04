@@ -316,6 +316,16 @@ Condição de pagamento é validada pelo mesmo `organizacaoId`; cidade permanece
 catálogo global. O contrato rejeita campos desconhecidos e retorna `404` para
 cliente ou condição de outro tenant.
 
+Veículos da operação preservam a rota anterior e passam a usar o contexto ativo:
+
+| Método e rota preservada | Permissão | Semântica tenant-aware |
+|---|---|---|
+| `GET /api/veiculos[/{id}]` | `operations:read` | lista/busca somente veículos da organização ativa |
+| `POST/PUT/DELETE /api/veiculos[/{id}]` | `operations:manage` | cria, altera ou inativa no tenant; Cliente deve pertencer à mesma organização |
+
+A placa é normalizada e única por organização. Registros históricos sem owner
+permanecem preservados e invisíveis à API contextual.
+
 Transportadoras preservam a rota anterior e passam a compor o contexto de Logística:
 
 | Método e rota preservada | Permissão | Semântica tenant-aware |
