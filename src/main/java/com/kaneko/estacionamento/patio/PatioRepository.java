@@ -19,4 +19,7 @@ public interface PatioRepository extends JpaRepository<Patio, Long>,
     @EntityGraph(attributePaths = {"cidade"})
     @Query("select p from Patio p where p.id = :id and p.organizacaoId is null")
     Optional<Patio> findById(@Param("id") Long id);
+
+    @EntityGraph(attributePaths = {"cidade"})
+    Optional<Patio> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 }

@@ -16,6 +16,8 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
 
     /** Ha movimentacao com o status informado para o veiculo? (regra 1 ABERTA por veiculo). */
     boolean existsByVeiculoIdAndStatus(Long veiculoId, StatusMovimentacao status);
+    boolean existsByOrganizacaoIdAndVeiculoIdAndStatus(
+            Long organizacaoId, Long veiculoId, StatusMovimentacao status);
 
     /** Ocupacao de um patio: quantas movimentacoes estao com o status informado (ABERTO). */
     long countByPatioIdAndStatus(Long patioId, StatusMovimentacao status);
@@ -31,6 +33,18 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
 
     @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
     Page<Movimentacao> findByStatus(StatusMovimentacao status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Page<Movimentacao> findByOrganizacaoId(Long organizacaoId, Pageable pageable);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Page<Movimentacao> findByOrganizacaoIdIsNull(Pageable pageable);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Page<Movimentacao> findByOrganizacaoIdAndStatus(
+            Long organizacaoId, StatusMovimentacao status, Pageable pageable);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Optional<Movimentacao> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Optional<Movimentacao> findByIdAndOrganizacaoIdIsNull(Long id);
 
     @Override
     @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})

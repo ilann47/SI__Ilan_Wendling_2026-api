@@ -11,6 +11,8 @@ import java.time.OffsetDateTime;
  */
 public record MovimentacaoResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         Long veiculoId,
         String veiculoPlaca,
         TipoMovimentacao tipo,
@@ -28,6 +30,8 @@ public record MovimentacaoResponse(
     public static MovimentacaoResponse from(Movimentacao m) {
         return new MovimentacaoResponse(
                 m.getId(),
+                m.getOrganizacaoId(),
+                m.getVersion(),
                 m.getVeiculo().getId(),
                 m.getVeiculo().getPlaca(),
                 m.getTipo(),

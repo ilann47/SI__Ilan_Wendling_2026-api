@@ -39,7 +39,7 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
     limiar agregado, auditoria, outbox, idempotência e hardenings transacionais
     de cadeia/concorrência concluídos na V54.**
 11. Migrar operação tradicional em fatias dependentes. **Veículo concluído na
-    V58, Tarifa na V59 e Mensalista na V60; Movimentação permanece na próxima fatia.**
+    V58, Tarifa na V59, Mensalista na V60 e Movimentação na V61.**
 
 ## Verificação por entrega
 
@@ -75,3 +75,4 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
 - V58 inicia a operação tenant-aware com Veículo, mantendo consumidores operacionais legados restritos ao histórico.
 - V59 migra Tarifa e mantém Movimentação global restrita a tarifas históricas.
 - V60 migra Mensalista e integra a mensalidade à Conta a Receber tenant-aware.
+- V61 migra Movimentação e fecha o núcleo operacional tradicional tenant-aware.

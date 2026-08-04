@@ -8,7 +8,7 @@ Manter os cadastros e fluxos operacionais do estacionamento isolados pela organi
 
 ## Contexto
 
-As V58 a V60 migram incrementalmente `Veiculo`, `Tarifa` e `Mensalista`. Dados históricos sem organização continuam preservados e acessíveis somente pelo contrato legado sem contexto tenant.
+As V58 a V61 migram `Veiculo`, `Tarifa`, `Mensalista` e `Movimentacao` para o contexto organizacional.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -57,3 +57,4 @@ Recurso ou Cliente fora do tenant retorna `404`; placa duplicada no mesmo tenant
 | 2026-08-04 | V58 migra Veículo e o frontend correspondente para tenancy contextual. |
 | 2026-08-04 | V59 migra Tarifa preservando descrições repetidas permitidas pelo legado. |
 | 2026-08-04 | V60 migra Mensalista e a geração tenant-aware de Conta a Receber. |
+| 2026-08-04 | V61 migra entrada, saída, cancelamento e ocupação por pátio. |
