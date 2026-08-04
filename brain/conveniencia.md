@@ -9,15 +9,16 @@ ownership organizacional explícito.
 
 ## Contexto
 
-A V50/V51 migra e endurece `categoria`, `marca` e `unidade_medida`; a V52 completa
-o recorte com `produto` e `servico`. Registros anteriores continuam sem owner.
+A V50/V51 migra e endurece `categoria`, `marca` e `unidade_medida`; a V52 acrescenta
+`produto` e `servico`; a V53 migra o vínculo `produto_fornecedor`. Registros
+anteriores continuam sem owner.
 
 ## Fluxo (camadas da arquitetura)
 
 ```text
 JWT contextual + catalog:read/manage
   -> controllers preservados /api/categorias, /api/marcas, /api/unidades-medida,
-     /api/produtos e /api/servicos
+     /api/produtos, /api/servicos e /api/produto-fornecedores
   -> services(organizacaoId, comando/filtro)
   -> repositories por id + organizacaoId
   -> uniques normalizadas e owner imutável no PostgreSQL
@@ -31,6 +32,9 @@ JWT contextual + catalog:read/manage
 - `POST/PUT/DELETE` nas mesmas raízes: `catalog:manage`.
 - `GET/POST/PUT/DELETE /api/produtos` e `/api/servicos` seguem as mesmas
   permissões e semântica de concorrência.
+- `GET /api/produto-fornecedores` aceita filtro opcional `produtoId`; consulta e
+  busca exigem `catalog:read`, enquanto criação, alteração e inativação exigem
+  `catalog:manage`.
 - DELETE preserva a inativação lógica existente.
 
 ## Estrutura de Dados (DTOs, Entidades)
@@ -45,11 +49,15 @@ JWT contextual + catalog:read/manage
 - Código de barras de Produto e nome de Serviço são normalizados e únicos por tenant.
 - `produto.quantidade` permanece somente como compatibilidade histórica; a V52 não
   cria ledger nem permite controlar esse saldo pelo payload contextual.
+- ProdutoFornecedor possui owner e identidade Produto–Fornecedor imutáveis,
+  `@Version` e FKs compostas para pontas do mesmo tenant. Produto e Fornecedor
+  precisam estar ativos para criação/reativação. POST para par inativo reativa a
+  mesma linha; o par continua globalmente único.
 
 ## Integrações externas (se houver)
 
-Não há integração externa neste recorte. Notas fiscais, ProdutoFornecedor e o
-relatório de estoque mínimo continuam globais e resolvem somente Produto/Serviço
+Não há integração externa neste recorte. Notas fiscais e o relatório de estoque
+mínimo continuam globais e resolvem somente Produto/Serviço
 históricos, tanto no service quanto por guards no PostgreSQL.
 
 ## Tratamento de Erros
@@ -58,7 +66,7 @@ históricos, tanto no service quanto por guards no PostgreSQL.
 - `403`: token global ou Membership sem permissão.
 - `404`: recurso inexistente ou de outro tenant.
 - `400`: payload inválido ou tentativa de controlar tenant.
-- `409`: nome/sigla normalizado repetido na organização.
+- `409`: nome/sigla/par repetido, parent inativo ou perdedor de POST concorrente.
 - `428`: `If-Match` ausente em alteração/inativação.
 - `412`: versão esperada diverge do agregado persistido.
 
@@ -68,19 +76,24 @@ históricos, tanto no service quanto por guards no PostgreSQL.
 isolamento, contrato fechado, ETag e auditoria. Os testes de constraint cobrem
 uniques, FKs same-owner e consumers globais. `ProdutoServicoMigrationTest` cobre
 V51→V52, preflight atômico e preservação dos registros históricos.
+`ProdutoFornecedorTenantApiTest`, `ProdutoFornecedorMigrationTest`,
+`ProdutoFornecedorTenantConstraintTest` e `ProdutoFornecedorConcorrenciaTest`
+cobrem a V53, inclusive reativação da mesma linha e concorrência 201/409.
 
 ## Decisões Técnicas
 
 - Nenhum dado histórico recebe owner automaticamente; UC732 fará reconciliação.
 - Produto tenant-aware resolve apenas Categoria, Marca e Unidade do mesmo owner.
 - Reverse guards impedem promover um pai histórico ainda referenciado por Produto.
-- V50, V51 e V52 formam uma unidade de rollout backend coordenada.
+- V50, V51, V52 e V53 formam uma unidade de rollout backend coordenada.
 - Consumers ainda globais usam somente registros históricos; migrá-los exige uma
   história própria, sem backfill implícito.
 - Confirmações fiscais fazem flush explícito da alteração versionada do Produto.
   Concorrência otimista retorna `409` com retry explícito e reverte integralmente
   estoque, nota e títulos da transação perdedora.
 - A API preserva rotas e DTOs de resposta; `organizationId` não é exposto.
+- A UI do vínculo usa `catalog:*`, mas precisa também de `suppliers:read` para
+  carregar e exibir o seletor de fornecedores.
 
 ## Módulos relacionados
 
@@ -97,3 +110,4 @@ V51→V52, preflight atômico e preservação dos registros históricos.
 | 2026-08-03 | V51 adiciona concorrência HTTP/JPA, unique de nome da Unidade e reverse guards. |
 | 2026-08-03 | V52 migra Produto e Serviço, protege parents same-owner e consumers globais. |
 | 2026-08-03 | Revisão V52 valida parents ativos, snapshots completos e concorrência fiscal. |
+| 2026-08-03 | V53 migra ProdutoFornecedor, preserva unicidade do par e reativa a mesma linha. |

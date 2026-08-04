@@ -609,9 +609,18 @@ HTTP, unicidade normalizada do nome de Unidade de Medida e guards reversos para
 os pais consumidos por Produto. V50 e V51 constituem uma única unidade de rollout;
 Produto passa a ser a V52 e o frontend não deve ser ativado antes dela.
 
-A V52 conclui esta fatia com Produto e Serviço tenant-aware. O owner é imutável,
+A V52 acrescenta Produto e Serviço tenant-aware. O owner é imutável,
 Produto referencia somente pais do mesmo tenant e as APIs preservadas adotam
 `@Version`, `ETag` e `If-Match`. Consumers fiscais e comerciais ainda globais
 aceitam exclusivamente Produto/Serviço históricos no service e no PostgreSQL;
 sua migração ocorrerá em fatias próprias. Nenhum saldo é recalculado ou migrado:
 `produto.quantidade` permanece apenas como compatibilidade histórica.
+
+A V53 completa o vínculo comercial ProdutoFornecedor. A migration adiciona owner
+nullable apenas para histórico, versão otimista e FKs compostas same-owner para
+Produto e Fornecedor, preservando a unicidade incondicional do par. Owner e pontas
+são imutáveis. A API contextual usa `catalog:read/manage`, oculta registros
+históricos e cross-tenant, exige parents ativos na criação/reativação e reutiliza
+a mesma linha quando um par inativo é reativado. PUT/DELETE usam `If-Match`; POST
+concorrente resolve o perdedor como `409`. Consumers fiscais globais continuam
+restritos a Produto histórico e não foram ampliados.

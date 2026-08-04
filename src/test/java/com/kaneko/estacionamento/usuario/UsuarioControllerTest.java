@@ -1,5 +1,10 @@
 package com.kaneko.estacionamento.usuario;
 
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -55,7 +60,7 @@ class UsuarioControllerTest {
         criar("usr2");
         mvc.perform(get("/api/usuarios"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(2));
+                .andExpect(jsonPath("$.content[*].login", hasItems("usr1", "usr2")));
     }
 
     @Test
@@ -69,8 +74,9 @@ class UsuarioControllerTest {
 
         mvc.perform(get("/api/usuarios").param("perfil", "ADMIN"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].login").value("admin"));
+                .andExpect(jsonPath("$.content[*].login", hasItem("admin")))
+                .andExpect(jsonPath("$.content[*].login", not(hasItem("oper"))))
+                .andExpect(jsonPath("$.content[*].perfil", everyItem(is("ADMIN"))));
     }
 
     @Test

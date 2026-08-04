@@ -218,10 +218,18 @@ A V52 migra Produto e Serviço para ownership organizacional, versionamento
 otimista e RBAC `catalog:read/manage`. Produto exige Marca, Unidade e Categoria
 opcional do mesmo tenant; código de barras e nome de Serviço possuem unicidade
 normalizada por organização e conjunto histórico separado. Notas de entrada e
-saída, Nota de Serviço, ProdutoFornecedor e relatório de estoque mínimo continuam
+saída, Nota de Serviço e relatório de estoque mínimo continuam
 globais e resolvem somente registros históricos. `produto.quantidade` permanece
-compatibilidade legada, sem ledger novo. V50/V51/V52 compõem um único rollout.
+compatibilidade legada, sem ledger novo. V50/V51/V52/V53 compõem um único rollout.
 Marca, Unidade e Categoria precisam estar ativas na criação ou alteração de
 Produto. O saldo legado usa `@Version`: confirmações fiscais concorrentes falham
 com `409` e retry explícito, preservando o rollback atômico de nota, estoque e
 títulos.
+
+A V53 migra ProdutoFornecedor para o contexto organizacional. Owner e pontas do
+par são imutáveis e FKs compostas garantem Produto, Fornecedor e vínculo no mesmo
+tenant. A unicidade histórica do par é preservada; POST sobre par inativo reativa
+a mesma linha e uma disputa concorrente resulta em `201/409`. GET usa
+`catalog:read`; mutações usam `catalog:manage`, auditoria `CONFIGURACAO`, `ETag`
+e `If-Match` em PUT/DELETE. Registros históricos continuam invisíveis à API
+contextual. V50/V51/V52/V53 formam um rollout backend coordenado.

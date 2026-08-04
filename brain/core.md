@@ -111,3 +111,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-03 | Fecha owner imutável de Transportadora na V49. |
 | 2026-08-03 | Torna imutável no PostgreSQL o ownership de Cargo e Funcionário. |
 | 2026-08-03 | Completa o catálogo de conveniência tenant-aware com Produto e Serviço na V52. |
+| 2026-08-03 | Migra ProdutoFornecedor para tenancy contextual e concorrência otimista na V53. |

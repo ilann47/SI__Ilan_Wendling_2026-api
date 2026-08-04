@@ -380,3 +380,19 @@ de Produto e nome de Serviço são únicos de forma normalizada por tenant; os
 conjuntos históricos sem owner mantêm unicidades separadas.
 Conflito otimista durante confirmação fiscal retorna `409` e orienta recarregar e
 tentar novamente; a transação perdedora é revertida integralmente.
+
+A V53 preserva `/api/produto-fornecedores` e torna o vínculo tenant-aware:
+
+| Método e rota | Permissão | Contrato |
+|---|---|---|
+| `GET /api/produto-fornecedores?produtoId={id}` | `catalog:read` | página do tenant; filtro de produto opcional |
+| `GET /api/produto-fornecedores/{id}` | `catalog:read` | resposta com `version` e `ETag` |
+| `POST /api/produto-fornecedores` | `catalog:manage` | cria o par ou reativa a mesma linha inativa; conflito concorrente retorna `409` |
+| `PUT /api/produto-fornecedores/{id}` | `catalog:manage` | altera somente `codigoProd`, `custo` e `ativo`; exige `If-Match` |
+| `DELETE /api/produto-fornecedores/{id}` | `catalog:manage` | inativação lógica; exige `If-Match` |
+
+Produto e Fornecedor são identidade imutável do vínculo e devem pertencer à
+organização ativa. Criação e reativação exigem ambos ativos. Campos de tenant,
+ID e versão são rejeitados no payload; recurso histórico ou cross-tenant retorna
+`404`. Ausência, formato inválido e divergência de `If-Match` retornam,
+respectivamente, `428`, `400` e `412`.

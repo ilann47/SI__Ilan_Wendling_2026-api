@@ -275,7 +275,7 @@ class CatalogoConvenienciaTenantConstraintTest {
         assertViolation(() -> jdbc.update(
                         "INSERT INTO produto_fornecedor (produto_id,fornecedor_id) VALUES (?,?)",
                         produtoTenant, fornecedor),
-                "23503", "fk_produto_fornecedor_produto_owner");
+                "23503", "fk_produto_fornecedor_produto_organizacao");
     }
 
     @Test

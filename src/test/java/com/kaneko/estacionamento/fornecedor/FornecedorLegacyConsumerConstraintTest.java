@@ -61,7 +61,7 @@ class FornecedorLegacyConsumerConstraintTest {
                     (produto_id, fornecedor_id, ativo, created_at, updated_at)
                 VALUES (?, ?, true, now(), now())
                 """, produtoId, fornecedorTenant),
-                "23503", "fk_produto_fornecedor_fornecedor_owner");
+                "23503", "fk_produto_fornecedor_fornecedor_organizacao");
     }
 
     @Test
@@ -148,7 +148,7 @@ class FornecedorLegacyConsumerConstraintTest {
         assertViolation(
                 () -> jdbc.update("UPDATE produto_fornecedor SET fornecedor_id = ? WHERE id = ?",
                         fornecedorTenant, produtoFornecedorId),
-                "23503", "fk_produto_fornecedor_fornecedor_owner");
+                "23514", "ck_produto_fornecedor_identidade_imutavel");
     }
 
     @Test
