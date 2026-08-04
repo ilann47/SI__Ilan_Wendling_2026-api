@@ -624,3 +624,24 @@ históricos e cross-tenant, exige parents ativos na criação/reativação e reu
 a mesma linha quando um par inativo é reativado. PUT/DELETE usam `If-Match`; POST
 concorrente resolve o perdedor como `409`. Consumers fiscais globais continuam
 restritos a Produto histórico e não foram ampliados.
+
+A V54 cria a fronteira tenant-aware de Estoque sem alterar o fluxo fiscal
+histórico. `local_estoque` é um local lógico; `saldo_estoque` mantém uma linha
+por Produto/Local; `movimento_estoque` é razão append-only com origem, ator,
+saldos anterior/posterior e compensação vinculada ao mesmo saldo. Constraints
+compostas impedem referências cross-tenant, saldo negativo, troca de owner e
+compensação incompatível. Ajustes usam idempotência, auditoria `OPERACIONAL`,
+outbox e locks transacionais; o limiar considera a posição agregada por Produto.
+O preflight recusa Produto tenant-aware com quantidade legada não zero. Notas e
+relatórios legados continuam resolvendo somente Produtos históricos sem owner.
+V50/V51/V52/V53/V54 formam um rollout backend coordenado antes da ativação
+conjunta do frontend tenant-aware de catálogo e estoque.
+
+O estado final da transação é protegido no PostgreSQL por constraints diferidas:
+a primeira linha do razão parte de zero, cada `saldo_anterior` coincide com o
+`saldo_posterior` anterior por ID e a posição materializada coincide com o último
+movimento (ou zero sem movimentos). Escrita direta parcial é recusada. Locks de
+Local coordenam inativação com ajustes; Produto com saldo não zero permanece
+ativo. A origem manual incorpora ator e chave, enquanto a unicidade documental
+continua independente do ator. Nenhuma dessas proteções altera notas/relatórios
+históricos ou cria dependência Java de Conveniência para Estoque.

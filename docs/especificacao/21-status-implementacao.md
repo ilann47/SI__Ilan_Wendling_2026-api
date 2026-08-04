@@ -233,3 +233,19 @@ a mesma linha e uma disputa concorrente resulta em `201/409`. GET usa
 `catalog:read`; mutações usam `catalog:manage`, auditoria `CONFIGURACAO`, `ETag`
 e `If-Match` em PUT/DELETE. Registros históricos continuam invisíveis à API
 contextual. V50/V51/V52/V53 formam um rollout backend coordenado.
+
+A V54 introduz Local de Estoque, Saldo por Produto/Local e Movimento append-only
+como fundação tenant-aware. O razão é canônico para produtos da organização;
+`produto.quantidade` fica congelado em zero nesse recorte e permanece somente
+como compatibilidade histórica. Ajuste e compensação são idempotentes, auditados
+e publicados pela outbox. Locks por Produto/saldo impedem quantidade negativa e
+o evento de limiar ocorre apenas no cruzamento agregado. V50 a V54 compõem o
+rollout backend coordenado do catálogo e estoque tenant-aware.
+
+O hardening da V54 acrescenta constraint triggers diferidos que, no fim de cada
+transação, exigem razão iniciado em zero, continuidade por ID e igualdade do
+último saldo posterior com `saldo_estoque.quantidade`. Compensações são validadas
+antes do insert; Produto com saldo não zero não pode ser inativado. PUT/DELETE de
+Local serializam contra movimentações, idempotência manual inclui o ator e os
+payloads de outbox/auditoria usam allowlist explícita. Esses guards preservam a
+atualização conjunta Saldo+Movimento do service e rejeitam escrita SQL parcial.

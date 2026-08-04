@@ -265,3 +265,11 @@ Gestor será feita somente junto dos casos de uso comerciais correspondentes.
 
 A matriz detalhada por onda, inclusive testes 401/403/404 e referências
 cross-tenant, está em [[22-unificacao-multitenant]].
+
+### Fundação de estoque — V54
+
+`stock:read` e `stock:manage` entram no catálogo executável e são concedidas,
+nesta primeira fatia, somente ao `ADMIN_ORGANIZACAO`. A primeira consulta locais,
+saldos, posições e razão; a segunda mantém locais, registra ajustes e compensa
+movimentos. Token global, Operador e demais papéis contextuais não recebem acesso
+implícito. Papéis especializados de Estoque/Compras permanecem futuros.

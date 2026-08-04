@@ -135,7 +135,10 @@ class EventoControllerTest {
                 "select count(*) from evento_outbox where aggregate_id = ? and event_type = 'EventoCriado'",
                 Long.class, eventoId)).isEqualTo(1L);
         assertThat(jdbc.queryForObject(
-                "select payload ->> 'status' from evento_outbox where aggregate_id = ?", String.class, eventoId))
+                "select payload ->> 'status' from evento_outbox "
+                        + "where aggregate_type = 'EVENTO' and aggregate_id = ? "
+                        + "and event_type = 'EventoCriado'",
+                String.class, eventoId))
                 .isEqualTo("RASCUNHO");
 
         criarEvento(tokenContextual, "evento-external-id-duplicado",
@@ -153,8 +156,14 @@ class EventoControllerTest {
 
         assertThat(JsonPath.<Number>read(repetido, "$.id").longValue())
                 .isEqualTo(JsonPath.<Number>read(primeiro, "$.id").longValue());
-        assertThat(jdbc.queryForObject("select count(*) from evento", Long.class)).isEqualTo(1L);
-        assertThat(jdbc.queryForObject("select count(*) from evento_outbox", Long.class)).isEqualTo(1L);
+        long eventoId = JsonPath.<Number>read(primeiro, "$.id").longValue();
+        assertThat(jdbc.queryForObject(
+                "select count(*) from evento where id = ? and organizacao_id = ?",
+                Long.class, eventoId, organizacaoId)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from evento_outbox where aggregate_type = 'EVENTO' "
+                        + "and aggregate_id = ? and event_type = 'EventoCriado'",
+                Long.class, eventoId)).isEqualTo(1L);
 
         criarEvento(tokenContextual, "evento-idempotente", payload("Outro Evento", venueId),
                 status().isConflict());

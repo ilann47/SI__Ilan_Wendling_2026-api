@@ -396,3 +396,34 @@ organização ativa. Criação e reativação exigem ambos ativos. Campos de ten
 ID e versão são rejeitados no payload; recurso histórico ou cross-tenant retorna
 `404`. Ausência, formato inválido e divergência de `If-Match` retornam,
 respectivamente, `428`, `400` e `412`.
+
+## Fundação de estoque tenant-aware — V54
+
+O razão de estoque passa a ser canônico para produtos tenant-aware. Todas as
+rotas exigem JWT contextual; recursos históricos ou de outro tenant retornam
+`404` e o cliente nunca informa `organizationId`.
+
+| Método e rota | Permissão | Contrato |
+|---|---|---|
+| `GET /api/v1/stock-locations[/{id}]` | `stock:read` | página ou detalhe com `version` e `ETag` |
+| `POST /api/v1/stock-locations` | `stock:manage` | cria `{nome, ativo?}`; nome normalizado é único no tenant |
+| `PUT/DELETE /api/v1/stock-locations/{id}` | `stock:manage` | atualiza/inativa com `If-Match`; inativação exige saldos zerados |
+| `GET /api/v1/stock-balances` | `stock:read` | página por produto/local, com nomes e saldo por local |
+| `GET /api/v1/stock-positions` | `stock:read` | posição agregada; filtros `produtoId` e `abaixoMinimo` |
+| `GET /api/v1/stock-movements[/{id}]` | `stock:read` | razão/detalhe com nomes, origem, ator e saldos anterior/posterior |
+| `POST /api/v1/stock-adjustments` | `stock:manage` | ajuste com `produtoId`, `localEstoqueId`, `delta`, `custoUnitario?`, `motivo` |
+| `POST /api/v1/stock-movements/{id}/compensation` | `stock:manage` | contrapartida única com `{motivo}` |
+
+O razão aceita filtros `produtoId`, `localEstoqueId`, `tipo`, `de` e `ate`; `de`
+maior que `ate` retorna `400`. Os comandos exigem `Idempotency-Key`, retornam
+`201` com `Location`, rejeitam delta zero/saldo negativo e retornam `409` quando
+a mesma chave é reutilizada com payload diferente. A resposta do movimento inclui
+nomes de Produto e Local e não exige `catalog:read`.
+
+No comando manual, o escopo de idempotência e a origem do movimento incluem o
+ator autenticado: a mesma chave pode ser usada independentemente por dois atores,
+mas é repetível por um mesmo ator. Eventos normais da outbox e o estado posterior
+da auditoria carregam uma allowlist explícita com IDs/nome de Produto e Local,
+tipo, delta, custo, origem, ator, motivo, saldo anterior/posterior e compensação.
+`EstoqueMinimoAtingido` publica apenas identificação, total agregado e mínimo.
+O razão é ordenado por `ocorrido_em DESC, id DESC`.

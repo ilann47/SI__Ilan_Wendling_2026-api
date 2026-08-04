@@ -26,7 +26,8 @@
     {"id": "logistica", "type": "file", "file": "logistica.md", "x": 7000, "y": 160, "width": 360, "height": 220},
     {"id": "fornecedores", "type": "file", "file": "fornecedores.md", "x": 7500, "y": 160, "width": 360, "height": 220},
     {"id": "rh", "type": "file", "file": "rh.md", "x": 8000, "y": 160, "width": 360, "height": 220},
-    {"id": "conveniencia", "type": "file", "file": "conveniencia.md", "x": 8500, "y": 160, "width": 360, "height": 220}
+    {"id": "conveniencia", "type": "file", "file": "conveniencia.md", "x": 8500, "y": 160, "width": 360, "height": 220},
+    {"id": "estoque", "type": "file", "file": "estoque.md", "x": 9000, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -107,6 +108,11 @@
     {"id": "rh-auditoria", "fromNode": "rh", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção RH"},
     {"id": "unificacao-conveniencia", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "conveniencia", "toSide": "left", "label": "ownership de catálogo"},
     {"id": "rbac-conveniencia", "fromNode": "rbac", "fromSide": "right", "toNode": "conveniencia", "toSide": "left", "label": "catalog:read/manage"},
-    {"id": "conveniencia-auditoria", "fromNode": "conveniencia", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção CONFIGURACAO"}
+    {"id": "conveniencia-auditoria", "fromNode": "conveniencia", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção CONFIGURACAO"},
+    {"id": "conveniencia-estoque", "fromNode": "conveniencia", "fromSide": "right", "toNode": "estoque", "toSide": "left", "label": "Produto tenant-aware"},
+    {"id": "rbac-estoque", "fromNode": "rbac", "fromSide": "right", "toNode": "estoque", "toSide": "left", "label": "stock:read/manage"},
+    {"id": "estoque-auditoria", "fromNode": "estoque", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "retenção OPERACIONAL"},
+    {"id": "estoque-idempotencia", "fromNode": "estoque", "fromSide": "left", "toNode": "idempotencia", "toSide": "right", "label": "ajuste/compensação"},
+    {"id": "estoque-outbox", "fromNode": "estoque", "fromSide": "top", "toNode": "outbox", "toSide": "bottom", "label": "ajuste/limiar"}
   ]
 }

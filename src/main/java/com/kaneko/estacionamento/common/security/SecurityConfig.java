@@ -58,6 +58,7 @@ public class SecurityConfig {
                             .requestMatchers("/actuator/**").authenticated()
                             // Controllers /api/v1 aplicam RBAC contextual por metodo.
                             .requestMatchers("/api/v1/organizations/**").authenticated()
+                            .requestMatchers("/api/v1/stock-*/**").authenticated()
                             // Catalogos migrados usam RBAC contextual por metodo.
                             .requestMatchers("/api/formas-pagamento/**").authenticated()
                             .requestMatchers("/api/condicoes-pagamento/**").authenticated()

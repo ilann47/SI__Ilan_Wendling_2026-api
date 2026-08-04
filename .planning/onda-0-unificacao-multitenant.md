@@ -35,6 +35,9 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
    concluídas em V50/V51; Produto e Serviço concluídos na V52. Consumers fiscais,
    ProdutoFornecedor concluído na V53; consumers fiscais e relatório permanecem
    globais e limitados ao histórico.**
+10. Introduzir estoque tenant-aware. **Local, saldo, razão, ajuste, compensação,
+    limiar agregado, auditoria, outbox, idempotência e hardenings transacionais
+    de cadeia/concorrência concluídos na V54.**
 
 ## Verificação por entrega
 
@@ -58,7 +61,7 @@ históricos a um tenant arbitrário e sem interromper as APIs atuais.
   da reabertura; não reiniciar binário antigo após dados tenant-aware.
 - Nenhuma migration aplicada ao banco local com checksum divergente.
 - Rollout V48/V49 sem overlap; backfill somente pelo procedimento UC732.
-- V50, V51, V52 e V53 não são publicáveis isoladamente; o rollout backend deve ser
+- V50, V51, V52, V53 e V54 não são publicáveis isoladamente; o rollout backend deve ser
   coordenado antes
   da ativação do frontend tenant-aware do catálogo.
 - Nenhuma remoção de rota ou menu como substituto de autorização.
