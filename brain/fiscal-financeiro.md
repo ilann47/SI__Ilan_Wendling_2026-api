@@ -7,6 +7,7 @@ Registrar notas de entrada/saída por organização, movimentos no razão e tít
 
 ## Contexto
 A V55 migra `nota_entrada`, `item_nota_entrada` e `conta_pagar` de forma aditiva.
+A V63 permite vincular a Nota de Entrada a um recebimento de compra já estocado.
 
 ## Fluxo (camadas da arquitetura)
 O JWT define a organização. A criação valida pais do tenant. A confirmação
@@ -30,6 +31,7 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 
 ## Decisões Técnicas
 - Tenant usa razão V54; `produto.quantidade` permanece histórico.
+- Nota vinculada ao recebimento V63 gera Conta a Pagar sem duplicar estoque.
 - Relatórios consolidados selecionam contas e documentos pela organização ativa.
 
 ## Módulos relacionados
@@ -43,3 +45,4 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 | 2026-08-04 | Nota de serviço e faturamento a receber migrados na V57. |
 | 2026-08-04 | Despesa Avulsa, baixa e cancelamento migrados na V62. |
 | 2026-08-04 | Relatórios gerenciais passam a consolidar operação, fiscal, financeiro e estoque por tenant. |
+| 2026-08-14 | Nota de Entrada recebe vínculo opcional ao recebimento de compra e separa efeito físico do financeiro. |

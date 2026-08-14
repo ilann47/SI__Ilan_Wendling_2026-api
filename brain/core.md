@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[compras]]
 
 # Core do Estacionamento Kaneko
 
@@ -61,6 +61,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[fornecedores]] — fornecedores, contatos e referências comerciais do tenant.
 - [[rh]] — cargos e funcionários tenant-aware com compatibilidade histórica controlada.
 - [[conveniencia]] — categorias, marcas e unidades de medida isoladas por organização.
+- [[compras]] — ordens e recebimentos físicos tenant-aware integrados ao estoque e fiscal.
 
 ## Histórico
 
@@ -98,6 +99,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-02 | Centraliza bloqueios e condições objetivas de retomada da fase de eventos. |
 | 2026-08-03 | Adiciona seed local idempotente do fluxo de eventos, desativado por padrão. |
 | 2026-08-03 | Inicia Onda 0 da unificação multi-tenant dos módulos empresariais. |
+| 2026-08-14 | Conclui a Onda 4 com Ordem de Compra e recebimentos na V63. |
 | 2026-08-03 | Adiciona a fundação reutilizável de testes tenant-aware e constraints PostgreSQL. |
 | 2026-08-03 | Migra formas e condições de pagamento para ownership e RBAC contextual. |
 | 2026-08-03 | Migra clientes e sua referência de condição de pagamento para tenancy real. |

@@ -542,6 +542,14 @@ menu e listagens por organização ativa.
 A V62 migra `ContaPagarAvulsa`, incluindo baixa e cancelamento, com Fornecedor
 e Forma de Pagamento do mesmo tenant. Registros históricos permanecem separados.
 
+A V63 conclui a Onda 4 com `OrdemCompra`, itens e recebimentos tenant-aware.
+Ordens usam RBAC `purchases:read/manage`, ETag/If-Match, idempotência, auditoria
+e outbox. O recebimento parcial ou completo é append-only e registra a entrada
+no razão V54. A Nota de Entrada pode referenciar exatamente um recebimento do
+mesmo tenant, fornecedor, local, produtos e quantidades; nesse caso sua
+confirmação gera Conta a Pagar sem repetir o movimento físico. A decisão está
+registrada em [[23-adr-ordem-compra]].
+
 Após a V62, os cinco relatórios gerenciais preservados passam a resolver o owner
 exclusivamente pelo JWT. Estoque mínimo usa a soma do razão V54, e não o campo
 legado `produto.quantidade`; caches do frontend incluem a organização ativa.

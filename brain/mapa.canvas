@@ -29,7 +29,8 @@
     {"id": "conveniencia", "type": "file", "file": "conveniencia.md", "x": 8500, "y": 160, "width": 360, "height": 220},
     {"id": "estoque", "type": "file", "file": "estoque.md", "x": 9000, "y": 160, "width": 360, "height": 220},
     {"id": "fiscal-financeiro", "type": "file", "file": "fiscal-financeiro.md", "x": 9500, "y": 160, "width": 360, "height": 220},
-    {"id": "operacao", "type": "file", "file": "operacao.md", "x": 10000, "y": 160, "width": 360, "height": 220}
+    {"id": "operacao", "type": "file", "file": "operacao.md", "x": 10000, "y": 160, "width": 360, "height": 220},
+    {"id": "compras", "type": "file", "file": "compras.md", "x": 10500, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -120,6 +121,10 @@
     {"id": "rbac-fiscal-financeiro", "fromNode": "rbac", "fromSide": "right", "toNode": "fiscal-financeiro", "toSide": "left", "label": "fiscal/finance"},
     {"id": "unificacao-operacao", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "operacao", "toSide": "left", "label": "ownership operacional"},
     {"id": "clientes-operacao", "fromNode": "clientes", "fromSide": "right", "toNode": "operacao", "toSide": "left", "label": "veículo do cliente"},
-    {"id": "rbac-operacao", "fromNode": "rbac", "fromSide": "right", "toNode": "operacao", "toSide": "left", "label": "operations:read/manage"}
+    {"id": "rbac-operacao", "fromNode": "rbac", "fromSide": "right", "toNode": "operacao", "toSide": "left", "label": "operations:read/manage"},
+    {"id": "fornecedores-compras", "fromNode": "fornecedores", "fromSide": "right", "toNode": "compras", "toSide": "left", "label": "fornecedor da ordem"},
+    {"id": "compras-estoque", "fromNode": "compras", "fromSide": "left", "toNode": "estoque", "toSide": "right", "label": "recebimento físico"},
+    {"id": "compras-fiscal-financeiro", "fromNode": "compras", "fromSide": "left", "toNode": "fiscal-financeiro", "toSide": "right", "label": "nota e conta a pagar"},
+    {"id": "rbac-compras", "fromNode": "rbac", "fromSide": "right", "toNode": "compras", "toSide": "left", "label": "purchases:read/manage"}
   ]
 }

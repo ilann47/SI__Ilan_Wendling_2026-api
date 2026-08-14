@@ -6,6 +6,8 @@
 > tenant-aware e conectou a confirmação ao razão de estoque V54.
 > A V56 acrescenta Nota de Saída, baixa no razão e Conta a Receber tenant-aware.
 > A V57 conclui Nota de Serviço tenant-aware e gera títulos a receber na emissão.
+> A V63 implementa Ordem de Compra e recebimentos físicos tenant-aware e permite
+> vincular a Nota de Entrada sem duplicar o movimento de estoque.
 
 ## 21.1 Finalidade
 
@@ -44,7 +46,7 @@ Estados utilizados:
 | UC720 — Fechar evento | `PARCIALMENTE_CONCLUIDA` | Fontes financeiras canônicas para a parte restante | Encerramento operacional versionado, bloqueio de ocupação/presença/sessão aberta e ressalva financeira auditável | Conciliação, aprovação, relatório de fechamento e finalização | Pagamento, reembolso, caixa, fiscal e repasse autênticos disponíveis |
 | UC721 — DRE por evento | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Fontes financeiras e fechamento | Relatórios legados existem | Linhagem econômica por evento | Disponibilizar fontes financeiras canônicas ou modo preliminar formal |
 | UC722 — Documento fiscal | `BLOQUEADA_EXTERNAMENTE` | Provedor fiscal, certificado e contratos regulatórios | Registros fiscais legados permanecem preservados | Transmissão, protocolo, contingência e armazenamento fiscal seguro | Provider/ambiente/certificado e escopo fiscal definidos |
-| UC723–UC724 — Compra e venda administrativa | `EXECUTAVEL` | Ondas 1 e 2 da unificação | Fluxos atuais de notas, estoque e financeiro existem | Ownership, razão de estoque, Ordem de Compra e Venda Administrativa | Concluir a Onda 0 e executar a migração aditiva definida no documento 22 |
+| UC723–UC724 — Compra e venda administrativa | `PARCIALMENTE_EXECUTAVEL` | Onda 5 da unificação | Ordem de Compra, recebimento parcial/completo, estoque e Nota de Entrada/Conta a Pagar integrados pela V63 | Venda Administrativa e Ordem de Serviço integradas à saída fiscal e contas a receber | Executar a Onda 5 definida no documento 22 |
 | UC725 — Venda PDV | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Caixa, pagamento transacional e razão de estoque | Cadastros legados de produto existem | Venda, recebimento, caixa, estoque e fiscal conciliáveis | Concluir pagamentos, estoque enterprise e UC728 |
 | UC726–UC727 — Mensalista e rotativo | `PARCIALMENTE_EXECUTAVEL` | Onda 3 e políticas próprias | Serviços atuais de mensalista, tarifa e movimentação existem | Ownership, planos versionados, origens e integração financeira | Migrar o grafo operacional após os cadastros empresariais necessários |
 | UC728 — Caixa | `BLOQUEADA_POR_DEPENDENCIA_INTERNA` | Pagamentos e PDV | Financeiro legado existe | Sessão de caixa, diferenças e conciliação | Concluir pagamento transacional e preparar PDV |

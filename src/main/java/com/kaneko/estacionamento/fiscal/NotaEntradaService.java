@@ -5,6 +5,9 @@ import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
 import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.compras.ItemRecebimentoCompra;
+import com.kaneko.estacionamento.compras.RecebimentoCompra;
+import com.kaneko.estacionamento.compras.RecebimentoCompraRepository;
 import com.kaneko.estacionamento.conveniencia.Produto;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.financeiro.ContaPagar;
@@ -24,6 +27,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
@@ -49,6 +53,7 @@ public class NotaEntradaService {
     private final ContaPagarRepository contaPagarRepository;
     private final LocalEstoqueRepository localEstoqueRepository;
     private final EstoqueService estoqueService;
+    private final RecebimentoCompraRepository recebimentoCompraRepository;
     private final AuditoriaService auditoria;
 
     public NotaEntradaService(NotaEntradaRepository repository,
@@ -58,6 +63,7 @@ public class NotaEntradaService {
                               ContaPagarRepository contaPagarRepository,
                               LocalEstoqueRepository localEstoqueRepository,
                               EstoqueService estoqueService,
+                              RecebimentoCompraRepository recebimentoCompraRepository,
                               AuditoriaService auditoria) {
         this.repository = repository;
         this.fornecedorRepository = fornecedorRepository;
@@ -66,6 +72,7 @@ public class NotaEntradaService {
         this.contaPagarRepository = contaPagarRepository;
         this.localEstoqueRepository = localEstoqueRepository;
         this.estoqueService = estoqueService;
+        this.recebimentoCompraRepository = recebimentoCompraRepository;
         this.auditoria = auditoria;
     }
 
@@ -110,6 +117,26 @@ public class NotaEntradaService {
                     .orElseThrow(() -> new RecursoNaoEncontradoException(
                             "LocalEstoque", req.localEstoqueId()));
             nota.setLocalEstoque(local);
+        }
+        if (req.recebimentoCompraId() != null) {
+            if (organizacaoId == null) {
+                throw new IllegalArgumentException(
+                        "Recebimento de compra exige contexto de organizacao.");
+            }
+            RecebimentoCompra recebimento = recebimentoCompraRepository
+                    .findByIdAndOrganizacaoId(req.recebimentoCompraId(), organizacaoId)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException(
+                            "RecebimentoCompra", req.recebimentoCompraId()));
+            if (!recebimento.getOrdemCompra().getFornecedor().getId().equals(fornecedor.getId())
+                    || !recebimento.getLocalEstoque().getId().equals(nota.getLocalEstoque().getId())) {
+                throw new ConflitoException(
+                        "Fornecedor e local da nota devem corresponder ao recebimento.");
+            }
+            if (repository.existsByOrganizacaoIdAndRecebimentoCompraId(
+                    organizacaoId, recebimento.getId())) {
+                throw new ConflitoException("O recebimento ja possui uma nota de entrada.");
+            }
+            nota.setRecebimentoCompra(recebimento);
         }
 
         boolean duplicada = organizacaoId == null
@@ -174,6 +201,10 @@ public class NotaEntradaService {
         }
         nota.setValorTotal(total);
 
+        if (nota.getRecebimentoCompra() != null) {
+            validarItensRecebimento(nota, nota.getRecebimentoCompra());
+        }
+
         ratearDespesas(nota.getItens(), valorProdutos, frete, seguro, outras);
         nota = repository.saveAndFlush(nota);
         auditar(nota, "NOTA_ENTRADA_CRIADA", null, snapshot(nota));
@@ -203,7 +234,7 @@ public class NotaEntradaService {
             }
             produto.recalcularLucro();
             produtoRepository.saveAndFlush(produto);
-            if (organizacaoId != null) {
+            if (organizacaoId != null && nota.getRecebimentoCompra() == null) {
                 estoqueService.registrarRecebimento(organizacaoId, atorId, produto.getId(),
                         nota.getLocalEstoque().getId(), item.getQuantidade(),
                         item.getCustoPrecoFinal(), "NOTA_ENTRADA",
@@ -329,6 +360,31 @@ public class NotaEntradaService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", id));
     }
 
+    private static void validarItensRecebimento(
+            NotaEntrada nota, RecebimentoCompra recebimento) {
+        Map<Long, BigDecimal> quantidadesRecebidas = new HashMap<>();
+        for (ItemRecebimentoCompra item : recebimento.getItens()) {
+            quantidadesRecebidas.merge(item.getProduto().getId(), item.getQuantidade(),
+                    BigDecimal::add);
+        }
+        Map<Long, BigDecimal> quantidadesNota = new HashMap<>();
+        for (ItemNotaEntrada item : nota.getItens()) {
+            quantidadesNota.merge(item.getProduto().getId(), item.getQuantidade(),
+                    BigDecimal::add);
+        }
+        if (quantidadesRecebidas.size() != quantidadesNota.size()) {
+            throw new ConflitoException(
+                    "Os itens da nota devem corresponder integralmente ao recebimento.");
+        }
+        for (Map.Entry<Long, BigDecimal> item : quantidadesRecebidas.entrySet()) {
+            BigDecimal quantidadeNota = quantidadesNota.get(item.getKey());
+            if (quantidadeNota == null || quantidadeNota.compareTo(item.getValue()) != 0) {
+                throw new ConflitoException(
+                        "Os itens da nota devem corresponder integralmente ao recebimento.");
+            }
+        }
+    }
+
     private static BigDecimal nz(BigDecimal v) {
         return v != null ? v : BigDecimal.ZERO;
     }
@@ -348,6 +404,8 @@ public class NotaEntradaService {
                 "fornecedorId", nota.getFornecedor().getId(),
                 "valorTotal", nota.getValorTotal(),
                 "localEstoqueId", nota.getLocalEstoque() == null
-                        ? 0L : nota.getLocalEstoque().getId());
+                        ? 0L : nota.getLocalEstoque().getId(),
+                "recebimentoCompraId", nota.getRecebimentoCompra() == null
+                        ? 0L : nota.getRecebimentoCompra().getId());
     }
 }

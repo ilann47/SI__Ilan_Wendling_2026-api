@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.kaneko.estacionamento.conveniencia.Produto;
 import com.kaneko.estacionamento.auditoria.AuditoriaService;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
+import com.kaneko.estacionamento.compras.RecebimentoCompraRepository;
 import com.kaneko.estacionamento.financeiro.ContaPagarRepository;
 import com.kaneko.estacionamento.financeiro.ContaReceberRepository;
 import com.kaneko.estacionamento.estoque.EstoqueService;
@@ -31,7 +32,8 @@ class NotaFiscalOptimisticLockPropagationTest {
         NotaEntradaService service = new NotaEntradaService(notas,
                 mock(FornecedorRepository.class), mock(CondicaoPagamentoRepository.class),
                 produtos, titulos, mock(LocalEstoqueRepository.class),
-                mock(EstoqueService.class), mock(AuditoriaService.class));
+                mock(EstoqueService.class), mock(RecebimentoCompraRepository.class),
+                mock(AuditoriaService.class));
         NotaEntrada nota = notaEntradaPendente();
         OptimisticLockingFailureException conflito =
                 new OptimisticLockingFailureException("produto concorrente");

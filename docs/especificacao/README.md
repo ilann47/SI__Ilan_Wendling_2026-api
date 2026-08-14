@@ -1,4 +1,4 @@
-> Links: [[01-introducao]] · [[03-der]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[20-roadmap-produto]] · [[21-status-implementacao]] · [[22-unificacao-multitenant]] · [[relatorio-conformidade]]
+> Links: [[01-introducao]] · [[03-der]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[20-roadmap-produto]] · [[21-status-implementacao]] · [[22-unificacao-multitenant]] · [[23-adr-ordem-compra]] · [[relatorio-conformidade]]
 
 # Especificação de Requisitos — Sistema Estacionamento Kaneko
 
@@ -58,7 +58,7 @@ A lista abaixo descreve decisões da v1 acadêmica original, não o estado atual
 
 ## Arquitetura de Produto Enterprise (visão evolutiva)
 
-Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especificação do comportamento **AS-IS**. A arquitetura definitiva de evolução, com foco inicial em eventos e preservação dos módulos existentes, está nos documentos 11 a 22:
+Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especificação do comportamento **AS-IS**. A arquitetura definitiva de evolução, com foco inicial em eventos e preservação dos módulos existentes, está nos documentos 11 a 23:
 
 | # | Documento | Conteúdo |
 |---|---|---|
@@ -74,6 +74,7 @@ Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especifica�
 | 20 | [Roadmap do Produto](20-roadmap-produto.md) | Fundação, dez fases, riscos, impactos, NFRs e plano de evolução. |
 | 21 | [Estado de Implementação](21-status-implementacao.md) | Classificação das histórias, dependências, bloqueios externos e condições de retomada. |
 | 22 | [Unificação Multi-Tenant](22-unificacao-multitenant.md) | Ownership, migração aditiva, RBAC e integração dos módulos empresariais permanentes. |
+| 23 | [ADR de Ordem de Compra](23-adr-ordem-compra.md) | Separação entre intenção comercial, recebimento físico e Nota de Entrada. |
 | — | [Registro Central de Bloqueios](bloqueios-externos.md) | Dependências externas, decisões de negócio e infraestrutura que impedem histórias específicas. |
 
 ### Regra de prevalência

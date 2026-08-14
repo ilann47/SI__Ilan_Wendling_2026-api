@@ -873,3 +873,36 @@ where not exists (
     where ta.organizacao_id = c.organizacao_id and ta.faixa = 'FAIXA-DEMO-02'
       and ta.status = 'RECUSADA' and ta.motivo = 'CREDENCIAL_INVALIDA'
 );
+
+insert into ordem_compra
+    (id, organizacao_id, fornecedor_id, numero, status, data_emissao,
+     previsao_entrega, moeda, subtotal, valor_frete, valor_desconto,
+     valor_total, observacao, version)
+select nextval('ordem_compra_id_seq'), c.organizacao_id, f.id,
+       'OC-DEMO-001', 'APROVADA', current_date - 2, current_date + 5,
+       'BRL', 40::numeric, 5::numeric, 0::numeric, 45::numeric,
+       'Ordem pronta para demonstrar recebimento parcial ou total', 0
+from demo_seed_context c
+join fornecedor f
+  on f.organizacao_id = c.organizacao_id
+ and f.nome = 'Distribuidora Conveniencia Demo Ltda'
+where not exists (
+    select 1 from ordem_compra o
+    where o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
+);
+
+insert into item_ordem_compra
+    (id, organizacao_id, ordem_compra_id, produto_id, sequencia,
+     quantidade_pedida, quantidade_recebida, valor_unitario,
+     valor_desconto, valor_total)
+select nextval('item_ordem_compra_id_seq'), c.organizacao_id, o.id, p.id, 1,
+       20::numeric, 0::numeric, 2::numeric, 0::numeric, 40::numeric
+from demo_seed_context c
+join ordem_compra o
+  on o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
+join produto p
+  on p.organizacao_id = c.organizacao_id and p.nome = 'Agua Mineral Demo 500ml'
+where not exists (
+    select 1 from item_ordem_compra i
+    where i.ordem_compra_id = o.id and i.sequencia = 1
+);

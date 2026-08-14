@@ -13,6 +13,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   pagamento (parceladas).
 - **Conveniência** — categorias, marcas, unidades, serviços, produtos (estoque)
   e o vínculo produto-fornecedor.
+- **Compras** — ordens versionadas, aprovação, cancelamento e recebimentos
+  parciais/completos integrados ao estoque e à Nota de Entrada.
 - **Fiscal** — notas de **entrada** (compra: rateio de despesas, soma de estoque,
   geração de contas a pagar), de **saída** (venda: baixa de estoque com validação,
   geração de contas a receber) e de **serviço** (NFS-e com ISS).
@@ -208,6 +210,7 @@ rh/              cargo, funcionário
 fornecedor/      fornecedor + e-mails/telefones
 patio/           veículo, tarifa, mensalista, movimentação (cálculo de tarifa)
 conveniencia/    categoria, marca, unidade, serviço, produto, produto-fornecedor
+compras/         ordem de compra, itens, recebimentos e integração de estoque
 fiscal/          notas de entrada, saída e serviço (+ itens)
 financeiro/      contas a pagar, a receber e avulsas
 usuario/         cadastro de usuários

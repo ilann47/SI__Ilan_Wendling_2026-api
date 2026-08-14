@@ -76,7 +76,8 @@ ajuste versus inativação e dois PUTs com o mesmo ETag.
 - Produto tenant-aware só pode ser inativado com posição agregada zerada.
 - Eventos normais expõem allowlist completa do movimento; o alerta de mínimo
   contém somente identificação do produto, movimento, total e mínimo.
-- Nenhum lote, compra, transferência, PDV ou custo médio foi antecipado.
+- Ordem de Compra usa o recebimento V63 como origem física; transferência, PDV
+  e custo médio permanecem fora deste recorte.
 
 ## Módulos relacionados
 
@@ -89,3 +90,4 @@ ajuste versus inativação e dois PUTs com o mesmo ETag.
 |---|---|
 | 2026-08-03 | Fundação tenant-aware de estoque e razão adicionada na V54. |
 | 2026-08-03 | Hardenings P1 de concorrência, cadeia do razão, compensação, idempotência e payloads aplicados. |
+| 2026-08-14 | Recebimento de Ordem de Compra passa a registrar entrada física idempotente no razão. |

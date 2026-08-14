@@ -31,6 +31,8 @@ public record NotaEntradaRequest(
 
         Long localEstoqueId,
 
+        Long recebimentoCompraId,
+
         LocalDate dataEmissao,
         LocalDate dataChegada,
 

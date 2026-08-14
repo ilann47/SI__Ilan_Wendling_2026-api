@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.fiscal;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
+import com.kaneko.estacionamento.compras.RecebimentoCompra;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
 import com.kaneko.estacionamento.estoque.LocalEstoque;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
@@ -62,6 +63,10 @@ public class NotaEntrada extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "local_estoque_id")
     private LocalEstoque localEstoque;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recebimento_compra_id")
+    private RecebimentoCompra recebimentoCompra;
 
     @Column(name = "data_emissao", nullable = false)
     private LocalDate dataEmissao;
