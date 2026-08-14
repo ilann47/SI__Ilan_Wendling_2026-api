@@ -510,7 +510,7 @@ apenas uma `DataIntegrityViolationException` genérica.
 3. **Onda 2:** catálogo de conveniência e razão de estoque.
 4. **Onda 3:** operação de estacionamento com origens evento, rotativo e mensalista.
 5. **Onda 4:** ADR de Ordem de Compra; ordem, recebimento, nota e contas a pagar.
-6. **Onda 5:** venda administrativa; ADR de Ordem de Serviço; notas e contas a receber.
+6. **Onda 5:** venda administrativa e Ordem de Serviço implementadas pelas V64/V65; notas e contas a receber integradas sem efeitos duplicados.
 7. **Onda 6:** baixas, conciliação, despesas, relatórios e fechamento por evento.
 8. **Onda 7:** consolidação de frontend, permissões e E2E ponta a ponta.
 

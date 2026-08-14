@@ -47,3 +47,4 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 | 2026-08-04 | Relatórios gerenciais passam a consolidar operação, fiscal, financeiro e estoque por tenant. |
 | 2026-08-14 | Nota de Entrada recebe vínculo opcional ao recebimento de compra e separa efeito físico do financeiro. |
 | 2026-08-14 | Nota de Saída pode documentar Venda Administrativa sem duplicar estoque ou recebível. |
+| 2026-08-14 | Nota de Serviço passa a faturar uma única [[ordens-servico|Ordem de Serviço]] concluída. |

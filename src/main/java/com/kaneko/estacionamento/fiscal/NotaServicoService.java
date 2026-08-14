@@ -18,6 +18,9 @@ import com.kaneko.estacionamento.patio.MensalistaRepository;
 import com.kaneko.estacionamento.patio.MovimentacaoRepository;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
+import com.kaneko.estacionamento.ordensservico.OrdemServico;
+import com.kaneko.estacionamento.ordensservico.OrdemServicoRepository;
+import com.kaneko.estacionamento.ordensservico.StatusOrdemServico;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -45,6 +48,7 @@ public class NotaServicoService {
     private final MensalistaRepository mensalistaRepository;
     private final CondicaoPagamentoRepository condicaoPagamentoRepository;
     private final FormaPagamentoRepository formaPagamentoRepository;
+    private final OrdemServicoRepository ordemServicoRepository;
     private final ContaReceberRepository contaReceberRepository;
     private final AuditoriaService auditoria;
 
@@ -55,6 +59,7 @@ public class NotaServicoService {
                               MensalistaRepository mensalistaRepository,
                               CondicaoPagamentoRepository condicaoPagamentoRepository,
                               FormaPagamentoRepository formaPagamentoRepository,
+                              OrdemServicoRepository ordemServicoRepository,
                               ContaReceberRepository contaReceberRepository,
                               AuditoriaService auditoria) {
         this.repository = repository;
@@ -64,6 +69,7 @@ public class NotaServicoService {
         this.mensalistaRepository = mensalistaRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
         this.formaPagamentoRepository = formaPagamentoRepository;
+        this.ordemServicoRepository = ordemServicoRepository;
         this.contaReceberRepository = contaReceberRepository;
         this.auditoria = auditoria;
     }
@@ -183,6 +189,29 @@ public class NotaServicoService {
         nota.setMensalista(req.mensalistaId() != null
                 ? mensalistaRepository.findById(req.mensalistaId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Mensalista", req.mensalistaId())) : null);
+        OrdemServico ordemServico = req.ordemServicoId() == null ? null
+                : ordemServicoRepository.findByIdAndOrganizacaoId(
+                        req.ordemServicoId(), organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "OrdemServico", req.ordemServicoId()));
+        if (ordemServico != null) {
+            if (repository.existsByOrdemServicoId(ordemServico.getId())
+                    && (nota.getOrdemServico() == null
+                    || !nota.getOrdemServico().getId().equals(ordemServico.getId()))) {
+                throw new ConflitoException("A ordem de servico ja possui nota vinculada.");
+            }
+            if (ordemServico.getStatus() != StatusOrdemServico.CONCLUIDA) {
+                throw new ConflitoException("A ordem de servico precisa estar concluida para faturamento.");
+            }
+            if (!ordemServico.getCliente().getId().equals(cliente.getId())) {
+                throw new ConflitoException("O cliente da nota diverge da ordem de servico.");
+            }
+            if (nota.getServico() != null && ordemServico.getItens().stream()
+                    .noneMatch(i -> i.getServico().getId().equals(nota.getServico().getId()))) {
+                throw new ConflitoException("O servico da nota nao pertence a ordem informada.");
+            }
+        }
+        nota.setOrdemServico(ordemServico);
         if (nota.getMovimentacao() != null && nota.getMensalista() != null) {
             throw new ConflitoException("A origem não pode ser movimentação e mensalista ao mesmo tempo.");
         }
@@ -213,6 +242,10 @@ public class NotaServicoService {
         nota.setValorIss(valorServico.multiply(aliquota).divide(CEM, 2, RoundingMode.HALF_UP));
         nota.setValorDesconto(desconto);
         nota.setValorTotal(valorServico.subtract(desconto).setScale(2, RoundingMode.HALF_UP));
+        if (ordemServico != null
+                && nota.getValorTotal().compareTo(ordemServico.getValorTotal()) != 0) {
+            throw new ConflitoException("O valor total da nota diverge da ordem de servico.");
+        }
         nota.setObservacao(req.observacao());
     }
 

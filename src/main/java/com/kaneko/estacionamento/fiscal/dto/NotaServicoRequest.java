@@ -26,6 +26,7 @@ public record NotaServicoRequest(
         Long servicoId,
         Long movimentacaoId,
         Long mensalistaId,
+        Long ordemServicoId,
         Long condicaoPagamentoId,
         Long formaPagamentoId,
 

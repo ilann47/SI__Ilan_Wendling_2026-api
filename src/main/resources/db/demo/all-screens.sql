@@ -935,3 +935,42 @@ where not exists (
     select 1 from item_venda_administrativa i
     where i.venda_administrativa_id = v.id and i.sequencia = 1
 );
+
+insert into ordem_servico
+    (id, organizacao_id, cliente_id, numero, status, data_abertura,
+     previsao_conclusao, iniciada_em, concluida_em, moeda, subtotal,
+     valor_desconto, valor_total, observacao, version)
+select nextval('ordem_servico_id_seq'), c.organizacao_id, cl.id, 'OS-DEMO-001',
+       'CONCLUIDA', current_date - 2, current_date - 1, now() - interval '2 days',
+       now() - interval '1 day', 'BRL', 35::numeric, 0::numeric, 35::numeric,
+       'Lavagem demonstrativa concluida e faturada', 2
+from demo_seed_context c
+join cliente cl
+  on cl.organizacao_id = c.organizacao_id and cl.nome = 'Mariana Souza Demo'
+where not exists (
+    select 1 from ordem_servico o
+    where o.organizacao_id = c.organizacao_id and o.numero = 'OS-DEMO-001'
+);
+
+insert into item_ordem_servico
+    (id, organizacao_id, ordem_servico_id, servico_id, sequencia,
+     descricao_snapshot, quantidade, valor_unitario, valor_desconto, valor_total)
+select nextval('item_ordem_servico_id_seq'), c.organizacao_id, o.id, s.id, 1,
+       s.nome, 1::numeric, 35::numeric, 0::numeric, 35::numeric
+from demo_seed_context c
+join ordem_servico o
+  on o.organizacao_id = c.organizacao_id and o.numero = 'OS-DEMO-001'
+join servico s
+  on s.organizacao_id = c.organizacao_id and s.nome = 'Lavagem Expressa Demo'
+where not exists (
+    select 1 from item_ordem_servico i
+    where i.ordem_servico_id = o.id and i.sequencia = 1
+);
+
+update nota_servico n
+set ordem_servico_id = o.id
+from demo_seed_context c, ordem_servico o
+where n.organizacao_id = c.organizacao_id
+  and n.numero = 'NFS-DEMO-001' and n.serie = 'D1'
+  and o.organizacao_id = c.organizacao_id and o.numero = 'OS-DEMO-001'
+  and n.ordem_servico_id is null;

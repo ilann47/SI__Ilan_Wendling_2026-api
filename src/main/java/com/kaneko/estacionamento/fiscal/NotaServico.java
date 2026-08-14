@@ -7,6 +7,7 @@ import com.kaneko.estacionamento.pagamento.FormaPagamento;
 import com.kaneko.estacionamento.patio.Mensalista;
 import com.kaneko.estacionamento.patio.Movimentacao;
 import com.kaneko.estacionamento.pessoas.Cliente;
+import com.kaneko.estacionamento.ordensservico.OrdemServico;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -64,6 +65,10 @@ public class NotaServico extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mensalista_id")
     private Mensalista mensalista;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ordem_servico_id")
+    private OrdemServico ordemServico;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "condicao_pagamento_id")

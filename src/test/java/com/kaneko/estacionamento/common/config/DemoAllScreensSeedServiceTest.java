@@ -41,6 +41,7 @@ class DemoAllScreensSeedServiceTest {
                 .contains("insert into nota_servico")
                 .contains("insert into ordem_compra")
                 .contains("insert into venda_administrativa")
+                .contains("insert into ordem_servico")
                 .contains("insert into movimentacao")
                 .contains("insert into pedido")
                 .contains("insert into tentativa_acesso");

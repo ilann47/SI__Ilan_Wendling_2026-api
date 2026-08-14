@@ -15,6 +15,7 @@ public interface NotaServicoRepository extends JpaRepository<NotaServico, Long> 
 
     boolean existsByOrganizacaoIdAndNumeroAndSerie(Long organizacaoId, String numero, String serie);
     boolean existsByOrganizacaoIdIsNullAndNumeroAndSerie(String numero, String serie);
+    boolean existsByOrdemServicoId(Long ordemServicoId);
 
     /** Notas de servico numa situacao, emitidas no intervalo — base do faturamento (4.27). */
     List<NotaServico> findBySituacaoAndDataEmissaoBetween(
@@ -22,12 +23,12 @@ public interface NotaServicoRepository extends JpaRepository<NotaServico, Long> 
     List<NotaServico> findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
             Long organizacaoId, SituacaoNotaServico situacao, LocalDate inicio, LocalDate fim);
 
-    @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
+    @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento", "ordemServico"})
     Page<NotaServico> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
     @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
     Page<NotaServico> findAllByOrganizacaoIdIsNull(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
+    @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento", "ordemServico"})
     Optional<NotaServico> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
     @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento"})
     Optional<NotaServico> findByIdAndOrganizacaoIdIsNull(Long id);

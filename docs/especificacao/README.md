@@ -58,7 +58,7 @@ A lista abaixo descreve decisões da v1 acadêmica original, não o estado atual
 
 ## Arquitetura de Produto Enterprise (visão evolutiva)
 
-Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especificação do comportamento **AS-IS**. A arquitetura definitiva de evolução, com foco inicial em eventos e preservação dos módulos existentes, está nos documentos 11 a 24:
+Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especificação do comportamento **AS-IS**. A arquitetura definitiva de evolução, com foco inicial em eventos e preservação dos módulos existentes, está nos documentos 11 a 25:
 
 | # | Documento | Conteúdo |
 |---|---|---|
@@ -76,6 +76,7 @@ Os documentos 01 a 10 e os casos de uso existentes continuam sendo a especifica�
 | 22 | [Unificação Multi-Tenant](22-unificacao-multitenant.md) | Ownership, migração aditiva, RBAC e integração dos módulos empresariais permanentes. |
 | 23 | [ADR de Ordem de Compra](23-adr-ordem-compra.md) | Separação entre intenção comercial, recebimento físico e Nota de Entrada. |
 | 24 | [ADR de Venda Administrativa](24-adr-venda-administrativa.md) | Origem comercial, baixa de estoque, recebíveis e Nota de Saída documental. |
+| 25 | [ADR de Ordem de Serviço](25-adr-ordem-servico.md) | Ciclo operacional de serviços e faturamento único pela Nota de Serviço. |
 | — | [Registro Central de Bloqueios](bloqueios-externos.md) | Dependências externas, decisões de negócio e infraestrutura que impedem histórias específicas. |
 
 ### Regra de prevalência

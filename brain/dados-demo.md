@@ -103,3 +103,4 @@ administrador gera falha explícita.
 | 2026-08-04 | Amplia o seed para perfis admin/operador e dados coerentes em todas as telas. |
 | 2026-08-14 | Acrescenta Ordem de Compra ao cenário local de todas as telas. |
 | 2026-08-14 | Acrescenta Venda Administrativa ao cenário local de todas as telas. |
+| 2026-08-14 | Acrescenta Ordem de Serviço concluída e vinculada à NFS demonstrativa. |

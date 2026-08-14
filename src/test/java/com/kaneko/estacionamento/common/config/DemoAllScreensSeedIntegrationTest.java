@@ -34,6 +34,7 @@ class DemoAllScreensSeedIntegrationTest {
         assertThat(primeiraExecucao.documentosFiscais()).isGreaterThanOrEqualTo(3);
         assertThat(primeiraExecucao.ordensCompra()).isGreaterThanOrEqualTo(1);
         assertThat(primeiraExecucao.vendasAdministrativas()).isGreaterThanOrEqualTo(1);
+        assertThat(primeiraExecucao.ordensServico()).isGreaterThanOrEqualTo(1);
         assertThat(primeiraExecucao.movimentacoesPatio()).isGreaterThanOrEqualTo(2);
         assertThat(primeiraExecucao.pedidos()).isGreaterThanOrEqualTo(1);
         assertThat(primeiraExecucao.tentativasAcesso()).isGreaterThanOrEqualTo(2);
@@ -55,6 +56,7 @@ class DemoAllScreensSeedIntegrationTest {
                         organizacaoId, organizacaoId, organizacaoId),
                 count("select count(*) from ordem_compra where organizacao_id = ?", organizacaoId),
                 count("select count(*) from venda_administrativa where organizacao_id = ?", organizacaoId),
+                count("select count(*) from ordem_servico where organizacao_id = ?", organizacaoId),
                 count("select count(*) from movimentacao where organizacao_id = ?", organizacaoId),
                 count("select count(*) from pedido where organizacao_id = ?", organizacaoId),
                 count("select count(*) from tentativa_acesso where organizacao_id = ?", organizacaoId));
@@ -72,6 +74,7 @@ class DemoAllScreensSeedIntegrationTest {
             long documentosFiscais,
             long ordensCompra,
             long vendasAdministrativas,
+            long ordensServico,
             long movimentacoesPatio,
             long pedidos,
             long tentativasAcesso) {

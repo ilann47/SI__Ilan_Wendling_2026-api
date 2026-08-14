@@ -17,6 +17,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   parciais/completos integrados ao estoque e à Nota de Entrada.
 - **Vendas administrativas** — venda fora do PDV com baixa no razão, contas a
   receber e vínculo opcional à Nota de Saída.
+- **Ordens de serviço** — contratação, execução, conclusão e cancelamento
+  tenant-aware, com faturamento único por Nota de Serviço vinculada.
 - **Fiscal** — notas de **entrada** (compra: rateio de despesas, soma de estoque,
   geração de contas a pagar), de **saída** (venda: baixa de estoque com validação,
   geração de contas a receber) e de **serviço** (NFS-e com ISS).
