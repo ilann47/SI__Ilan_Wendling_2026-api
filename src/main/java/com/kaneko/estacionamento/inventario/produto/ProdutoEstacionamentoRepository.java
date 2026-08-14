@@ -13,6 +13,9 @@ public interface ProdutoEstacionamentoRepository
 
     Optional<ProdutoEstacionamento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    List<ProdutoEstacionamento> findAllByOrganizacaoIdAndEventoIdOrderById(
+            Long organizacaoId, Long eventoId);
+
     boolean existsByEventoIdAndOrganizacaoIdAndStatus(
             Long eventoId, Long organizacaoId, StatusProdutoEstacionamento status);
 

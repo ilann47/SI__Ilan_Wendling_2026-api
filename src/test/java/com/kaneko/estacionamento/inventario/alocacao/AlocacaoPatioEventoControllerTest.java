@@ -3,6 +3,7 @@ package com.kaneko.estacionamento.inventario.alocacao;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -110,6 +111,25 @@ class AlocacaoPatioEventoControllerTest {
                         where aggregate_type = 'ALOCACAO_PATIO_EVENTO'
                           and aggregate_id = ? and event_type = 'CapacidadeAlocadaAoEvento'
                         """, Long.class, alocacaoId)).isEqualTo(1L);
+    }
+
+    @Test
+    void listaAlocacoesDoEventoEPermiteSelecionarUmaDelas() throws Exception {
+        String body = criarAlocacao(tokenContextual, eventoId, "alocacao-listagem",
+                payload(patioId, 80, 60, 20), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long alocacaoId = JsonPath.<Number>read(body, "$.id").longValue();
+
+        mvc.perform(get("/api/v1/events/{eventoId}/parking-allocations", eventoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(alocacaoId));
+
+        mvc.perform(get("/api/v1/parking-allocations/{id}", alocacaoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"0\""))
+                .andExpect(jsonPath("$.eventId").value(eventoId));
     }
 
     @Test

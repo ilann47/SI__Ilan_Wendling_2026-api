@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,6 +24,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/v1/events")
@@ -32,6 +37,24 @@ public class EventoController {
 
     public EventoController(EventoService service) {
         this.service = service;
+    }
+
+    @GetMapping
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('events:read', authentication)")
+    public Page<EventoResponse> listar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PageableDefault(size = 50, sort = "inicio", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return service.listar(principal.organizacaoId(), pageable);
+    }
+
+    @GetMapping("/{eventoId}")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('events:read', authentication)")
+    public ResponseEntity<EventoResponse> buscar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long eventoId) {
+        EventoResponse response = service.buscar(principal.organizacaoId(), eventoId);
+        return ResponseEntity.ok().eTag("\"" + response.version() + "\"").body(response);
     }
 
     @PatchMapping("/{eventoId}")

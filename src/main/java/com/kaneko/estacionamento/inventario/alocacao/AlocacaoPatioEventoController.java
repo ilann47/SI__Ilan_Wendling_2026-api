@@ -6,6 +6,7 @@ import com.kaneko.estacionamento.inventario.alocacao.dto.AlterarCapacidadesAloca
 import com.kaneko.estacionamento.inventario.alocacao.dto.CriarAlocacaoPatioEventoRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpHeaders;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,6 +32,24 @@ public class AlocacaoPatioEventoController {
 
     public AlocacaoPatioEventoController(AlocacaoPatioEventoService service) {
         this.service = service;
+    }
+
+    @GetMapping("/events/{eventoId}/parking-allocations")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('inventory:read', authentication)")
+    public List<AlocacaoPatioEventoResponse> listar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long eventoId) {
+        return service.listar(principal.organizacaoId(), eventoId);
+    }
+
+    @GetMapping("/parking-allocations/{alocacaoId}")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('inventory:read', authentication)")
+    public ResponseEntity<AlocacaoPatioEventoResponse> buscar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long alocacaoId) {
+        AlocacaoPatioEventoResponse response = service.buscar(
+                principal.organizacaoId(), alocacaoId);
+        return ResponseEntity.ok().eTag(etag(response.version())).body(response);
     }
 
     @PostMapping("/events/{eventoId}/parking-allocations")

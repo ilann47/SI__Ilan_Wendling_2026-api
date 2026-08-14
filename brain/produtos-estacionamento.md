@@ -47,6 +47,12 @@ POST /api/v1/parking-products/{produtoId}/price-tiers + Idempotency-Key
 
 ## Endpoints (se houver)
 
+- `GET /api/v1/events/{eventoId}/parking-products`: lista produtos do evento
+  dentro do tenant ativo com `pricing:read`.
+- `GET /api/v1/parking-products/{produtoId}`: consulta produto tenant-aware e
+  devolve seu `ETag`.
+- `GET /api/v1/parking-products/{produtoId}/price-tiers`: lista os lotes do
+  produto por prioridade.
 - `POST /api/v1/events/{eventoId}/parking-products`: cria produto em rascunho.
 - `POST /api/v1/parking-products/{produtoId}/price-tiers`: cria lote de preço.
 - `POST /api/v1/parking-products/{produtoId}/publication`: publica produto.
@@ -127,3 +133,4 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
 | 2026-07-30 | Protege a conversão atômica do contador reservado em vendido. |
 | 2026-07-30 | Fornece produto e lote vigentes à projeção de [[disponibilidade]]. |
 | 2026-07-30 | Passa a manter contadores protegidos para UC709. |
+| 2026-08-14 | Adiciona listagem tenant-aware de produtos e lotes com seleção no frontend. |

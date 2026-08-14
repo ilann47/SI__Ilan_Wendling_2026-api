@@ -64,6 +64,10 @@ ausente.
 
 ## Endpoints (se houver)
 
+- `GET /api/v1/events`: lista paginada dos eventos do tenant ativo com
+  `events:read`.
+- `GET /api/v1/events/{eventoId}`: consulta um evento do tenant e devolve seu
+  `ETag` derivado da versão.
 - `POST /api/v1/events`: cria evento em `RASCUNHO` no tenant autenticado.
 - `PATCH /api/v1/events/{eventoId}`: define `ENTRADA_UNICA` ou
   `REENTRADA_PERMITIDA` com `If-Match`.
@@ -157,3 +161,4 @@ PostgreSQL para período, estado e FK composta.
 | 2026-08-01 | Implementa política de reentrada explícita e imutável após o rascunho. |
 | 2026-08-01 | Implementa encerramento operacional concorrente e ressalva financeira explícita da UC720. |
 | 2026-08-03 | Evita duplicidade de outbox ao repetir a mesma política de reentrada. |
+| 2026-08-14 | Adiciona consultas tenant-aware e listagem operacional de eventos no frontend. |

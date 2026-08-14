@@ -133,6 +133,32 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     @Test
+    void listaProdutosELotesParaSelecaoOperacional() throws Exception {
+        long produtoId = criarProdutoBase("Produto para Listagem", "produto-listagem", 30);
+        String loteBody = criarLote(tokenContextual, produtoId, "lote-listagem",
+                payloadLote("Lote Listagem", "50.00", "BRL", 30, 1,
+                        "2026-08-01T00:00:00-03:00", "2026-10-01T00:00:00-03:00"),
+                status().isCreated()).andReturn().getResponse().getContentAsString();
+        long loteId = JsonPath.<Number>read(loteBody, "$.id").longValue();
+
+        mvc.perform(get("/api/v1/events/{eventoId}/parking-products", eventoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + produtoId + ")].name")
+                        .value("Produto para Listagem"));
+
+        mvc.perform(get("/api/v1/parking-products/{id}", produtoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"0\""));
+
+        mvc.perform(get("/api/v1/parking-products/{produtoId}/price-tiers", produtoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(loteId));
+    }
+
+    @Test
     void criacaoEhIdempotenteEChaveNaoAceitaOutroPayload() throws Exception {
         String payload = payload("Produto Comum", alocacaoId, "COMUM", 20,
                 "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00");

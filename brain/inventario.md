@@ -42,6 +42,10 @@ PATCH /api/v1/parking-allocations/{id} + If-Match
 
 ## Endpoints (se houver)
 
+- `GET /api/v1/events/{eventoId}/parking-allocations`: lista as alocações do
+  evento dentro do tenant ativo com `inventory:read`.
+- `GET /api/v1/parking-allocations/{id}`: consulta uma alocação tenant-aware e
+  devolve seu `ETag`.
 - `POST /api/v1/events/{eventoId}/parking-allocations`: cria uma alocação
   idempotente para um pátio do tenant.
 - `PATCH /api/v1/parking-allocations/{id}`: altera somente capacidades e exige
@@ -113,3 +117,4 @@ compensatório e concorrência real no PostgreSQL.
 | 2026-07-30 | Implementa UC709 e serializa o consumo temporário por produto. |
 | 2026-07-30 | UC713 compensa contadores reservado/vendido sob o mesmo lock do produto. |
 | 2026-08-01 | UC715 passa a serializar ocupação física na alocação Evento–Pátio. |
+| 2026-08-14 | Adiciona listagem e seleção tenant-aware de alocações no frontend de eventos. |

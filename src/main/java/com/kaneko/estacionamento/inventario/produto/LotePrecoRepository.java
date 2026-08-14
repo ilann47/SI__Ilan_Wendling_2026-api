@@ -13,6 +13,9 @@ public interface LotePrecoRepository extends JpaRepository<LotePreco, Long> {
 
     Optional<LotePreco> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
+    List<LotePreco> findAllByOrganizacaoIdAndProdutoIdOrderByPrioridadeDescIdAsc(
+            Long organizacaoId, Long produtoId);
+
     @Query("""
             select l from LotePreco l
             where l.produtoId in :produtoIds

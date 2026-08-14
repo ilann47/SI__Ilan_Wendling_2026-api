@@ -22,6 +22,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,22 @@ public class AlocacaoPatioEventoService {
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.outbox = outbox;
+    }
+
+    @Transactional(readOnly = true)
+    public List<AlocacaoPatioEventoResponse> listar(Long organizacaoId, Long eventoId) {
+        eventos.findByIdAndOrganizacaoId(eventoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Evento", eventoId));
+        return alocacoes.findAllByOrganizacaoIdAndEventoIdOrderById(organizacaoId, eventoId)
+                .stream().map(AlocacaoPatioEventoResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AlocacaoPatioEventoResponse buscar(Long organizacaoId, Long alocacaoId) {
+        return AlocacaoPatioEventoResponse.from(
+                alocacoes.findByIdAndOrganizacaoId(alocacaoId, organizacaoId)
+                        .orElseThrow(() -> new RecursoNaoEncontradoException(
+                                "Alocacao do evento", alocacaoId)));
     }
 
     @Transactional

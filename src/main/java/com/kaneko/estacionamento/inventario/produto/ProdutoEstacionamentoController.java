@@ -6,6 +6,7 @@ import com.kaneko.estacionamento.inventario.produto.dto.ProdutoEstacionamentoRes
 import com.kaneko.estacionamento.inventario.produto.dto.PublicarProdutoRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpHeaders;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -28,6 +30,24 @@ public class ProdutoEstacionamentoController {
 
     public ProdutoEstacionamentoController(ProdutoEstacionamentoService service) {
         this.service = service;
+    }
+
+    @GetMapping("/events/{eventoId}/parking-products")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('pricing:read', authentication)")
+    public List<ProdutoEstacionamentoResponse> listar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long eventoId) {
+        return service.listar(principal.organizacaoId(), eventoId);
+    }
+
+    @GetMapping("/parking-products/{produtoId}")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('pricing:read', authentication)")
+    public ResponseEntity<ProdutoEstacionamentoResponse> buscar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long produtoId) {
+        ProdutoEstacionamentoResponse response = service.buscar(
+                principal.organizacaoId(), produtoId);
+        return ResponseEntity.ok().eTag("\"" + response.version() + "\"").body(response);
     }
 
     @PostMapping("/events/{eventoId}/parking-products")

@@ -173,6 +173,9 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 
 | Método e rota | Payload/Parâmetros | Resposta | Regras |
 |---|---|---|---|
+| `GET /events` e `GET /events/{id}` | paginação ou identificador; tenant implícito | `200 Page<Event>` ou `200 Event` + `ETag` | `events:read`; somente dados do tenant ativo |
+| `GET /events/{id}/parking-allocations` e `GET /parking-allocations/{id}` | evento ou identificador; tenant implícito | `200 Allocation[]` ou `200 Allocation` + `ETag` | `inventory:read`; evento e alocação devem pertencer ao tenant ativo |
+| `GET /events/{id}/parking-products`, `GET /parking-products/{id}` e `GET /parking-products/{id}/price-tiers` | evento/produto; tenant implícito | `200 Product[]`, `200 Product` + `ETag` ou `200 Tier[]` | `pricing:read`; somente catálogo do tenant ativo |
 | `POST /events/{id}/parking-allocations` | AS-IS: pátio, período, capacidades + `Idempotency-Key`; tenant implícito | `201 Allocation`, `Location`, `ETag` | `inventory:manage`; evento configurável, pátio ativo, janela intersecta evento, hierarquia e saldo simultâneo válidos; replay equivalente devolve a alocação original |
 | `PATCH /parking-allocations/{id}` | AS-IS: capacidades + `If-Match` | `200 Allocation`, `ETag` | `inventory:manage`; lista fechada de campos; não reduzir abaixo da hierarquia nem sobrealocar o pátio; versão divergente retorna `412` |
 | `POST /events/{id}/parking-products` | AS-IS: nome, categoria, alocação, direito, janela, quota, benefícios/restrições + `Idempotency-Key`; tenant implícito | `201 Product`, `Location`, `ETag` | `pricing:manage`; evento configurável; alocação do evento/tenant; janela contida; soma de quotas não excede vendável; produto nasce em rascunho |

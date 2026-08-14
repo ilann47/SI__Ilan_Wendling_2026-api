@@ -56,6 +56,22 @@ public class ProdutoEstacionamentoService {
         this.outbox = outbox;
     }
 
+    @Transactional(readOnly = true)
+    public List<ProdutoEstacionamentoResponse> listar(Long organizacaoId, Long eventoId) {
+        eventos.findByIdAndOrganizacaoId(eventoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Evento", eventoId));
+        return produtos.findAllByOrganizacaoIdAndEventoIdOrderById(organizacaoId, eventoId)
+                .stream().map(ProdutoEstacionamentoResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ProdutoEstacionamentoResponse buscar(Long organizacaoId, Long produtoId) {
+        return ProdutoEstacionamentoResponse.from(
+                produtos.findByIdAndOrganizacaoId(produtoId, organizacaoId)
+                        .orElseThrow(() -> new RecursoNaoEncontradoException(
+                                "Produto de estacionamento", produtoId)));
+    }
+
     @Transactional
     public ProdutoEstacionamentoResponse criar(
             Long organizacaoId, Long atorId, Long eventoId, String chaveIdempotencia,

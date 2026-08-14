@@ -3,6 +3,7 @@ package com.kaneko.estacionamento.evento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -145,6 +146,25 @@ class EventoControllerTest {
                 payload("Outro Nome", venueId)
                         .replace("}", ",\"externalId\":\" PARTNER-EVENT-123 \"}"),
                 status().isConflict());
+    }
+
+    @Test
+    void listaEventosDoContextoAtivoEPermiteConsultarComEtag() throws Exception {
+        long eventoId = idEvento(criarEvento(
+                tokenContextual, "evento-listagem", payload("Evento para Listagem", venueId),
+                status().isCreated()).andReturn().getResponse().getContentAsString());
+
+        mvc.perform(get("/api/v1/events")
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == " + eventoId + ")].name")
+                        .value("Evento para Listagem"));
+
+        mvc.perform(get("/api/v1/events/{id}", eventoId)
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"0\""))
+                .andExpect(jsonPath("$.id").value(eventoId));
     }
 
     @Test

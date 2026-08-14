@@ -34,6 +34,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class EventoService {
@@ -69,6 +71,18 @@ public class EventoService {
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.outbox = outbox;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EventoResponse> listar(Long organizacaoId, Pageable pageable) {
+        return eventos.findAllByOrganizacaoId(organizacaoId, pageable)
+                .map(EventoResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public EventoResponse buscar(Long organizacaoId, Long eventoId) {
+        return EventoResponse.from(eventos.findByIdAndOrganizacaoId(eventoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Evento", eventoId)));
     }
 
     @Transactional

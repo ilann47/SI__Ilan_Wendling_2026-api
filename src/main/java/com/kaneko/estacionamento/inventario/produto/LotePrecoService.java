@@ -16,6 +16,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,16 @@ public class LotePrecoService {
         this.alocacoes = alocacoes;
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
+    }
+
+    @Transactional(readOnly = true)
+    public List<LotePrecoResponse> listar(Long organizacaoId, Long produtoId) {
+        produtos.findByIdAndOrganizacaoId(produtoId, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Produto de estacionamento", produtoId));
+        return lotes.findAllByOrganizacaoIdAndProdutoIdOrderByPrioridadeDescIdAsc(
+                        organizacaoId, produtoId)
+                .stream().map(LotePrecoResponse::from).toList();
     }
 
     @Transactional
