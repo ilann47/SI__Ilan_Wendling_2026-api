@@ -15,6 +15,8 @@ acadêmico cuja documentação completa está em [`docs/especificacao/`](docs/es
   e o vínculo produto-fornecedor.
 - **Compras** — ordens versionadas, aprovação, cancelamento e recebimentos
   parciais/completos integrados ao estoque e à Nota de Entrada.
+- **Vendas administrativas** — venda fora do PDV com baixa no razão, contas a
+  receber e vínculo opcional à Nota de Saída.
 - **Fiscal** — notas de **entrada** (compra: rateio de despesas, soma de estoque,
   geração de contas a pagar), de **saída** (venda: baixa de estoque com validação,
   geração de contas a receber) e de **serviço** (NFS-e com ISS).
@@ -211,6 +213,7 @@ fornecedor/      fornecedor + e-mails/telefones
 patio/           veículo, tarifa, mensalista, movimentação (cálculo de tarifa)
 conveniencia/    categoria, marca, unidade, serviço, produto, produto-fornecedor
 compras/         ordem de compra, itens, recebimentos e integração de estoque
+vendas/          venda administrativa, itens, estoque e contas a receber
 fiscal/          notas de entrada, saída e serviço (+ itens)
 financeiro/      contas a pagar, a receber e avulsas
 usuario/         cadastro de usuários

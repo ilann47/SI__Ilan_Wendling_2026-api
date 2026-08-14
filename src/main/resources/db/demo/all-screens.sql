@@ -906,3 +906,32 @@ where not exists (
     select 1 from item_ordem_compra i
     where i.ordem_compra_id = o.id and i.sequencia = 1
 );
+
+insert into venda_administrativa
+    (id, organizacao_id, cliente_id, local_estoque_id, numero, status,
+     data_emissao, moeda, subtotal, valor_desconto, valor_total, observacao, version)
+select nextval('venda_administrativa_id_seq'), c.organizacao_id, cl.id, l.id,
+       'VENDA-DEMO-001', 'RASCUNHO', current_date, 'BRL', 10::numeric,
+       0::numeric, 10::numeric, 'Venda pronta para confirmacao demonstrativa', 0
+from demo_seed_context c
+join cliente cl on cl.organizacao_id = c.organizacao_id and cl.nome = 'Mariana Souza Demo'
+join local_estoque l on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
+where not exists (
+    select 1 from venda_administrativa v
+    where v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-001'
+);
+
+insert into item_venda_administrativa
+    (id, organizacao_id, venda_administrativa_id, produto_id, sequencia,
+     quantidade, valor_unitario, valor_desconto, valor_total)
+select nextval('item_venda_administrativa_id_seq'), c.organizacao_id, v.id,
+       p.id, 1, 2::numeric, 5::numeric, 0::numeric, 10::numeric
+from demo_seed_context c
+join venda_administrativa v
+  on v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-001'
+join produto p
+  on p.organizacao_id = c.organizacao_id and p.nome = 'Agua Mineral Demo 500ml'
+where not exists (
+    select 1 from item_venda_administrativa i
+    where i.venda_administrativa_id = v.id and i.sequencia = 1
+);

@@ -91,3 +91,4 @@ ajuste versus inativação e dois PUTs com o mesmo ETag.
 | 2026-08-03 | Fundação tenant-aware de estoque e razão adicionada na V54. |
 | 2026-08-03 | Hardenings P1 de concorrência, cadeia do razão, compensação, idempotência e payloads aplicados. |
 | 2026-08-14 | Recebimento de Ordem de Compra passa a registrar entrada física idempotente no razão. |
+| 2026-08-14 | Confirmação de Venda Administrativa passa a registrar baixa física no razão. |

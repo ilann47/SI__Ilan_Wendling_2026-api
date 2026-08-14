@@ -17,6 +17,7 @@ import com.kaneko.estacionamento.estoque.LocalEstoqueRepository;
 import com.kaneko.estacionamento.fornecedor.FornecedorRepository;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
+import com.kaneko.estacionamento.vendas.VendaAdministrativaRepository;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,8 @@ class NotaFiscalOptimisticLockPropagationTest {
         NotaSaidaService service = new NotaSaidaService(notas,
                 mock(ClienteRepository.class), mock(CondicaoPagamentoRepository.class),
                 produtos, titulos, mock(LocalEstoqueRepository.class),
-                mock(EstoqueService.class), mock(AuditoriaService.class));
+                mock(EstoqueService.class), mock(AuditoriaService.class),
+                mock(VendaAdministrativaRepository.class));
         NotaSaida nota = notaSaidaPendente();
         OptimisticLockingFailureException conflito =
                 new OptimisticLockingFailureException("produto concorrente");

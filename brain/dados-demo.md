@@ -45,6 +45,7 @@ Nenhum. O seed é infraestrutura local de inicialização e não amplia a API.
 - local, saldos e razão de estoque com recebimento, baixa e ajuste;
 - notas de entrada, saída e serviço, contas a pagar/receber e despesa avulsa;
 - ordem de compra aprovada pronta para demonstrar o fluxo de recebimento;
+- venda administrativa em rascunho pronta para confirmação;
 - tarifas, veículos, mensalista e movimentações aberta e fechada;
 - pedido confirmado, comprador, credencial, QR, presença, sessão e tentativas
   de acesso autorizada e recusada.
@@ -101,3 +102,4 @@ administrador gera falha explícita.
 | 2026-08-03 | Cria seed local opt-in, transacional e idempotente do fluxo de eventos. |
 | 2026-08-04 | Amplia o seed para perfis admin/operador e dados coerentes em todas as telas. |
 | 2026-08-14 | Acrescenta Ordem de Compra ao cenário local de todas as telas. |
+| 2026-08-14 | Acrescenta Venda Administrativa ao cenário local de todas as telas. |

@@ -550,6 +550,13 @@ mesmo tenant, fornecedor, local, produtos e quantidades; nesse caso sua
 confirmação gera Conta a Pagar sem repetir o movimento físico. A decisão está
 registrada em [[23-adr-ordem-compra]].
 
+A V64 implementa `VendaAdministrativa` e itens tenant-aware. O agregado usa
+`sales:read/manage`, idempotência na criação, ETag/If-Match, auditoria e outbox.
+A confirmação baixa o razão V54 e gera Conta a Receber na mesma transação. Nota
+de Saída pode vincular uma venda confirmada após validar cliente, local, itens e
+total; nesse caso apenas documenta a operação, sem repetir estoque ou financeiro.
+A decisão está registrada em [[24-adr-venda-administrativa]].
+
 Após a V62, os cinco relatórios gerenciais preservados passam a resolver o owner
 exclusivamente pelo JWT. Estoque mínimo usa a soma do razão V54, e não o campo
 legado `produto.quantidade`; caches do frontend incluem a organização ativa.

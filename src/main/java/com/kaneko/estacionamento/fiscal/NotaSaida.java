@@ -4,6 +4,7 @@ import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.estoque.LocalEstoque;
 import com.kaneko.estacionamento.pessoas.Cliente;
+import com.kaneko.estacionamento.vendas.VendaAdministrativa;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -60,6 +61,10 @@ public class NotaSaida extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "local_estoque_id")
     private LocalEstoque localEstoque;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "venda_administrativa_id")
+    private VendaAdministrativa vendaAdministrativa;
 
     @Column(name = "data_emissao", nullable = false)
     private LocalDate dataEmissao;

@@ -14,6 +14,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface NotaSaidaRepository extends JpaRepository<NotaSaida, Long> {
 
+    boolean existsByOrganizacaoIdAndVendaAdministrativaId(
+            Long organizacaoId, Long vendaAdministrativaId);
+
     boolean existsByOrganizacaoIdAndNumeroAndSerieAndClienteId(
             Long organizacaoId, String numero, String serie, Long clienteId);
     boolean existsByOrganizacaoIdIsNullAndNumeroAndSerieAndClienteId(
@@ -25,14 +28,18 @@ public interface NotaSaidaRepository extends JpaRepository<NotaSaida, Long> {
     List<NotaSaida> findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
             Long organizacaoId, SituacaoNota situacao, LocalDate inicio, LocalDate fim);
 
-    @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
+    @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque",
+            "vendaAdministrativa", "itens", "itens.produto"})
     Page<NotaSaida> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
-    @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
+    @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque",
+            "vendaAdministrativa", "itens", "itens.produto"})
     Page<NotaSaida> findAllByOrganizacaoIdIsNull(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
+    @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque",
+            "vendaAdministrativa", "itens", "itens.produto"})
     Optional<NotaSaida> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
-    @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque", "itens", "itens.produto"})
+    @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque",
+            "vendaAdministrativa", "itens", "itens.produto"})
     Optional<NotaSaida> findByIdAndOrganizacaoIdIsNull(Long id);
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select n from NotaSaida n where n.id=:id and n.organizacaoId=:organizacaoId")

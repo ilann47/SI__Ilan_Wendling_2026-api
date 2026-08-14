@@ -24,6 +24,7 @@ public record NotaSaidaResponse(
         String condicaoPagamentoNome,
         Long localEstoqueId,
         String localEstoqueNome,
+        Long vendaAdministrativaId,
         LocalDate dataEmissao,
         LocalDate dataSaida,
         TipoFrete tipoFrete,
@@ -54,6 +55,8 @@ public record NotaSaidaResponse(
                 nota.getCondicaoPagamento() != null ? nota.getCondicaoPagamento().getNome() : null,
                 nota.getLocalEstoque() != null ? nota.getLocalEstoque().getId() : null,
                 nota.getLocalEstoque() != null ? nota.getLocalEstoque().getNome() : null,
+                nota.getVendaAdministrativa() != null
+                        ? nota.getVendaAdministrativa().getId() : null,
                 nota.getDataEmissao(),
                 nota.getDataSaida(),
                 nota.getTipoFrete(),

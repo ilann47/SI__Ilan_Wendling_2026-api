@@ -5,6 +5,7 @@ import com.kaneko.estacionamento.fiscal.NotaSaida;
 import com.kaneko.estacionamento.fiscal.NotaServico;
 import com.kaneko.estacionamento.patio.Mensalista;
 import com.kaneko.estacionamento.pessoas.Cliente;
+import com.kaneko.estacionamento.vendas.VendaAdministrativa;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pagamento.FormaPagamento;
 import jakarta.persistence.Column;
@@ -52,6 +53,10 @@ public class ContaReceber extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mensalista_id")
     private Mensalista mensalista;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "venda_administrativa_id")
+    private VendaAdministrativa vendaAdministrativa;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "condicao_pagamento_id")

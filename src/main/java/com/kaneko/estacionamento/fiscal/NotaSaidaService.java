@@ -20,6 +20,9 @@ import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pagamento.ParcelaCondicaoPagamento;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
+import com.kaneko.estacionamento.vendas.StatusVendaAdministrativa;
+import com.kaneko.estacionamento.vendas.VendaAdministrativa;
+import com.kaneko.estacionamento.vendas.VendaAdministrativaRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -49,6 +52,7 @@ public class NotaSaidaService {
     private final LocalEstoqueRepository localEstoqueRepository;
     private final EstoqueService estoqueService;
     private final AuditoriaService auditoria;
+    private final VendaAdministrativaRepository vendaAdministrativaRepository;
 
     public NotaSaidaService(NotaSaidaRepository repository,
                             ClienteRepository clienteRepository,
@@ -57,7 +61,8 @@ public class NotaSaidaService {
                             ContaReceberRepository contaReceberRepository,
                             LocalEstoqueRepository localEstoqueRepository,
                             EstoqueService estoqueService,
-                            AuditoriaService auditoria) {
+                            AuditoriaService auditoria,
+                            VendaAdministrativaRepository vendaAdministrativaRepository) {
         this.repository = repository;
         this.clienteRepository = clienteRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
@@ -66,6 +71,7 @@ public class NotaSaidaService {
         this.localEstoqueRepository = localEstoqueRepository;
         this.estoqueService = estoqueService;
         this.auditoria = auditoria;
+        this.vendaAdministrativaRepository = vendaAdministrativaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -109,6 +115,29 @@ public class NotaSaidaService {
                     .orElseThrow(() -> new RecursoNaoEncontradoException(
                             "LocalEstoque", req.localEstoqueId()));
             nota.setLocalEstoque(local);
+        }
+        if (req.vendaAdministrativaId() != null) {
+            if (organizacaoId == null) {
+                throw new IllegalArgumentException(
+                        "Venda administrativa exige contexto de organizacao.");
+            }
+            VendaAdministrativa venda = vendaAdministrativaRepository
+                    .findByIdAndOrganizacaoId(req.vendaAdministrativaId(), organizacaoId)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException(
+                            "VendaAdministrativa", req.vendaAdministrativaId()));
+            if (venda.getStatus() != StatusVendaAdministrativa.CONFIRMADA) {
+                throw new ConflitoException("A venda administrativa precisa estar confirmada.");
+            }
+            if (!venda.getCliente().getId().equals(cliente.getId())
+                    || !venda.getLocalEstoque().getId().equals(req.localEstoqueId())) {
+                throw new ConflitoException(
+                        "Cliente e local da nota devem coincidir com a venda administrativa.");
+            }
+            if (repository.existsByOrganizacaoIdAndVendaAdministrativaId(
+                    organizacaoId, venda.getId())) {
+                throw new ConflitoException("A venda administrativa ja possui Nota de Saida.");
+            }
+            nota.setVendaAdministrativa(venda);
         }
 
         boolean duplicada = organizacaoId == null
@@ -175,6 +204,9 @@ public class NotaSaidaService {
         nota.setValorTotal(total);
 
         ratearDespesas(nota.getItens(), valorProdutos, frete, seguro, outras);
+        if (nota.getVendaAdministrativa() != null) {
+            validarItensVenda(nota, nota.getVendaAdministrativa());
+        }
         nota = repository.saveAndFlush(nota);
         auditar(nota, "NOTA_SAIDA_CRIADA", null, snapshot(nota));
         return nota;
@@ -203,7 +235,9 @@ public class NotaSaidaService {
         }
         for (ItemNotaSaida item : nota.getItens()) {
             Produto produto = item.getProduto();
-            if (organizacaoId == null) {
+            if (nota.getVendaAdministrativa() != null) {
+                continue;
+            } else if (organizacaoId == null) {
                 produto.setQuantidade(produto.getQuantidade().subtract(item.getQuantidade()));
                 produtoRepository.saveAndFlush(produto);
             } else {
@@ -214,7 +248,9 @@ public class NotaSaidaService {
                         "Confirmacao da nota de saida " + nota.getNumero());
             }
         }
-        gerarTitulos(nota);
+        if (nota.getVendaAdministrativa() == null) {
+            gerarTitulos(nota);
+        }
         Map<String, Object> anterior = snapshot(nota);
         nota.setSituacao(SituacaoNota.CONFIRMADA);
         nota = repository.saveAndFlush(nota);
@@ -293,6 +329,28 @@ public class NotaSaidaService {
             ContaReceber titulo = salvarTitulo(nota, i + 1, n, valorParcela, vencimento,
                     parcela.getFormaPagamento());
             titulo.setCondicaoPagamento(nota.getCondicaoPagamento());
+        }
+    }
+
+    private static void validarItensVenda(NotaSaida nota, VendaAdministrativa venda) {
+        Map<Long, com.kaneko.estacionamento.vendas.ItemVendaAdministrativa> esperados
+                = new java.util.LinkedHashMap<>();
+        venda.getItens().forEach(item -> esperados.put(item.getProduto().getId(), item));
+        if (nota.getItens().size() != esperados.size()) {
+            throw new ConflitoException(
+                    "Os itens da nota devem coincidir com a venda administrativa.");
+        }
+        for (ItemNotaSaida item : nota.getItens()) {
+            var esperado = esperados.get(item.getProduto().getId());
+            if (esperado == null
+                    || esperado.getQuantidade().compareTo(item.getQuantidade()) != 0
+                    || esperado.getValorUnitario().compareTo(item.getValorUnitario()) != 0) {
+                throw new ConflitoException(
+                        "Produtos, quantidades e valores da nota devem coincidir com a venda.");
+            }
+        }
+        if (venda.getValorTotal().compareTo(nota.getValorTotal()) != 0) {
+            throw new ConflitoException("O total da nota deve coincidir com o total da venda.");
         }
     }
 

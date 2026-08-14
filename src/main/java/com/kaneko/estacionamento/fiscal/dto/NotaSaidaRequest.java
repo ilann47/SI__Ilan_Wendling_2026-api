@@ -28,6 +28,7 @@ public record NotaSaidaRequest(
 
         Long condicaoPagamentoId,
         Long localEstoqueId,
+        Long vendaAdministrativaId,
 
         LocalDate dataEmissao,
         LocalDate dataSaida,
