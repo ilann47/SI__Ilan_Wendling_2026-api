@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[compras]] · [[vendas-administrativas]] · [[ordens-servico]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[compras]] · [[vendas-administrativas]] · [[ordens-servico]] · [[consultas]]
 
 # Core do Estacionamento Kaneko
 
@@ -63,6 +63,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[conveniencia]] — categorias, marcas e unidades de medida isoladas por organização.
 - [[compras]] — ordens e recebimentos físicos tenant-aware integrados ao estoque e fiscal.
 - [[vendas-administrativas]] — venda comercial tenant-aware integrada ao estoque e recebíveis.
+- [[consultas]] — busca transversal tenant-aware limitada pelas permissões efetivas.
 
 ## Histórico
 
@@ -129,3 +130,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-04 | Completa auditoria das transições da movimentação tradicional. |
 | 2026-08-04 | Amplia o seed local idempotente para cobrir perfis e todas as áreas funcionais. |
 | 2026-08-14 | Implementa Ordem de Serviço tenant-aware e faturamento único pela Nota de Serviço na V65. |
+| 2026-08-17 | Adiciona busca global tenant-aware e contextual no cabeçalho. |

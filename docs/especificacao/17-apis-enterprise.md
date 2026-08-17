@@ -274,13 +274,23 @@ organização + cliente/dispositivo + operação lógica + Idempotency-Key
 - Webhook entra em inbox antes dos efeitos.
 - Eventos saem por outbox no mesmo commit.
 
-## 17.11 Eventos públicos e webhooks
+## 17.11 Consulta global
+
+| Método e rota | Parâmetros | Resposta | Regras |
+|---|---|---|---|
+| `GET /api/v1/search` | `q` (2–100 caracteres), `limit` (1–10 por grupo) | resultados agrupados por módulo | JWT contextual obrigatório; tenant derivado do token; somente módulos autorizados pelo RBAC |
+
+A consulta cobre Clientes, Veículos, Pedidos, Eventos, Movimentações, Notas e
+Contas. Ela é uma projeção somente leitura sobre o PostgreSQL e não substitui os
+endpoints paginados específicos de cada módulo.
+
+## 17.12 Eventos públicos e webhooks
 
 Eventos mínimos: `event.published.v1`, `inventory.changed.v1`, `order.confirmed.v1`, `payment.approved.v1`, `payment.refunded.v1`, `credential.issued.v1`, `access.authorized.v1`, `access.denied.v1`, `checkin.completed.v1`, `movement.closed.v1`, `device.offline.v1` e `event.reconciled.v1`.
 
 Entrega é ao menos uma vez. Destinos deduplicam `eventId`. O Kaneko mantém assinatura, timestamp, tentativas, backoff com jitter, dead-letter/quarentena e reprocessamento auditado.
 
-## 17.12 Compatibilidade com API atual
+## 17.13 Compatibilidade com API atual
 
 Os endpoints atuais `/api/**` permanecem durante a transição como compatibilidade
 de transporte, não como autorização para consultas globais. À medida que um
