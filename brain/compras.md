@@ -65,6 +65,9 @@ fiscal sem estoque duplicado, seed, V1→V63 e Hibernate validate.
 - Paginação de ordens busca primeiro IDs e depois o grafo detalhado, evitando
   paginação em memória sobre coleção.
 - ETag deriva exclusivamente de `@Version` e mutações exigem `If-Match`.
+- A listagem administrativa abre um detalhe próprio da ordem com itens,
+  quantidades pedida/recebida/pendente, valores e resumo financeiro; o histórico
+  permanece separado por representar entregas físicas já registradas.
 
 ## Módulos relacionados
 
@@ -76,3 +79,4 @@ fiscal sem estoque duplicado, seed, V1→V63 e Hibernate validate.
 | Data | Ação |
 |---|---|
 | 2026-08-14 | V63 implementa Ordem de Compra, recebimento e integração fiscal/financeira sem estoque duplicado. |
+| 2026-08-17 | Frontend passa a expor os itens comprados e o resumo financeiro no detalhe de cada ordem. |
