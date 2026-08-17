@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[compras]] · [[vendas-administrativas]] · [[ordens-servico]] · [[consultas]]
+> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[compras]] · [[vendas-administrativas]] · [[ordens-servico]] · [[consultas]] · [[navegacao]]
 
 # Core do Estacionamento Kaneko
 
@@ -64,6 +64,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[compras]] — ordens e recebimentos físicos tenant-aware integrados ao estoque e fiscal.
 - [[vendas-administrativas]] — venda comercial tenant-aware integrada ao estoque e recebíveis.
 - [[consultas]] — busca transversal tenant-aware limitada pelas permissões efetivas.
+- [[navegacao]] — acesso contextual às áreas funcionais e rotas preservadas.
 
 ## Histórico
 
@@ -131,3 +132,4 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-08-04 | Amplia o seed local idempotente para cobrir perfis e todas as áreas funcionais. |
 | 2026-08-14 | Implementa Ordem de Serviço tenant-aware e faturamento único pela Nota de Serviço na V65. |
 | 2026-08-17 | Adiciona busca global tenant-aware e contextual no cabeçalho. |
+| 2026-08-17 | Consolida o menu em seis áreas recolhíveis com modo compacto. |

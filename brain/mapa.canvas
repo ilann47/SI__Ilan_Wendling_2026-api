@@ -33,7 +33,8 @@
     {"id": "compras", "type": "file", "file": "compras.md", "x": 10500, "y": 160, "width": 360, "height": 220},
     {"id": "vendas-administrativas", "type": "file", "file": "vendas-administrativas.md", "x": 11000, "y": 160, "width": 360, "height": 220},
     {"id": "ordens-servico", "type": "file", "file": "ordens-servico.md", "x": 11500, "y": 160, "width": 360, "height": 220},
-    {"id": "consultas", "type": "file", "file": "consultas.md", "x": 12000, "y": 160, "width": 360, "height": 220}
+    {"id": "consultas", "type": "file", "file": "consultas.md", "x": 12000, "y": 160, "width": 360, "height": 220},
+    {"id": "navegacao", "type": "file", "file": "navegacao.md", "x": 12500, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
@@ -138,6 +139,9 @@
     {"id": "ordens-servico-fiscal", "fromNode": "ordens-servico", "fromSide": "left", "toNode": "fiscal-financeiro", "toSide": "right", "label": "NFS e conta a receber"},
     {"id": "rbac-ordens-servico", "fromNode": "rbac", "fromSide": "right", "toNode": "ordens-servico", "toSide": "left", "label": "service_orders:read/manage"},
     {"id": "core-consultas", "fromNode": "core", "fromSide": "right", "toNode": "consultas", "toSide": "left", "label": "busca transversal"},
-    {"id": "rbac-consultas", "fromNode": "rbac", "fromSide": "right", "toNode": "consultas", "toSide": "left", "label": "grupos permitidos"}
+    {"id": "rbac-consultas", "fromNode": "rbac", "fromSide": "right", "toNode": "consultas", "toSide": "left", "label": "grupos permitidos"},
+    {"id": "core-navegacao", "fromNode": "core", "fromSide": "right", "toNode": "navegacao", "toSide": "left", "label": "layout principal"},
+    {"id": "rbac-navegacao", "fromNode": "rbac", "fromSide": "right", "toNode": "navegacao", "toSide": "left", "label": "itens permitidos"},
+    {"id": "consultas-navegacao", "fromNode": "consultas", "fromSide": "right", "toNode": "navegacao", "toSide": "left", "label": "busca no cabeçalho"}
   ]
 }
