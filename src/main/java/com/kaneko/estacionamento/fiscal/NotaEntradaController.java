@@ -2,7 +2,11 @@ package com.kaneko.estacionamento.fiscal;
 
 import com.kaneko.estacionamento.fiscal.dto.NotaEntradaRequest;
 import com.kaneko.estacionamento.fiscal.dto.NotaEntradaResponse;
+import com.kaneko.estacionamento.fiscal.dto.NotaEntradaDetalheResponse;
 import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,9 +31,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotaEntradaController {
 
     private final NotaEntradaService service;
+    private final NotaEntradaDetalheService detalheService;
 
-    public NotaEntradaController(NotaEntradaService service) {
+    public NotaEntradaController(
+            NotaEntradaService service,
+            NotaEntradaDetalheService detalheService) {
         this.service = service;
+        this.detalheService = detalheService;
     }
 
     @GetMapping
@@ -44,6 +52,22 @@ public class NotaEntradaController {
     public NotaEntradaResponse buscar(
             @AuthenticationPrincipal UsuarioAutenticado principal, @PathVariable Long id) {
         return NotaEntradaResponse.from(service.buscar(org(principal), id));
+    }
+
+    @GetMapping("/{id}/detalhes")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:read', authentication)")
+    @Operation(summary = "Consultar detalhes integrados da nota de entrada",
+            description = "Retorna documento, compra e recebimento vinculados, "
+                    + "titulos a pagar e movimentos fisicos do estoque no tenant ativo.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Detalhes encontrados"),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou invalido"),
+            @ApiResponse(responseCode = "403", description = "Sem permissao fiscal de leitura"),
+            @ApiResponse(responseCode = "404", description = "Nota inexistente ou de outro tenant")
+    })
+    public NotaEntradaDetalheResponse buscarDetalhes(
+            @AuthenticationPrincipal UsuarioAutenticado principal, @PathVariable Long id) {
+        return detalheService.buscar(org(principal), id);
     }
 
     @PostMapping

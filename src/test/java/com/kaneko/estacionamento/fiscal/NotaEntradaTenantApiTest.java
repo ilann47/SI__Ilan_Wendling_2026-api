@@ -85,6 +85,20 @@ class NotaEntradaTenantApiTest {
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].notaEntradaId").value(notaId));
 
+        mvc.perform(get("/api/notas-entrada/{id}/detalhes", notaId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nota.id").value(notaId))
+                .andExpect(jsonPath("$.nota.itens[0].produtoId").value(produtoA))
+                .andExpect(jsonPath("$.ordemCompra").doesNotExist())
+                .andExpect(jsonPath("$.recebimento").doesNotExist())
+                .andExpect(jsonPath("$.contasPagar.length()").value(1))
+                .andExpect(jsonPath("$.contasPagar[0].notaEntradaId").value(notaId))
+                .andExpect(jsonPath("$.movimentosEstoque.length()").value(1))
+                .andExpect(jsonPath("$.movimentosEstoque[0].origemTipo")
+                        .value("NOTA_ENTRADA"))
+                .andExpect(jsonPath("$.movimentosEstoque[0].produtoId").value(produtoA));
+
         assertThat(jdbc.queryForObject("""
                 SELECT count(*) FROM movimento_estoque
                 WHERE organizacao_id=? AND origem_tipo='NOTA_ENTRADA'
@@ -109,6 +123,9 @@ class NotaEntradaTenantApiTest {
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         long notaId = JsonPath.<Number>read(resposta, "$.id").longValue();
         mvc.perform(get("/api/notas-entrada/{id}", notaId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/notas-entrada/{id}/detalhes", notaId)
                         .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual()))
                 .andExpect(status().isNotFound());
     }

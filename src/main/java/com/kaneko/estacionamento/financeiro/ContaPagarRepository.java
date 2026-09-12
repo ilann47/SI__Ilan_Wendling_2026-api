@@ -15,7 +15,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ContaPagarRepository extends JpaRepository<ContaPagar, Long> {
 
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
-    List<ContaPagar> findByNotaEntradaIdAndOrganizacaoId(Long notaEntradaId, Long organizacaoId);
+    List<ContaPagar> findByNotaEntradaIdAndOrganizacaoIdOrderByNumeroParcelaAsc(
+            Long notaEntradaId, Long organizacaoId);
 
     /** Titulos a pagar em aberto vencendo no intervalo — base do relatorio 4.28. */
     @EntityGraph(attributePaths = "fornecedor")

@@ -177,6 +177,18 @@ class OrdemCompraTenantApiTest {
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.situacao").value("CONFIRMADA"));
 
+        mvc.perform(get("/api/notas-entrada/{id}/detalhes", notaId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ordemCompra.id").value(ordemId))
+                .andExpect(jsonPath("$.ordemCompra.numero").value("OC-FISCAL"))
+                .andExpect(jsonPath("$.recebimento.id").value(recebimentoId))
+                .andExpect(jsonPath("$.recebimento.itens[0].produtoId").value(produtoA))
+                .andExpect(jsonPath("$.contasPagar.length()").value(1))
+                .andExpect(jsonPath("$.movimentosEstoque.length()").value(1))
+                .andExpect(jsonPath("$.movimentosEstoque[0].origemTipo")
+                        .value("ORDEM_COMPRA"));
+
         assertThat(jdbc.queryForObject("""
                 SELECT quantidade FROM saldo_estoque
                 WHERE organizacao_id=? AND produto_id=? AND local_estoque_id=?

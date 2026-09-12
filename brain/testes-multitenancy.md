@@ -59,6 +59,9 @@ token global, `403`, isolamento A/B, payload hostil e FK cruzada.
 - Autenticação e troca de contexto passam pelos controllers reais.
 - Organizações e usuários de fixture são criados pelos services do domínio.
 - CNPJ de teste válido e login único evitam colisões sem limpar bases compartilhadas.
+- A sequência da fixture recebe um prefixo derivado de UUID por execução,
+  reduzindo colisões com registros persistidos por testes de concorrência de
+  execuções anteriores, sem apagar o banco de testes.
 - Asserções de constraint não aceitam um `DataIntegrityViolationException` genérico.
 
 ## Módulos relacionados
@@ -74,3 +77,4 @@ token global, `403`, isolamento A/B, payload hostil e FK cruzada.
 | Data | Ação |
 |---|---|
 | 2026-08-03 | Introduz a fundação de testes tenant-aware da Onda 0. |
+| 2026-09-12 | Registra o prefixo por execução das fixtures na consolidação dos testes de compras e fiscal. |

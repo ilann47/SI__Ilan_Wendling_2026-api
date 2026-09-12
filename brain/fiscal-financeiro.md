@@ -15,6 +15,8 @@ serializa a nota, registra `RECEBIMENTO` por item e gera parcelas na mesma trans
 
 ## Endpoints (se houver)
 - `/api/notas-entrada`: consulta, criação e transições.
+- `GET /api/notas-entrada/{id}/detalhes`: visão tenant-aware com documento,
+  referência da ordem, recebimento, razão de estoque e contas a pagar.
 - `/api/contas-pagar`: consulta, lançamento, baixa e cancelamento.
 
 ## Estrutura de Dados (DTOs, Entidades)
@@ -32,6 +34,9 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 ## Decisões Técnicas
 - Tenant usa razão V54; `produto.quantidade` permanece histórico.
 - Nota vinculada ao recebimento V63 gera Conta a Pagar sem duplicar estoque.
+- O detalhe fiscal é uma projeção de leitura separada: notas diretas consultam
+  movimentos por origem; notas vinculadas recuperam os movimentos imutáveis do
+  recebimento pelos respectivos IDs.
 - Relatórios consolidados selecionam contas e documentos pela organização ativa.
 
 ## Módulos relacionados
@@ -48,3 +53,4 @@ V1→V55, Hibernate validate, legado, isolamento, razão e títulos são coberto
 | 2026-08-14 | Nota de Entrada recebe vínculo opcional ao recebimento de compra e separa efeito físico do financeiro. |
 | 2026-08-14 | Nota de Saída pode documentar Venda Administrativa sem duplicar estoque ou recebível. |
 | 2026-08-14 | Nota de Serviço passa a faturar uma única [[ordens-servico|Ordem de Serviço]] concluída. |
+| 2026-09-11 | Adiciona consulta integrada da Nota de Entrada com compra, recebimento, estoque e contas a pagar. |

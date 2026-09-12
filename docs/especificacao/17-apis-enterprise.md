@@ -4,7 +4,10 @@
 
 > Compatibilidade V55: `/api/notas-entrada` e `/api/contas-pagar` preservam as
 > URLs, derivam a organização do JWT e ocultam recursos cross-tenant. Nota de
-> entrada contextual exige `localEstoqueId`.
+> entrada contextual exige `localEstoqueId`. A consulta operacional composta
+> `GET /api/notas-entrada/{id}/detalhes` reúne a nota, a referência da compra,
+> o recebimento, os movimentos físicos e os títulos a pagar sem tornar a
+> listagem paginada mais pesada.
 
 > Este documento projeta contratos; não descreve endpoints já implementados, exceto quando explicitamente marcado AS-IS.
 

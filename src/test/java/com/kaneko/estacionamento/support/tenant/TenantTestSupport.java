@@ -10,13 +10,16 @@ import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
 import com.kaneko.estacionamento.usuario.UsuarioService;
 import com.kaneko.estacionamento.usuario.dto.UsuarioRequest;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 public final class TenantTestSupport {
 
-    private static final AtomicLong SEQUENCIA = new AtomicLong(1);
+    private static final long PREFIXO_EXECUCAO =
+            Math.floorMod(UUID.randomUUID().getMostSignificantBits(), 1_000_000_000L) * 1_000L;
+    private static final AtomicLong SEQUENCIA = new AtomicLong(PREFIXO_EXECUCAO);
     private static final String SENHA = "senha123";
 
     private final MockMvc mvc;
