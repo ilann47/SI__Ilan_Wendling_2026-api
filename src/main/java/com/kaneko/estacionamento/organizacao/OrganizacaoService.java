@@ -9,6 +9,7 @@ import com.kaneko.estacionamento.common.util.Documentos;
 import com.kaneko.estacionamento.organizacao.dto.AtualizarOrganizacaoRequest;
 import com.kaneko.estacionamento.organizacao.dto.CriarOrganizacaoRequest;
 import com.kaneko.estacionamento.organizacao.dto.OrganizacaoResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
@@ -16,6 +17,9 @@ import java.util.Map;
 
 @Service
 public class OrganizacaoService {
+
+    private static final String MENSAGEM_DOCUMENTO_DUPLICADO =
+            "Ja existe uma organizacao com este documento.";
 
     private final OrganizacaoRepository repository;
     private final AuditoriaService auditoria;
@@ -36,9 +40,14 @@ public class OrganizacaoService {
                 request.regiao(),
                 request.plano());
         if (repository.existsByDocumento(organizacao.getDocumento())) {
-            throw new ConflitoException("Ja existe uma organizacao com este documento.");
+            throw new ConflitoException(MENSAGEM_DOCUMENTO_DUPLICADO, "document");
         }
-        Organizacao persistida = repository.saveAndFlush(organizacao);
+        Organizacao persistida;
+        try {
+            persistida = repository.saveAndFlush(organizacao);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflitoException(MENSAGEM_DOCUMENTO_DUPLICADO, "document");
+        }
         auditoria.registrar(new RegistrarAuditoriaCommand(
                 persistida.getId(), "ORGANIZACAO_CRIADA", "ORGANIZACAO", persistida.getId(),
                 null, null, null, null, snapshot(persistida), null, persistida.getVersion(),

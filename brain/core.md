@@ -1,4 +1,4 @@
-> Links: [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[compras]] · [[vendas-administrativas]] · [[ordens-servico]] · [[consultas]] · [[navegacao]]
+> Links: [[contas]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[compras]] · [[vendas-administrativas]] · [[ordens-servico]] · [[consultas]] · [[navegacao]]
 
 # Core do Estacionamento Kaneko
 
@@ -35,6 +35,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 
 ## Módulos implementados na evolução enterprise
 
+- [[contas]] — autocadastro da identidade global sem privilegios ou tenant implicito.
 - [[organizacoes]] — fundação do tenant empresarial.
 - [[membership]] — vínculo da identidade global, descoberta e contexto de tenant.
 - [[rbac]] — permissões efetivas por papel, Membership e escopo organizacional.
@@ -66,6 +67,15 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[consultas]] — busca transversal tenant-aware limitada pelas permissões efetivas.
 - [[navegacao]] — acesso contextual às áreas funcionais e rotas preservadas.
 
+## Validação do worktree
+
+Em 2026-09-12, `mvnw.cmd -B verify` passou com 819 testes, sem falhas, erros
+ou testes ignorados, contra `estacionamento_kaneko_test`. A execução incluiu
+os testes de migrations Flyway (até V67), Hibernate `validate`, contratos
+OpenAPI e empacotamento do JAR. Duas verificações antigas de listagem de usuário
+receberam ordenação explícita para não depender da primeira página de uma base
+com fixtures anteriores; nenhuma API foi alterada por esse ajuste de teste.
+
 ## Histórico
 
 | Data | Ação |
@@ -78,6 +88,8 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 | 2026-07-29 | Registro da História 6 de Venue. |
 | 2026-07-30 | Registro da História 7 de Evento, idempotência e outbox transacional. |
 | 2026-07-30 | Registro da História 8 de alocação Evento–Pátio e proteção contra sobrealocação. |
+| 2026-09-09 | Registro do autocadastro global seguro com perfil neutro. |
+| 2026-09-10 | Registro do bootstrap self-service de organização com Membership administrativa. |
 | 2026-07-30 | Registro de UC707 com Produto de Estacionamento e quota comercial. |
 | 2026-07-30 | Registro de UC708 com lotes de preço temporais e determinísticos. |
 | 2026-07-30 | Registro da publicação transacional de produto com auditoria e outbox. |

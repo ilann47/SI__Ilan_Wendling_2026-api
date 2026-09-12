@@ -21,6 +21,16 @@ public class RbacGuard {
         return principal(auth) != null && principal(auth).perfilLegado() == PerfilUsuario.ADMIN
                 && !principal(auth).possuiOrganizacaoAtiva();
     }
+    public boolean canProvisionOrganization(Authentication auth) {
+        if (!enabled) return true;
+        UsuarioAutenticado p = principal(auth);
+        return p != null && p.perfilLegado() == PerfilUsuario.ADMIN;
+    }
+    public boolean canSelfProvisionOrganization(Authentication auth) {
+        if (!enabled) return true;
+        UsuarioAutenticado p = principal(auth);
+        return p != null && p.perfilLegado() == PerfilUsuario.USUARIO;
+    }
     public boolean hasPermission(Long orgId, String permission, Authentication auth) {
         if (!enabled) return true;
         UsuarioAutenticado p = principal(auth);
@@ -45,9 +55,9 @@ public class RbacGuard {
         return platformAdmin(auth) || hasPermission(orgId, "organizations:admin", auth);
     }
     public boolean canProvisionMembership(Long orgId, Authentication auth) {
-        if (hasPermission(orgId, "users:invite", auth)) return true;
-        return platformAdmin(auth) && memberships.countByOrganizacaoIdAndStatusNot(
-                orgId, StatusMembroOrganizacao.ENCERRADO) == 0;
+        if (canProvisionOrganization(auth) && memberships.countByOrganizacaoIdAndStatusNot(
+                orgId, StatusMembroOrganizacao.ENCERRADO) == 0) return true;
+        return hasPermission(orgId, "users:invite", auth);
     }
     private static UsuarioAutenticado principal(Authentication auth) {
         return auth != null && auth.getPrincipal() instanceof UsuarioAutenticado p ? p : null;

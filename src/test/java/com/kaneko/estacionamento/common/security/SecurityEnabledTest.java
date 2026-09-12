@@ -83,4 +83,39 @@ class SecurityEnabledTest {
         mvc.perform(get("/api/paises").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void cadastroEhPublicoMasContaNeutraNaoRecebePrivilegioAdministrativo() throws Exception {
+        String body = mvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nome": "Conta Publica",
+                                  "login": "conta.publica",
+                                  "email": "conta.publica@example.com",
+                                  "senha": "senha-segura-123"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String token = JsonPath.read(body, "$.token");
+        mvc.perform(get("/api/v1/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/me/organizations")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .json("[]"));
+        mvc.perform(get("/api/usuarios")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/paises")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/clientes")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
 }

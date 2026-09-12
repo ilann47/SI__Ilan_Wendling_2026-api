@@ -119,7 +119,9 @@ class OrganizacaoControllerTest {
 
         mvc.perform(post("/api/v1/organizations")
                         .contentType(MediaType.APPLICATION_JSON).content(CRIACAO))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erros.document")
+                        .value("Ja existe uma organizacao com este documento."));
 
         mvc.perform(post("/api/v1/organizations")
                         .contentType(MediaType.APPLICATION_JSON)

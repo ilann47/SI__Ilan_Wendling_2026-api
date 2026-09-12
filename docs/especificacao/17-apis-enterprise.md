@@ -134,14 +134,15 @@ Resposta inclui `decision`, `reasonCode`, `checkInId`, `movementId`, `occupancy`
 
 | Método e rota | Payload/Parâmetros | Resposta | Autorização/regras |
 |---|---|---|---|
-| `POST /organizations` | dados empresariais, região, plano | `201 Organization` | Admin plataforma; idempotência |
+| `POST /organizations` | dados empresariais, região, plano | `201 Organization`; documento duplicado retorna `409` com `erros.document` | Admin plataforma, com ou sem contexto ativo; o primeiro vínculo continua explícito |
 | `GET /organizations/{id}` | id | `200 Organization` | Admin plataforma/organização no próprio escopo |
 | `PATCH /organizations/{id}` | campos aditivos + `If-Match` | `200` | Admin organização; campos de propriedade imutáveis |
 | `POST /organizations/{organizationId}/memberships` | somente `userId` | `201 Membership` + `Location`/`ETag` | AS-IS: primeiro vínculo pelo Admin plataforma; demais exigem `users:invite` |
 | `GET /organizations/{organizationId}/memberships/{membershipId}` | IDs no path | `200 Membership` + `ETag` | AS-IS: `organizations:admin`; vínculo no tenant ativo |
 | `PATCH /organizations/{organizationId}/memberships/{membershipId}` | somente status + `If-Match` | `200 Membership` + `ETag` | AS-IS: `organizations:admin`; preserva ao menos um administrador |
-| `GET /me` | token | identidade e organização ativa opcional | qualquer autenticado; contexto presente é revalidado no banco |
+| `GET /me` | token | identidade com `nome`, `perfil` global e organização ativa opcional | qualquer autenticado; contexto presente é revalidado no banco; aliases `name` e `legacyProfile` permanecem temporariamente por compatibilidade |
 | `GET /me/organizations` | token | organizações acessíveis | projeção direta; somente Membership e organização ativas |
+| `POST /me/organizations` | mesmos dados empresariais de `POST /organizations` | `201` com `organization` e `membership`, `Location` e `ETag` | self-service de `USUARIO`; cria organização, Membership própria e `ADMIN_ORGANIZACAO` atomicamente; não ativa o tenant nem promove o perfil global |
 | `POST /me/active-organization` | somente `organizationId` | novo JWT contextual | Membership, estado, perfil e versão resolvidos pelo servidor |
 | `POST /venues` | AS-IS: organização implícita, nome, endereço, cidade, fuso | `201 Venue`, `Location`, `ETag` | `organizations:admin`; organização/cidade ativas; fuso IANA; nome único no tenant |
 | `POST /users/invitations` | email, papel, escopo, validade | `202 Invitation` | Admin/Gestor com capacidade de delegação |

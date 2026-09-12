@@ -108,6 +108,8 @@ class MembershipSegurancaTest {
                         .header("Authorization", contextual)
                         .header("X-Organization-Id", "999999"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Operador Membership"))
+                .andExpect(jsonPath("$.perfil").value("OPERADOR"))
                 .andExpect(jsonPath("$.activeOrganization.organizationId").value(organizacaoId));
     }
 
@@ -218,6 +220,8 @@ class MembershipSegurancaTest {
         mvc.perform(get("/api/v1/me").header("Authorization", tokenOperador))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(operador.getId()))
+                .andExpect(jsonPath("$.nome").value("Operador Membership"))
+                .andExpect(jsonPath("$.perfil").value("OPERADOR"))
                 .andExpect(jsonPath("$.activeOrganization").doesNotExist());
     }
 

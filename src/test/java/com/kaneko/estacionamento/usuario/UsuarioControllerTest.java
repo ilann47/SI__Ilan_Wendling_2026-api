@@ -58,7 +58,9 @@ class UsuarioControllerTest {
     void listaUsuarios() throws Exception {
         criar("usr1");
         criar("usr2");
-        mvc.perform(get("/api/usuarios"))
+        // A base de testes pode conter usuarios de outras fixtures; ordenacao
+        // explicita garante que os registros deste teste estejam na primeira pagina.
+        mvc.perform(get("/api/usuarios").param("sort", "id,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[*].login", hasItems("usr1", "usr2")));
     }
@@ -72,7 +74,8 @@ class UsuarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content(operador))
                 .andExpect(status().isCreated());
 
-        mvc.perform(get("/api/usuarios").param("perfil", "ADMIN"))
+        mvc.perform(get("/api/usuarios").param("perfil", "ADMIN")
+                        .param("sort", "id,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[*].login", hasItem("admin")))
                 .andExpect(jsonPath("$.content[*].login", not(hasItem("oper"))))

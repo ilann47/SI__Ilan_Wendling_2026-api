@@ -1,6 +1,7 @@
 {
   "nodes": [
     {"id": "core", "type": "file", "file": "core.md", "x": 0, "y": 0, "width": 360, "height": 220},
+    {"id": "contas", "type": "file", "file": "contas.md", "x": 0, "y": 320, "width": 360, "height": 220},
     {"id": "organizacoes", "type": "file", "file": "organizacoes.md", "x": 500, "y": 0, "width": 360, "height": 220},
     {"id": "membership", "type": "file", "file": "membership.md", "x": 500, "y": 320, "width": 360, "height": 220},
     {"id": "rbac", "type": "file", "file": "rbac.md", "x": 1000, "y": 320, "width": 360, "height": 220},
@@ -37,6 +38,9 @@
     {"id": "navegacao", "type": "file", "file": "navegacao.md", "x": 12500, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
+    {"id": "core-contas", "fromNode": "core", "fromSide": "bottom", "toNode": "contas", "toSide": "top", "label": "identidade global"},
+    {"id": "contas-membership", "fromNode": "contas", "fromSide": "right", "toNode": "membership", "toSide": "left", "label": "vinculo organizacional"},
+    {"id": "contas-rbac", "fromNode": "contas", "fromSide": "right", "toNode": "rbac", "toSide": "left", "label": "sem privilegio implicito"},
     {"id": "core-organizacoes", "fromNode": "core", "fromSide": "right", "toNode": "organizacoes", "toSide": "left", "label": "fundação tenant"},
     {"id": "core-membership", "fromNode": "core", "fromSide": "right", "toNode": "membership", "toSide": "left", "label": "contexto autenticado"},
     {"id": "organizacoes-membership", "fromNode": "organizacoes", "fromSide": "bottom", "toNode": "membership", "toSide": "top", "label": "vínculo ativo"},

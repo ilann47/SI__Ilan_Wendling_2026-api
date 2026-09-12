@@ -33,7 +33,7 @@ public class OrganizacaoController {
     }
 
     @PostMapping
-    @PreAuthorize("@rbacGuard.platformAdmin(authentication)")
+    @PreAuthorize("@rbacGuard.canProvisionOrganization(authentication)")
     public ResponseEntity<OrganizacaoResponse> criar(@Valid @RequestBody CriarOrganizacaoRequest request) {
         OrganizacaoResponse response = service.criar(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()

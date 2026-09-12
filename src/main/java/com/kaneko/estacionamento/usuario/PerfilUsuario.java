@@ -7,5 +7,7 @@ public enum PerfilUsuario {
     /** Acesso total (administracao). */
     ADMIN,
     /** Operacao do dia a dia (patio, conveniencia). */
-    OPERADOR
+    OPERADOR,
+    /** Identidade global sem privilegios legados; recebe acesso por Membership/RBAC. */
+    USUARIO
 }

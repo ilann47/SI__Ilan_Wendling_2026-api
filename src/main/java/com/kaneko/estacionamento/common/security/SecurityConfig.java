@@ -86,11 +86,15 @@ public class SecurityConfig {
                             .requestMatchers("/api/movimentacoes/**").authenticated()
                             .requestMatchers("/api/contas-pagar-avulsas/**").authenticated()
                             .requestMatchers("/api/relatorios/**").authenticated()
+                            // APIs enterprise recebem USUARIO e decidem o acesso pelo RBAC contextual.
+                            .requestMatchers("/api/v1/**").authenticated()
                             // Gestao de usuarios e exclusivamente administrativa.
                             .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                             // Manutencao de tarifa (preco) e administrativa.
                             // Qualquer exclusao e administrativa.
                             .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
+                            // Rotas legadas sem regra mais especifica nao aceitam a conta neutra.
+                            .requestMatchers("/api/**").hasAnyRole("ADMIN", "OPERADOR")
                             .anyRequest().authenticated())
                     .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository, contextoService, rbacService),
                             UsernamePasswordAuthenticationFilter.class)

@@ -42,7 +42,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(ConflitoException.class)
     public ProblemDetail handleConflito(ConflitoException ex) {
-        return problem(HttpStatus.CONFLICT, "Conflito", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "Conflito", ex.getMessage());
+        if (!ex.erros().isEmpty()) {
+            pd.setProperty("erros", ex.erros());
+        }
+        return pd;
     }
 
     @ExceptionHandler(AuthorizationDeniedException.class)
