@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -32,8 +33,10 @@ public class VendaAdministrativaController {
     @GetMapping
     @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('sales:read', authentication)")
     public Page<VendaAdministrativaResponse> listar(
-            @AuthenticationPrincipal UsuarioAutenticado principal, Pageable pageable) {
-        return service.listar(principal.organizacaoId(), pageable)
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @RequestParam(required = false) String numero,
+            @RequestParam(required = false) StatusVendaAdministrativa status, Pageable pageable) {
+        return service.listar(principal.organizacaoId(), numero, status, pageable)
                 .map(VendaAdministrativaResponse::from);
     }
     @GetMapping("/{id}")

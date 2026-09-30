@@ -13,12 +13,17 @@ import com.kaneko.estacionamento.compras.dto.ItemRecebimentoCompraRequest;
 import com.kaneko.estacionamento.compras.dto.OrdemCompraRequest;
 import com.kaneko.estacionamento.compras.dto.ReceberOrdemCompraRequest;
 import com.kaneko.estacionamento.conveniencia.Produto;
+import com.kaneko.estacionamento.conveniencia.ProdutoFornecedorRepository;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.estoque.EstoqueService;
 import com.kaneko.estacionamento.estoque.LocalEstoque;
 import com.kaneko.estacionamento.estoque.LocalEstoqueRepository;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
 import com.kaneko.estacionamento.fornecedor.FornecedorRepository;
+import com.kaneko.estacionamento.logistica.Transportadora;
+import com.kaneko.estacionamento.logistica.TransportadoraRepository;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.usuario.Usuario;
 import com.kaneko.estacionamento.usuario.UsuarioRepository;
 import java.math.BigDecimal;
@@ -35,6 +40,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.BiConsumer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageImpl;
@@ -53,7 +60,10 @@ public class OrdemCompraService {
     private final RecebimentoCompraRepository recebimentos;
     private final FornecedorRepository fornecedores;
     private final ProdutoRepository produtos;
+    private final ProdutoFornecedorRepository produtoFornecedores;
     private final LocalEstoqueRepository locais;
+    private final CondicaoPagamentoRepository condicoesPagamento;
+    private final TransportadoraRepository transportadoras;
     private final UsuarioRepository usuarios;
     private final EstoqueService estoque;
     private final IdempotenciaRepository idempotencia;
@@ -63,14 +73,20 @@ public class OrdemCompraService {
     public OrdemCompraService(OrdemCompraRepository ordens,
             RecebimentoCompraRepository recebimentos,
             FornecedorRepository fornecedores, ProdutoRepository produtos,
-            LocalEstoqueRepository locais, UsuarioRepository usuarios,
+            ProdutoFornecedorRepository produtoFornecedores,
+            LocalEstoqueRepository locais,
+            CondicaoPagamentoRepository condicoesPagamento,
+            TransportadoraRepository transportadoras, UsuarioRepository usuarios,
             EstoqueService estoque, IdempotenciaRepository idempotencia,
             AuditoriaService auditoria, OutboxService outbox) {
         this.ordens = ordens;
         this.recebimentos = recebimentos;
         this.fornecedores = fornecedores;
         this.produtos = produtos;
+        this.produtoFornecedores = produtoFornecedores;
         this.locais = locais;
+        this.condicoesPagamento = condicoesPagamento;
+        this.transportadoras = transportadoras;
         this.usuarios = usuarios;
         this.estoque = estoque;
         this.idempotencia = idempotencia;
@@ -80,7 +96,15 @@ public class OrdemCompraService {
 
     @Transactional(readOnly = true)
     public Page<OrdemCompra> listar(Long organizacaoId, Pageable pageable) {
-        Page<Long> ids = ordens.findPageIdsByOrganizacaoId(organizacaoId, pageable);
+        return listar(organizacaoId, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrdemCompra> listar(Long organizacaoId, String numero,
+            List<StatusOrdemCompra> statuses, Pageable pageable) {
+        Page<Long> ids = ordens.findPageIdsFiltrados(organizacaoId,
+                numero == null ? "" : numero.trim(), statuses == null || statuses.isEmpty()
+                        ? List.of(StatusOrdemCompra.values()) : statuses, pageable);
         if (ids.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, ids.getTotalElements());
         }
@@ -116,12 +140,16 @@ public class OrdemCompraService {
             return buscar(organizacaoId, anterior.get().recursoId());
         }
 
-        String numero = normalizarNumero(request.numero());
-        if (ordens.existsByOrganizacaoIdAndNumeroIgnoreCase(organizacaoId, numero)) {
-            throw new ConflitoException("Ja existe uma ordem com este numero.");
-        }
+        String numero = gerarNumeroInterno();
+        String numeroNota = normalizarIdentificadorFiscal(request.numeroNota());
+        String serieNota = normalizarIdentificadorFiscal(request.serieNota());
+        String modeloNota = normalizarIdentificadorFiscal(request.modeloNota());
+        exigirChaveFiscalDisponivel(organizacaoId, request.fornecedorId(), numeroNota,
+                serieNota, modeloNota, null);
         OrdemCompra ordem = new OrdemCompra();
         ordem.setOrganizacaoId(organizacaoId);
+        ordem.setComprador(usuarios.findByIdAndAtivoTrue(atorId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuario", atorId)));
         preencher(ordem, request, numero);
         ordem = ordens.saveAndFlush(ordem);
         idempotencia.registrar(organizacaoId, atorId, OPERACAO_CRIAR, chave,
@@ -139,10 +167,16 @@ public class OrdemCompraService {
         if (ordem.getStatus() != StatusOrdemCompra.RASCUNHO) {
             throw new ConflitoException("Somente uma ordem em rascunho pode ser alterada.");
         }
-        String numero = normalizarNumero(request.numero());
-        if (ordens.existsByOrganizacaoIdAndNumeroIgnoreCaseAndIdNot(
-                organizacaoId, numero, id)) {
-            throw new ConflitoException("Ja existe uma ordem com este numero.");
+        String numero = ordem.getNumero();
+        String numeroNota = normalizarIdentificadorFiscal(request.numeroNota());
+        String serieNota = normalizarIdentificadorFiscal(request.serieNota());
+        String modeloNota = normalizarIdentificadorFiscal(request.modeloNota());
+        if (!ordem.getNumeroNota().equals(numeroNota)
+                || !ordem.getSerieNota().equals(serieNota)
+                || !ordem.getModeloNota().equals(modeloNota)
+                || !ordem.getFornecedor().getId().equals(request.fornecedorId())) {
+            throw new ConflitoException(
+                    "Fornecedor, numero, serie e modelo da nota nao podem ser alterados apos a inclusao dos produtos.");
         }
         Map<String, Object> anterior = snapshot(ordem);
         preencher(ordem, request, numero);
@@ -178,6 +212,23 @@ public class OrdemCompraService {
     }
 
     @Transactional
+    public OrdemCompra rejeitarEntrega(Long organizacaoId, Long id, long versaoEsperada,
+            String motivo) {
+        OrdemCompra ordem = bloquear(organizacaoId, id);
+        exigirVersao(ordem, versaoEsperada);
+        String motivoNormalizado = normalizarOpcional(motivo);
+        if (motivoNormalizado == null) {
+            throw new IllegalArgumentException("O motivo da rejeicao e obrigatorio.");
+        }
+        Map<String, Object> anterior = snapshot(ordem);
+        ordem.rejeitarEntrega(motivoNormalizado);
+        ordem = ordens.saveAndFlush(ordem);
+        auditar(ordem, "ENTREGA_COMPRA_REJEITADA", anterior, snapshot(ordem), motivoNormalizado);
+        publicar(ordem, "EntregaCompraRejeitada", snapshot(ordem));
+        return ordem;
+    }
+
+    @Transactional
     public RecebimentoRegistrado receber(Long organizacaoId, Long atorId, Long ordemId,
             long versaoEsperada, String chaveIdempotencia, ReceberOrdemCompraRequest request) {
         String chave = validarChave(chaveIdempotencia);
@@ -206,6 +257,10 @@ public class OrdemCompraService {
 
         Map<Long, ItemOrdemCompra> itensOrdem = new LinkedHashMap<>();
         ordem.getItens().forEach(item -> itensOrdem.put(item.getId(), item));
+        if (request.itens().size() != itensOrdem.size()) {
+            throw new ConflitoException(
+                    "O recebimento deve contemplar integralmente todos os itens da ordem.");
+        }
         Set<Long> itensInformados = new HashSet<>();
         for (ItemRecebimentoCompraRequest item : request.itens()) {
             if (!itensInformados.add(item.itemOrdemCompraId())) {
@@ -216,8 +271,9 @@ public class OrdemCompraService {
                 throw new RecursoNaoEncontradoException(
                         "ItemOrdemCompra", item.itemOrdemCompraId());
             }
-            if (item.quantidade().compareTo(itemOrdem.saldoReceber()) > 0) {
-                throw new ConflitoException("A quantidade recebida excede o saldo do item.");
+            if (item.quantidade().compareTo(itemOrdem.saldoReceber()) != 0) {
+                throw new ConflitoException(
+                        "O recebimento deve informar a quantidade integral de cada item.");
             }
         }
 
@@ -236,14 +292,14 @@ public class OrdemCompraService {
             itemOrdem.receber(itemRequest.quantidade());
             Long movimentoId = estoque.registrarRecebimento(organizacaoId, atorId,
                     itemOrdem.getProduto().getId(), local.getId(), itemRequest.quantidade(),
-                    itemOrdem.getValorUnitario(), RECURSO_ORDEM,
+                    itemOrdem.getCustoUnitarioFinal(), RECURSO_ORDEM,
                     ordem.getId() + ":" + itemOrdem.getSequencia() + ":" + chave,
                     "Recebimento da ordem " + ordem.getNumero());
             ItemRecebimentoCompra itemRecebimento = new ItemRecebimentoCompra();
             itemRecebimento.setItemOrdemCompra(itemOrdem);
             itemRecebimento.setProduto(itemOrdem.getProduto());
             itemRecebimento.setQuantidade(itemRequest.quantidade());
-            itemRecebimento.setCustoUnitario(itemOrdem.getValorUnitario());
+            itemRecebimento.setCustoUnitario(itemOrdem.getCustoUnitarioFinal());
             itemRecebimento.setMovimentoEstoqueId(movimentoId);
             recebimento.adicionarItem(itemRecebimento);
         }
@@ -272,17 +328,63 @@ public class OrdemCompraService {
                         "Fornecedor ativo", request.fornecedorId()));
         LocalDate emissao = request.dataEmissao() != null
                 ? request.dataEmissao() : LocalDate.now();
+        if (emissao.isAfter(LocalDate.now())) {
+            throw new ConflitoException("A data da ordem nao pode estar no futuro.");
+        }
         if (request.previsaoEntrega() != null && request.previsaoEntrega().isBefore(emissao)) {
-            throw new ConflitoException("A previsao de entrega nao pode anteceder a emissao.");
+            throw new ConflitoException("A previsao de entrega nao pode anteceder a data da ordem.");
+        }
+        CondicaoPagamento condicaoPagamento = request.condicaoPagamentoId() == null
+                ? fornecedor.getCondicaoPagamento()
+                : condicoesPagamento.findByIdAndOrganizacaoId(
+                        request.condicaoPagamentoId(), ordem.getOrganizacaoId())
+                        .filter(item -> Boolean.TRUE.equals(item.getAtivo()))
+                        .orElseThrow(() -> new RecursoNaoEncontradoException(
+                                "CondicaoPagamento ativa", request.condicaoPagamentoId()));
+        if (condicaoPagamento != null && !Boolean.TRUE.equals(condicaoPagamento.getAtivo())) {
+            condicaoPagamento = null;
+        }
+        Transportadora transportadora = request.transportadoraId() == null
+                ? fornecedor.getTransportadora()
+                : transportadoras.findByIdAndOrganizacaoId(
+                        request.transportadoraId(), ordem.getOrganizacaoId())
+                        .filter(item -> Boolean.TRUE.equals(item.getAtivo()))
+                        .orElseThrow(() -> new RecursoNaoEncontradoException(
+                                "Transportadora ativa", request.transportadoraId()));
+        if (transportadora != null && !Boolean.TRUE.equals(transportadora.getAtivo())) {
+            transportadora = null;
+        }
+        LocalEstoque localEntrega = request.localEstoqueEntregaId() == null ? null
+                : locais.findAtivoParaMovimento(
+                        request.localEstoqueEntregaId(), ordem.getOrganizacaoId())
+                        .orElseThrow(() -> new RecursoNaoEncontradoException(
+                                "LocalEstoque ativo", request.localEstoqueEntregaId()));
+        BigDecimal descontoGeral = nz(request.valorDesconto());
+        if (descontoGeral.signum() != 0) {
+            throw new IllegalArgumentException(
+                    "Desconto geral nao e permitido; informe o desconto em cada item.");
         }
         ordem.setNumero(numero);
         ordem.setFornecedor(fornecedor);
+        ordem.setNumeroNota(normalizarIdentificadorFiscal(request.numeroNota()));
+        ordem.setSerieNota(normalizarIdentificadorFiscal(request.serieNota()));
+        ordem.setModeloNota(normalizarIdentificadorFiscal(request.modeloNota()));
         ordem.setDataEmissao(emissao);
         ordem.setPrevisaoEntrega(request.previsaoEntrega());
+        ordem.setCondicaoPagamento(condicaoPagamento);
+        ordem.setTransportadora(transportadora);
+        ordem.setLocalEstoqueEntrega(localEntrega);
+        ordem.setTipoFrete(request.tipoFrete() != null ? request.tipoFrete()
+                : nz(request.valorFrete()).signum() > 0
+                        ? TipoFreteOrdemCompra.CIF : TipoFreteOrdemCompra.SEM_FRETE);
+        ordem.setReferenciaFornecedor(normalizarOpcional(request.referenciaFornecedor()));
         ordem.setMoeda(normalizarMoeda(request.moeda()));
         ordem.setValorFrete(nz(request.valorFrete()));
-        ordem.setValorDesconto(nz(request.valorDesconto()));
+        ordem.setValorSeguro(nz(request.valorSeguro()));
+        ordem.setOutrasDespesas(nz(request.outrasDespesas()));
+        ordem.setValorDesconto(BigDecimal.ZERO);
         ordem.setObservacao(normalizarOpcional(request.observacao()));
+        ordem.setObservacaoInterna(normalizarOpcional(request.observacaoInterna()));
 
         Set<Long> produtosInformados = new HashSet<>();
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -309,6 +411,12 @@ public class OrdemCompraService {
                 item.setQuantidadeRecebida(BigDecimal.ZERO);
             }
             item.setProduto(produto);
+            item.setCodigoProdutoFornecedor(produtoFornecedores
+                    .findByProdutoIdAndFornecedorIdAndOrganizacaoId(
+                            produto.getId(), fornecedor.getId(), ordem.getOrganizacaoId())
+                    .filter(vinculo -> Boolean.TRUE.equals(vinculo.getAtivo()))
+                    .map(vinculo -> vinculo.getCodigoProd())
+                    .orElse(null));
             item.setSequencia(sequencia++);
             item.setQuantidadePedida(itemRequest.quantidade());
             item.setValorUnitario(itemRequest.valorUnitario());
@@ -322,12 +430,49 @@ public class OrdemCompraService {
         ordem.getItens().removeIf(
                 item -> !produtosInformados.contains(item.getProduto().getId()));
         ordem.setSubtotal(subtotal.setScale(2, RoundingMode.HALF_UP));
-        BigDecimal total = ordem.getSubtotal().add(ordem.getValorFrete())
-                .subtract(ordem.getValorDesconto()).setScale(2, RoundingMode.HALF_UP);
-        if (total.signum() < 0) {
-            throw new ConflitoException("O desconto da ordem nao pode exceder seu valor.");
+        ratear(ordem.getItens(), ordem.getSubtotal(), ordem.getValorFrete(),
+                ItemOrdemCompra::setRateioFrete);
+        ratear(ordem.getItens(), ordem.getSubtotal(), ordem.getValorSeguro(),
+                ItemOrdemCompra::setRateioSeguro);
+        ratear(ordem.getItens(), ordem.getSubtotal(), ordem.getOutrasDespesas(),
+                ItemOrdemCompra::setRateioOutrasDespesas);
+        for (ItemOrdemCompra item : ordem.getItens()) {
+            BigDecimal custoTotal = item.getValorTotal().add(item.getRateioFrete())
+                    .add(item.getRateioSeguro()).add(item.getRateioOutrasDespesas())
+                    .setScale(2, RoundingMode.HALF_UP);
+            item.setCustoTotal(custoTotal);
+            item.setCustoUnitarioFinal(custoTotal.divide(
+                    item.getQuantidadePedida(), 2, RoundingMode.HALF_UP));
         }
+        BigDecimal total = ordem.getSubtotal().add(ordem.getValorFrete())
+                .add(ordem.getValorSeguro()).add(ordem.getOutrasDespesas())
+                .setScale(2, RoundingMode.HALF_UP);
         ordem.setValorTotal(total);
+    }
+
+    private static void ratear(List<ItemOrdemCompra> itens, BigDecimal baseValor,
+            BigDecimal despesa, BiConsumer<ItemOrdemCompra, BigDecimal> atribuir) {
+        if (itens.isEmpty() || despesa.signum() == 0) {
+            itens.forEach(item -> atribuir.accept(item, BigDecimal.ZERO));
+            return;
+        }
+        boolean porValor = baseValor.signum() > 0;
+        BigDecimal base = porValor ? baseValor : itens.stream()
+                .map(ItemOrdemCompra::getQuantidadePedida)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal acumulado = BigDecimal.ZERO;
+        for (int indice = 0; indice < itens.size(); indice++) {
+            ItemOrdemCompra item = itens.get(indice);
+            BigDecimal parcela;
+            if (indice == itens.size() - 1) {
+                parcela = despesa.subtract(acumulado).setScale(2, RoundingMode.HALF_UP);
+            } else {
+                BigDecimal peso = porValor ? item.getValorTotal() : item.getQuantidadePedida();
+                parcela = despesa.multiply(peso).divide(base, 2, RoundingMode.HALF_UP);
+                acumulado = acumulado.add(parcela);
+            }
+            atribuir.accept(item, parcela);
+        }
     }
 
     private OrdemCompra bloquear(Long organizacaoId, Long id) {
@@ -357,7 +502,19 @@ public class OrdemCompraService {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("ordemCompraId", ordem.getId());
         snapshot.put("numero", ordem.getNumero());
+        snapshot.put("numeroNota", ordem.getNumeroNota());
+        snapshot.put("serieNota", ordem.getSerieNota());
+        snapshot.put("modeloNota", ordem.getModeloNota());
         snapshot.put("fornecedorId", ordem.getFornecedor().getId());
+        snapshot.put("condicaoPagamentoId", ordem.getCondicaoPagamento() == null
+                ? null : ordem.getCondicaoPagamento().getId());
+        snapshot.put("transportadoraId", ordem.getTransportadora() == null
+                ? null : ordem.getTransportadora().getId());
+        snapshot.put("localEstoqueEntregaId", ordem.getLocalEstoqueEntrega() == null
+                ? null : ordem.getLocalEstoqueEntrega().getId());
+        snapshot.put("compradorId", ordem.getComprador() == null
+                ? null : ordem.getComprador().getId());
+        snapshot.put("tipoFrete", ordem.getTipoFrete().name());
         snapshot.put("status", ordem.getStatus().name());
         snapshot.put("valorTotal", ordem.getValorTotal());
         snapshot.put("quantidadeItens", ordem.getItens().size());
@@ -375,8 +532,26 @@ public class OrdemCompraService {
         return snapshot;
     }
 
-    private static String normalizarNumero(String numero) {
-        return numero.trim().toUpperCase(Locale.ROOT);
+    private static String gerarNumeroInterno() {
+        return "OC-" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private static String normalizarIdentificadorFiscal(String valor) {
+        return valor.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private void exigirChaveFiscalDisponivel(Long organizacaoId, Long fornecedorId,
+            String numeroNota, String serieNota, String modeloNota, Long ignorarId) {
+        boolean existente = ignorarId == null
+                ? ordens.existsByOrganizacaoIdAndFornecedorIdAndNumeroNotaIgnoreCaseAndSerieNotaIgnoreCaseAndModeloNotaIgnoreCase(
+                        organizacaoId, fornecedorId, numeroNota, serieNota, modeloNota)
+                : ordens.existsByOrganizacaoIdAndFornecedorIdAndNumeroNotaIgnoreCaseAndSerieNotaIgnoreCaseAndModeloNotaIgnoreCaseAndIdNot(
+                        organizacaoId, fornecedorId, numeroNota, serieNota, modeloNota,
+                        ignorarId);
+        if (existente) {
+            throw new ConflitoException(
+                    "Ja existe uma compra para este fornecedor, numero, serie e modelo de nota.");
+        }
     }
 
     private static String normalizarMoeda(String moeda) {
@@ -410,10 +585,19 @@ public class OrdemCompraService {
 
     private static String hashRequest(OrdemCompraRequest request) {
         StringBuilder valor = new StringBuilder()
-                .append(request.numero()).append('|').append(request.fornecedorId()).append('|')
+                .append(request.fornecedorId()).append('|').append(request.numeroNota()).append('|')
+                .append(request.serieNota()).append('|').append(request.modeloNota()).append('|')
                 .append(request.dataEmissao()).append('|').append(request.previsaoEntrega())
+                .append('|').append(request.condicaoPagamentoId())
+                .append('|').append(request.transportadoraId())
+                .append('|').append(request.localEstoqueEntregaId())
+                .append('|').append(request.tipoFrete())
+                .append('|').append(request.referenciaFornecedor())
                 .append('|').append(request.moeda()).append('|').append(request.valorFrete())
-                .append('|').append(request.valorDesconto()).append('|').append(request.observacao());
+                .append('|').append(request.valorSeguro()).append('|')
+                .append(request.outrasDespesas())
+                .append('|').append(request.valorDesconto()).append('|').append(request.observacao())
+                .append('|').append(request.observacaoInterna());
         request.itens().forEach(item -> valor.append('|').append(item.produtoId())
                 .append(':').append(item.quantidade()).append(':').append(item.valorUnitario())
                 .append(':').append(item.valorDesconto()));

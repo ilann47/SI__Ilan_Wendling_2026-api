@@ -109,7 +109,7 @@ public class NotaServicoService {
 
     @Transactional
     public NotaServico atualizar(Long organizacaoId, Long id, NotaServicoRequest req) {
-        NotaServico nota = buscar(organizacaoId, id);
+        NotaServico nota = bloquear(organizacaoId, id);
         if (nota.getSituacao() != SituacaoNotaServico.PENDENTE) {
             throw new ConflitoException("Apenas notas pendentes podem ser alteradas.");
         }
@@ -122,7 +122,7 @@ public class NotaServicoService {
 
     @Transactional
     public NotaServico emitir(Long organizacaoId, Long id) {
-        NotaServico nota = buscar(organizacaoId, id);
+        NotaServico nota = bloquear(organizacaoId, id);
         if (nota.getSituacao() != SituacaoNotaServico.PENDENTE) {
             throw new ConflitoException("Apenas notas pendentes podem ser emitidas.");
         }
@@ -136,14 +136,16 @@ public class NotaServicoService {
 
     @Transactional
     public NotaServico cancelar(Long organizacaoId, Long id) {
-        NotaServico nota = buscar(organizacaoId, id);
+        NotaServico nota = bloquear(organizacaoId, id);
         if (nota.getSituacao() == SituacaoNotaServico.CANCELADA) {
             throw new ConflitoException("A nota já está cancelada.");
         }
-        List<ContaReceber> titulos = nota.getOrganizacaoId() == null
-                ? contaReceberRepository.findByNotaServicoIdAndOrganizacaoIdIsNull(nota.getId())
-                : contaReceberRepository.findByNotaServicoIdAndOrganizacaoId(
-                        nota.getId(), nota.getOrganizacaoId());
+        List<ContaReceber> titulos = contaReceberRepository
+                .findIdsByNotaServicoIdAndOrganizacaoId(nota.getId(), nota.getOrganizacaoId())
+                .stream().map(tituloId -> contaReceberRepository
+                        .buscarParaBaixa(tituloId, organizacaoId)
+                        .orElseThrow(() -> new RecursoNaoEncontradoException("ContaReceber", tituloId)))
+                .toList();
         if (titulos.stream().anyMatch(t -> t.getValorRecebido().signum() > 0)) {
             throw new ConflitoException("Nota com titulo recebido nao pode ser cancelada.");
         }
@@ -158,7 +160,7 @@ public class NotaServicoService {
 
     @Transactional
     public void excluir(Long organizacaoId, Long id) {
-        NotaServico nota = buscar(organizacaoId, id);
+        NotaServico nota = bloquear(organizacaoId, id);
         if (nota.getSituacao() == SituacaoNotaServico.EMITIDA) {
             throw new ConflitoException("Uma nota emitida não pode ser excluída.");
         }
@@ -166,6 +168,11 @@ public class NotaServicoService {
         repository.delete(nota);
         repository.flush();
         auditar(nota, "NOTA_SERVICO_EXCLUIDA", anterior, null);
+    }
+
+    private NotaServico bloquear(Long organizacaoId, Long id) {
+        return repository.findParaAtualizar(id, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("NotaServico", id));
     }
 
     private void aplicar(Long organizacaoId, NotaServico nota, NotaServicoRequest req) {
@@ -190,7 +197,7 @@ public class NotaServicoService {
                 ? mensalistaRepository.findById(req.mensalistaId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Mensalista", req.mensalistaId())) : null);
         OrdemServico ordemServico = req.ordemServicoId() == null ? null
-                : ordemServicoRepository.findByIdAndOrganizacaoId(
+                : ordemServicoRepository.findParaAtualizar(
                         req.ordemServicoId(), organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "OrdemServico", req.ordemServicoId()));

@@ -37,7 +37,10 @@ public record ContaReceberResponse(
         SituacaoContaReceber situacao,
         String observacao,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        BigDecimal saldo,
+        OrigemFinanceiraResponse origem,
+        Long vendaAdministrativaId
 ) {
 
     public static ContaReceberResponse from(ContaReceber c) {
@@ -69,6 +72,10 @@ public record ContaReceberResponse(
                 c.getSituacao(),
                 c.getObservacao(),
                 c.getCreatedAt(),
-                c.getUpdatedAt());
+                c.getUpdatedAt(),
+                c.getSituacao() == SituacaoContaReceber.CANCELADA ? BigDecimal.ZERO
+                        : c.getValorTotal().subtract(c.getValorRecebido()),
+                OrigemFinanceiraResponse.from(c),
+                c.getVendaAdministrativa() == null ? null : c.getVendaAdministrativa().getId());
     }
 }

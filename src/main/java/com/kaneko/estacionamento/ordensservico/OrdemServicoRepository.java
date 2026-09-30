@@ -21,6 +21,16 @@ public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Long
     Page<Long> findPageIdsByOrganizacaoId(@Param("organizacaoId") Long organizacaoId,
             Pageable pageable);
 
+    @Query("""
+            select o.id from OrdemServico o
+            where o.organizacaoId=:organizacaoId
+            and locate(:numero, lower(o.numero)) > 0
+            and o.status in :statuses
+            """)
+    Page<Long> findPageIdsFiltrados(@Param("organizacaoId") Long organizacaoId,
+            @Param("numero") String numero, @Param("statuses") List<StatusOrdemServico> statuses,
+            Pageable pageable);
+
     @EntityGraph(attributePaths = {"cliente", "itens", "itens.servico"})
     List<OrdemServico> findAllByOrganizacaoIdAndIdIn(
             Long organizacaoId, Collection<Long> ids);

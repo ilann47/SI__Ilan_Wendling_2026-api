@@ -14,6 +14,9 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - Hibernate configurado com `ddl-auto=validate`.
 - APIs TARGET sob `/api/v1`, preservando as rotas legadas `/api`.
 - Problem Details e `X-Trace-Id` como contrato de erros e correlação.
+- Erros HTTP transversais preservam sua semântica: rota inexistente retorna 404,
+  método não suportado 405, mídia incompatível 415, validação 400 e ausência de
+  `If-Match` obrigatório 428; exceções inesperadas continuam como 500 rastreável.
 
 ## Infraestrutura
 
@@ -69,17 +72,16 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 
 ## Validação do worktree
 
-Em 2026-09-12, `mvnw.cmd -B verify` passou com 819 testes, sem falhas, erros
-ou testes ignorados, contra `estacionamento_kaneko_test`. A execução incluiu
-os testes de migrations Flyway (até V67), Hibernate `validate`, contratos
-OpenAPI e empacotamento do JAR. Duas verificações antigas de listagem de usuário
-receberam ordenação explícita para não depender da primeira página de uma base
-com fixtures anteriores; nenhuma API foi alterada por esse ajuste de teste.
+Em 2026-09-29, `mvnw.cmd -B verify` passou com 884 testes, sem falhas, erros ou
+testes ignorados, contra `estacionamento_kaneko_test`. A execução validou 73
+migrations Flyway e o schema atual em V74, iniciou Hibernate com validação de
+mapeamentos, verificou OpenAPI e empacotou o JAR.
 
 ## Histórico
 
 | Data | Ação |
 |---|---|
+| 2026-09-29 | V74 completa os dados comerciais e logísticos da Ordem de Compra e restringe descontos ao nível do item. |
 | 2026-07-29 | Inicialização do brain e registro da História 1 de Organizações. |
 | 2026-07-29 | Registro da História 2 de Membership e JWT contextual. |
 | 2026-07-29 | Registro da História 3 de RBAC contextual. |
@@ -145,3 +147,6 @@ com fixtures anteriores; nenhuma API foi alterada por esse ajuste de teste.
 | 2026-08-14 | Implementa Ordem de Serviço tenant-aware e faturamento único pela Nota de Serviço na V65. |
 | 2026-08-17 | Adiciona busca global tenant-aware e contextual no cabeçalho. |
 | 2026-08-17 | Consolida o menu em seis áreas recolhíveis com modo compacto. |
+| 2026-09-12 | Conecta vendas, compras, OS, estoque e financeiro sem repetir efeitos; V69 registra baixas e V70/V71 adicionam [[importacao-xml]] com conferência atômica. |
+| 2026-09-28 | Corrige o tratamento HTTP global para não transformar 404, 405, 415, validação e precondição ausente em erro 500. |
+| 2026-09-28 | Conclui revisão ponta a ponta no navegador dos fluxos operacionais e reforça busca global, documentos relacionados e rastreabilidade sem quebrar tenancy/RBAC. |

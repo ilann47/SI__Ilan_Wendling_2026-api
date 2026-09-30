@@ -15,6 +15,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ContaPagarRepository extends JpaRepository<ContaPagar, Long> {
 
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
+    List<ContaPagar> findByOrganizacaoIdAndNotaEntradaIdInOrderByDataVencimentoAsc(
+            Long organizacaoId, List<Long> notaIds);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select c from ContaPagar c where c.id = :id and "
+            + "((:org is null and c.organizacaoId is null) or c.organizacaoId = :org)")
+    Optional<ContaPagar> buscarParaBaixa(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("org") Long org);
+
+    @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
     List<ContaPagar> findByNotaEntradaIdAndOrganizacaoIdOrderByNumeroParcelaAsc(
             Long notaEntradaId, Long organizacaoId);
 

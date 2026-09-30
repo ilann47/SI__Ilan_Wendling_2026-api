@@ -31,7 +31,7 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
 
     /** Saidas de patio (fechadas) num intervalo — base do faturamento (relatorio 4.27). */
     @EntityGraph(attributePaths = "veiculo")
-    List<Movimentacao> findByStatusAndDataSaidaBetween(
+    List<Movimentacao> findByOrganizacaoIdIsNullAndStatusAndDataSaidaBetween(
             StatusMovimentacao status, OffsetDateTime inicio, OffsetDateTime fim);
     @EntityGraph(attributePaths = "veiculo")
     List<Movimentacao> findByOrganizacaoIdAndStatusAndDataSaidaBetween(

@@ -5,5 +5,6 @@ public enum StatusOrdemCompra {
     APROVADA,
     PARCIALMENTE_RECEBIDA,
     RECEBIDA,
+    REJEITADA,
     CANCELADA
 }

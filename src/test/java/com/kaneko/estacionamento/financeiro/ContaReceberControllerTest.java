@@ -115,6 +115,44 @@ class ContaReceberControllerTest {
     }
 
     @Test
+    void filtrosResumoEHistoricoIncluemTodasAsPaginas() throws Exception {
+        criar("100.00");
+        criar("200.00");
+        mvc.perform(get("/api/contas-receber").param("size", "1")
+                        .param("origem", "MANUAL").param("situacao", "PENDENTE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].origem.tipo").value("MANUAL"));
+        mvc.perform(get("/api/contas-receber/resumo").param("origem", "MANUAL"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.quantidade").value(2))
+                .andExpect(jsonPath("$.valorTotal").value(300)).andExpect(jsonPath("$.saldo").value(300));
+        mvc.perform(get("/api/contas-receber").param("search", "nao-existe"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void baixaIdempotenteMantemUmLancamentoERejeitaReusoComOutroValor() throws Exception {
+        Number id = criar("100.00");
+        for (int i = 0; i < 2; i++) {
+            mvc.perform(post("/api/contas-receber/" + id + "/baixa")
+                            .header("Idempotency-Key", "baixa-unica")
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"valor\":40,\"data\":\"2030-01-01\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.valorRecebido").value(40))
+                    .andExpect(jsonPath("$.saldo").value(60));
+        }
+        mvc.perform(get("/api/contas-receber/" + id + "/baixas"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].valor").value(40));
+        mvc.perform(post("/api/contas-receber/" + id + "/baixa")
+                        .header("Idempotency-Key", "baixa-unica")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"valor\":10}"))
+                .andExpect(status().isConflict());
+        mvc.perform(post("/api/contas-receber/" + id + "/cancelamento"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
         mvc.perform(get("/api/contas-receber/999999")).andExpect(status().isNotFound());
     }

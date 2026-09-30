@@ -57,6 +57,83 @@ class NotaEntradaTenantApiTest {
     }
 
     @Test
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void registroEConfirmacaoConcorrentesNaoDuplicamEstoqueOuTitulos() throws Exception {
+        String body = payload("NF-RACE", fornecedorA, produtoA, localA);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<Long> create = () -> {
+                start.await();
+                String result = mvc.perform(post("/api/notas-entrada")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "nota-race")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+                return JsonPath.<Number>read(result, "$.id").longValue();
+            };
+            var a = pool.submit(create); var b = pool.submit(create); start.countDown();
+            long id = a.get(20, java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(b.get(20, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(id);
+            var confirming = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.Callable<Integer> confirm = () -> {
+                confirming.await();
+                return mvc.perform(post("/api/notas-entrada/{id}/confirmacao", id)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                        .andReturn().getResponse().getStatus();
+            };
+            var c = pool.submit(confirm); var d = pool.submit(confirm); confirming.countDown();
+            assertThat(java.util.List.of(c.get(20, java.util.concurrent.TimeUnit.SECONDS),
+                    d.get(20, java.util.concurrent.TimeUnit.SECONDS))).containsExactlyInAnyOrder(200, 409);
+            assertThat(jdbc.queryForObject("select count(*) from conta_pagar where nota_entrada_id=?", Integer.class, id)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("select count(*) from movimento_estoque where organizacao_id=?", Integer.class,
+                    tenantA.organizacaoId())).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void registroIdempotenteRecuperaNotaERecusaOutraCarga() throws Exception {
+        String body = payload("NF-IDEMPOTENTE", fornecedorA, produtoA, localA);
+        String criada = mvc.perform(post("/api/notas-entrada")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "nota-intento")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = JsonPath.<Number>read(criada, "$.id").longValue();
+        mvc.perform(post("/api/notas-entrada")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "nota-intento")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(id));
+        mvc.perform(post("/api/notas-entrada")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "nota-intento")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload("NF-OUTRA", fornecedorA, produtoA, localA)))
+                .andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject("select count(*) from nota_entrada where organizacao_id=?", Integer.class,
+                tenantA.organizacaoId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from conta_pagar where organizacao_id=?", Integer.class,
+                tenantA.organizacaoId())).isZero();
+    }
+
+    @Test
+    void recusaNotaDuplicadaPorNumeroSerieEFornecedor() throws Exception {
+        String body = "{\"numero\":\"12345\",\"modelo\":\"55\",\"serie\":\"2\","
+                + "\"fornecedorId\":" + fornecedorA + ",\"localEstoqueId\":" + localA
+                + ",\"dataEmissao\":\"2026-09-20\",\"dataChegada\":\"2026-09-21\","
+                + "\"itens\":[{\"produtoId\":" + produtoA
+                + ",\"quantidade\":10,\"valorUnitario\":5}]}";
+        mvc.perform(post("/api/notas-entrada")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/notas-entrada")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void confirmaNotaNoTenantEGeraRazaoETitulo() throws Exception {
         String resposta = mvc.perform(post("/api/notas-entrada")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())

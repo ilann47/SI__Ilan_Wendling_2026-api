@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.common.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.hamcrest.Matchers;
@@ -46,5 +47,19 @@ class ObservabilidadeTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Trace-Id", Matchers.not(invalido)))
                 .andExpect(header().string("X-Trace-Id", Matchers.matchesPattern("[a-f0-9]{16}")));
+    }
+
+    @Test
+    void rotaApiInexistenteRetorna404EmVezDeErroInterno() throws Exception {
+        mvc.perform(get("/api/rota-inexistente"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Rota nao encontrada"));
+    }
+
+    @Test
+    void metodoHttpIncompativelRetorna405EmVezDeErroInterno() throws Exception {
+        mvc.perform(get("/api/auth/login"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.title").value("Metodo nao permitido"));
     }
 }

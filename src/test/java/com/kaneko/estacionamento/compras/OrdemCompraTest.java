@@ -10,17 +10,13 @@ import org.junit.jupiter.api.Test;
 class OrdemCompraTest {
 
     @Test
-    void percorreCicloDeAprovacaoERecebimento() {
+    void recebeSomenteAQuantidadeIntegral() {
         OrdemCompra ordem = ordemComItem("5");
 
         ordem.aprovar();
         assertThat(ordem.getStatus()).isEqualTo(StatusOrdemCompra.APROVADA);
 
-        ordem.getItens().getFirst().receber(new BigDecimal("2"));
-        ordem.atualizarStatusRecebimento();
-        assertThat(ordem.getStatus()).isEqualTo(StatusOrdemCompra.PARCIALMENTE_RECEBIDA);
-
-        ordem.getItens().getFirst().receber(new BigDecimal("3"));
+        ordem.getItens().getFirst().receber(new BigDecimal("5"));
         ordem.atualizarStatusRecebimento();
         assertThat(ordem.getStatus()).isEqualTo(StatusOrdemCompra.RECEBIDA);
     }
@@ -34,7 +30,8 @@ class OrdemCompraTest {
                 .isInstanceOf(ConflitoException.class);
 
         ordem.getItens().getFirst().receber(BigDecimal.ONE);
-        ordem.atualizarStatusRecebimento();
+        assertThatThrownBy(ordem::atualizarStatusRecebimento)
+                .isInstanceOf(ConflitoException.class);
         assertThatThrownBy(() -> ordem.cancelar("Compra desnecessaria"))
                 .isInstanceOf(ConflitoException.class);
     }

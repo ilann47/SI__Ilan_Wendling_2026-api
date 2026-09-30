@@ -15,6 +15,8 @@ import org.springframework.data.repository.query.Param;
 public interface FornecedorRepository extends JpaRepository<Fornecedor, Long>,
         JpaSpecificationExecutor<Fornecedor> {
 
+    Optional<Fornecedor> findByOrganizacaoIdAndDocumento(Long organizacaoId, String documento);
+
     @EntityGraph(attributePaths = {"cidade", "condicaoPagamento", "transportadora", "emails", "telefones"})
     Optional<Fornecedor> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 

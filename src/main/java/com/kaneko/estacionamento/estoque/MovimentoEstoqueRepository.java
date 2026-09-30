@@ -20,12 +20,13 @@ public interface MovimentoEstoqueRepository extends JpaRepository<MovimentoEstoq
                    m.saldo_anterior AS saldoAnterior, m.saldo_posterior AS saldoPosterior,
                    m.custo_unitario AS custoUnitario, m.origem_tipo AS origemTipo,
                    m.origem_chave AS origemChave, m.compensado_id AS compensadoId,
-                   m.ator_id AS atorId, m.motivo, m.ocorrido_em AS ocorridoEm,
+                   m.ator_id AS atorId, u.nome AS atorNome, m.motivo, m.ocorrido_em AS ocorridoEm,
                    m.created_at AS createdAt
             FROM movimento_estoque m
             JOIN produto p ON p.id=m.produto_id AND p.organizacao_id=m.organizacao_id
             JOIN local_estoque l ON l.id=m.local_estoque_id
                                  AND l.organizacao_id=m.organizacao_id
+            LEFT JOIN usuario u ON u.id=m.ator_id
             WHERE m.id=:id AND m.organizacao_id=:organizacaoId
             """, nativeQuery = true)
     Optional<MovimentoEstoqueView> buscarView(Long id, Long organizacaoId);
@@ -39,12 +40,13 @@ public interface MovimentoEstoqueRepository extends JpaRepository<MovimentoEstoq
                    m.saldo_anterior AS saldoAnterior, m.saldo_posterior AS saldoPosterior,
                    m.custo_unitario AS custoUnitario, m.origem_tipo AS origemTipo,
                    m.origem_chave AS origemChave, m.compensado_id AS compensadoId,
-                   m.ator_id AS atorId, m.motivo, m.ocorrido_em AS ocorridoEm,
+                   m.ator_id AS atorId, u.nome AS atorNome, m.motivo, m.ocorrido_em AS ocorridoEm,
                    m.created_at AS createdAt
             FROM movimento_estoque m
             JOIN produto p ON p.id=m.produto_id AND p.organizacao_id=m.organizacao_id
             JOIN local_estoque l ON l.id=m.local_estoque_id
                                  AND l.organizacao_id=m.organizacao_id
+            LEFT JOIN usuario u ON u.id=m.ator_id
             WHERE m.organizacao_id=:organizacaoId
               AND m.origem_tipo=:origemTipo
               AND m.origem_chave LIKE CONCAT(:origemPrefixo, '%')
@@ -60,12 +62,13 @@ public interface MovimentoEstoqueRepository extends JpaRepository<MovimentoEstoq
                    m.saldo_anterior AS saldoAnterior, m.saldo_posterior AS saldoPosterior,
                    m.custo_unitario AS custoUnitario, m.origem_tipo AS origemTipo,
                    m.origem_chave AS origemChave, m.compensado_id AS compensadoId,
-                   m.ator_id AS atorId, m.motivo, m.ocorrido_em AS ocorridoEm,
+                   m.ator_id AS atorId, u.nome AS atorNome, m.motivo, m.ocorrido_em AS ocorridoEm,
                    m.created_at AS createdAt
             FROM movimento_estoque m
             JOIN produto p ON p.id=m.produto_id AND p.organizacao_id=m.organizacao_id
             JOIN local_estoque l ON l.id=m.local_estoque_id
                                  AND l.organizacao_id=m.organizacao_id
+            LEFT JOIN usuario u ON u.id=m.ator_id
             WHERE m.organizacao_id=:organizacaoId AND m.id IN (:ids)
             ORDER BY m.ocorrido_em ASC, m.id ASC
             """, nativeQuery = true)
@@ -78,12 +81,13 @@ public interface MovimentoEstoqueRepository extends JpaRepository<MovimentoEstoq
                    m.saldo_anterior AS saldoAnterior, m.saldo_posterior AS saldoPosterior,
                    m.custo_unitario AS custoUnitario, m.origem_tipo AS origemTipo,
                    m.origem_chave AS origemChave, m.compensado_id AS compensadoId,
-                   m.ator_id AS atorId, m.motivo, m.ocorrido_em AS ocorridoEm,
+                   m.ator_id AS atorId, u.nome AS atorNome, m.motivo, m.ocorrido_em AS ocorridoEm,
                    m.created_at AS createdAt
             FROM movimento_estoque m
             JOIN produto p ON p.id=m.produto_id AND p.organizacao_id=m.organizacao_id
             JOIN local_estoque l ON l.id=m.local_estoque_id
                                  AND l.organizacao_id=m.organizacao_id
+            LEFT JOIN usuario u ON u.id=m.ator_id
             WHERE m.organizacao_id=:organizacaoId
               AND (:produtoId IS NULL OR m.produto_id=:produtoId)
               AND (:localId IS NULL OR m.local_estoque_id=:localId)

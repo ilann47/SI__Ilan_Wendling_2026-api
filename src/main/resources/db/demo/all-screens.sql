@@ -359,7 +359,8 @@ insert into movimento_estoque
      tipo, delta, saldo_anterior, saldo_posterior, custo_unitario,
      origem_tipo, origem_chave, ator_id, motivo, ocorrido_em)
 select nextval('movimento_estoque_id_seq'), c.organizacao_id, p.id, l.id, s.id,
-       v.tipo, v.delta, v.anterior, v.posterior, p.valor_compra,
+       v.tipo, v.delta, v.anterior, v.posterior,
+       case when v.origem_tipo = 'NOTA_ENTRADA' then 2.25::numeric else p.valor_compra end,
        v.origem_tipo, v.origem_chave, c.admin_id, v.motivo, now() + v.intervalo
 from demo_seed_context c
 join local_estoque l
@@ -458,6 +459,41 @@ where not exists (
     where cp2.organizacao_id = c.organizacao_id and cp2.nota_entrada_id = n.id
       and cp2.numero_parcela = 1
 );
+
+-- Mantem todo o encadeamento demonstrativo com o mesmo custo da compra.
+-- Isso tambem corrige bases locais criadas antes de a ordem possuir frete.
+update nota_entrada n
+set valor_frete = 5::numeric,
+    valor_total = 45::numeric,
+    updated_at = now()
+from demo_seed_context c
+where n.organizacao_id = c.organizacao_id
+  and n.numero = 'NE-DEMO-001'
+  and n.serie = 'D1';
+
+update item_nota_entrada i
+set rateio_frete = 5::numeric,
+    custo_preco_final = 2.25::numeric,
+    updated_at = now()
+from demo_seed_context c, nota_entrada n
+where i.organizacao_id = c.organizacao_id
+  and n.organizacao_id = c.organizacao_id
+  and n.numero = 'NE-DEMO-001'
+  and n.serie = 'D1'
+  and i.nota_entrada_id = n.id
+  and i.sequencia = 1;
+
+update conta_pagar cp
+set valor_original = 45::numeric,
+    valor_total = 45::numeric,
+    updated_at = now()
+from demo_seed_context c, nota_entrada n
+where cp.organizacao_id = c.organizacao_id
+  and n.organizacao_id = c.organizacao_id
+  and n.numero = 'NE-DEMO-001'
+  and n.serie = 'D1'
+  and cp.nota_entrada_id = n.id
+  and cp.numero_parcela = 1;
 
 insert into nota_saida
     (id, numero, modelo, serie, cliente_id, condicao_pagamento_id,
@@ -875,37 +911,96 @@ where not exists (
 );
 
 insert into ordem_compra
-    (id, organizacao_id, fornecedor_id, numero, status, data_emissao,
-     previsao_entrega, moeda, subtotal, valor_frete, valor_desconto,
-     valor_total, observacao, version)
+    (id, organizacao_id, fornecedor_id, numero, numero_nota, serie_nota,
+     modelo_nota, status, data_emissao,
+     previsao_entrega, moeda, subtotal, valor_frete, valor_seguro,
+     outras_despesas, valor_desconto, valor_total, observacao, version,
+     condicao_pagamento_id, transportadora_id, local_estoque_entrega_id,
+     comprador_id, tipo_frete, referencia_fornecedor, observacao_interna)
 select nextval('ordem_compra_id_seq'), c.organizacao_id, f.id,
-       'OC-DEMO-001', 'APROVADA', current_date - 2, current_date + 5,
-       'BRL', 40::numeric, 5::numeric, 0::numeric, 45::numeric,
-       'Ordem pronta para demonstrar recebimento parcial ou total', 0
+       'OC-DEMO-001', 'NE-DEMO-001', 'D1', '55', 'APROVADA',
+       current_date - 2, current_date + 5,
+       'BRL', 40::numeric, 5::numeric, 0::numeric, 0::numeric,
+       0::numeric, 45::numeric,
+       'Entregar os produtos no deposito da conveniencia', 0,
+       cp.id, t.id, l.id, c.admin_id, 'FOB', 'PED-DEMO-001',
+       'Conferir lote e validade no recebimento'
 from demo_seed_context c
 join fornecedor f
   on f.organizacao_id = c.organizacao_id
  and f.nome = 'Distribuidora Conveniencia Demo Ltda'
+join condicao_pagamento cp
+  on cp.organizacao_id = c.organizacao_id and cp.nome = '30/60 dias Demo'
+join transportadora t
+  on t.organizacao_id = c.organizacao_id and t.documento = '55666777000188'
+join local_estoque l
+  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
 where not exists (
     select 1 from ordem_compra o
     where o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
 );
 
+update ordem_compra o
+set numero_nota = 'NE-DEMO-001',
+    serie_nota = 'D1',
+    modelo_nota = '55',
+    condicao_pagamento_id = cp.id,
+    transportadora_id = t.id,
+    local_estoque_entrega_id = l.id,
+    comprador_id = c.admin_id,
+    tipo_frete = 'FOB',
+    referencia_fornecedor = 'PED-DEMO-001',
+    observacao = 'Entregar os produtos no deposito da conveniencia',
+    observacao_interna = 'Conferir lote e validade no recebimento',
+    updated_at = now()
+from demo_seed_context c
+join condicao_pagamento cp
+  on cp.organizacao_id = c.organizacao_id and cp.nome = '30/60 dias Demo'
+join transportadora t
+  on t.organizacao_id = c.organizacao_id and t.documento = '55666777000188'
+join local_estoque l
+  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
+where o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001';
+
 insert into item_ordem_compra
     (id, organizacao_id, ordem_compra_id, produto_id, sequencia,
      quantidade_pedida, quantidade_recebida, valor_unitario,
-     valor_desconto, valor_total)
+     valor_desconto, valor_total, rateio_frete, rateio_seguro,
+     rateio_outras_despesas, custo_total, custo_unitario_final,
+     codigo_produto_fornecedor)
 select nextval('item_ordem_compra_id_seq'), c.organizacao_id, o.id, p.id, 1,
-       20::numeric, 0::numeric, 2::numeric, 0::numeric, 40::numeric
+       20::numeric, 0::numeric, 2::numeric, 0::numeric, 40::numeric,
+       5::numeric, 0::numeric, 0::numeric, 45::numeric, 2.25::numeric,
+       pf.codigo_prod
 from demo_seed_context c
 join ordem_compra o
   on o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
 join produto p
   on p.organizacao_id = c.organizacao_id and p.nome = 'Agua Mineral Demo 500ml'
+join produto_fornecedor pf
+  on pf.organizacao_id = c.organizacao_id and pf.produto_id = p.id
+ and pf.fornecedor_id = o.fornecedor_id and pf.ativo = true
 where not exists (
     select 1 from item_ordem_compra i
     where i.ordem_compra_id = o.id and i.sequencia = 1
 );
+
+-- Repara bases locais que receberam a ordem demonstrativa antes da inclusao
+-- do rateio de despesas. O seed e reaplicavel e deve manter o exemplo coerente
+-- com o total da ordem (R$ 40,00 de produtos + R$ 5,00 de frete).
+update item_ordem_compra i
+set rateio_frete = 5::numeric,
+    rateio_seguro = 0::numeric,
+    rateio_outras_despesas = 0::numeric,
+    custo_total = 45::numeric,
+    custo_unitario_final = 2.25::numeric,
+    updated_at = now()
+from demo_seed_context c, ordem_compra o
+where i.organizacao_id = c.organizacao_id
+  and o.organizacao_id = c.organizacao_id
+  and o.numero = 'OC-DEMO-001'
+  and i.ordem_compra_id = o.id
+  and i.sequencia = 1;
 
 insert into venda_administrativa
     (id, organizacao_id, cliente_id, local_estoque_id, numero, status,
@@ -974,3 +1069,186 @@ where n.organizacao_id = c.organizacao_id
   and n.numero = 'NFS-DEMO-001' and n.serie = 'D1'
   and o.organizacao_id = c.organizacao_id and o.numero = 'OS-DEMO-001'
   and n.ordem_servico_id is null;
+
+-- Encadeamento completo de compras: ordem -> recebimento -> estoque -> nota -> pagar.
+insert into recebimento_compra
+    (id, organizacao_id, ordem_compra_id, local_estoque_id, ator_id,
+     recebido_em, observacao)
+select nextval('recebimento_compra_id_seq'), c.organizacao_id, o.id, l.id,
+       c.admin_id, now() - interval '7 days',
+       'Recebimento completo da ordem demonstrativa'
+from demo_seed_context c
+join ordem_compra o
+  on o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
+join local_estoque l
+  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
+where not exists (
+    select 1 from recebimento_compra r
+    where r.organizacao_id = c.organizacao_id
+      and r.ordem_compra_id = o.id
+      and r.observacao = 'Recebimento completo da ordem demonstrativa'
+);
+
+insert into item_recebimento_compra
+    (id, organizacao_id, ordem_compra_id, recebimento_compra_id,
+     item_ordem_compra_id, produto_id, quantidade, custo_unitario,
+     movimento_estoque_id)
+select nextval('item_recebimento_compra_id_seq'), c.organizacao_id, o.id,
+       r.id, i.id, i.produto_id, i.quantidade_pedida,
+       i.custo_unitario_final, me.id
+from demo_seed_context c
+join ordem_compra o
+  on o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
+join recebimento_compra r
+  on r.organizacao_id = c.organizacao_id and r.ordem_compra_id = o.id
+ and r.observacao = 'Recebimento completo da ordem demonstrativa'
+join item_ordem_compra i on i.ordem_compra_id = o.id
+join movimento_estoque me
+  on me.organizacao_id = c.organizacao_id
+ and me.produto_id = i.produto_id
+ and me.origem_tipo = 'NOTA_ENTRADA'
+ and me.origem_chave = 'NE-DEMO-001'
+where not exists (
+    select 1 from item_recebimento_compra ir
+    where ir.recebimento_compra_id = r.id and ir.item_ordem_compra_id = i.id
+);
+
+update item_ordem_compra i
+set quantidade_recebida = i.quantidade_pedida, updated_at = now()
+from demo_seed_context c, ordem_compra o
+where i.organizacao_id = c.organizacao_id
+  and o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
+  and i.ordem_compra_id = o.id
+  and i.quantidade_recebida < i.quantidade_pedida;
+
+update ordem_compra o
+set status = 'RECEBIDA', version = o.version + 1, updated_at = now()
+from demo_seed_context c
+where o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
+  and o.status <> 'RECEBIDA';
+
+update nota_entrada n
+set recebimento_compra_id = r.id, updated_at = now()
+from demo_seed_context c, ordem_compra o, recebimento_compra r
+where n.organizacao_id = c.organizacao_id
+  and n.numero = 'NE-DEMO-001' and n.serie = 'D1'
+  and o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
+  and r.organizacao_id = c.organizacao_id and r.ordem_compra_id = o.id
+  and r.observacao = 'Recebimento completo da ordem demonstrativa'
+  and n.recebimento_compra_id is null;
+
+-- Mantem uma venda em rascunho e acrescenta outra com o ciclo ja confirmado.
+insert into venda_administrativa
+    (id, organizacao_id, cliente_id, condicao_pagamento_id, local_estoque_id,
+     numero, status, data_emissao, moeda, subtotal, valor_desconto,
+     valor_total, observacao, version)
+select nextval('venda_administrativa_id_seq'), c.organizacao_id, cl.id, cp.id,
+       l.id, 'VENDA-DEMO-002', 'CONFIRMADA', current_date - 2, 'BRL',
+       20::numeric, 0::numeric, 20::numeric,
+       'Venda demonstrativa confirmada, faturada e recebida', 1
+from demo_seed_context c
+join cliente cl
+  on cl.organizacao_id = c.organizacao_id and cl.documento = '12345678909'
+join condicao_pagamento cp
+  on cp.organizacao_id = c.organizacao_id and cp.nome = 'A vista Demo'
+join local_estoque l
+  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
+where not exists (
+    select 1 from venda_administrativa v
+    where v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-002'
+);
+
+insert into item_venda_administrativa
+    (id, organizacao_id, venda_administrativa_id, produto_id, sequencia,
+     quantidade, valor_unitario, valor_desconto, valor_total)
+select nextval('item_venda_administrativa_id_seq'), c.organizacao_id, v.id,
+       p.id, 1, 4::numeric, 5::numeric, 0::numeric, 20::numeric
+from demo_seed_context c
+join venda_administrativa v
+  on v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-002'
+join produto p
+  on p.organizacao_id = c.organizacao_id and p.referencia = 'AGUA-DEMO'
+where not exists (
+    select 1 from item_venda_administrativa i
+    where i.venda_administrativa_id = v.id and i.sequencia = 1
+);
+
+update nota_saida n
+set venda_administrativa_id = v.id, updated_at = now()
+from demo_seed_context c, venda_administrativa v
+where n.organizacao_id = c.organizacao_id
+  and n.numero = 'NS-DEMO-001' and n.serie = 'D1'
+  and v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-002'
+  and n.venda_administrativa_id is null;
+
+update conta_receber cr
+set venda_administrativa_id = v.id, updated_at = now()
+from demo_seed_context c, venda_administrativa v, nota_saida n
+where cr.organizacao_id = c.organizacao_id
+  and v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-002'
+  and n.organizacao_id = c.organizacao_id
+  and n.numero = 'NS-DEMO-001' and n.serie = 'D1'
+  and cr.nota_saida_id = n.id
+  and cr.venda_administrativa_id is null;
+
+-- O seed roda depois das migrations; registra explicitamente o saldo recebido
+-- para que o historico financeiro tambem exista em uma base local nova.
+insert into baixa_financeira
+    (organizacao_id, conta_receber_id, valor, data, ator_id, ator_nome,
+     chave, saldo_anterior)
+select c.organizacao_id, cr.id, cr.valor_recebido, cr.data_recebimento,
+       c.admin_id, admin.nome, 'saldo-anterior-demo', true
+from demo_seed_context c
+join usuario admin on admin.id = c.admin_id
+join nota_saida n
+  on n.organizacao_id = c.organizacao_id
+ and n.numero = 'NS-DEMO-001' and n.serie = 'D1'
+join conta_receber cr
+  on cr.organizacao_id = c.organizacao_id and cr.nota_saida_id = n.id
+where cr.valor_recebido > 0
+  and not exists (
+      select 1 from baixa_financeira b
+      where b.conta_receber_id = cr.id and b.chave = 'saldo-anterior-demo'
+  );
+
+-- XML valido e conciliado, pronto para exercitar conferencia/confirmacao.
+insert into importacao_nota_entrada
+    (organizacao_id, ator_id, chave, xml_original, xml_hash, numero,
+     emitente_nome, total, status, version, fornecedor_id, local_estoque_id,
+     condicao_pagamento_id, revisado_em, registrar_novo_recebimento)
+select c.organizacao_id, c.admin_id,
+       '41260966777888000199550010000001231000000013',
+       convert_to(x.conteudo, 'UTF8'),
+       encode(sha256(convert_to(x.conteudo, 'UTF8')), 'hex'),
+       '123', f.nome, 20::numeric, 'CONCILIADA', 1, f.id, l.id, cp.id,
+       now() - interval '1 hour', false
+from demo_seed_context c
+join fornecedor f
+  on f.organizacao_id = c.organizacao_id and f.documento = '66777888000199'
+join local_estoque l
+  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
+join condicao_pagamento cp
+  on cp.organizacao_id = c.organizacao_id and cp.nome = '30/60 dias Demo'
+cross join lateral (
+    select $xml$<NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe versao="4.00" Id="NFe41260966777888000199550010000001231000000013"><ide><mod>55</mod><serie>1</serie><nNF>123</nNF><dhEmi>2026-09-12T10:00:00-03:00</dhEmi><tpNF>1</tpNF><finNFe>1</finNFe></ide><emit><CNPJ>66777888000199</CNPJ><xNome>Distribuidora Conveniencia Demo Ltda</xNome></emit><dest><CNPJ>11222333000181</CNPJ></dest><det nItem="1"><prod><cProd>AGUA-DEMO</cProd><xProd>Agua Mineral Demo 500ml</xProd><uCom>UN</uCom><qCom>2</qCom><vUnCom>10.00</vUnCom><vProd>20.00</vProd><vDesc>0</vDesc><indTot>1</indTot></prod></det><total><ICMSTot><vProd>20.00</vProd><vDesc>0</vDesc><vFrete>0</vFrete><vSeg>0</vSeg><vOutro>0</vOutro><vNF>20.00</vNF></ICMSTot></total></infNFe></NFe>$xml$::text conteudo
+) x
+where not exists (
+    select 1 from importacao_nota_entrada i
+    where i.organizacao_id = c.organizacao_id
+      and i.chave = '41260966777888000199550010000001231000000013'
+);
+
+insert into item_importacao_nota_entrada
+    (organizacao_id, importacao_id, sequencia, produto_id, unidade_destino,
+     fator_conversao, quantidade, valor_unitario)
+select c.organizacao_id, i.id, 1, p.id, 'UN', 1::numeric, 2::numeric, 10::numeric
+from demo_seed_context c
+join importacao_nota_entrada i
+  on i.organizacao_id = c.organizacao_id
+ and i.chave = '41260966777888000199550010000001231000000013'
+join produto p
+  on p.organizacao_id = c.organizacao_id and p.referencia = 'AGUA-DEMO'
+where not exists (
+    select 1 from item_importacao_nota_entrada ii
+    where ii.importacao_id = i.id and ii.sequencia = 1
+);

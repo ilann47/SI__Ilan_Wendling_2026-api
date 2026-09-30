@@ -44,11 +44,15 @@ Nenhum. O seed é infraestrutura local de inicialização e não amplia a API.
 - transportadora, frota, catálogo de conveniência, serviços e vínculos comerciais;
 - local, saldos e razão de estoque com recebimento, baixa e ajuste;
 - notas de entrada, saída e serviço, contas a pagar/receber e despesa avulsa;
-- ordem de compra aprovada pronta para demonstrar o fluxo de recebimento;
-- venda administrativa em rascunho pronta para confirmação;
+- ordem de compra recebida, recebimento imutável, movimento de estoque, nota de
+  entrada e conta a pagar ligados no mesmo fluxo;
+- venda administrativa em rascunho e venda confirmada ligada à nota de saída,
+  conta recebida e histórico financeiro;
 - tarifas, veículos, mensalista e movimentações aberta e fechada;
 - pedido confirmado, comprador, credencial, QR, presença, sessão e tentativas
   de acesso autorizada e recusada.
+- importação XML de nota de entrada conciliada, com XML íntegro, hash SHA-256 e
+  item associado ao catálogo, pronta para conferência.
 
 ## Integrações externas (se houver)
 
@@ -58,8 +62,9 @@ Nenhuma.
 
 Cada etapa roda em sua própria transação. Falha no complemento reverte todos os
 dados das telas sem desfazer o núcleo de eventos já válido. CNPJ, documentos,
-referências e chaves `Demo` são marcadores idempotentes. Ausência do
-administrador gera falha explícita.
+referências, números e chaves `Demo` são marcadores idempotentes. Recebimentos,
+baixas e importações usam chaves únicas próprias e são preservados na segunda
+execução. Ausência do administrador gera falha explícita.
 
 ## Testes (curl ou equivalente)
 
@@ -104,3 +109,4 @@ administrador gera falha explícita.
 | 2026-08-14 | Acrescenta Ordem de Compra ao cenário local de todas as telas. |
 | 2026-08-14 | Acrescenta Venda Administrativa ao cenário local de todas as telas. |
 | 2026-08-14 | Acrescenta Ordem de Serviço concluída e vinculada à NFS demonstrativa. |
+| 2026-09-25 | Completa os encadeamentos de compra e venda, histórico de baixa e importação XML idempotente. |

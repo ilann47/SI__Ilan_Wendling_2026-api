@@ -25,6 +25,15 @@ outbox na mesma transação. Nota de Saída vinculada apenas documenta a venda.
 - `GET/PUT /api/v1/administrative-sales/{id}`
 - `POST /api/v1/administrative-sales/{id}/confirmation`
 - `POST /api/v1/administrative-sales/{id}/cancellation`
+- `GET /api/v1/administrative-sales/{id}/documents`: nota, recebíveis e movimentos, com `null` nas seções sem permissão de leitura do respectivo módulo.
+- `POST /api/v1/administrative-sales/{id}/outbound-note`: prepara nota `PENDENTE` a partir da venda confirmada. Número obrigatório; modelo, série e datas opcionais. `Idempotency-Key` obrigatório; exige `sales:read` e `fiscal:manage`.
+
+A listagem aceita `numero` (trecho literal, sem diferenciar maiúsculas e
+minúsculas, removendo espaços das extremidades) e `status` (`RASCUNHO`,
+`CONFIRMADA` ou `CANCELADA`). Os filtros e a organização são aplicados no
+PostgreSQL antes de `page`, `size` e `sort`; `totalElements` representa todo o
+resultado filtrado, inclusive em página vazia. `%` e `_` são caracteres literais,
+não curingas. Status desconhecido retorna 400.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -45,12 +54,25 @@ duplicidade ou transição inválida `409`.
 Há cobertura de isolamento, confirmação, estoque, recebível, ETag e Nota de
 Saída sem efeitos duplicados, além de seed e V1→V64.
 
+`VendaAdministrativaConsultaTest` cobre normalização, total e ordenação da
+consulta com filtros, preservando a assinatura `listar(organizacaoId, pageable)`.
+`ConsultasComerciaisTenantApiTest` exercita os filtros pela API com banco real,
+paginação, tenant, total, caracteres literais e compatibilidade sem filtros.
+`VendaFluxoConcorrenciaTenantApiTest` verifica confirmação simultânea da mesma
+versão, geração concorrente com chaves iguais/diferentes e RBAC de cada seção de
+documentos, com contagens reais de nota, títulos e razão de estoque.
+
 ## Decisões Técnicas
 
 - A venda é a origem comercial, física e financeira.
 - A Nota de Saída vinculada é documental e não repete estoque/recebível.
 - Confirmação é atômica; saldo insuficiente reverte toda a operação.
 - ETag deriva de `@Version`; números são únicos por organização.
+- Cliente, local, itens, descontos e condição de pagamento da nota vinculada são copiados no servidor. A nova operação não permite sobrescrever os dados comerciais da venda.
+- Geração bloqueia a venda e usa idempotência persistida; repetição com mesmo corpo retorna a nota existente. Corpo divergente ou segunda intenção sobre venda já documentada retorna 409. A unicidade V64 permanece a última proteção no banco.
+- Listagem mantém paginação de IDs antes de carregar os relacionamentos com
+  `EntityGraph`, preserva a ordem solicitada e o total filtrado. O overload sem
+  filtros continua disponível aos consumidores legados.
 
 ## Módulos relacionados
 
@@ -61,4 +83,6 @@ Saída sem efeitos duplicados, além de seed e V1→V64.
 
 | Data | Ação |
 |---|---|
+| 2026-09-12 | Conecta geração idempotente de nota, documentos, contas e movimentos ao pedido; frontend mantém rota/entidade e usa o rótulo Pedidos de venda. |
+| 2026-09-12 | Adiciona filtros reais de número/situação antes da paginação e testes dedicados de consulta, concorrência de confirmação/nota e seções documentais com RBAC. |
 | 2026-08-14 | V64 implementa Venda Administrativa e integração fiscal/financeira. |

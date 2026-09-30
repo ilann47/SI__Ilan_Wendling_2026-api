@@ -3,6 +3,10 @@ package com.kaneko.estacionamento.compras;
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
+import com.kaneko.estacionamento.estoque.LocalEstoque;
+import com.kaneko.estacionamento.logistica.Transportadora;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
+import com.kaneko.estacionamento.usuario.Usuario;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -38,6 +42,15 @@ public class OrdemCompra extends AuditableEntity {
     @Column(nullable = false, length = 40)
     private String numero;
 
+    @Column(name = "numero_nota", nullable = false, length = 60)
+    private String numeroNota;
+
+    @Column(name = "serie_nota", nullable = false, length = 20)
+    private String serieNota;
+
+    @Column(name = "modelo_nota", nullable = false, length = 10)
+    private String modeloNota;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private StatusOrdemCompra status = StatusOrdemCompra.RASCUNHO;
@@ -48,6 +61,29 @@ public class OrdemCompra extends AuditableEntity {
     @Column(name = "previsao_entrega")
     private LocalDate previsaoEntrega;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "condicao_pagamento_id")
+    private CondicaoPagamento condicaoPagamento;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transportadora_id")
+    private Transportadora transportadora;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "local_estoque_entrega_id")
+    private LocalEstoque localEstoqueEntrega;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "comprador_id")
+    private Usuario comprador;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_frete", nullable = false, length = 20)
+    private TipoFreteOrdemCompra tipoFrete = TipoFreteOrdemCompra.SEM_FRETE;
+
+    @Column(name = "referencia_fornecedor", length = 60)
+    private String referenciaFornecedor;
+
     @Column(nullable = false, length = 3)
     private String moeda = "BRL";
 
@@ -57,6 +93,12 @@ public class OrdemCompra extends AuditableEntity {
     @Column(name = "valor_frete", nullable = false, precision = 15, scale = 2)
     private BigDecimal valorFrete = BigDecimal.ZERO;
 
+    @Column(name = "valor_seguro", nullable = false, precision = 15, scale = 2)
+    private BigDecimal valorSeguro = BigDecimal.ZERO;
+
+    @Column(name = "outras_despesas", nullable = false, precision = 15, scale = 2)
+    private BigDecimal outrasDespesas = BigDecimal.ZERO;
+
     @Column(name = "valor_desconto", nullable = false, precision = 15, scale = 2)
     private BigDecimal valorDesconto = BigDecimal.ZERO;
 
@@ -65,6 +107,9 @@ public class OrdemCompra extends AuditableEntity {
 
     @Column(length = 500)
     private String observacao;
+
+    @Column(name = "observacao_interna", length = 1000)
+    private String observacaoInterna;
 
     @Column(name = "motivo_cancelamento", length = 300)
     private String motivoCancelamento;
@@ -92,10 +137,20 @@ public class OrdemCompra extends AuditableEntity {
     }
 
     public void cancelar(String motivo) {
-        if (status != StatusOrdemCompra.RASCUNHO && status != StatusOrdemCompra.APROVADA) {
+        boolean possuiRecebimento = itens.stream()
+                .anyMatch(item -> item.getQuantidadeRecebida().signum() > 0);
+        if (possuiRecebimento
+                || (status != StatusOrdemCompra.RASCUNHO && status != StatusOrdemCompra.APROVADA)) {
             throw new ConflitoException("Uma ordem com recebimento nao pode ser cancelada.");
         }
         status = StatusOrdemCompra.CANCELADA;
+        motivoCancelamento = motivo;
+    }
+
+    public void rejeitarEntrega(String motivo) {
+        exigirStatus(StatusOrdemCompra.APROVADA,
+                "Somente uma entrega aguardando recebimento pode ser rejeitada.");
+        status = StatusOrdemCompra.REJEITADA;
         motivoCancelamento = motivo;
     }
 
@@ -103,13 +158,14 @@ public class OrdemCompra extends AuditableEntity {
         boolean completa = itens.stream()
                 .allMatch(item -> item.getQuantidadeRecebida()
                         .compareTo(item.getQuantidadePedida()) == 0);
-        status = completa ? StatusOrdemCompra.RECEBIDA
-                : StatusOrdemCompra.PARCIALMENTE_RECEBIDA;
+        if (!completa) {
+            throw new ConflitoException("O recebimento deve contemplar integralmente todos os itens da ordem.");
+        }
+        status = StatusOrdemCompra.RECEBIDA;
     }
 
     public void exigirRecebivel() {
-        if (status != StatusOrdemCompra.APROVADA
-                && status != StatusOrdemCompra.PARCIALMENTE_RECEBIDA) {
+        if (status != StatusOrdemCompra.APROVADA) {
             throw new ConflitoException("A ordem nao esta disponivel para recebimento.");
         }
     }

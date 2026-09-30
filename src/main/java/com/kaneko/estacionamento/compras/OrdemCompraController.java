@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -38,8 +39,11 @@ public class OrdemCompraController {
     @GetMapping
     @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('purchases:read', authentication)")
     public Page<OrdemCompraResponse> listar(
-            @AuthenticationPrincipal UsuarioAutenticado principal, Pageable pageable) {
-        return service.listar(principal.organizacaoId(), pageable).map(OrdemCompraResponse::from);
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @RequestParam(required = false) String numero,
+            @RequestParam(required = false) List<StatusOrdemCompra> status,
+            Pageable pageable) {
+        return service.listar(principal.organizacaoId(), numero, status, pageable).map(OrdemCompraResponse::from);
     }
 
     @GetMapping("/{id}")
@@ -93,6 +97,18 @@ public class OrdemCompraController {
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
             @Valid @RequestBody CancelarOrdemCompraRequest request) {
         OrdemCompraResponse response = OrdemCompraResponse.from(service.cancelar(
+                principal.organizacaoId(), id, CompraHttpVersion.extrair(ifMatch),
+                request.motivo()));
+        return ResponseEntity.ok().eTag(CompraHttpVersion.etag(response.version())).body(response);
+    }
+
+    @PostMapping("/{id}/receipt-rejection")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('purchases:manage', authentication)")
+    public ResponseEntity<OrdemCompraResponse> rejeitarEntrega(
+            @AuthenticationPrincipal UsuarioAutenticado principal, @PathVariable Long id,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody CancelarOrdemCompraRequest request) {
+        OrdemCompraResponse response = OrdemCompraResponse.from(service.rejeitarEntrega(
                 principal.organizacaoId(), id, CompraHttpVersion.extrair(ifMatch),
                 request.motivo()));
         return ResponseEntity.ok().eTag(CompraHttpVersion.etag(response.version())).body(response);

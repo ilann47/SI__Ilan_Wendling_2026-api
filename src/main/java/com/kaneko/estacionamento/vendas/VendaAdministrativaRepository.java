@@ -22,6 +22,16 @@ public interface VendaAdministrativaRepository
     Page<Long> findPageIdsByOrganizacaoId(@Param("organizacaoId") Long organizacaoId,
             Pageable pageable);
 
+    @Query("""
+            select v.id from VendaAdministrativa v
+            where v.organizacaoId=:organizacaoId
+            and locate(:numero, lower(v.numero)) > 0
+            and v.status in :statuses
+            """)
+    Page<Long> findPageIdsFiltrados(@Param("organizacaoId") Long organizacaoId,
+            @Param("numero") String numero, @Param("statuses") List<StatusVendaAdministrativa> statuses,
+            Pageable pageable);
+
     @EntityGraph(attributePaths = {"cliente", "condicaoPagamento", "localEstoque",
             "itens", "itens.produto"})
     List<VendaAdministrativa> findAllByOrganizacaoIdAndIdIn(

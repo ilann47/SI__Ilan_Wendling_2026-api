@@ -34,7 +34,9 @@ public record ContaPagarResponse(
         SituacaoContaPagar situacao,
         String observacao,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        BigDecimal saldo,
+        OrigemFinanceiraResponse origem
 ) {
 
     public static ContaPagarResponse from(ContaPagar c) {
@@ -63,6 +65,9 @@ public record ContaPagarResponse(
                 c.getSituacao(),
                 c.getObservacao(),
                 c.getCreatedAt(),
-                c.getUpdatedAt());
+                c.getUpdatedAt(),
+                c.getSituacao() == SituacaoContaPagar.CANCELADA ? BigDecimal.ZERO
+                        : c.getValorTotal().subtract(c.getValorPago()),
+                OrigemFinanceiraResponse.from(c));
     }
 }

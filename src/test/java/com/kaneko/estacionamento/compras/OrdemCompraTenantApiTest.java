@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.compras;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -12,15 +13,22 @@ import com.jayway.jsonpath.JsonPath;
 import com.kaneko.estacionamento.conveniencia.Marca;
 import com.kaneko.estacionamento.conveniencia.MarcaRepository;
 import com.kaneko.estacionamento.conveniencia.Produto;
+import com.kaneko.estacionamento.conveniencia.ProdutoFornecedor;
+import com.kaneko.estacionamento.conveniencia.ProdutoFornecedorRepository;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.conveniencia.UnidadeMedida;
 import com.kaneko.estacionamento.conveniencia.UnidadeMedidaRepository;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
 import com.kaneko.estacionamento.fornecedor.FornecedorRepository;
+import com.kaneko.estacionamento.logistica.Transportadora;
+import com.kaneko.estacionamento.logistica.TransportadoraRepository;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
+import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
 import com.kaneko.estacionamento.support.tenant.TenantFixture;
 import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +47,9 @@ class OrdemCompraTenantApiTest {
     @Autowired MarcaRepository marcas;
     @Autowired UnidadeMedidaRepository unidades;
     @Autowired ProdutoRepository produtos;
+    @Autowired ProdutoFornecedorRepository produtoFornecedores;
+    @Autowired CondicaoPagamentoRepository condicoesPagamento;
+    @Autowired TransportadoraRepository transportadoras;
     @Autowired JdbcTemplate jdbc;
 
     private TenantFixture tenantA;
@@ -59,7 +70,18 @@ class OrdemCompraTenantApiTest {
     }
 
     @Test
-    void criaAprovaERecebeParcialmenteSemSobreRecebimento() throws Exception {
+    void documentosExigemPermissaoDeCompraMesmoComMembershipAtiva() throws Exception {
+        String login = "semcompra" + UUID.randomUUID().toString().substring(0, 8);
+        var user = tenant.criarUsuario(login, com.kaneko.estacionamento.usuario.PerfilUsuario.USUARIO);
+        tenant.criarMembership(tenantA.organizacaoId(), user.getId(), tenantA.tokenContextual());
+        String token = tenant.selecionarOrganizacao(tenantA.organizacaoId(), tenant.autenticar(login, "senha123"));
+        mvc.perform(get("/api/v1/purchase-orders/1/documents")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void criaAprovaEExigeRecebimentoIntegral() throws Exception {
         String criada = mvc.perform(post("/api/v1/purchase-orders")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
                         .header("Idempotency-Key", "oc-criar-1")
@@ -82,27 +104,19 @@ class OrdemCompraTenantApiTest {
                 .andExpect(header().string(HttpHeaders.ETAG, "\"1\""))
                 .andExpect(jsonPath("$.status").value("APROVADA"));
 
-        String recebimento = receber(ordemId, itemId, "2", "\"1\"", "receber-1")
+        receber(ordemId, itemId, "2", "\"1\"", "receber-parcial")
+                .andExpect(status().isConflict());
+
+        String recebimento = receber(ordemId, itemId, "5", "\"1\"", "receber-1")
                 .andExpect(status().isCreated())
                 .andExpect(header().string(HttpHeaders.ETAG, "\"2\""))
-                .andExpect(jsonPath("$.itens[0].quantidade").value(2))
+                .andExpect(jsonPath("$.itens[0].quantidade").value(5))
                 .andReturn().getResponse().getContentAsString();
         long recebimentoId = JsonPath.<Number>read(recebimento, "$.id").longValue();
 
-        receber(ordemId, itemId, "2", "\"1\"", "receber-1")
+        receber(ordemId, itemId, "5", "\"1\"", "receber-1")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(recebimentoId));
-        mvc.perform(get("/api/v1/purchase-orders/{id}", ordemId)
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PARCIALMENTE_RECEBIDA"))
-                .andExpect(jsonPath("$.itens[0].quantidadePendente").value(3));
-
-        receber(ordemId, itemId, "4", "\"2\"", "receber-excesso")
-                .andExpect(status().isConflict());
-        receber(ordemId, itemId, "3", "\"2\"", "receber-2")
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.ETAG, "\"3\""));
         mvc.perform(get("/api/v1/purchase-orders/{id}", ordemId)
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
                 .andExpect(status().isOk())
@@ -116,7 +130,257 @@ class OrdemCompraTenantApiTest {
         assertThat(jdbc.queryForObject("""
                 SELECT count(*) FROM movimento_estoque
                 WHERE organizacao_id=? AND origem_tipo='ORDEM_COMPRA'
-                """, Integer.class, tenantA.organizacaoId())).isEqualTo(2);
+                """, Integer.class, tenantA.organizacaoId())).isEqualTo(1);
+    }
+
+    @Test
+    void rejeitaChaveFiscalDuplicadaNoMesmoFornecedor() throws Exception {
+        mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-chave-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ordem("OC-CHAVE-1", fornecedorA, produtoA, "1")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.numeroNota").value("OC-CHAVE-1"))
+                .andExpect(jsonPath("$.serieNota").value("1"))
+                .andExpect(jsonPath("$.modeloNota").value("55"));
+
+        mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-chave-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ordem("OC-CHAVE-1", fornecedorA, produtoA, "1")))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void rejeitaEntregaIntegralSemMovimentarEstoque() throws Exception {
+        String criada = mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-rejeicao")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ordem("NF-REJEITADA", fornecedorA, produtoA, "2")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long ordemId = JsonPath.<Number>read(criada, "$.id").longValue();
+
+        mvc.perform(post("/api/v1/purchase-orders/{id}/approval", ordemId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header(HttpHeaders.IF_MATCH, "\"0\""))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/purchase-orders/{id}/receipt-rejection", ordemId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header(HttpHeaders.IF_MATCH, "\"1\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"motivo\":\"Volumes divergentes\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJEITADA"));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM movimento_estoque WHERE origem_tipo='ORDEM_COMPRA' AND origem_chave LIKE ?",
+                Integer.class, ordemId + ":%" )).isZero();
+    }
+
+    @Test
+    void calculaDespesasRateadasECustoFinalDosItens() throws Exception {
+        Long segundoProduto = criarProduto(tenantA.organizacaoId(), "R");
+        ProdutoFornecedor referencia = new ProdutoFornecedor();
+        referencia.setOrganizacaoId(tenantA.organizacaoId());
+        referencia.setProduto(produtos.getReferenceById(produtoA));
+        referencia.setFornecedor(fornecedores.getReferenceById(fornecedorA));
+        referencia.setCodigoProd("FORN-001");
+        produtoFornecedores.saveAndFlush(referencia);
+        String payload = """
+                {"numeroNota":"OC-RATEIO","serieNota":"1","modeloNota":"55","fornecedorId":%d,"moeda":"BRL",
+                 "valorFrete":29,"valorSeguro":14.50,"outrasDespesas":5.80,
+                 "valorDesconto":0,"itens":[
+                   {"produtoId":%d,"quantidade":2,"valorUnitario":100,"valorDesconto":10},
+                   {"produtoId":%d,"quantidade":1,"valorUnitario":100,"valorDesconto":0}
+                 ]}
+                """.formatted(fornecedorA, produtoA, segundoProduto);
+
+        String criada = mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-rateio")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.subtotal").value(290.00))
+                .andExpect(jsonPath("$.valorFrete").value(29.00))
+                .andExpect(jsonPath("$.valorSeguro").value(14.50))
+                .andExpect(jsonPath("$.outrasDespesas").value(5.80))
+                .andExpect(jsonPath("$.valorDesconto").value(0.00))
+                .andExpect(jsonPath("$.valorTotal").value(339.30))
+                .andExpect(jsonPath("$.itens[0].valorTotal").value(190.00))
+                .andExpect(jsonPath("$.itens[0].codigoProdutoFornecedor").value("FORN-001"))
+                .andExpect(jsonPath("$.itens[0].rateioFrete").value(19.00))
+                .andExpect(jsonPath("$.itens[0].rateioSeguro").value(9.50))
+                .andExpect(jsonPath("$.itens[0].rateioOutrasDespesas").value(3.80))
+                .andExpect(jsonPath("$.itens[0].custoTotal").value(222.30))
+                .andExpect(jsonPath("$.itens[0].custoUnitarioFinal").value(111.15))
+                .andExpect(jsonPath("$.itens[1].rateioFrete").value(10.00))
+                .andExpect(jsonPath("$.itens[1].rateioSeguro").value(5.00))
+                .andExpect(jsonPath("$.itens[1].rateioOutrasDespesas").value(2.00))
+                .andExpect(jsonPath("$.itens[1].custoTotal").value(117.00))
+                .andExpect(jsonPath("$.itens[1].custoUnitarioFinal").value(117.00))
+                .andReturn().getResponse().getContentAsString();
+
+        long ordemId = JsonPath.<Number>read(criada, "$.id").longValue();
+        long primeiroItem = JsonPath.<Number>read(criada, "$.itens[0].id").longValue();
+        long segundoItem = JsonPath.<Number>read(criada, "$.itens[1].id").longValue();
+        mvc.perform(post("/api/v1/purchase-orders/{id}/approval", ordemId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header(HttpHeaders.IF_MATCH, "\"0\""))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/purchase-orders/{id}/receipts", ordemId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header(HttpHeaders.IF_MATCH, "\"1\"")
+                        .header("Idempotency-Key", "oc-rateio-receber")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"localEstoqueId\":" + localA + ",\"itens\":["
+                                + "{\"itemOrdemCompraId\":" + primeiroItem + ",\"quantidade\":2},"
+                                + "{\"itemOrdemCompraId\":" + segundoItem + ",\"quantidade\":1}]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.itens[0].custoUnitario").value(111.15))
+                .andExpect(jsonPath("$.itens[1].custoUnitario").value(117.00));
+    }
+
+    @Test
+    void rejeitaDescontoGeralDaOrdem() throws Exception {
+        String payload = """
+                {"numeroNota":"OC-DESCONTO-GERAL","serieNota":"1","modeloNota":"55","fornecedorId":%d,"moeda":"BRL",
+                 "valorDesconto":1,"itens":[
+                   {"produtoId":%d,"quantidade":1,"valorUnitario":10,"valorDesconto":0}
+                 ]}
+                """.formatted(fornecedorA, produtoA);
+
+        mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-desconto-geral")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erros.valorDesconto").exists());
+    }
+
+    @Test
+    void rejeitaDescontoDoItemSuperiorAoValorBruto() throws Exception {
+        String payload = """
+                {"numeroNota":"OC-DESCONTO-ITEM","serieNota":"1","modeloNota":"55","fornecedorId":%d,"moeda":"BRL",
+                 "valorDesconto":0,"itens":[
+                   {"produtoId":%d,"quantidade":11,"valorUnitario":12,"valorDesconto":1111}
+                 ]}
+                """.formatted(fornecedorA, produtoA);
+
+        mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-desconto-item-excessivo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail")
+                        .value("O desconto do item nao pode exceder seu valor."));
+    }
+
+    @Test
+    void herdaCondicaoETransportadoraDoFornecedorERegistraDadosComerciais() throws Exception {
+        CondicaoPagamento condicao = new CondicaoPagamento();
+        condicao.setOrganizacaoId(tenantA.organizacaoId());
+        condicao.setNome("30 dias");
+        condicao = condicoesPagamento.saveAndFlush(condicao);
+
+        Transportadora transportadora = new Transportadora();
+        transportadora.setOrganizacaoId(tenantA.organizacaoId());
+        transportadora.setNome("Transportadora da compra");
+        transportadora.setDocumento(UUID.randomUUID().toString().replace("-", "")
+                .substring(0, 14));
+        transportadora = transportadoras.saveAndFlush(transportadora);
+
+        Fornecedor fornecedor = fornecedores.findByIdAndOrganizacaoId(
+                fornecedorA, tenantA.organizacaoId()).orElseThrow();
+        fornecedor.setCondicaoPagamento(condicao);
+        fornecedor.setTransportadora(transportadora);
+        fornecedores.saveAndFlush(fornecedor);
+
+        String payload = """
+                {"numeroNota":"OC-COMERCIAL","serieNota":"1","modeloNota":"55","fornecedorId":%d,"moeda":"BRL",
+                 "localEstoqueEntregaId":%d,"tipoFrete":"FOB",
+                 "referenciaFornecedor":"PED-7788",
+                 "observacao":"Entregar na doca 1",
+                 "observacaoInterna":"Conferir lote e validade",
+                 "itens":[{"produtoId":%d,"quantidade":1,"valorUnitario":10}]}
+                """.formatted(fornecedorA, localA, produtoA);
+
+        mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-comercial")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.condicaoPagamentoId").value(condicao.getId()))
+                .andExpect(jsonPath("$.condicaoPagamentoNome").value("30 dias"))
+                .andExpect(jsonPath("$.transportadoraId").value(transportadora.getId()))
+                .andExpect(jsonPath("$.transportadoraNome")
+                        .value("Transportadora da compra"))
+                .andExpect(jsonPath("$.localEstoqueEntregaId").value(localA))
+                .andExpect(jsonPath("$.localEstoqueEntregaNome")
+                        .value("Recebimento compras"))
+                .andExpect(jsonPath("$.tipoFrete").value("FOB"))
+                .andExpect(jsonPath("$.referenciaFornecedor").value("PED-7788"))
+                .andExpect(jsonPath("$.observacaoInterna")
+                        .value("Conferir lote e validade"))
+                .andExpect(jsonPath("$.compradorId").value(tenantA.usuarioId()))
+                .andExpect(jsonPath("$.compradorNome").isNotEmpty());
+    }
+
+    @Test
+    void rejeitaReferenciasComerciaisDeOutroTenant() throws Exception {
+        CondicaoPagamento condicaoOutroTenant = new CondicaoPagamento();
+        condicaoOutroTenant.setOrganizacaoId(tenantB.organizacaoId());
+        condicaoOutroTenant.setNome("Condicao de outro tenant");
+        condicaoOutroTenant = condicoesPagamento.saveAndFlush(condicaoOutroTenant);
+
+        String payload = """
+                {"numeroNota":"OC-CROSS-REF","serieNota":"1","modeloNota":"55","fornecedorId":%d,"moeda":"BRL",
+                 "condicaoPagamentoId":%d,
+                 "itens":[{"produtoId":%d,"quantidade":1,"valorUnitario":10}]}
+                """.formatted(fornecedorA, condicaoOutroTenant.getId(), produtoA);
+
+        mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-cross-ref")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rejeitaDataDaOrdemNoFuturo() throws Exception {
+        String payload = """
+                {"numeroNota":"OC-FUTURA","serieNota":"1","modeloNota":"55","fornecedorId":%d,"moeda":"BRL",
+                 "dataEmissao":"%s",
+                 "itens":[{"produtoId":%d,"quantidade":1,"valorUnitario":10}]}
+                """.formatted(fornecedorA, LocalDate.now().plusDays(1), produtoA);
+
+        mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-futura")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void bancoImpedeDescontoGeralMesmoForaDoService() throws Exception {
+        String criada = mvc.perform(post("/api/v1/purchase-orders")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "oc-constraint-desconto")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ordem("OC-CONSTRAINT", fornecedorA, produtoA, "1")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long ordemId = JsonPath.<Number>read(criada, "$.id").longValue();
+
+        assertThatThrownBy(() -> jdbc.update(
+                "UPDATE ordem_compra SET valor_desconto=1 WHERE id=?", ordemId))
+                .hasMessageContaining("ck_ordem_compra_valores");
     }
 
     @Test
@@ -141,6 +405,12 @@ class OrdemCompraTenantApiTest {
         mvc.perform(get("/api/v1/purchase-orders")
                         .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/purchase-orders").param("numero", "ISOLADA").param("status", "APROVADA")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/purchase-orders").param("numero", "isolada").param("status", "RASCUNHO")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
@@ -160,11 +430,22 @@ class OrdemCompraTenantApiTest {
         String recebida = receber(ordemId, itemId, "5", "\"1\"", "receber-fiscal")
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         long recebimentoId = JsonPath.<Number>read(recebida, "$.id").longValue();
+        long movimentoId = JsonPath.<Number>read(recebida, "$.itens[0].movimentoEstoqueId").longValue();
+        mvc.perform(get("/api/v1/stock-movements/{id}/origin", movimentoId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("RECEBIMENTO_COMPRA"))
+                .andExpect(jsonPath("$.id").value(recebimentoId))
+                .andExpect(jsonPath("$.caminho").value("/app/ordens-compra?detail=" + ordemId
+                        + "&recebimentoId=" + recebimentoId));
+        mvc.perform(get("/api/v1/stock-movements/{id}/origin", movimentoId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual()))
+                .andExpect(status().isNotFound());
 
         String nota = mvc.perform(post("/api/notas-entrada")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"numero\":\"NF-OC-1\",\"fornecedorId\":" + fornecedorA
+                        .content("{\"numero\":\"OC-FISCAL\",\"fornecedorId\":" + fornecedorA
                                 + ",\"localEstoqueId\":" + localA
                                 + ",\"recebimentoCompraId\":" + recebimentoId
                                 + ",\"itens\":[{\"produtoId\":" + produtoA
@@ -176,6 +457,21 @@ class OrdemCompraTenantApiTest {
         mvc.perform(post("/api/notas-entrada/{id}/confirmacao", notaId)
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.situacao").value("CONFIRMADA"));
+
+        mvc.perform(post("/api/notas-entrada/{id}/confirmacao", notaId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/purchase-orders/{id}/documents", ordemId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recebimentos[0].id").value(recebimentoId))
+                .andExpect(jsonPath("$.recebimentos[0].atorNome").isNotEmpty())
+                .andExpect(jsonPath("$.notas[0].id").value(notaId))
+                .andExpect(jsonPath("$.contasPagar.length()").value(1))
+                .andExpect(jsonPath("$.movimentosEstoque.length()").value(1));
+        mvc.perform(get("/api/v1/purchase-orders/{id}/documents", ordemId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual()))
+                .andExpect(status().isNotFound());
 
         mvc.perform(get("/api/notas-entrada/{id}/detalhes", notaId)
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
@@ -282,7 +578,8 @@ class OrdemCompraTenantApiTest {
     }
 
     private String ordem(String numero, Long fornecedor, Long produto, String quantidade) {
-        return "{\"numero\":\"" + numero + "\",\"fornecedorId\":" + fornecedor
+        return "{\"numeroNota\":\"" + numero
+                + "\",\"serieNota\":\"1\",\"modeloNota\":\"55\",\"fornecedorId\":" + fornecedor
                 + ",\"moeda\":\"BRL\",\"itens\":[{\"produtoId\":" + produto
                 + ",\"quantidade\":" + quantidade + ",\"valorUnitario\":10}]}";
     }

@@ -5,7 +5,9 @@ import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
 import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.compras.ItemRecebimentoCompra;
+import com.kaneko.estacionamento.compras.OrdemCompra;
 import com.kaneko.estacionamento.compras.RecebimentoCompra;
 import com.kaneko.estacionamento.compras.RecebimentoCompraRepository;
 import com.kaneko.estacionamento.conveniencia.Produto;
@@ -26,11 +28,16 @@ import com.kaneko.estacionamento.pagamento.ParcelaCondicaoPagamento;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +62,7 @@ public class NotaEntradaService {
     private final EstoqueService estoqueService;
     private final RecebimentoCompraRepository recebimentoCompraRepository;
     private final AuditoriaService auditoria;
+    private final IdempotenciaRepository idempotencia;
 
     public NotaEntradaService(NotaEntradaRepository repository,
                               FornecedorRepository fornecedorRepository,
@@ -64,7 +72,7 @@ public class NotaEntradaService {
                               LocalEstoqueRepository localEstoqueRepository,
                               EstoqueService estoqueService,
                               RecebimentoCompraRepository recebimentoCompraRepository,
-                              AuditoriaService auditoria) {
+                              AuditoriaService auditoria, IdempotenciaRepository idempotencia) {
         this.repository = repository;
         this.fornecedorRepository = fornecedorRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
@@ -74,12 +82,23 @@ public class NotaEntradaService {
         this.estoqueService = estoqueService;
         this.recebimentoCompraRepository = recebimentoCompraRepository;
         this.auditoria = auditoria;
+        this.idempotencia = idempotencia;
     }
 
     @Transactional(readOnly = true)
     public Page<NotaEntrada> listar(Long organizacaoId, Pageable pageable) {
-        return organizacaoId == null ? repository.findAllByOrganizacaoIdIsNull(pageable)
-                : repository.findAllByOrganizacaoId(organizacaoId, pageable);
+        Page<Long> ids = organizacaoId == null
+                ? repository.findIdsByOrganizacaoIdIsNull(pageable)
+                : repository.findIdsByOrganizacaoId(organizacaoId, pageable);
+        if (ids.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, ids.getTotalElements());
+        }
+        Map<Long, NotaEntrada> notasPorId = repository.findAllByIdIn(ids.getContent())
+                .stream().collect(java.util.stream.Collectors.toMap(NotaEntrada::getId, nota -> nota));
+        List<NotaEntrada> notasOrdenadas = ids.getContent().stream()
+                .map(notasPorId::get)
+                .toList();
+        return new PageImpl<>(notasOrdenadas, pageable, ids.getTotalElements());
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +106,35 @@ public class NotaEntradaService {
         return (organizacaoId == null ? repository.findByIdAndOrganizacaoIdIsNull(id)
                 : repository.findByIdAndOrganizacaoId(id, organizacaoId))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("NotaEntrada", id));
+    }
+
+    @Transactional
+    public NotaEntrada criarIdempotente(Long organizacaoId, Long atorId, String chave, NotaEntradaRequest req) {
+        if (organizacaoId == null || atorId == null) {
+            throw new IllegalArgumentException("O registro idempotente exige organização ativa.");
+        }
+        if (chave.isBlank() || chave.length() > 128) {
+            throw new IllegalArgumentException("Idempotency-Key deve possuir entre 1 e 128 caracteres.");
+        }
+        String hash;
+        try {
+            hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(req.toString().getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 indisponível", ex);
+        }
+        idempotencia.bloquear(organizacaoId, atorId, "CRIAR_NOTA_ENTRADA", chave);
+        var anterior = idempotencia.buscar(organizacaoId, atorId, "CRIAR_NOTA_ENTRADA", chave);
+        if (anterior.isPresent()) {
+            if (!hash.equals(anterior.get().requestHash())) {
+                throw new ConflitoException("A chave já foi usada para outra nota. Recupere a nota anterior antes de criar uma nova.");
+            }
+            return buscar(organizacaoId, anterior.get().recursoId());
+        }
+        NotaEntrada nota = criar(organizacaoId, req);
+        idempotencia.registrar(organizacaoId, atorId, "CRIAR_NOTA_ENTRADA", chave,
+                hash, "NOTA_ENTRADA", nota.getId());
+        return nota;
     }
 
     @Transactional
@@ -124,13 +172,20 @@ public class NotaEntradaService {
                         "Recebimento de compra exige contexto de organizacao.");
             }
             RecebimentoCompra recebimento = recebimentoCompraRepository
-                    .findByIdAndOrganizacaoId(req.recebimentoCompraId(), organizacaoId)
+                    .findParaAtualizar(req.recebimentoCompraId(), organizacaoId)
                     .orElseThrow(() -> new RecursoNaoEncontradoException(
                             "RecebimentoCompra", req.recebimentoCompraId()));
             if (!recebimento.getOrdemCompra().getFornecedor().getId().equals(fornecedor.getId())
                     || !recebimento.getLocalEstoque().getId().equals(nota.getLocalEstoque().getId())) {
                 throw new ConflitoException(
                         "Fornecedor e local da nota devem corresponder ao recebimento.");
+            }
+            OrdemCompra ordemCompra = recebimento.getOrdemCompra();
+            if (!ordemCompra.getNumeroNota().equalsIgnoreCase(nota.getNumero())
+                    || !ordemCompra.getSerieNota().equalsIgnoreCase(nota.getSerie())
+                    || !ordemCompra.getModeloNota().equalsIgnoreCase(nota.getModelo())) {
+                throw new ConflitoException(
+                        "Numero, serie e modelo da nota devem corresponder a compra recebida.");
             }
             if (repository.existsByOrganizacaoIdAndRecebimentoCompraId(
                     organizacaoId, recebimento.getId())) {
@@ -140,10 +195,11 @@ public class NotaEntradaService {
         }
 
         boolean duplicada = organizacaoId == null
-                ? repository.existsByOrganizacaoIdIsNullAndNumeroAndSerieAndFornecedorId(
-                        nota.getNumero(), nota.getSerie(), fornecedor.getId())
-                : repository.existsByOrganizacaoIdAndNumeroAndSerieAndFornecedorId(
-                        organizacaoId, nota.getNumero(), nota.getSerie(), fornecedor.getId());
+                ? repository.existsByOrganizacaoIdIsNullAndNumeroAndSerieAndModeloAndFornecedorId(
+                        nota.getNumero(), nota.getSerie(), nota.getModelo(), fornecedor.getId())
+                : repository.existsByOrganizacaoIdAndNumeroAndSerieAndModeloAndFornecedorId(
+                        organizacaoId, nota.getNumero(), nota.getSerie(), nota.getModelo(),
+                        fornecedor.getId());
         if (duplicada) {
             throw new ConflitoException("Já existe uma nota com este número/série para este fornecedor.");
         }
@@ -252,7 +308,9 @@ public class NotaEntradaService {
 
     @Transactional
     public NotaEntrada cancelar(Long organizacaoId, Long id) {
-        NotaEntrada nota = buscar(organizacaoId, id);
+        NotaEntrada nota = organizacaoId == null ? buscar(null, id)
+                : repository.findParaAtualizar(id, organizacaoId)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("NotaEntrada", id));
         if (nota.getSituacao() == SituacaoNota.CONFIRMADA) {
             throw new ConflitoException("Uma nota confirmada não pode ser cancelada.");
         }
@@ -265,7 +323,9 @@ public class NotaEntradaService {
 
     @Transactional
     public void excluir(Long organizacaoId, Long id) {
-        NotaEntrada nota = buscar(organizacaoId, id);
+        NotaEntrada nota = organizacaoId == null ? buscar(null, id)
+                : repository.findParaAtualizar(id, organizacaoId)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("NotaEntrada", id));
         if (nota.getSituacao() == SituacaoNota.CONFIRMADA) {
             throw new ConflitoException("Uma nota confirmada não pode ser excluída.");
         }

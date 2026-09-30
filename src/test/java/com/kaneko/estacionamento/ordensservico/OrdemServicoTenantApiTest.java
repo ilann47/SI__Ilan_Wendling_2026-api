@@ -151,6 +151,109 @@ class OrdemServicoTenantApiTest {
                 .andExpect(jsonPath("$.status").value("CANCELADA"));
     }
 
+    @Test
+    void preparaNotaDaOrdemSemCobrarEEmiteSomenteUmaVez() throws Exception {
+        long id = JsonPath.<Number>read(criarOrdem("OS-FLUXO", clienteA, servicoA), "$.id").longValue();
+        String rota = "/api/v1/service-orders/" + id + "/service-note";
+        mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", "nota-os").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"NFS-FLUXO\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/service-orders/{id}/start", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header(HttpHeaders.IF_MATCH, "\"0\"")).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/service-orders/{id}/completion", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header(HttpHeaders.IF_MATCH, "\"1\"")).andExpect(status().isOk());
+        String nota = mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", "nota-os").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"NFS-FLUXO\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.clienteId").value(clienteA))
+                .andExpect(jsonPath("$.valorTotal").value(100))
+                .andExpect(jsonPath("$.situacao").value("PENDENTE"))
+                .andReturn().getResponse().getContentAsString();
+        long notaId = JsonPath.<Number>read(nota, "$.id").longValue();
+        mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", "nota-os").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"NFS-FLUXO\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(notaId));
+        mvc.perform(get("/api/v1/service-orders/{id}/documents", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.nota.id").value(notaId))
+                .andExpect(jsonPath("$.contas.length()").value(0));
+        mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())).andExpect(status().isOk());
+        mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/service-orders/{id}/documents", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.contas.length()").value(1));
+        mvc.perform(get("/api/v1/service-orders/{id}/documents", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual())).andExpect(status().isNotFound());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM nota_servico WHERE ordem_servico_id=?",
+                Integer.class, id)).isEqualTo(1);
+    }
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void chamadasSimultaneasNaoDuplicamNotaNemCobranca() throws Exception {
+        long id = JsonPath.<Number>read(criarOrdem("OS-RACE", clienteA, servicoA), "$.id").longValue();
+        mvc.perform(post("/api/v1/service-orders/{id}/start", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header(HttpHeaders.IF_MATCH, "\"0\"")).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/service-orders/{id}/completion", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header(HttpHeaders.IF_MATCH, "\"1\"")).andExpect(status().isOk());
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var start = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.Callable<Long> gerar = () -> {
+                start.await();
+                String result = mvc.perform(post("/api/v1/service-orders/{id}/service-note", id)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "race-nota-os").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"numero\":\"NF-RACE\"}"))
+                        .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+                return JsonPath.<Number>read(result, "$.id").longValue();
+            };
+            var a = pool.submit(gerar);
+            var b = pool.submit(gerar);
+            start.countDown();
+            long notaId = a.get(20, java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(b.get(20, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(notaId);
+            var emitStart = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.Callable<Integer> emitir = () -> {
+                emitStart.await();
+                return mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                        .andReturn().getResponse().getStatus();
+            };
+            var e1 = pool.submit(emitir);
+            var e2 = pool.submit(emitir);
+            emitStart.countDown();
+            assertThat(java.util.List.of(e1.get(20, java.util.concurrent.TimeUnit.SECONDS),
+                    e2.get(20, java.util.concurrent.TimeUnit.SECONDS))).containsExactlyInAnyOrder(200, 409);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM conta_receber WHERE nota_servico_id=?",
+                    Integer.class, notaId)).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void usuarioSemPapelNaoAcessaDocumentosNemGeraNota() throws Exception {
+        long id = JsonPath.<Number>read(criarOrdem("OS-RBAC", clienteA, servicoA), "$.id").longValue();
+        var usuario = tenant.criarUsuario("os_reader_" + UUID.randomUUID(),
+                com.kaneko.estacionamento.usuario.PerfilUsuario.OPERADOR);
+        tenant.criarMembership(tenantA.organizacaoId(), usuario.getId(), tenantA.tokenContextual());
+        String token = tenant.selecionarOrganizacao(tenantA.organizacaoId(),
+                tenant.autenticar(usuario.getLogin(), "senha123"));
+        mvc.perform(get("/api/v1/service-orders/{id}/documents", id)
+                .header(HttpHeaders.AUTHORIZATION, token)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/service-orders/{id}/service-note", id)
+                .header(HttpHeaders.AUTHORIZATION, token).header("Idempotency-Key", "proibido")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"numero\":\"NF-RBAC\"}"))
+                .andExpect(status().isForbidden());
+    }
+
     private String criarOrdem(String numero, Long cliente, Long servico) throws Exception {
         return mvc.perform(post("/api/v1/service-orders")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())

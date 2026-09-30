@@ -30,6 +30,7 @@ inativação concorrentes não deixam saldo em Local inativo.
 - `/api/v1/stock-balances`: saldo paginado por Produto/Local.
 - `/api/v1/stock-positions`: posição agregada e filtro abaixo do mínimo.
 - `/api/v1/stock-movements`: razão paginado, detalhe e compensação.
+- `GET /api/v1/stock-movements/{id}/origin`: descrição e caminho do documento real; sem ID/número/caminho quando falta permissão de origem.
 - `/api/v1/stock-adjustments`: ajuste manual idempotente.
 
 ## Estrutura de Dados (DTOs, Entidades)
@@ -60,6 +61,7 @@ Há testes de migration/preflight, constraints PostgreSQL, isolamento/RBAC/API,
 idempotência por ator, conteúdo de auditoria/outbox, compensação, limiar agregado,
 cadeia do razão, mutação direta de saldo, concorrência sobre o mesmo saldo,
 ajuste versus inativação e dois PUTs com o mesmo ETag.
+Rastreabilidade validada em 2026-09-12: EstoqueTenantApiTest (9), OrigemMovimentoServiceTest (2) e origem de recebimento em OrdemCompraTenantApiTest (1) verdes. Casos novos provam ator nominal, nota real do mesmo tenant, recebimento destacado, cross-tenant 404 e ausência de consulta/IDs fiscais sem permissão.
 
 ## Decisões Técnicas
 
@@ -67,6 +69,8 @@ ajuste versus inativação e dois PUTs com o mesmo ETag.
 - Constraint triggers diferidos validam, no estado final da transação, a cadeia
   iniciada em zero e a igualdade entre último movimento e saldo materializado.
 - Movimento append-only e compensação, nunca edição/exclusão.
+- A projeção inclui `atorNome` resolvido pelo usuário global associado ao movimento; representa o nome atual da conta, não um snapshot histórico. Nenhum registro de movimento é alterado.
+- Origem é resolvida somente ao abrir o detalhe. Nota de entrada/saída exige `fiscal:read`, venda exige `sales:read`, recebimento exige `purchases:read`. Recebimento usa o vínculo real de item_recebimento_compra e abre a OC com recebimento destacado; compensação navega ao movimento original. Origens não identificáveis não recebem link presumido.
 - Compensação não pode ser autorreferente, compensar outra compensação nem usar
   delta diferente do inverso exato do original.
 - Origem única inclui Produto, Local e tipo para suportar documentos multi-item.
@@ -92,3 +96,5 @@ ajuste versus inativação e dois PUTs com o mesmo ETag.
 | 2026-08-03 | Hardenings P1 de concorrência, cadeia do razão, compensação, idempotência e payloads aplicados. |
 | 2026-08-14 | Recebimento de Ordem de Compra passa a registrar entrada física idempotente no razão. |
 | 2026-08-14 | Confirmação de Venda Administrativa passa a registrar baixa física no razão. |
+| 2026-09-12 | Expõe responsável nominal e navegação tenant-aware/RBAC ao documento de origem, preservando imutabilidade e saldo. |
+| 2026-09-28 | Resolve notas legadas pelo número somente quando a chave é realmente legada; chaves estruturadas inválidas não disparam consulta nem inferência. |

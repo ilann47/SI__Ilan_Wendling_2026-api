@@ -19,6 +19,7 @@ public interface MovimentoEstoqueView {
     String getOrigemChave();
     Long getCompensadoId();
     Long getAtorId();
+    String getAtorNome();
     String getMotivo();
     Instant getOcorridoEm();
     Instant getCreatedAt();

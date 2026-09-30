@@ -19,6 +19,9 @@ import org.springframework.test.web.servlet.MockMvc;
 class RelatorioTenantApiTest {
     @Autowired private MockMvc mvc;
     @Autowired private TenantTestSupport tenant;
+    @Autowired private RelatorioService service;
+    @Autowired private com.kaneko.estacionamento.pessoas.ClienteRepository clientes;
+    @Autowired private com.kaneko.estacionamento.fiscal.NotaServicoRepository notasServico;
     private TenantFixture tenantA;
     private TenantFixture tenantB;
 
@@ -48,6 +51,34 @@ class RelatorioTenantApiTest {
                 .header("Authorization",tenantA.tokenContextual())).andExpect(status().isOk());
         mvc.perform(get("/api/relatorios/mensalistas-ativos")
                 .header("Authorization",tenantA.tokenContextual())).andExpect(status().isOk());
+    }
+
+    @Test
+    void faturamentoLegadoNaoIncluiNotasDeServicoDosTenants() throws Exception {
+        var hoje=LocalDate.now();
+        var legadoAntes=service.faturamento(null,hoje,hoje);
+        criarNotaServico(tenantA,"NFS-REL-A",100);
+        criarNotaServico(tenantB,"NFS-REL-B",900);
+        org.assertj.core.api.Assertions.assertThat(service.faturamento(null,hoje,hoje).totalFaturado())
+                .isEqualByComparingTo(legadoAntes.totalFaturado());
+        mvc.perform(get("/api/relatorios/faturamento").header("Authorization",tenantA.tokenContextual())
+                .param("inicio",hoje.toString())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.servicos").value(100)).andExpect(jsonPath("$.totalFaturado").value(100));
+        mvc.perform(get("/api/relatorios/faturamento").header("Authorization",tenantB.tokenContextual())
+                .param("inicio",hoje.toString())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.servicos").value(900)).andExpect(jsonPath("$.totalFaturado").value(900));
+    }
+
+    private void criarNotaServico(TenantFixture contexto,String numero,int valor) {
+        var cliente=new com.kaneko.estacionamento.pessoas.Cliente();
+        cliente.setOrganizacaoId(contexto.organizacaoId()); cliente.setNome("Cliente relatório");
+        cliente.setDocumento("90000000001"); clientes.saveAndFlush(cliente);
+        var nota=new com.kaneko.estacionamento.fiscal.NotaServico();
+        nota.setOrganizacaoId(contexto.organizacaoId()); nota.setCliente(cliente); nota.setNumero(numero);
+        nota.setDataEmissao(LocalDate.now()); nota.setValorServico(java.math.BigDecimal.valueOf(valor));
+        nota.setValorTotal(java.math.BigDecimal.valueOf(valor));
+        nota.setSituacao(com.kaneko.estacionamento.fiscal.SituacaoNotaServico.EMITIDA);
+        notasServico.saveAndFlush(nota);
     }
 
     private void criarDespesa(TenantFixture fixture,int valor)throws Exception{

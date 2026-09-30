@@ -12,14 +12,23 @@ public record ItemOrdemCompraResponse(
         BigDecimal quantidadeRecebida,
         BigDecimal quantidadePendente,
         BigDecimal valorUnitario,
+        String codigoProdutoFornecedor,
         BigDecimal valorDesconto,
-        BigDecimal valorTotal) {
+        BigDecimal valorTotal,
+        BigDecimal rateioFrete,
+        BigDecimal rateioSeguro,
+        BigDecimal rateioOutrasDespesas,
+        BigDecimal custoTotal,
+        BigDecimal custoUnitarioFinal) {
 
     public static ItemOrdemCompraResponse from(ItemOrdemCompra item) {
         return new ItemOrdemCompraResponse(item.getId(), item.getSequencia(),
                 item.getProduto().getId(), item.getProduto().getNome(),
                 item.getQuantidadePedida(), item.getQuantidadeRecebida(),
-                item.saldoReceber(), item.getValorUnitario(), item.getValorDesconto(),
-                item.getValorTotal());
+                item.saldoReceber(), item.getValorUnitario(), item.getCodigoProdutoFornecedor(),
+                item.getValorDesconto(),
+                item.getValorTotal(), item.getRateioFrete(), item.getRateioSeguro(),
+                item.getRateioOutrasDespesas(), item.getCustoTotal(),
+                item.getCustoUnitarioFinal());
     }
 }

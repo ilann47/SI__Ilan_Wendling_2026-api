@@ -34,7 +34,7 @@ class NotaFiscalOptimisticLockPropagationTest {
                 mock(FornecedorRepository.class), mock(CondicaoPagamentoRepository.class),
                 produtos, titulos, mock(LocalEstoqueRepository.class),
                 mock(EstoqueService.class), mock(RecebimentoCompraRepository.class),
-                mock(AuditoriaService.class));
+                mock(AuditoriaService.class), mock(com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository.class));
         NotaEntrada nota = notaEntradaPendente();
         OptimisticLockingFailureException conflito =
                 new OptimisticLockingFailureException("produto concorrente");

@@ -34,7 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Teste de integracao da nota de entrada — criacao com calculo de totais e
  * rateio, confirmacao (estoque + titulos) e demais fluxos.
  */
-@SpringBootTest
+@SpringBootTest(properties =
+        "spring.jpa.properties.hibernate.query.fail_on_pagination_over_collection_fetch=true")
 @AutoConfigureMockMvc
 @Transactional
 class NotaEntradaControllerTest {

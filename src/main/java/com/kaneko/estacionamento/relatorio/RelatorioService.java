@@ -116,7 +116,7 @@ public class RelatorioService {
         OffsetDateTime fimDia = fim.atTime(LocalTime.MAX).atZone(FUSO).toOffsetDateTime();
 
         List<Movimentacao> movimentos = organizacaoId == null
-                ? movimentacaoRepository.findByStatusAndDataSaidaBetween(
+                ? movimentacaoRepository.findByOrganizacaoIdIsNullAndStatusAndDataSaidaBetween(
                         StatusMovimentacao.FECHADO, ini, fimDia)
                 : movimentacaoRepository.findByOrganizacaoIdAndStatusAndDataSaidaBetween(
                         organizacaoId, StatusMovimentacao.FECHADO, ini, fimDia);
@@ -124,7 +124,7 @@ public class RelatorioService {
                 .map(m -> nz(m.getValorCobrado())).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<NotaSaida> notasSaida = organizacaoId == null
-                ? notaSaidaRepository.findBySituacaoAndDataEmissaoBetween(
+                ? notaSaidaRepository.findByOrganizacaoIdIsNullAndSituacaoAndDataEmissaoBetween(
                         SituacaoNota.CONFIRMADA, inicio, fim)
                 : notaSaidaRepository.findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
                         organizacaoId, SituacaoNota.CONFIRMADA, inicio, fim);
@@ -132,7 +132,7 @@ public class RelatorioService {
                 .map(NotaSaida::getValorTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<NotaServico> notasServico = organizacaoId == null
-                ? notaServicoRepository.findBySituacaoAndDataEmissaoBetween(
+                ? notaServicoRepository.findByOrganizacaoIdIsNullAndSituacaoAndDataEmissaoBetween(
                         SituacaoNotaServico.EMITIDA, inicio, fim)
                 : notaServicoRepository.findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
                         organizacaoId, SituacaoNotaServico.EMITIDA, inicio, fim);

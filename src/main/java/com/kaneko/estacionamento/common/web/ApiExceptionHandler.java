@@ -3,6 +3,7 @@ package com.kaneko.estacionamento.common.web;
 import com.kaneko.estacionamento.common.exception.AutenticacaoException;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -12,13 +13,19 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Tratamento centralizado de erros da API, padronizando as respostas no formato
@@ -33,6 +40,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ProblemDetail handleNaoEncontrado(RecursoNaoEncontradoException ex) {
         return problem(HttpStatus.NOT_FOUND, "Recurso nao encontrado", ex.getMessage());
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleRotaNaoEncontrada(NoResourceFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Rota nao encontrada",
+                "O endereco solicitado nao existe nesta API.");
     }
 
     @ExceptionHandler(AutenticacaoException.class)
@@ -89,6 +102,40 @@ public class ApiExceptionHandler {
     public ProblemDetail handleTipoInvalido(MethodArgumentTypeMismatchException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
                 "O parametro '" + ex.getName() + "' tem um valor invalido.");
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ProblemDetail handleParametroObrigatorio(MissingServletRequestParameterException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
+                "O parametro '" + ex.getParameterName() + "' e obrigatorio.");
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ProblemDetail handleCabecalhoObrigatorio(MissingRequestHeaderException ex) {
+        if ("If-Match".equalsIgnoreCase(ex.getHeaderName())) {
+            return problem(HttpStatus.PRECONDITION_REQUIRED, "Pre-condicao obrigatoria",
+                    "O cabecalho If-Match com a versao esperada e obrigatorio.");
+        }
+        return problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
+                "O cabecalho '" + ex.getHeaderName() + "' e obrigatorio.");
+    }
+
+    @ExceptionHandler({HandlerMethodValidationException.class, ConstraintViolationException.class})
+    public ProblemDetail handleValidacaoDeParametros(Exception ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
+                "Ha parametros invalidos na requisicao.");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ProblemDetail handleMetodoNaoPermitido(HttpRequestMethodNotSupportedException ex) {
+        return problem(HttpStatus.METHOD_NOT_ALLOWED, "Metodo nao permitido",
+                "O metodo HTTP informado nao e aceito por este endereco.");
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ProblemDetail handleMidiaNaoSuportada(HttpMediaTypeNotSupportedException ex) {
+        return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Formato nao suportado",
+                "O formato do corpo da requisicao nao e aceito por este endereco.");
     }
 
     @ExceptionHandler(Exception.class)

@@ -38,28 +38,34 @@ public class NotaEntradaDetalheService {
 
     @Transactional(readOnly = true)
     public NotaEntradaDetalheResponse buscar(Long organizacaoId, Long notaId) {
+        return buscar(organizacaoId, notaId, true, true, true);
+    }
+
+    @Transactional(readOnly = true)
+    public NotaEntradaDetalheResponse buscar(Long organizacaoId, Long notaId,
+            boolean lerCompras, boolean lerFinanceiro, boolean lerEstoque) {
         NotaEntrada nota = notaEntradaService.buscar(organizacaoId, notaId);
         RecebimentoCompra recebimento = buscarRecebimento(nota, organizacaoId);
 
-        List<ContaPagarResponse> contas = contaPagarRepository
+        List<ContaPagarResponse> contas = !lerFinanceiro ? null : contaPagarRepository
                 .findByNotaEntradaIdAndOrganizacaoIdOrderByNumeroParcelaAsc(
                         notaId, organizacaoId)
                 .stream()
                 .map(ContaPagarResponse::from)
                 .toList();
 
-        List<MovimentoEstoqueView> movimentos = recebimento == null
+        List<MovimentoEstoqueView> movimentos = !lerEstoque ? List.of() : recebimento == null
                 ? movimentoEstoqueRepository.listarPorOrigem(
                         organizacaoId, "NOTA_ENTRADA", notaId + ":")
                 : listarMovimentosDoRecebimento(organizacaoId, recebimento);
 
         return new NotaEntradaDetalheResponse(
                 NotaEntradaResponse.from(nota),
-                recebimento == null ? null
+                recebimento == null || !lerCompras ? null
                         : OrdemCompraVinculadaResponse.from(recebimento.getOrdemCompra()),
-                recebimento == null ? null : RecebimentoCompraResponse.from(recebimento),
+                recebimento == null || !lerCompras ? null : RecebimentoCompraResponse.from(recebimento),
                 contas,
-                movimentos.stream().map(MovimentoEstoqueResponse::from).toList());
+                lerEstoque ? movimentos.stream().map(MovimentoEstoqueResponse::from).toList() : null);
     }
 
     private RecebimentoCompra buscarRecebimento(NotaEntrada nota, Long organizacaoId) {

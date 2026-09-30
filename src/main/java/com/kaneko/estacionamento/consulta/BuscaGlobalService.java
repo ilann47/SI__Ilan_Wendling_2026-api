@@ -36,13 +36,15 @@ public class BuscaGlobalService {
         List<GrupoBuscaGlobal> grupos = new ArrayList<>();
 
         adicionar(grupos, "Clientes", permissoes.contains("customers:read"), limite, organizacaoId, padrao, """
-                SELECT 'CLIENTE', c.id, c.nome, c.documento, CASE WHEN c.ativo THEN 'ATIVO' ELSE 'INATIVO' END, '/app/clientes'
+                SELECT 'CLIENTE', c.id, c.nome, c.documento, CASE WHEN c.ativo THEN 'ATIVO' ELSE 'INATIVO' END,
+                       concat('/app/clientes?detail=', c.id)
                 FROM cliente c WHERE c.organizacao_id=? AND
                   (lower(c.nome) LIKE ? OR lower(coalesce(c.apelido,'')) LIKE ? OR lower(c.documento) LIKE ?)
                 ORDER BY c.nome LIMIT ?
                 """);
         adicionar(grupos, "Veículos", permissoes.contains("operations:read"), limite, organizacaoId, padrao, """
-                SELECT 'VEICULO', v.id, v.placa, concat_ws(' · ', v.modelo, c.nome), CASE WHEN v.ativo THEN 'ATIVO' ELSE 'INATIVO' END, '/app/veiculos'
+                SELECT 'VEICULO', v.id, v.placa, concat_ws(' · ', v.modelo, c.nome), CASE WHEN v.ativo THEN 'ATIVO' ELSE 'INATIVO' END,
+                       concat('/app/veiculos?detail=', v.id)
                 FROM veiculo v LEFT JOIN cliente c ON c.id=v.cliente_id AND c.organizacao_id=v.organizacao_id
                 WHERE v.organizacao_id=? AND (lower(v.placa) LIKE ? OR lower(coalesce(v.modelo,'')) LIKE ? OR lower(coalesce(c.nome,'')) LIKE ?)
                 ORDER BY v.placa LIMIT ?
@@ -60,26 +62,27 @@ public class BuscaGlobalService {
                 ORDER BY e.inicio DESC LIMIT ?
                 """);
         adicionar(grupos, "Movimentações", permissoes.contains("operations:read"), limite, organizacaoId, padrao, """
-                SELECT 'MOVIMENTACAO', m.id, v.placa, concat_ws(' · ', v.modelo, m.tipo), m.status, '/app/movimentacoes'
+                SELECT 'MOVIMENTACAO', m.id, v.placa, concat_ws(' · ', v.modelo, m.tipo), m.status,
+                       concat('/app/movimentacoes?detail=', m.id)
                 FROM movimentacao m JOIN veiculo v ON v.id=m.veiculo_id AND v.organizacao_id=m.organizacao_id
                 WHERE m.organizacao_id=? AND (lower(v.placa) LIKE ? OR lower(coalesce(v.modelo,'')) LIKE ? OR CAST(m.id AS text) LIKE ?)
                 ORDER BY m.data_entrada DESC LIMIT ?
                 """);
         adicionar(grupos, "Notas", permissoes.contains("fiscal:read"), limite, organizacaoId, padrao, """
                 SELECT tipo,id,titulo,subtitulo,status,caminho FROM (
-                  SELECT 'NOTA_ENTRADA' tipo,n.id,n.numero titulo,f.nome subtitulo,n.situacao status,'/app/notas-entrada' caminho,n.data_emissao data
+                  SELECT 'NOTA_ENTRADA' tipo,n.id,n.numero titulo,f.nome subtitulo,n.situacao status,concat('/app/notas-entrada/', n.id) caminho,n.data_emissao data
                     FROM nota_entrada n JOIN fornecedor f ON f.id=n.fornecedor_id AND f.organizacao_id=n.organizacao_id WHERE n.organizacao_id=?
-                  UNION ALL SELECT 'NOTA_SAIDA',n.id,n.numero,c.nome,n.situacao,'/app/notas-saida',n.data_emissao
+                  UNION ALL SELECT 'NOTA_SAIDA',n.id,n.numero,c.nome,n.situacao,concat('/app/notas-saida?detail=', n.id),n.data_emissao
                     FROM nota_saida n JOIN cliente c ON c.id=n.cliente_id AND c.organizacao_id=n.organizacao_id WHERE n.organizacao_id=?
-                  UNION ALL SELECT 'NOTA_SERVICO',n.id,n.numero,c.nome,n.situacao,'/app/notas-servico',n.data_emissao
+                  UNION ALL SELECT 'NOTA_SERVICO',n.id,n.numero,c.nome,n.situacao,concat('/app/notas-servico?detail=', n.id),n.data_emissao
                     FROM nota_servico n JOIN cliente c ON c.id=n.cliente_id AND c.organizacao_id=n.organizacao_id WHERE n.organizacao_id=?
                 ) x WHERE lower(titulo) LIKE ? OR lower(subtitulo) LIKE ? OR CAST(id AS text) LIKE ? ORDER BY data DESC LIMIT ?
                 """, true);
         adicionar(grupos, "Contas", permissoes.contains("finance:read"), limite, organizacaoId, padrao, """
                 SELECT tipo,id,titulo,subtitulo,status,caminho FROM (
-                  SELECT 'CONTA_PAGAR' tipo,cp.id,concat('Pagar #',cp.id) titulo,f.nome subtitulo,cp.situacao status,'/app/contas-pagar' caminho,cp.data_vencimento data
+                  SELECT 'CONTA_PAGAR' tipo,cp.id,concat('Pagar #',cp.id) titulo,f.nome subtitulo,cp.situacao status,concat('/app/contas-pagar?detail=', cp.id) caminho,cp.data_vencimento data
                     FROM conta_pagar cp JOIN fornecedor f ON f.id=cp.fornecedor_id AND f.organizacao_id=cp.organizacao_id WHERE cp.organizacao_id=?
-                  UNION ALL SELECT 'CONTA_RECEBER',cr.id,concat('Receber #',cr.id),c.nome,cr.situacao,'/app/contas-receber',cr.data_vencimento
+                  UNION ALL SELECT 'CONTA_RECEBER',cr.id,concat('Receber #',cr.id),c.nome,cr.situacao,concat('/app/contas-receber?detail=', cr.id),cr.data_vencimento
                     FROM conta_receber cr JOIN cliente c ON c.id=cr.cliente_id AND c.organizacao_id=cr.organizacao_id WHERE cr.organizacao_id=?
                 ) x WHERE lower(titulo) LIKE ? OR lower(subtitulo) LIKE ? OR CAST(id AS text) LIKE ? ORDER BY data DESC LIMIT ?
                 """, false);

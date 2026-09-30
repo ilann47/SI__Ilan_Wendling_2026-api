@@ -59,7 +59,17 @@ public class OrdemServicoService {
 
     @Transactional(readOnly = true)
     public Page<OrdemServico> listar(Long organizacaoId, Pageable pageable) {
-        Page<Long> ids = ordens.findPageIdsByOrganizacaoId(organizacaoId, pageable);
+        return listar(organizacaoId, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrdemServico> listar(Long organizacaoId, String numero,
+            StatusOrdemServico status, Pageable pageable) {
+        String termo = numero == null ? "" : numero.trim().toLowerCase(Locale.ROOT);
+        Page<Long> ids = termo.isEmpty() && status == null
+                ? ordens.findPageIdsByOrganizacaoId(organizacaoId, pageable)
+                : ordens.findPageIdsFiltrados(organizacaoId, termo,
+                        status == null ? List.of(StatusOrdemServico.values()) : List.of(status), pageable);
         if (ids.isEmpty()) return new PageImpl<>(List.of(), pageable, ids.getTotalElements());
         Map<Long, OrdemServico> porId = new LinkedHashMap<>();
         ordens.findAllByOrganizacaoIdAndIdIn(organizacaoId, ids.getContent())

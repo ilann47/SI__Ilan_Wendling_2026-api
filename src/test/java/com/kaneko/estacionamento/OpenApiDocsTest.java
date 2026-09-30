@@ -22,6 +22,27 @@ class OpenApiDocsTest {
     private MockMvc mvc;
 
     @Test
+    void publicaContinuidadeOperacionalEUploadXmlBinario() throws Exception {
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/v1/administrative-sales/{id}/outbound-note'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/administrative-sales/{id}/documents'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/purchase-orders/{id}/documents'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/purchase-orders/{id}/receipt-rejection'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/service-orders/{id}/service-note'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/service-orders/{id}/documents'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/contas-pagar/resumo'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/contas-receber/{id}/baixas'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/operational-pendencies'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/stock-movements/{id}/origin'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/notas-entrada/importacoes'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/notas-entrada/importacoes'].post.requestBody.content['application/xml'].schema.format").value("binary"))
+                .andExpect(jsonPath("$.paths['/api/notas-entrada/importacoes/{id}/conciliacao'].put").exists())
+                .andExpect(jsonPath("$.paths['/api/notas-entrada/importacoes/{id}/conferencia'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/notas-entrada/importacoes/{id}/confirmacao'].post").exists());
+    }
+
+    @Test
     void publicaOpenApiComEndpointsDePais() throws Exception {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())

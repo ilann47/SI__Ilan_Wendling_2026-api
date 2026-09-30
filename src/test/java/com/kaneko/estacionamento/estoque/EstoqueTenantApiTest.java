@@ -42,6 +42,7 @@ class EstoqueTenantApiTest {
     @Autowired private UnidadeMedidaRepository unidades;
     @Autowired private ProdutoRepository produtos;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private EstoqueService estoqueService;
 
     private TenantFixture tenantA;
     private TenantFixture tenantB;
@@ -89,6 +90,19 @@ class EstoqueTenantApiTest {
                 .andExpect(jsonPath("$.nome").value("Estoque central"));
     }
 
+    @Test void documentoOrigemECarregadoPorVinculoRealNoMesmoTenant() throws Exception {
+        Long fornecedor = jdbc.queryForObject("INSERT INTO fornecedor(organizacao_id,nome,documento) VALUES (?,'Fornecedor do estoque',?) RETURNING id",
+                Long.class, tenantA.organizacaoId(), UUID.randomUUID().toString().substring(0,14));
+        Long nota = jdbc.queryForObject("INSERT INTO nota_entrada(organizacao_id,fornecedor_id,numero,local_estoque_id) VALUES (?,?,'NF-est-01',?) RETURNING id",
+                Long.class, tenantA.organizacaoId(), fornecedor, localA);
+        Long movimento = estoqueService.registrarRecebimento(tenantA.organizacaoId(),tenantA.usuarioId(),produtoA,localA,
+                BigDecimal.ONE,BigDecimal.ONE,"NOTA_ENTRADA",nota + ":1","Recebimento documentado");
+        mvc.perform(get("/api/v1/stock-movements/{id}/origin",movimento).header(HttpHeaders.AUTHORIZATION,tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(nota))
+                .andExpect(jsonPath("$.descricao").value("Nota de entrada NF-est-01"))
+                .andExpect(jsonPath("$.caminho").value("/app/notas-entrada/" + nota));
+    }
+
     @Test
     void exigeStockPermissionEJwtContextual() throws Exception {
         mvc.perform(get("/api/v1/stock-locations")).andExpect(status().isUnauthorized());
@@ -119,8 +133,16 @@ class EstoqueTenantApiTest {
                 .andExpect(jsonPath("$.produto").value("Produto Estoque A"))
                 .andExpect(jsonPath("$.localEstoque").value("Estoque principal"))
                 .andExpect(jsonPath("$.delta").value(2.5))
+                .andExpect(jsonPath("$.atorNome").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
         long movimento = ((Number) JsonPath.read(primeira, "$.id")).longValue();
+        mvc.perform(get("/api/v1/stock-movements/{id}/origin", movimento)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.descricao").value("Ajuste manual de estoque"))
+                .andExpect(jsonPath("$.caminho").isEmpty());
+        mvc.perform(get("/api/v1/stock-movements/{id}/origin", movimento)
+                        .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual()))
+                .andExpect(status().isNotFound());
         mvc.perform(post("/api/v1/stock-adjustments")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
                         .header("Idempotency-Key", "ajuste-1")

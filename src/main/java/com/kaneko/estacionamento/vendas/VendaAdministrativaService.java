@@ -74,7 +74,17 @@ public class VendaAdministrativaService {
 
     @Transactional(readOnly = true)
     public Page<VendaAdministrativa> listar(Long organizacaoId, Pageable pageable) {
-        Page<Long> ids = vendas.findPageIdsByOrganizacaoId(organizacaoId, pageable);
+        return listar(organizacaoId, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VendaAdministrativa> listar(Long organizacaoId, String numero,
+            StatusVendaAdministrativa status, Pageable pageable) {
+        String termo = numero == null ? "" : numero.trim().toLowerCase(Locale.ROOT);
+        Page<Long> ids = termo.isEmpty() && status == null
+                ? vendas.findPageIdsByOrganizacaoId(organizacaoId, pageable)
+                : vendas.findPageIdsFiltrados(organizacaoId, termo,
+                        status == null ? List.of(StatusVendaAdministrativa.values()) : List.of(status), pageable);
         if (ids.isEmpty()) return new PageImpl<>(List.of(), pageable, ids.getTotalElements());
         Map<Long, VendaAdministrativa> porId = new LinkedHashMap<>();
         vendas.findAllByOrganizacaoIdAndIdIn(organizacaoId, ids.getContent())

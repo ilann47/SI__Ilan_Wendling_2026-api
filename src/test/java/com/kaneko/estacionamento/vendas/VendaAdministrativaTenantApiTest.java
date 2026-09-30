@@ -208,6 +208,62 @@ class VendaAdministrativaTenantApiTest {
                 """, Integer.class, tenantA.organizacaoId(), vendaId)).isZero();
     }
 
+    @Test
+    void geraNotaPeloPedidoEConsultaDocumentosSemRedigitarOuDuplicar() throws Exception {
+        String criada = mvc.perform(post("/api/v1/administrative-sales")
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", "fluxo-venda")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(venda("FLUXO-VENDA", clienteA, produtoA, "2")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = JsonPath.<Number>read(criada, "$.id").longValue();
+        String rota = "/api/v1/administrative-sales/" + id + "/outbound-note";
+        mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"numero\":\"NF-FLUXO\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", " ").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"NF-FLUXO\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", "nf-pedido").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"NF-FLUXO\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/administrative-sales/{id}/confirmation", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header(HttpHeaders.IF_MATCH, "\"0\"")).andExpect(status().isOk());
+        String nota = mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", "nf-pedido").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"NF-FLUXO\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.clienteId").value(clienteA))
+                .andExpect(jsonPath("$.itens[0].produtoId").value(produtoA))
+                .andExpect(jsonPath("$.valorTotal").value(20))
+                .andReturn().getResponse().getContentAsString();
+        long notaId = JsonPath.<Number>read(nota, "$.id").longValue();
+        mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", "nf-pedido").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"NF-FLUXO\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(notaId));
+        mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                .header("Idempotency-Key", "nf-pedido").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"OUTRA\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/administrative-sales/{id}/documents", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.nota.id").value(notaId))
+                .andExpect(jsonPath("$.contas.length()").value(1))
+                .andExpect(jsonPath("$.movimentos.length()").value(1));
+        mvc.perform(get("/api/v1/administrative-sales/{id}/documents", id)
+                .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual()))
+                .andExpect(status().isNotFound());
+        mvc.perform(post(rota).header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual())
+                .header("Idempotency-Key", "nf-outro-tenant").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"NF-FLUXO\"}"))
+                .andExpect(status().isNotFound());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM nota_saida WHERE venda_administrativa_id=?",
+                Integer.class, id)).isEqualTo(1);
+    }
+
     private Long criarCliente(Long org, String sufixo) {
         Cliente cliente = new Cliente();
         cliente.setOrganizacaoId(org);

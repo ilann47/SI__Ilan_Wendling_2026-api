@@ -20,12 +20,13 @@ class BuscaGlobalControllerTest {
     @Autowired TenantTestSupport tenant;
     TenantFixture tenantA;
     TenantFixture tenantB;
+    Long clienteId;
 
     @BeforeEach
     void setup() throws Exception {
         tenantA = tenant.criarTenantAdmin();
         tenantB = tenant.criarTenantAdmin();
-        inserirCliente(tenantA.organizacaoId(), "Mariana Souza", "12345678909");
+        clienteId = inserirCliente(tenantA.organizacaoId(), "Mariana Souza", "12345678909");
         inserirCliente(tenantB.organizacaoId(), "Mariana de outro tenant", "98765432100");
     }
 
@@ -37,7 +38,7 @@ class BuscaGlobalControllerTest {
                 .andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.grupos[0].grupo").value("Clientes"))
                 .andExpect(jsonPath("$.grupos[0].resultados[0].titulo").value("Mariana Souza"))
-                .andExpect(jsonPath("$.grupos[0].resultados[0].caminho").value("/app/clientes"));
+                .andExpect(jsonPath("$.grupos[0].resultados[0].caminho").value("/app/clientes?detail=" + clienteId));
     }
 
     @Test
@@ -49,10 +50,11 @@ class BuscaGlobalControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    private void inserirCliente(Long organizacaoId, String nome, String documento) {
-        jdbc.update("""
+    private Long inserirCliente(Long organizacaoId, String nome, String documento) {
+        return jdbc.queryForObject("""
                 INSERT INTO cliente (organizacao_id,nome,tipo,documento,limite_credito,ativo,created_at,updated_at)
                 VALUES (?,?,'FISICA',?,0,true,now(),now())
-                """, organizacaoId, nome, documento);
+                RETURNING id
+                """, Long.class, organizacaoId, nome, documento);
     }
 }

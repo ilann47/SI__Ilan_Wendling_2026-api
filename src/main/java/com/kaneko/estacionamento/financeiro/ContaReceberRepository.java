@@ -14,6 +14,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface ContaReceberRepository extends JpaRepository<ContaReceber, Long> {
 
+    @org.springframework.data.jpa.repository.Query("select c.id from ContaReceber c where c.notaServico.id = :notaId "
+            + "and ((:org is null and c.organizacaoId is null) or c.organizacaoId = :org) order by c.id")
+    List<Long> findIdsByNotaServicoIdAndOrganizacaoId(
+            @org.springframework.data.repository.query.Param("notaId") Long notaId,
+            @org.springframework.data.repository.query.Param("org") Long org);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select c from ContaReceber c where c.id = :id and "
+            + "((:org is null and c.organizacaoId is null) or c.organizacaoId = :org)")
+    Optional<ContaReceber> buscarParaBaixa(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("org") Long org);
+
+    @EntityGraph(attributePaths = {"cliente", "notaSaida", "notaServico", "formaPagamento", "vendaAdministrativa"})
+    List<ContaReceber> findByVendaAdministrativaIdAndOrganizacaoIdOrderByNumeroParcelaAsc(
+            Long vendaAdministrativaId, Long organizacaoId);
+
     @EntityGraph(attributePaths = {"cliente", "notaSaida", "notaServico", "formaPagamento"})
     List<ContaReceber> findByNotaSaidaIdAndOrganizacaoId(Long notaSaidaId, Long organizacaoId);
     @EntityGraph(attributePaths = {"cliente", "notaServico", "formaPagamento"})

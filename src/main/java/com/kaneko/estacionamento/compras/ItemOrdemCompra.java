@@ -42,11 +42,29 @@ public class ItemOrdemCompra extends AuditableEntity {
     @Column(name = "valor_unitario", nullable = false, precision = 15, scale = 2)
     private BigDecimal valorUnitario;
 
+    @Column(name = "codigo_produto_fornecedor", length = 50)
+    private String codigoProdutoFornecedor;
+
     @Column(name = "valor_desconto", nullable = false, precision = 15, scale = 2)
     private BigDecimal valorDesconto = BigDecimal.ZERO;
 
     @Column(name = "valor_total", nullable = false, precision = 15, scale = 2)
     private BigDecimal valorTotal;
+
+    @Column(name = "rateio_frete", nullable = false, precision = 15, scale = 2)
+    private BigDecimal rateioFrete = BigDecimal.ZERO;
+
+    @Column(name = "rateio_seguro", nullable = false, precision = 15, scale = 2)
+    private BigDecimal rateioSeguro = BigDecimal.ZERO;
+
+    @Column(name = "rateio_outras_despesas", nullable = false, precision = 15, scale = 2)
+    private BigDecimal rateioOutrasDespesas = BigDecimal.ZERO;
+
+    @Column(name = "custo_total", nullable = false, precision = 15, scale = 2)
+    private BigDecimal custoTotal = BigDecimal.ZERO;
+
+    @Column(name = "custo_unitario_final", nullable = false, precision = 15, scale = 2)
+    private BigDecimal custoUnitarioFinal = BigDecimal.ZERO;
 
     public void receber(BigDecimal quantidade) {
         BigDecimal posterior = quantidadeRecebida.add(quantidade);

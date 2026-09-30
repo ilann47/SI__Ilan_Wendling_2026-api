@@ -33,23 +33,44 @@ public class ContaPagarService {
     private final CondicaoPagamentoRepository condicaoPagamentoRepository;
     private final FormaPagamentoRepository formaPagamentoRepository;
     private final AuditoriaService auditoria;
+    private final FinanceiroConsultaService consultas;
+    private final BaixaFinanceiraService baixas;
 
     public ContaPagarService(ContaPagarRepository repository,
                              FornecedorRepository fornecedorRepository,
                              CondicaoPagamentoRepository condicaoPagamentoRepository,
                              FormaPagamentoRepository formaPagamentoRepository,
-                             AuditoriaService auditoria) {
+                             AuditoriaService auditoria, FinanceiroConsultaService consultas,
+                             BaixaFinanceiraService baixas) {
         this.repository = repository;
         this.fornecedorRepository = fornecedorRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
         this.formaPagamentoRepository = formaPagamentoRepository;
         this.auditoria = auditoria;
+        this.consultas = consultas;
+        this.baixas = baixas;
     }
 
     @Transactional(readOnly = true)
     public Page<ContaPagar> listar(Long organizacaoId, Pageable pageable) {
-        return organizacaoId == null ? repository.findAllByOrganizacaoIdIsNull(pageable)
-                : repository.findAllByOrganizacaoId(organizacaoId, pageable);
+        return listar(organizacaoId, com.kaneko.estacionamento.financeiro.dto.FinanceiroFiltro.vazio(), pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ContaPagar> listar(Long org, com.kaneko.estacionamento.financeiro.dto.FinanceiroFiltro filtro, Pageable page) {
+        return consultas.listar(ContaPagar.class, org, filtro, page);
+    }
+
+    @Transactional(readOnly = true)
+    public com.kaneko.estacionamento.financeiro.dto.FinanceiroResumoResponse resumo(
+            Long org, com.kaneko.estacionamento.financeiro.dto.FinanceiroFiltro filtro) {
+        return consultas.resumo(ContaPagar.class, org, filtro);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<com.kaneko.estacionamento.financeiro.dto.BaixaFinanceiraResponse> historico(Long org, Long id) {
+        buscar(org, id);
+        return baixas.historico(true, id);
     }
 
     @Transactional(readOnly = true)
@@ -87,9 +108,7 @@ public class ContaPagarService {
         conta.setValorDesconto(desconto);
         conta.setValorJuros(juros);
         conta.setValorMulta(multa);
-        conta.setValorTotal(req.valorTotal() != null
-                ? req.valorTotal()
-                : original.subtract(desconto).add(juros).add(multa));
+        conta.setValorTotal(FinanceiroRegras.total(original, desconto, juros, multa, req.valorTotal()));
         conta.setValorPago(BigDecimal.ZERO);
         LocalDate emissao = req.dataEmissao() != null ? req.dataEmissao() : LocalDate.now();
         conta.setDataEmissao(emissao);
@@ -107,7 +126,15 @@ public class ContaPagarService {
     /** Registra um pagamento (baixa). Acumula o valor pago e atualiza a situacao. */
     @Transactional
     public ContaPagar baixar(Long organizacaoId, Long id, BaixaRequest req) {
-        ContaPagar conta = buscar(organizacaoId, id);
+        return baixar(organizacaoId, id, req, null);
+    }
+
+    @Transactional
+    public ContaPagar baixar(Long organizacaoId, Long id, BaixaRequest req, String chave) {
+        FinanceiroRegras.validarBaixa(req.valor());
+        ContaPagar conta = repository.buscarParaBaixa(id, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("ContaPagar", id));
+        if (baixas.repetida(true, id, chave, req)) return conta;
         if (conta.getSituacao() == SituacaoContaPagar.PAGA
                 || conta.getSituacao() == SituacaoContaPagar.CANCELADA) {
             throw new ConflitoException("Este título não pode receber baixa (já está pago ou cancelado).");
@@ -126,15 +153,18 @@ public class ContaPagarService {
         }
         conta = repository.saveAndFlush(conta);
         auditar(conta, "CONTA_PAGAR_BAIXADA", anterior, snapshot(conta));
+        baixas.registrar(true, organizacaoId, id, chave, req);
         return conta;
     }
 
     @Transactional
     public ContaPagar cancelar(Long organizacaoId, Long id) {
-        ContaPagar conta = buscar(organizacaoId, id);
-        if (conta.getSituacao() == SituacaoContaPagar.PAGA) {
-            throw new ConflitoException("Um título pago não pode ser cancelado.");
+        ContaPagar conta = repository.buscarParaBaixa(id, organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("ContaPagar", id));
+        if (conta.getValorPago().signum() > 0) {
+            throw new ConflitoException("Um título com baixa não pode ser cancelado; os lançamentos devem ser preservados.");
         }
+        if (conta.getSituacao() == SituacaoContaPagar.CANCELADA) return conta;
         Map<String, Object> anterior = snapshot(conta);
         conta.setSituacao(SituacaoContaPagar.CANCELADA);
         conta = repository.saveAndFlush(conta);

@@ -13,12 +13,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface NotaServicoRepository extends JpaRepository<NotaServico, Long> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select n from NotaServico n where n.id=:id and "
+            + "((:org is null and n.organizacaoId is null) or n.organizacaoId=:org)")
+    Optional<NotaServico> findParaAtualizar(Long id, Long org);
+
+    @EntityGraph(attributePaths = {"cliente", "servico", "formaPagamento", "ordemServico"})
+    Optional<NotaServico> findByOrganizacaoIdAndOrdemServicoId(Long organizacaoId, Long ordemServicoId);
+
     boolean existsByOrganizacaoIdAndNumeroAndSerie(Long organizacaoId, String numero, String serie);
     boolean existsByOrganizacaoIdIsNullAndNumeroAndSerie(String numero, String serie);
     boolean existsByOrdemServicoId(Long ordemServicoId);
 
     /** Notas de servico numa situacao, emitidas no intervalo — base do faturamento (4.27). */
-    List<NotaServico> findBySituacaoAndDataEmissaoBetween(
+    List<NotaServico> findByOrganizacaoIdIsNullAndSituacaoAndDataEmissaoBetween(
             SituacaoNotaServico situacao, LocalDate inicio, LocalDate fim);
     List<NotaServico> findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
             Long organizacaoId, SituacaoNotaServico situacao, LocalDate inicio, LocalDate fim);

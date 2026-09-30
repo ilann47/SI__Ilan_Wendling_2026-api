@@ -22,6 +22,7 @@ public record MovimentoEstoqueResponse(
         String origemChave,
         Long compensadoId,
         Long atorId,
+        String atorNome,
         String motivo,
         OffsetDateTime ocorridoEm,
         OffsetDateTime createdAt
@@ -34,7 +35,7 @@ public record MovimentoEstoqueResponse(
                 movimento.getSaldoAnterior(), movimento.getSaldoPosterior(),
                 movimento.getCustoUnitario(), movimento.getOrigemTipo(),
                 movimento.getOrigemChave(), movimento.getCompensadoId(),
-                movimento.getAtorId(), movimento.getMotivo(),
+                movimento.getAtorId(), movimento.getAtorNome(), movimento.getMotivo(),
                 movimento.getOcorridoEm().atOffset(ZoneOffset.UTC),
                 movimento.getCreatedAt().atOffset(ZoneOffset.UTC));
     }

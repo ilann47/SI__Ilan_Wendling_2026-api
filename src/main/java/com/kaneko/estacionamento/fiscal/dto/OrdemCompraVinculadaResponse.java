@@ -12,6 +12,6 @@ public record OrdemCompraVinculadaResponse(
 
     public static OrdemCompraVinculadaResponse from(OrdemCompra ordem) {
         return new OrdemCompraVinculadaResponse(
-                ordem.getId(), ordem.getNumero(), ordem.getStatus());
+                ordem.getId(), ordem.getNumeroNota(), ordem.getStatus());
     }
 }

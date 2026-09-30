@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,8 +77,18 @@ public class NotaSaidaService {
 
     @Transactional(readOnly = true)
     public Page<NotaSaida> listar(Long organizacaoId, Pageable pageable) {
-        return organizacaoId == null ? repository.findAllByOrganizacaoIdIsNull(pageable)
-                : repository.findAllByOrganizacaoId(organizacaoId, pageable);
+        Page<Long> ids = organizacaoId == null
+                ? repository.findIdsByOrganizacaoIdIsNull(pageable)
+                : repository.findIdsByOrganizacaoId(organizacaoId, pageable);
+        if (ids.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, ids.getTotalElements());
+        }
+        Map<Long, NotaSaida> notasPorId = repository.findAllByIdIn(ids.getContent())
+                .stream().collect(java.util.stream.Collectors.toMap(NotaSaida::getId, nota -> nota));
+        List<NotaSaida> notasOrdenadas = ids.getContent().stream()
+                .map(notasPorId::get)
+                .toList();
+        return new PageImpl<>(notasOrdenadas, pageable, ids.getTotalElements());
     }
 
     @Transactional(readOnly = true)
@@ -122,7 +133,7 @@ public class NotaSaidaService {
                         "Venda administrativa exige contexto de organizacao.");
             }
             VendaAdministrativa venda = vendaAdministrativaRepository
-                    .findByIdAndOrganizacaoId(req.vendaAdministrativaId(), organizacaoId)
+                    .findParaAtualizar(req.vendaAdministrativaId(), organizacaoId)
                     .orElseThrow(() -> new RecursoNaoEncontradoException(
                             "VendaAdministrativa", req.vendaAdministrativaId()));
             if (venda.getStatus() != StatusVendaAdministrativa.CONFIRMADA) {
