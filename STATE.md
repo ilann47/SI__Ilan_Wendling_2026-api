@@ -2,8 +2,39 @@
 
 # Estado do Projeto
 
-**Última atualização:** 2026-09-29
-**Fase atual:** Refinamento da Ordem de Compra implementado e validado.
+**Última atualização:** 2026-09-30
+**Fase atual:** Revisão transversal do ERP concluída, versionada e validada.
+
+## Fechamento da revisão transversal — 2026-09-30
+
+- A revisão ponta a ponta foi concluída nos módulos compartilhados, compras,
+  fiscal, financeiro, estoque, vendas, serviços, eventos, acesso e
+  administração. A Ordem de Compra permaneceu congelada após sua validação de
+  regressão, conforme o escopo definido para esta etapa.
+- Modais e filtros reutilizam o padrão responsivo comum; formulários confirmam
+  descarte de alterações e campos numéricos impedem valores negativos ou
+  formatos monetários inconsistentes antes do envio.
+- Eventos, administração, estoque e listagens críticas foram conferidos em
+  desktop e mobile. A navegação não apresentou rolagem horizontal no documento,
+  e o detalhe de compra preservou o andamento baseado em dados reais.
+- A linguagem do bloqueio de credencial de evento passou a ser operacional:
+  não expõe `ETag`, payload, status HTTP ou outro jargão técnico ao usuário.
+- A paginação fiscal no backend deixou de combinar paginação SQL com coleção
+  carregada por `join fetch`, eliminando resultados instáveis sem alterar o
+  contrato HTTP.
+- Backend: `mvnw.cmd test` aprovou **887 testes em 05:59**, com zero falhas,
+  erros ou skips e `BUILD SUCCESS`; Flyway validou o schema público em V77.
+- Frontend: Vitest aprovou **373 testes em 70 arquivos**. Os três testes que
+  excederam o timeout durante uma execução simultânea com o backend passaram
+  isolados (**22/22**) e na repetição integral serial. Typecheck, lint e build
+  de produção também passaram.
+- Os commits `097eb6f` (backend) e `a348504`, `e7f72be`, `28f4190`, `8606ce1`,
+  `8911b07` e `699574e` (frontend) foram enviados à branch
+  `feat/patio-colaborador` nos respectivos repositórios.
+- Permanece bloqueada somente a homologação fiscal externa, que depende de
+  provedor, certificado e configuração fiscal. O usuário demo não possui a
+  permissão de bloqueio de credenciais; o RBAC foi respeitado e o formulário
+  autorizado permanece coberto por teste automatizado.
 
 ## Ordem dos custos e totais da compra — 2026-09-29
 
@@ -213,16 +244,24 @@
 ## Decisões
 
 - Preservar branch feat/patio-colaborador e contratos administrativos existentes.
-- Não commitar/push nesta execução sem autorização nova; Nio2 e logs preexistentes intocados.
+- Os commits autorizados desta revisão foram publicados; Nio2 e logs locais
+  preexistentes continuaram intocados.
 - Venda mantém sua origem comercial/física/financeira; vínculo fiscal não relança efeitos.
 - Frontend e backend são repositórios distintos; mudanças integradas revisadas separadamente.
 - O recorte financeiro está isolado nos seus componentes; testes PostgreSQL serão serializados.
+- Preservar o contrato paginado atual até uma migração coordenada: o aviso de
+  serialização de `PageImpl` é dívida conhecida, não motivo para quebrar os
+  consumidores existentes durante esta revisão.
 
 ## Próximos passos
 
-1. Conferir as telas locais de pedidos de venda, compras/recebimentos, OS, contas e XML conforme roteiro abaixo. Não há etapa independente de implementação restante neste recorte.
-2. Definir provedor, contrato/cobertura e acesso de homologação para NF-e e NFS-e, incluindo certificado e parâmetros fiscais quando exigidos. Só então integrar emissão externa real.
-3. Commit/push permanecem pendentes de autorização; alterações estão nos dois worktrees em `feat/patio-colaborador`.
+1. Definir provedor, contrato/cobertura e acesso de homologação para NF-e e
+   NFS-e, incluindo certificado e parâmetros fiscais quando exigidos. Só então
+   integrar emissão externa real.
+2. Planejar uma versão de contrato estável para respostas paginadas antes de
+   substituir a serialização atual de `PageImpl`.
+3. Validar o bloqueio de credenciais com um usuário de homologação que possua a
+   permissão correspondente, sem elevar artificialmente o perfil demo.
 
 ## Validação final — 2026-09-12
 
