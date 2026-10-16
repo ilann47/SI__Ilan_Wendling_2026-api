@@ -2,9 +2,16 @@
 
 # 1. Introdução
 
+> **Classificação histórica:** este documento descreve a v1 acadêmica original.
+> Frontend, autenticação, multiempresa e o schema atual são descritos pelos
+> documentos 11 a 22 e pelas migrations Flyway; afirmações abaixo sobre ausência
+> dessas capacidades não representam o AS-IS executável atual.
+
 Este documento integra a especificação de requisitos do Sistema de Controle do **Estacionamento Kaneko**, elaborado segundo o modelo de prática profissional de Sistemas de Informação. Esta seção apresenta a finalidade do documento, delimita o escopo do produto de software — explicitando o que está dentro e fora do alcance da versão 1 (v1) — e descreve a empresa para a qual o sistema é proposto. As seções seguintes da especificação tratam da análise do negócio, dos requisitos funcionais e não funcionais, dos casos de uso, do modelo de dados (Diagrama Entidade-Relacionamento e dicionário de dados) e dos demais artefatos técnicos.
 
-A delimitação de escopo aqui apresentada está fundamentada diretamente no modelo físico de dados do sistema, materializado no arquivo `database/schema.sql` (PostgreSQL 17, banco `estacionamento_kaneko`), que reúne 34 tabelas distribuídas pelos domínios de geografia, pessoas, condições e formas de pagamento, recursos humanos, pátio (mensalista e avulso), conveniência com controle de estoque, documentos fiscais, financeiro a pagar e a receber e logística (transportadora e frota).
+A delimitação de escopo original está fundamentada em `database/schema.sql`. O
+arquivo permanece como baseline histórica; o modelo físico executável atual é a
+sequência de migrations Flyway.
 
 ---
 
@@ -25,7 +32,10 @@ O público-alvo deste documento compreende: o analista de sistemas e a equipe de
 
 ## 1.2 Escopo
 
-O produto de software é uma aplicação de gestão para um estacionamento com loja de conveniência. O sistema é disponibilizado como uma **API REST** documentada via **Swagger/OpenAPI**, sem interface gráfica própria nesta versão — o consumo ocorre por clientes HTTP (Swagger UI, ferramentas de teste de API ou um front-end a ser desenvolvido em fase posterior). O backend é construído sobre Spring Boot (Java) com persistência em PostgreSQL, e o esquema de banco descrito em `schema.sql` constitui a fonte de verdade do domínio.
+O produto de software é uma aplicação de gestão para estacionamento e
+conveniência. A baseline original foi especificada como **API REST** sem interface
+própria. O AS-IS evoluído possui frontend React, autenticação JWT, contexto
+organizacional e migrations Flyway; os documentos 11 a 22 governam essa evolução.
 
 O sistema cobre o ciclo operacional completo do estabelecimento: o cadastro das entidades de apoio (geografia, pessoas, pagamento e produtos), o controle do pátio nas modalidades avulsa e mensalista, a operação da conveniência com movimentação de estoque, a escrituração dos documentos fiscais correspondentes e a apuração financeira de contas a pagar e a receber.
 

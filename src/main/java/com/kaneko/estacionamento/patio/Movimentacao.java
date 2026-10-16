@@ -9,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import lombok.Getter;
@@ -29,6 +30,13 @@ import lombok.Setter;
 @Setter
 public class Movimentacao extends AuditableEntity {
 
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "veiculo_id", nullable = false)
     private Veiculo veiculo;
@@ -40,6 +48,11 @@ public class Movimentacao extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tarifa_id")
     private Tarifa tarifa;
+
+    /** Patio onde a movimentacao ocorre (base da ocupacao por patio). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patio_id")
+    private Patio patio;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false, length = 20)

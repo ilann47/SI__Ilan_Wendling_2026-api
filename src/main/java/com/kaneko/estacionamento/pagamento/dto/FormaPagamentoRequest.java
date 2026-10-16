@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.pagamento.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -22,4 +23,9 @@ public record FormaPagamentoRequest(
 
         Boolean ativo
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

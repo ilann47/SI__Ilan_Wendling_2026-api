@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.pessoas.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.kaneko.estacionamento.pessoas.EstadoCivil;
 import com.kaneko.estacionamento.pessoas.Sexo;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
@@ -51,4 +52,9 @@ public record ClienteRequest(
 
         Boolean ativo
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

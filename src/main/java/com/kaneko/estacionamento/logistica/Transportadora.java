@@ -19,15 +19,19 @@ import lombok.Setter;
  * Transportadora que realiza o frete das compras (abastecimento da
  * conveniencia). Mapeia {@code transportadora}.
  *
- * <p>Documento unico ({@code uq_transportadora_documento}); cidade e condicao
- * de pagamento opcionais. Sua frota de veiculos e mantida pelo vinculo N:N
- * {@link TransportadoraVeiculoFrota}.
+ * <p>Documento normalizado e unico por organizacao
+ * ({@code uq_transportadora_organizacao_documento}); cidade e condicao de
+ * pagamento opcionais. O owner e imutavel
+ * ({@code ck_transportadora_owner_imutavel}).
  */
 @Entity
 @Table(name = "transportadora")
 @Getter
 @Setter
 public class Transportadora extends BaseEntity {
+
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
 
     @Column(name = "nome", nullable = false, length = 150)
     private String nome;

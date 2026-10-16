@@ -8,12 +8,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
+import com.kaneko.estacionamento.support.tenant.TenantFixture;
+import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -21,17 +26,30 @@ import org.springframework.transaction.annotation.Transactional;
  * buscar (existente e inexistente), atualizar (existente e inexistente),
  * excluir e os erros de validacao e de unicidade.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
+@TenantApiIntegrationTest
 @Transactional
 class ServicoControllerTest {
 
     @Autowired
     private MockMvc mvc;
 
+    @Autowired
+    private TenantTestSupport tenant;
+
+    private TenantFixture fixture;
+
+    @BeforeEach
+    void setup() throws Exception {
+        fixture = tenant.criarTenantAdmin();
+    }
+
+    private ResultActions perform(MockHttpServletRequestBuilder request) throws Exception {
+        return mvc.perform(request.header(HttpHeaders.AUTHORIZATION, fixture.tokenContextual()));
+    }
+
     private Number criar(String nome) throws Exception {
         String json = "{ \"nome\": \"" + nome + "\" }";
-        String body = mvc.perform(post("/api/servicos")
+        String body = perform(post("/api/servicos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -43,7 +61,7 @@ class ServicoControllerTest {
         String json = """
                 { "nome": "Lavagem Simples", "descricao": "Lavagem externa", "valorPadrao": 25.00 }
                 """;
-        String body = mvc.perform(post("/api/servicos")
+        String body = perform(post("/api/servicos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -52,7 +70,7 @@ class ServicoControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Number id = JsonPath.read(body, "$.id");
-        mvc.perform(get("/api/servicos/" + id))
+        perform(get("/api/servicos/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Lavagem Simples"))
                 .andExpect(jsonPath("$.descricao").value("Lavagem externa"));
@@ -62,7 +80,7 @@ class ServicoControllerTest {
     void listaServicos() throws Exception {
         criar("Lavagem");
         criar("Calibragem");
-        mvc.perform(get("/api/servicos"))
+        perform(get("/api/servicos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.totalElements").value(2));
@@ -73,7 +91,7 @@ class ServicoControllerTest {
         criar("Lavagem");
         criar("Calibragem");
 
-        mvc.perform(get("/api/servicos").param("nome", "lavag"))
+        perform(get("/api/servicos").param("nome", "lavag"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].nome").value("Lavagem"));
@@ -85,7 +103,7 @@ class ServicoControllerTest {
         String json = """
                 { "nome": "Lavagem", "descricao": "Lavagem completa" }
                 """;
-        mvc.perform(put("/api/servicos/" + id)
+        perform(put("/api/servicos/" + id).header(HttpHeaders.IF_MATCH, "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Lavagem"))
@@ -94,7 +112,7 @@ class ServicoControllerTest {
 
     @Test
     void atualizaServicoInexistenteRetorna404() throws Exception {
-        mvc.perform(put("/api/servicos/999999")
+        perform(put("/api/servicos/999999").header(HttpHeaders.IF_MATCH, "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"X\" }"))
                 .andExpect(status().isNotFound());
     }
@@ -102,9 +120,9 @@ class ServicoControllerTest {
     @Test
     void excluiServicoEdepoisRetorna404() throws Exception {
         Number id = criar("Temporario");
-        mvc.perform(delete("/api/servicos/" + id))
+        perform(delete("/api/servicos/" + id).header(HttpHeaders.IF_MATCH, "\"0\""))
                 .andExpect(status().isNoContent());
-        mvc.perform(get("/api/servicos/" + id))
+        perform(get("/api/servicos/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
     }
@@ -112,27 +130,27 @@ class ServicoControllerTest {
     @Test
     void rejeitaNomeDuplicadoCom409() throws Exception {
         criar("Polimento");
-        mvc.perform(post("/api/servicos")
+        perform(post("/api/servicos")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"Polimento\" }"))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
-        mvc.perform(get("/api/servicos/999999"))
+        perform(get("/api/servicos/999999"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna400QuandoNomeVazio() throws Exception {
-        mvc.perform(post("/api/servicos")
+        perform(post("/api/servicos")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"\" }"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void retorna400QuandoValorNegativo() throws Exception {
-        mvc.perform(post("/api/servicos")
+        perform(post("/api/servicos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"nome\": \"Cera\", \"valorPadrao\": -5.00 }"))
                 .andExpect(status().isBadRequest());

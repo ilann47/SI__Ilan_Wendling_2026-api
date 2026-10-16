@@ -11,10 +11,14 @@ import java.time.OffsetDateTime;
  */
 public record ContaReceberResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         Long clienteId,
         String clienteNome,
         Long notaSaidaId,
         String notaSaidaNumero,
+        Long notaServicoId,
+        String notaServicoNumero,
         Long mensalistaId,
         Long condicaoPagamentoId,
         Long formaPagamentoId,
@@ -33,16 +37,23 @@ public record ContaReceberResponse(
         SituacaoContaReceber situacao,
         String observacao,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        BigDecimal saldo,
+        OrigemFinanceiraResponse origem,
+        Long vendaAdministrativaId
 ) {
 
     public static ContaReceberResponse from(ContaReceber c) {
         return new ContaReceberResponse(
                 c.getId(),
+                c.getOrganizacaoId(),
+                c.getVersion(),
                 c.getCliente().getId(),
                 c.getCliente().getNome(),
                 c.getNotaSaida() != null ? c.getNotaSaida().getId() : null,
                 c.getNotaSaida() != null ? c.getNotaSaida().getNumero() : null,
+                c.getNotaServico() != null ? c.getNotaServico().getId() : null,
+                c.getNotaServico() != null ? c.getNotaServico().getNumero() : null,
                 c.getMensalista() != null ? c.getMensalista().getId() : null,
                 c.getCondicaoPagamento() != null ? c.getCondicaoPagamento().getId() : null,
                 c.getFormaPagamento() != null ? c.getFormaPagamento().getId() : null,
@@ -61,6 +72,10 @@ public record ContaReceberResponse(
                 c.getSituacao(),
                 c.getObservacao(),
                 c.getCreatedAt(),
-                c.getUpdatedAt());
+                c.getUpdatedAt(),
+                c.getSituacao() == SituacaoContaReceber.CANCELADA ? BigDecimal.ZERO
+                        : c.getValorTotal().subtract(c.getValorRecebido()),
+                OrigemFinanceiraResponse.from(c),
+                c.getVendaAdministrativa() == null ? null : c.getVendaAdministrativa().getId());
     }
 }

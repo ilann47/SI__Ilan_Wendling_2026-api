@@ -48,12 +48,21 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:kaneko-troque-esta-chave-secreta-em-producao-32+bytes}
     expiration-minutes: ${APP_JWT_EXP_MIN:480}
+    issuer: ${APP_JWT_ISSUER:estacionamento-kaneko}
+    audience: ${APP_JWT_AUDIENCE:estacionamento-kaneko-api}
   bootstrap-admin:
     # Cria um administrador inicial quando nao ha nenhum usuario, viabilizando o
     # primeiro login. TROQUE a senha apos o primeiro acesso.
     enabled: ${APP_BOOTSTRAP_ADMIN:true}
     login: ${APP_ADMIN_LOGIN:admin}
     senha: ${APP_ADMIN_SENHA:admin123}
+  demo-data:
+    # Cenario local de eventos, explicitamente opt-in e idempotente por CNPJ.
+    enabled: ${APP_DEMO_DATA_ENABLED:false}
+  inventory:
+    hold-duration-minutes: ${APP_INVENTORY_HOLD_MINUTES:15}
+    expiration-enabled: ${APP_INVENTORY_EXPIRATION_ENABLED:true}
+    expiration-sweep-ms: ${APP_INVENTORY_EXPIRATION_SWEEP_MS:30000}
 
 logging:
   pattern:

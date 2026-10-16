@@ -20,7 +20,7 @@ import lombok.Setter;
  * Cliente do estacionamento (pessoa fisica ou juridica). Mapeia a tabela
  * {@code cliente}.
  *
- * <p>O documento (CPF/CNPJ) e unico no sistema ({@code uq_cliente_documento}).
+ * <p>O documento (CPF/CNPJ) e unico dentro da organizacao proprietaria.
  * As referencias a cidade, nacionalidade (pais) e condicao de pagamento sao
  * opcionais.
  */
@@ -29,6 +29,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Cliente extends BaseEntity {
+
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
 
     @Column(name = "nome", nullable = false, length = 120)
     private String nome;

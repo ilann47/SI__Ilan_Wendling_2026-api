@@ -1,5 +1,8 @@
 package com.kaneko.estacionamento.pagamento;
 
+import com.kaneko.estacionamento.auditoria.AuditoriaService;
+import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
+import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.web.FiltroSpecs;
@@ -7,7 +10,9 @@ import com.kaneko.estacionamento.pagamento.dto.CondicaoPagamentoRequest;
 import com.kaneko.estacionamento.pagamento.dto.CondicaoPagamentoResponse;
 import com.kaneko.estacionamento.pagamento.dto.ParcelaRequest;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,56 +35,72 @@ public class CondicaoPagamentoService {
 
     private final CondicaoPagamentoRepository repository;
     private final FormaPagamentoRepository formaPagamentoRepository;
+    private final AuditoriaService auditoria;
 
     public CondicaoPagamentoService(CondicaoPagamentoRepository repository,
-                                    FormaPagamentoRepository formaPagamentoRepository) {
+                                    FormaPagamentoRepository formaPagamentoRepository,
+                                    AuditoriaService auditoria) {
         this.repository = repository;
         this.formaPagamentoRepository = formaPagamentoRepository;
+        this.auditoria = auditoria;
     }
 
     @Transactional(readOnly = true)
-    public Page<CondicaoPagamentoResponse> listar(String nome, Boolean ativo, Pageable pageable) {
+    public Page<CondicaoPagamentoResponse> listar(
+            Long organizacaoId, String nome, Boolean ativo, Pageable pageable) {
         Specification<CondicaoPagamento> filtro = FiltroSpecs.todos(
+                FiltroSpecs.igual("organizacaoId", organizacaoId),
                 FiltroSpecs.contemIgnoreCase("nome", nome),
                 FiltroSpecs.igual("ativo", ativo));
         return repository.findAll(filtro, pageable).map(CondicaoPagamentoResponse::from);
     }
 
     @Transactional(readOnly = true)
-    public CondicaoPagamento buscar(Long id) {
-        return repository.findById(id)
+    public CondicaoPagamento buscar(Long organizacaoId, Long id) {
+        return repository.findByIdAndOrganizacaoId(id, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", id));
     }
 
     @Transactional
-    public CondicaoPagamento criar(CondicaoPagamentoRequest req) {
+    public CondicaoPagamento criar(Long organizacaoId, CondicaoPagamentoRequest req) {
         String nome = req.nome().trim();
-        if (repository.existsByNome(nome)) {
+        if (repository.existeNomeNormalizado(organizacaoId, nome, null)) {
             throw new ConflitoException("Ja existe uma condicao de pagamento com este nome.");
         }
         validarParcelas(req);
         CondicaoPagamento condicao = new CondicaoPagamento();
+        condicao.setOrganizacaoId(organizacaoId);
         aplicar(condicao, req, nome);
-        sincronizarParcelas(condicao, req.parcelas());
-        return repository.save(condicao);
+        sincronizarParcelas(organizacaoId, condicao, req.parcelas());
+        condicao = repository.saveAndFlush(condicao);
+        registrar(condicao, "CONDICAO_PAGAMENTO_CRIADA", null, snapshot(condicao));
+        return condicao;
     }
 
     @Transactional
-    public CondicaoPagamento atualizar(Long id, CondicaoPagamentoRequest req) {
-        CondicaoPagamento condicao = buscar(id);
+    public CondicaoPagamento atualizar(
+            Long organizacaoId, Long id, CondicaoPagamentoRequest req) {
+        CondicaoPagamento condicao = buscar(organizacaoId, id);
         String nome = req.nome().trim();
-        if (repository.existsByNomeAndIdNot(nome, id)) {
+        if (repository.existeNomeNormalizado(organizacaoId, nome, id)) {
             throw new ConflitoException("Ja existe uma condicao de pagamento com este nome.");
         }
+        Map<String, Object> anterior = snapshot(condicao);
         validarParcelas(req);
         aplicar(condicao, req, nome);
-        sincronizarParcelas(condicao, req.parcelas());
-        return repository.save(condicao);
+        sincronizarParcelas(organizacaoId, condicao, req.parcelas());
+        condicao = repository.saveAndFlush(condicao);
+        registrar(condicao, "CONDICAO_PAGAMENTO_ATUALIZADA", anterior, snapshot(condicao));
+        return condicao;
     }
 
     @Transactional
-    public void excluir(Long id) {
-        buscar(id).setAtivo(false);
+    public void excluir(Long organizacaoId, Long id) {
+        CondicaoPagamento condicao = buscar(organizacaoId, id);
+        Map<String, Object> anterior = snapshot(condicao);
+        condicao.setAtivo(false);
+        repository.flush();
+        registrar(condicao, "CONDICAO_PAGAMENTO_DESATIVADA", anterior, snapshot(condicao));
     }
 
     private void aplicar(CondicaoPagamento condicao, CondicaoPagamentoRequest req, String nome) {
@@ -111,24 +132,64 @@ public class CondicaoPagamentoService {
     }
 
     /** Recria as parcelas mutando a colecao do agregado (preserva orphanRemoval). */
-    private void sincronizarParcelas(CondicaoPagamento condicao, List<ParcelaRequest> parcelas) {
+    private void sincronizarParcelas(
+            Long organizacaoId,
+            CondicaoPagamento condicao,
+            List<ParcelaRequest> parcelas) {
         condicao.getParcelas().clear();
         if (parcelas == null) {
             return;
         }
         for (ParcelaRequest pr : parcelas) {
             ParcelaCondicaoPagamento parcela = new ParcelaCondicaoPagamento();
+            parcela.setOrganizacaoId(organizacaoId);
             parcela.setCondicaoPagamento(condicao);
             parcela.setNumero(pr.numero());
             parcela.setDias(pr.dias());
             parcela.setPercentual(pr.percentual());
-            parcela.setFormaPagamento(pr.formaPagamentoId() != null ? buscarForma(pr.formaPagamentoId()) : null);
+            parcela.setFormaPagamento(pr.formaPagamentoId() != null
+                    ? buscarForma(organizacaoId, pr.formaPagamentoId()) : null);
             condicao.getParcelas().add(parcela);
         }
     }
 
-    private FormaPagamento buscarForma(Long formaPagamentoId) {
-        return formaPagamentoRepository.findById(formaPagamentoId)
+    private FormaPagamento buscarForma(Long organizacaoId, Long formaPagamentoId) {
+        return formaPagamentoRepository.findByIdAndOrganizacaoId(formaPagamentoId, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("FormaPagamento", formaPagamentoId));
+    }
+
+    private void registrar(
+            CondicaoPagamento condicao,
+            String acao,
+            Map<String, Object> anterior,
+            Map<String, Object> posterior) {
+        auditoria.registrar(new RegistrarAuditoriaCommand(
+                condicao.getOrganizacaoId(), acao, "CONDICAO_PAGAMENTO", condicao.getId(),
+                null, null, null, anterior, posterior, null, null,
+                ClasseRetencaoAuditoria.CONFIGURACAO));
+    }
+
+    private static Map<String, Object> snapshot(CondicaoPagamento condicao) {
+        Map<String, Object> estado = new LinkedHashMap<>();
+        estado.put("nome", condicao.getNome());
+        estado.put("numeroParcelas", condicao.getNumeroParcelas());
+        estado.put("percentualJuros", condicao.getPercentualJuros());
+        estado.put("percentualMulta", condicao.getPercentualMulta());
+        estado.put("percentualDesconto", condicao.getPercentualDesconto());
+        estado.put("ativo", condicao.getAtivo());
+        estado.put("parcelas", condicao.getParcelas().stream()
+                .map(CondicaoPagamentoService::snapshotParcela)
+                .toList());
+        return estado;
+    }
+
+    private static Map<String, Object> snapshotParcela(ParcelaCondicaoPagamento parcela) {
+        Map<String, Object> estado = new LinkedHashMap<>();
+        estado.put("numero", parcela.getNumero());
+        estado.put("dias", parcela.getDias());
+        estado.put("percentual", parcela.getPercentual());
+        estado.put("formaPagamentoId", parcela.getFormaPagamento() == null
+                ? null : parcela.getFormaPagamento().getId());
+        return estado;
     }
 }

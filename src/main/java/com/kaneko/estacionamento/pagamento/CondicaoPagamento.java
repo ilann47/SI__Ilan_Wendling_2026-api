@@ -16,7 +16,8 @@ import lombok.Setter;
  * Condicao de pagamento (raiz do agregado) com suas {@link ParcelaCondicaoPagamento
  * parcelas}. Mapeia a tabela {@code condicao_pagamento}.
  *
- * <p>O nome e unico em todo o sistema (restricao {@code uq_condicao_pagamento_nome}).
+ * <p>O nome e unico dentro da organizacao proprietaria. Registros historicos
+ * podem permanecer sem owner durante a reconciliacao controlada.
  * As parcelas detalham o vencimento ({@code dias}) e o peso ({@code percentual}) de
  * cada cobranca; quando informadas, a soma dos percentuais deve fechar em 100.
  */
@@ -25,6 +26,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CondicaoPagamento extends BaseEntity {
+
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
 
     @Column(name = "nome", nullable = false, length = 100)
     private String nome;

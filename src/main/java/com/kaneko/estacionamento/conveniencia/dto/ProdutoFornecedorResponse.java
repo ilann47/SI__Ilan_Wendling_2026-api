@@ -16,6 +16,7 @@ public record ProdutoFornecedorResponse(
         String codigoProd,
         BigDecimal custo,
         Boolean ativo,
+        Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -30,6 +31,7 @@ public record ProdutoFornecedorResponse(
                 pf.getCodigoProd(),
                 pf.getCusto(),
                 pf.getAtivo(),
+                pf.getVersion(),
                 pf.getCreatedAt(),
                 pf.getUpdatedAt());
     }

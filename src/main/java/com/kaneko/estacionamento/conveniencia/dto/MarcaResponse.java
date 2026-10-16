@@ -10,6 +10,7 @@ public record MarcaResponse(
         Long id,
         String nome,
         Boolean ativo,
+        Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -20,6 +21,7 @@ public record MarcaResponse(
                 marca.getId(),
                 marca.getNome(),
                 marca.getAtivo(),
+                marca.getVersion(),
                 marca.getCreatedAt(),
                 marca.getUpdatedAt());
     }

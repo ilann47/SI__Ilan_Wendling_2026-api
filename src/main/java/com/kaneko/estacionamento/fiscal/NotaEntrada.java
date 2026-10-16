@@ -1,7 +1,9 @@
 package com.kaneko.estacionamento.fiscal;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
+import com.kaneko.estacionamento.compras.RecebimentoCompra;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
+import com.kaneko.estacionamento.estoque.LocalEstoque;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -13,6 +15,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -33,6 +36,13 @@ import lombok.Setter;
 @Setter
 public class NotaEntrada extends AuditableEntity {
 
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "numero", nullable = false, length = 20)
     private String numero;
 
@@ -49,6 +59,14 @@ public class NotaEntrada extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "condicao_pagamento_id")
     private CondicaoPagamento condicaoPagamento;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "local_estoque_id")
+    private LocalEstoque localEstoque;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recebimento_compra_id")
+    private RecebimentoCompra recebimentoCompra;
 
     @Column(name = "data_emissao", nullable = false)
     private LocalDate dataEmissao;

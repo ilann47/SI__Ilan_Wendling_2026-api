@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.conveniencia.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -26,4 +27,7 @@ public record ServicoRequest(
 
         Boolean ativo
 ) {
+    @JsonAnySetter public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException("O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

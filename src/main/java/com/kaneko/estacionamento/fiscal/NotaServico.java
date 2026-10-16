@@ -7,6 +7,7 @@ import com.kaneko.estacionamento.pagamento.FormaPagamento;
 import com.kaneko.estacionamento.patio.Mensalista;
 import com.kaneko.estacionamento.patio.Movimentacao;
 import com.kaneko.estacionamento.pessoas.Cliente;
+import com.kaneko.estacionamento.ordensservico.OrdemServico;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,6 +16,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.Getter;
@@ -33,6 +35,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class NotaServico extends AuditableEntity {
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Version @Column(name = "version", nullable = false)
+    private Long version;
 
     @Column(name = "numero", nullable = false, length = 20)
     private String numero;
@@ -58,6 +65,10 @@ public class NotaServico extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mensalista_id")
     private Mensalista mensalista;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ordem_servico_id")
+    private OrdemServico ordemServico;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "condicao_pagamento_id")

@@ -23,8 +23,9 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Estacionamento Kaneko API")
                         .version("v1")
-                        .description("API de gestao de estacionamento com loja de conveniencia: "
-                                + "patio (mensalista e avulso), cadastros, conveniencia, "
+                        .description("API de gestao de estacionamento: organizacoes, Membership, RBAC contextual e selecao "
+                                + "de contexto multiempresa em /api/v1, "
+                                + "e APIs legadas de patio (mensalista e avulso), cadastros, conveniencia, "
                                 + "notas fiscais e financeiro."))
                 .addSecurityItem(new SecurityRequirement().addList(ESQUEMA))
                 .components(new Components().addSecuritySchemes(ESQUEMA,

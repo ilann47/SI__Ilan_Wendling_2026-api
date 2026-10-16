@@ -26,6 +26,9 @@ import lombok.Setter;
 @Setter
 public class ParcelaCondicaoPagamento extends AuditableEntity {
 
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
     @Column(name = "numero", nullable = false)
     private Integer numero;
 

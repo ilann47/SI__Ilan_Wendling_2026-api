@@ -8,30 +8,39 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
+import com.kaneko.estacionamento.support.tenant.TenantFixture;
+import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
  * Teste de integracao do CRUD de Marca — cobre todos os fluxos: criar, listar,
  * buscar (existente e inexistente), atualizar (existente e inexistente),
  * excluir e os erros de validacao e de unicidade.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
+@TenantApiIntegrationTest
 class MarcaControllerTest {
 
     @Autowired
     private MockMvc mvc;
+    @Autowired
+    private TenantTestSupport tenant;
+    private TenantFixture tenantFixture;
+
+    @BeforeEach
+    void setupTenant() throws Exception {
+        tenantFixture = tenant.criarTenantAdmin();
+    }
 
     private Number criar(String nome) throws Exception {
         String json = "{ \"nome\": \"" + nome + "\" }";
-        String body = mvc.perform(post("/api/marcas")
+        String body = perform(post("/api/marcas")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -43,7 +52,7 @@ class MarcaControllerTest {
         String json = """
                 { "nome": "Coca-Cola" }
                 """;
-        String body = mvc.perform(post("/api/marcas")
+        String body = perform(post("/api/marcas")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -52,7 +61,7 @@ class MarcaControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Number id = JsonPath.read(body, "$.id");
-        mvc.perform(get("/api/marcas/" + id))
+        perform(get("/api/marcas/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Coca-Cola"));
     }
@@ -61,7 +70,7 @@ class MarcaControllerTest {
     void listaMarcas() throws Exception {
         criar("Coca-Cola");
         criar("Pepsi");
-        mvc.perform(get("/api/marcas"))
+        perform(get("/api/marcas"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.totalElements").value(2));
@@ -72,7 +81,7 @@ class MarcaControllerTest {
         criar("Coca-Cola");
         criar("Pepsi");
 
-        mvc.perform(get("/api/marcas").param("nome", "coca"))
+        perform(get("/api/marcas").param("nome", "coca"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].nome").value("Coca-Cola"));
@@ -84,7 +93,8 @@ class MarcaControllerTest {
         String json = """
                 { "nome": "Coca-Cola" }
                 """;
-        mvc.perform(put("/api/marcas/" + id)
+        perform(put("/api/marcas/" + id)
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Coca-Cola"));
@@ -92,7 +102,8 @@ class MarcaControllerTest {
 
     @Test
     void atualizaMarcaInexistenteRetorna404() throws Exception {
-        mvc.perform(put("/api/marcas/999999")
+        perform(put("/api/marcas/999999")
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"X\" }"))
                 .andExpect(status().isNotFound());
     }
@@ -100,9 +111,9 @@ class MarcaControllerTest {
     @Test
     void excluiMarcaEdepoisRetorna404() throws Exception {
         Number id = criar("Temporaria");
-        mvc.perform(delete("/api/marcas/" + id))
+        perform(delete("/api/marcas/" + id).header("If-Match", "\"0\""))
                 .andExpect(status().isNoContent());
-        mvc.perform(get("/api/marcas/" + id))
+        perform(get("/api/marcas/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
     }
@@ -110,21 +121,25 @@ class MarcaControllerTest {
     @Test
     void rejeitaNomeDuplicadoCom409() throws Exception {
         criar("Nestle");
-        mvc.perform(post("/api/marcas")
+        perform(post("/api/marcas")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"Nestle\" }"))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
-        mvc.perform(get("/api/marcas/999999"))
+        perform(get("/api/marcas/999999"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna400QuandoNomeVazio() throws Exception {
-        mvc.perform(post("/api/marcas")
+        perform(post("/api/marcas")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"\" }"))
                 .andExpect(status().isBadRequest());
+    }
+
+    private ResultActions perform(MockHttpServletRequestBuilder request) throws Exception {
+        return mvc.perform(request.header("Authorization", tenantFixture.tokenContextual()));
     }
 }

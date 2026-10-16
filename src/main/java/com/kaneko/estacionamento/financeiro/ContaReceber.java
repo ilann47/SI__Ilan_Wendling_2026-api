@@ -2,8 +2,10 @@ package com.kaneko.estacionamento.financeiro;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.fiscal.NotaSaida;
+import com.kaneko.estacionamento.fiscal.NotaServico;
 import com.kaneko.estacionamento.patio.Mensalista;
 import com.kaneko.estacionamento.pessoas.Cliente;
+import com.kaneko.estacionamento.vendas.VendaAdministrativa;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pagamento.FormaPagamento;
 import jakarta.persistence.Column;
@@ -14,6 +16,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.Getter;
@@ -29,6 +32,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ContaReceber extends AuditableEntity {
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Version @Column(name = "version", nullable = false)
+    private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)
@@ -39,8 +47,16 @@ public class ContaReceber extends AuditableEntity {
     private NotaSaida notaSaida;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nota_servico_id")
+    private NotaServico notaServico;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mensalista_id")
     private Mensalista mensalista;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "venda_administrativa_id")
+    private VendaAdministrativa vendaAdministrativa;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "condicao_pagamento_id")

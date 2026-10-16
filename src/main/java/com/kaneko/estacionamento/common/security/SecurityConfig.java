@@ -13,21 +13,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import com.kaneko.estacionamento.rbac.RbacService;
 
 /**
  * Configuracao de seguranca. Em producao ({@code app.security.enabled=true}), os
  * endpoints {@code /api/**} exigem um token JWT valido — exceto {@code /api/auth},
- * o Swagger e o actuator. Em testes de cadastro a protecao e desligada
+ * o Swagger e os probes publicos do actuator. Em testes de cadastro a protecao e desligada
  * ({@code app.security.enabled=false}) para exercitar os controllers diretamente.
  *
- * <p>Autorizacao por perfil (segregacao de funcoes): operacoes administrativas
- * sao restritas a {@code ROLE_ADMIN} — gestao de usuarios, qualquer exclusao
+ * <p>APIs legadas preservam autorizacao por perfil. APIs tenant-aware usam
+ * permissoes efetivas resolvidas por Membership, papel e escopo. Operacoes legadas
+ * administrativas permanecem restritas a {@code ROLE_ADMIN} — gestao de usuarios, qualquer exclusao
  * ({@code DELETE}) e a manutencao de tarifas (preco). As demais rotas exigem
  * apenas autenticacao, liberando o OPERADOR para a operacao do dia a dia (pátio,
  * vendas, baixas, consultas). O perfil chega como autoridade {@code ROLE_<perfil>}
- * no token (ver {@link JwtAuthFilter}).
+ * a partir do perfil atual do {@code Usuario} persistido (ver {@link JwtAuthFilter}).
  */
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -40,7 +44,8 @@ public class SecurityConfig {
             HttpSecurity http,
             @Value("${app.security.enabled:true}") boolean segurancaHabilitada,
             JwtService jwtService,
-            UsuarioRepository usuarioRepository) throws Exception {
+            UsuarioRepository usuarioRepository,
+            ContextoAutenticadoService contextoService, RbacService rbacService) throws Exception {
 
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
@@ -48,16 +53,50 @@ public class SecurityConfig {
         if (segurancaHabilitada) {
             http.authorizeHttpRequests(auth -> auth
                             .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html",
-                                    "/v3/api-docs/**", "/actuator/**").permitAll()
+                                    "/v3/api-docs/**", "/actuator/health/**",
+                                    "/actuator/info").permitAll()
+                            .requestMatchers("/actuator/**").authenticated()
+                            // Controllers /api/v1 aplicam RBAC contextual por metodo.
+                            .requestMatchers("/api/v1/organizations/**").authenticated()
+                            .requestMatchers("/api/v1/stock-*/**").authenticated()
+                            // Catalogos migrados usam RBAC contextual por metodo.
+                            .requestMatchers("/api/formas-pagamento/**").authenticated()
+                            .requestMatchers("/api/condicoes-pagamento/**").authenticated()
+                            .requestMatchers("/api/clientes/**").authenticated()
+                            .requestMatchers("/api/transportadoras/**").authenticated()
+                            .requestMatchers("/api/veiculos-frota/**").authenticated()
+                            .requestMatchers("/api/transportadora-veiculos/**").authenticated()
+                            .requestMatchers("/api/fornecedores/**").authenticated()
+                            .requestMatchers("/api/cargos/**").authenticated()
+                            .requestMatchers("/api/funcionarios/**").authenticated()
+                            .requestMatchers("/api/categorias/**").authenticated()
+                            .requestMatchers("/api/marcas/**").authenticated()
+                            .requestMatchers("/api/unidades-medida/**").authenticated()
+                            .requestMatchers("/api/produtos/**").authenticated()
+                            .requestMatchers("/api/servicos/**").authenticated()
+                            .requestMatchers("/api/produto-fornecedores/**").authenticated()
+                            .requestMatchers("/api/notas-entrada/**").authenticated()
+                            .requestMatchers("/api/contas-pagar/**").authenticated()
+                            .requestMatchers("/api/notas-saida/**").authenticated()
+                            .requestMatchers("/api/contas-receber/**").authenticated()
+                            .requestMatchers("/api/notas-servico/**").authenticated()
+                            .requestMatchers("/api/veiculos/**").authenticated()
+                            .requestMatchers("/api/tarifas/**").authenticated()
+                            .requestMatchers("/api/mensalistas/**").authenticated()
+                            .requestMatchers("/api/movimentacoes/**").authenticated()
+                            .requestMatchers("/api/contas-pagar-avulsas/**").authenticated()
+                            .requestMatchers("/api/relatorios/**").authenticated()
+                            // APIs enterprise recebem USUARIO e decidem o acesso pelo RBAC contextual.
+                            .requestMatchers("/api/v1/**").authenticated()
                             // Gestao de usuarios e exclusivamente administrativa.
                             .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                             // Manutencao de tarifa (preco) e administrativa.
-                            .requestMatchers(HttpMethod.POST, "/api/tarifas/**").hasRole("ADMIN")
-                            .requestMatchers(HttpMethod.PUT, "/api/tarifas/**").hasRole("ADMIN")
                             // Qualquer exclusao e administrativa.
                             .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
+                            // Rotas legadas sem regra mais especifica nao aceitam a conta neutra.
+                            .requestMatchers("/api/**").hasAnyRole("ADMIN", "OPERADOR")
                             .anyRequest().authenticated())
-                    .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository),
+                    .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository, contextoService, rbacService),
                             UsernamePasswordAuthenticationFilter.class)
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(
                             new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));

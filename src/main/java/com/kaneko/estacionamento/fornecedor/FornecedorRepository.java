@@ -4,6 +4,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repositorio de {@link Fornecedor}. Suporta filtros dinamicos via
@@ -13,9 +15,24 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface FornecedorRepository extends JpaRepository<Fornecedor, Long>,
         JpaSpecificationExecutor<Fornecedor> {
 
-    boolean existsByDocumento(String documento);
+    Optional<Fornecedor> findByOrganizacaoIdAndDocumento(Long organizacaoId, String documento);
 
-    boolean existsByDocumentoAndIdNot(String documento, Long id);
+    @EntityGraph(attributePaths = {"cidade", "condicaoPagamento", "transportadora", "emails", "telefones"})
+    Optional<Fornecedor> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    @EntityGraph(attributePaths = {"cidade", "condicaoPagamento", "transportadora", "emails", "telefones"})
+    Optional<Fornecedor> findByIdAndOrganizacaoIdIsNull(Long id);
+
+    @Query("""
+            select count(f) > 0 from Fornecedor f
+            where f.organizacaoId = :organizacaoId
+              and f.documento = :documento
+              and (:idIgnorado is null or f.id <> :idIgnorado)
+            """)
+    boolean existeDocumento(
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("documento") String documento,
+            @Param("idIgnorado") Long idIgnorado);
 
     @Override
     @EntityGraph(attributePaths = {"cidade", "condicaoPagamento", "transportadora", "emails", "telefones"})

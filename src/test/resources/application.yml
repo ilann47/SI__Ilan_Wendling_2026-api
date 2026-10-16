@@ -32,5 +32,10 @@ app:
   jwt:
     secret: chave-de-teste-com-ao-menos-32-bytes-para-hmac-sha256
     expiration-minutes: 60
+    issuer: estacionamento-kaneko
+    audience: estacionamento-kaneko-api
   bootstrap-admin:
     enabled: false
+  inventory:
+    hold-duration-minutes: 15
+    expiration-enabled: false

@@ -39,3 +39,7 @@ build/
 frontend/
 
 .claude/
+
+### Logs locais de execucao e validacao ###
+/backend-e2e.log
+/backend-e2e.err

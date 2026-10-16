@@ -2,6 +2,9 @@ package com.kaneko.estacionamento.patio;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.auditoria.AuditoriaService;
+import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
+import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.financeiro.ContaReceber;
 import com.kaneko.estacionamento.financeiro.ContaReceberRepository;
 import com.kaneko.estacionamento.financeiro.SituacaoContaReceber;
@@ -14,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Map;
 
 /**
  * Regras de negocio do contrato de Mensalista.
@@ -29,67 +33,82 @@ public class MensalistaService {
     private final ClienteRepository clienteRepository;
     private final VeiculoRepository veiculoRepository;
     private final ContaReceberRepository contaReceberRepository;
+    private final AuditoriaService auditoria;
 
     public MensalistaService(MensalistaRepository repository,
                              ClienteRepository clienteRepository,
                              VeiculoRepository veiculoRepository,
-                             ContaReceberRepository contaReceberRepository) {
+                             ContaReceberRepository contaReceberRepository,
+                             AuditoriaService auditoria) {
         this.repository = repository;
         this.clienteRepository = clienteRepository;
         this.veiculoRepository = veiculoRepository;
         this.contaReceberRepository = contaReceberRepository;
+        this.auditoria = auditoria;
     }
 
     @Transactional(readOnly = true)
-    public Page<Mensalista> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    public Page<Mensalista> listar(Long organizacaoId, Pageable pageable) {
+        return organizacaoId == null ? repository.findByOrganizacaoIdIsNull(pageable)
+                : repository.findByOrganizacaoId(organizacaoId, pageable);
     }
 
     @Transactional(readOnly = true)
-    public Mensalista buscar(Long id) {
-        return repository.findById(id)
+    public Mensalista buscar(Long organizacaoId, Long id) {
+        return (organizacaoId == null ? repository.findByIdAndOrganizacaoIdIsNull(id)
+                : repository.findByIdAndOrganizacaoId(id, organizacaoId))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Mensalista", id));
     }
 
     @Transactional
-    public Mensalista criar(MensalistaRequest req) {
-        Cliente cliente = buscarCliente(req.clienteId());
-        Veiculo veiculo = buscarVeiculo(req.veiculoId());
+    public Mensalista criar(Long organizacaoId, MensalistaRequest req) {
+        Cliente cliente = buscarCliente(organizacaoId, req.clienteId());
+        Veiculo veiculo = buscarVeiculo(organizacaoId, req.veiculoId());
         StatusMensalista status = req.status() != null ? req.status() : StatusMensalista.ATIVO;
         LocalDate inicio = req.dataInicio() != null ? req.dataInicio() : LocalDate.now();
         validarPeriodo(inicio, req.dataFim());
         if (status == StatusMensalista.ATIVO
-                && repository.existsByVeiculoIdAndStatus(veiculo.getId(), StatusMensalista.ATIVO)) {
+                && existeAtivo(organizacaoId, veiculo.getId(), null)) {
             throw new ConflitoException("Ja existe um contrato de mensalista ATIVO para este veiculo.");
         }
         Mensalista mensalista = new Mensalista();
+        mensalista.setOrganizacaoId(organizacaoId);
         mensalista.setCliente(cliente);
         mensalista.setVeiculo(veiculo);
         aplicar(mensalista, req, status, inicio);
-        return repository.save(mensalista);
+        mensalista = repository.saveAndFlush(mensalista);
+        auditar(mensalista, "MENSALISTA_CRIADO", null, snapshot(mensalista));
+        return mensalista;
     }
 
     @Transactional
-    public Mensalista atualizar(Long id, MensalistaRequest req) {
-        Mensalista mensalista = buscar(id);
-        Cliente cliente = buscarCliente(req.clienteId());
-        Veiculo veiculo = buscarVeiculo(req.veiculoId());
+    public Mensalista atualizar(Long organizacaoId, Long id, MensalistaRequest req) {
+        Mensalista mensalista = buscar(organizacaoId, id);
+        Cliente cliente = buscarCliente(organizacaoId, req.clienteId());
+        Veiculo veiculo = buscarVeiculo(organizacaoId, req.veiculoId());
         StatusMensalista status = req.status() != null ? req.status() : StatusMensalista.ATIVO;
         LocalDate inicio = req.dataInicio() != null ? req.dataInicio() : mensalista.getDataInicio();
         validarPeriodo(inicio, req.dataFim());
         if (status == StatusMensalista.ATIVO
-                && repository.existsByVeiculoIdAndStatusAndIdNot(veiculo.getId(), StatusMensalista.ATIVO, id)) {
+                && existeAtivo(organizacaoId, veiculo.getId(), id)) {
             throw new ConflitoException("Ja existe um contrato de mensalista ATIVO para este veiculo.");
         }
+        Map<String, Object> anterior = snapshot(mensalista);
         mensalista.setCliente(cliente);
         mensalista.setVeiculo(veiculo);
         aplicar(mensalista, req, status, inicio);
-        return repository.save(mensalista);
+        mensalista = repository.saveAndFlush(mensalista);
+        auditar(mensalista, "MENSALISTA_ATUALIZADO", anterior, snapshot(mensalista));
+        return mensalista;
     }
 
     @Transactional
-    public void excluir(Long id) {
-        repository.delete(buscar(id));
+    public void excluir(Long organizacaoId, Long id) {
+        Mensalista mensalista = buscar(organizacaoId, id);
+        Map<String, Object> anterior = snapshot(mensalista);
+        repository.delete(mensalista);
+        repository.flush();
+        auditar(mensalista, "MENSALISTA_CANCELADO", anterior, snapshot(mensalista));
     }
 
     /**
@@ -98,8 +117,8 @@ public class MensalistaService {
      * e controlada pela data de vencimento informada.
      */
     @Transactional
-    public ContaReceber gerarMensalidade(Long id, LocalDate vencimento) {
-        Mensalista mensalista = buscar(id);
+    public ContaReceber gerarMensalidade(Long organizacaoId, Long id, LocalDate vencimento) {
+        Mensalista mensalista = buscar(organizacaoId, id);
         if (mensalista.getStatus() != StatusMensalista.ATIVO) {
             throw new ConflitoException("Apenas contratos ATIVOS podem gerar mensalidade.");
         }
@@ -109,6 +128,7 @@ public class MensalistaService {
             throw new ConflitoException("A data de vencimento não pode ser anterior à emissão.");
         }
         ContaReceber conta = new ContaReceber();
+        conta.setOrganizacaoId(organizacaoId);
         conta.setCliente(mensalista.getCliente());
         conta.setMensalista(mensalista);
         conta.setValorOriginal(mensalista.getValorMensal());
@@ -133,8 +153,10 @@ public class MensalistaService {
         }
     }
 
-    private Cliente buscarCliente(Long clienteId) {
-        Cliente cliente = clienteRepository.findById(clienteId)
+    private Cliente buscarCliente(Long organizacaoId, Long clienteId) {
+        Cliente cliente = (organizacaoId == null
+                ? clienteRepository.findByIdAndOrganizacaoIdIsNull(clienteId)
+                : clienteRepository.findByIdAndOrganizacaoId(clienteId, organizacaoId))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", clienteId));
         if (Boolean.FALSE.equals(cliente.getAtivo())) {
             throw new ConflitoException(
@@ -143,8 +165,36 @@ public class MensalistaService {
         return cliente;
     }
 
-    private Veiculo buscarVeiculo(Long veiculoId) {
-        return veiculoRepository.findById(veiculoId)
+    private Veiculo buscarVeiculo(Long organizacaoId, Long veiculoId) {
+        return (organizacaoId == null ? veiculoRepository.findByIdAndOrganizacaoIdIsNull(veiculoId)
+                : veiculoRepository.findByIdAndOrganizacaoId(veiculoId, organizacaoId))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Veiculo", veiculoId));
+    }
+
+    private boolean existeAtivo(Long organizacaoId, Long veiculoId, Long ignorarId) {
+        if (organizacaoId == null) return ignorarId == null
+                ? repository.existsByVeiculoIdAndStatus(veiculoId, StatusMensalista.ATIVO)
+                : repository.existsByVeiculoIdAndStatusAndIdNot(
+                        veiculoId, StatusMensalista.ATIVO, ignorarId);
+        return ignorarId == null
+                ? repository.existsByOrganizacaoIdAndVeiculoIdAndStatus(
+                        organizacaoId, veiculoId, StatusMensalista.ATIVO)
+                : repository.existsByOrganizacaoIdAndVeiculoIdAndStatusAndIdNot(
+                        organizacaoId, veiculoId, StatusMensalista.ATIVO, ignorarId);
+    }
+
+    private void auditar(Mensalista mensalista, String acao,
+            Map<String, Object> anterior, Map<String, Object> posterior) {
+        if (mensalista.getOrganizacaoId() == null) return;
+        auditoria.registrar(new RegistrarAuditoriaCommand(mensalista.getOrganizacaoId(), acao,
+                "MENSALISTA", mensalista.getId(), null, null, null, anterior, posterior,
+                null, mensalista.getVersion(), ClasseRetencaoAuditoria.OPERACIONAL));
+    }
+
+    private static Map<String, Object> snapshot(Mensalista mensalista) {
+        return Map.of("clienteId", mensalista.getCliente().getId(),
+                "veiculoId", mensalista.getVeiculo().getId(),
+                "valorMensal", mensalista.getValorMensal(),
+                "status", mensalista.getStatus().name());
     }
 }

@@ -209,3 +209,621 @@ Cobertura de testes automatizados atualizada para **318 testes de integração**
 ---
 
 *Fim do Relatório de Conformidade — Estacionamento Kaneko (v1).*
+
+---
+
+## Atualização — Arquitetura de Produto Enterprise (2026-07-29)
+
+Foi adicionada uma camada documental evolutiva, sem alteração de código, migrations, APIs ou comportamento em produção. Os documentos `11` a `20` definem a arquitetura-alvo para os próximos ciclos do produto, com foco inicial em eventos e preservação integral dos módulos existentes.
+
+### Artefatos adicionados
+
+- `11-visao-produto-enterprise.md` — visão, implantação e princípios;
+- `12-dominio-ddd.md` — linguagem ubíqua, 21 bounded contexts e context map;
+- `13-event-storming.md` — comandos, eventos, policies e process managers;
+- `14-modelagem-dominio.md` — catálogo AS-IS/EVOLUÇÃO/TARGET de entidades e value objects;
+- `15-maquinas-de-estados.md` — transições e efeitos;
+- `16-casos-de-uso-plataforma.md` — UC701 a UC730;
+- `17-apis-enterprise.md` — APIs `/api/v1`, payloads, erros, idempotência e eventos públicos;
+- `18-permissoes-rbac.md` — RBAC/ABAC, alçadas e segregação;
+- `19-equipamentos-integracoes.md` — abstrações de hardware, Edge e ACLs;
+- `20-roadmap-produto.md` — fundação, fases 1 a 10, NFRs e plano de evolução.
+
+### Regra de conformidade
+
+Os documentos originais continuam descrevendo o sistema implementado. Os documentos enterprise são normativos para evolução, mas suas entidades e capacidades marcadas `TARGET` não são consideradas implementadas. Toda futura mudança de código deverá atualizar tanto a documentação AS-IS afetada quanto a decisão TARGET correspondente.
+
+### Divergências arquiteturais registradas
+
+1. O projeto atual não possui organização/tenant; a arquitetura-alvo o torna obrigatório.
+2. O pacote `patio` atual reúne responsabilidades que serão separadas por contexto.
+3. Pátio opcional e ocupação por simples contagem não atendem inventário comercial.
+4. O módulo atual de pagamento é cadastral, não um ledger transacional de gateway.
+5. Não existem eventos de domínio, outbox, inbox ou idempotência na implementação atual.
+6. `ADMIN/OPERADOR` não atende às alçadas enterprise.
+7. Não existem eventos, pedidos, reservas, credenciais, check-in ou equipamentos no código atual.
+
+Nenhuma dessas divergências foi corrigida nesta atualização documental; elas foram explicitadas e ordenadas no roadmap.
+
+---
+
+## Atualização — História 1: Organização/Tenant (2026-07-29)
+
+A primeira entrega da fundação enterprise passou a estar implementada no código, sem antecipar Membership, RBAC contextual, auditoria, outbox, instalações ou eventos.
+
+- Migration `V8__organizacao_tenant.sql` cria `organizacao`, com documento normalizado, constraints, índice único funcional e versionamento otimista.
+- O agregado `Organizacao` possui os estados `PROVISIONANDO`, `ATIVA`, `SUSPENSA` e `ENCERRADA`; o provisionamento conclui em `ATIVA` dentro do mesmo caso de uso e `ENCERRADA` é terminal.
+- Moeda usa código ISO 4217; fuso usa identificador IANA; região representa uma subdivisão ISO 3166-2.
+- Foram publicados exclusivamente `POST /api/v1/organizations`, `GET /api/v1/organizations/{id}` e `PATCH /api/v1/organizations/{id}`.
+- `ETag` deriva somente de `@Version`; PATCH exige `If-Match`, com `428` quando ausente e `412` quando divergente.
+- Documento, ID, versão e status não são alteráveis pelo PATCH.
+- Até a História 3, os endpoints são restritos ao perfil legado `ADMIN`.
+- Nenhum dado legado foi associado automaticamente e nenhum `organizacao_id` foi antecipado em pátio ou usuário.
+- A suíte automatizada passou de 318 para 332 testes, sem regressão nos testes preexistentes.
+
+---
+
+## Atualização — História 2: Membership e contexto organizacional (2026-07-29)
+
+O vínculo entre a identidade global e o tenant passou a estar implementado sem
+alterar `Colaborador`, `Funcionario`, `Patio`, `Movimentacao` ou o frontend Expo.
+
+- Migration `V9__membership_organizacao_usuario.sql` cria `membro_organizacao`,
+  com FKs restritivas, checks de estado e datas, versão otimista e índice único
+  parcial que impede dois vínculos correntes e preserva o histórico encerrado.
+- `MembroOrganizacao` nasce em `ATIVO`, permite `ATIVO ↔ SUSPENSO` e termina em
+  `ENCERRADO`; cada mudança incrementa a versão JPA.
+- A administração temporária por `ROLE_ADMIN` expõe POST, GET e PATCH de
+  Membership; PATCH exige `If-Match` e usa `ETag` derivado exclusivamente de `@Version`.
+- `GET /api/v1/me`, `GET /api/v1/me/organizations` e
+  `POST /api/v1/me/active-organization` implementam descoberta e seleção de tenant.
+- A seleção recebe somente `organizationId`; Membership, estado, perfil e versão
+  são resolvidos no servidor. A listagem usa projeção direta e retorna apenas
+  Membership e organização ativas.
+- O login preserva compatibilidade, enquanto os novos tokens incluem claims
+  padronizadas. O token contextual contém `org_id`, `membership_id` e
+  `membership_version`; vínculo inválido ou desatualizado resulta em `401`.
+- O perfil atual do `Usuario` no banco define a authority, inclusive para tokens
+  legados; não é possível trocar tenant por header.
+- A suíte automatizada passou de 332 para 348 testes, preservando os anteriores.
+
+---
+
+## Atualização — História 3: RBAC contextual (2026-07-29)
+
+- Migrations `V10__rbac_contextual_organizacao.sql` e
+  `V11__vigencia_atribuicao_acesso.sql` criam permissões, papéis, relação
+  papel–permissão e atribuições versionadas com vigência.
+- O primeiro membro recebe `ADMIN_ORGANIZACAO`; o administrador de plataforma
+  deixa de administrar indiscriminadamente Memberships do tenant.
+- Permissões são resolvidas no banco a cada requisição contextual e não são
+  confiadas ao JWT, tornando concessões e revogações imediatamente efetivas.
+- Organização e Membership passaram a exigir escopo e permissões contextuais.
+- O último administrador ativo é protegido contra revogação, suspensão e encerramento.
+- O escopo implementado é somente `ORGANIZACAO`; evento e pátio permanecem em suas histórias.
+- A suíte passou de 348 para 357 testes sem regressões.
+
+---
+
+## Atualização — História 4: Auditoria (2026-07-29)
+
+- A migration `V12__registro_auditoria_append_only.sql` cria a trilha com índices,
+  snapshots JSONB, versões, contexto operacional e trigger que recusa UPDATE/DELETE.
+- Organização, Membership e RBAC registram mutações na mesma transação do caso de uso;
+  falha de auditoria provoca rollback integral.
+- O contexto captura ator humano ou sistema, organização, origem, dispositivo, IP e
+  `traceId`; os estados são allowlists redigidas, sem segredo, token ou documento.
+- Registros recebem classe de retenção. Prazos e expurgo não foram inventados e
+  permanecem dependentes de definição legal; nenhuma API pública foi antecipada.
+- A suíte passou de 357 para 362 testes sem regressões.
+
+---
+
+## Atualização — História 5: Instalações/Pátio (2026-07-29)
+
+- A migration `V13__instalacoes_patio_tenant.sql` evolui aditivamente a tabela
+  `patio`: dados legados permanecem sem tenant, recebem capacidade operacional
+  igual à física e não são atribuídos automaticamente a organizações.
+- Novos pátios pertencem obrigatoriamente à organização do JWT contextual. O
+  corpo não aceita `organizationId`, impedindo troca de tenant pelo cliente.
+- Capacidade física positiva e `0 ≤ capacidade operacional ≤ capacidade física`
+  são defendidas no domínio e no PostgreSQL; nome normalizado é único por tenant.
+- `POST /api/v1/parking-facilities` exige `facilities:manage`, retorna `Location`
+  e `ETag`, e registra `PATIO_CRIADO` na auditoria transacional.
+- As APIs legadas `/api/patios` continuam operantes e enxergam exclusivamente
+  registros legados sem organização; Venue, Setor e alteração de capacidade não
+  foram antecipados.
+- A suíte passou de 362 para 368 testes sem regressões.
+
+---
+
+## Atualização — História 6: Venue (2026-07-29)
+
+- A migration `V14__venue_unidade_operacional.sql` cria `unidade_operacional`
+  com ownership obrigatório, endereço, cidade, fuso, versão e unicidade de nome
+  normalizado por tenant.
+- `POST /api/v1/venues` deriva a organização exclusivamente do JWT contextual,
+  exige `organizations:admin` e retorna `Location` e `ETag`.
+- Venue nasce ativo e com tipo server-side `VENUE`; tipos adicionais e contatos
+  não foram inventados porque a baseline ainda não fixa seus contratos.
+- A aplicação valida organização/cidade ativas e fuso IANA; o PostgreSQL protege
+  FKs, tipo aprovado, versão e unicidade.
+- A criação registra `UNIDADE_CRIADA` com recurso lógico `VENUE` na mesma transação.
+- A suíte passou de 368 para 373 testes sem regressões.
+
+---
+
+## Atualização — História 7: Evento (2026-07-30)
+
+- A migration `V15__evento_idempotencia_outbox.sql` cria o agregado `evento`,
+  o registro genérico de idempotência e a outbox PostgreSQL, além dos papéis
+  `GESTOR`/`ORGANIZADOR` e da permissão `events:create`.
+- `POST /api/v1/events` exige tenant contextual e `Idempotency-Key`, cria o
+  evento em `RASCUNHO`, retorna checklist, `Location` e `ETag`.
+- A relação evento–venue é protegida por FK composta no banco, impedindo
+  associação entre organizações mesmo fora da aplicação.
+- O lock transacional por chave serializa replays concorrentes; payload
+  equivalente devolve o recurso original e payload divergente retorna `409`.
+- Auditoria, `EventoCriado`, outbox e resultado idempotente são persistidos na
+  mesma transação do agregado. O dispatcher da outbox permanece fora do escopo.
+- Somente a criação foi exposta; configuração, alocação e publicação não foram
+  antecipadas.
+- A suíte passou de 373 para 383 testes sem regressões.
+
+---
+
+## Atualização — História 8: Alocação Evento–Pátio (2026-07-30)
+
+- A migration `V16__alocacao_patio_evento.sql` cria a associação tenant-aware
+  entre evento e pátio, constraints de período/capacidade e a permissão
+  `inventory:manage` para `ADMIN_ORGANIZACAO` e `GESTOR`.
+- `POST /api/v1/events/{id}/parking-allocations` é idempotente, aceita somente
+  evento configurável e pátio ativo do tenant, exige interseção temporal e
+  retorna `Location` e `ETag`.
+- A soma das capacidades operacionais de alocações simultâneas é serializada
+  por lock pessimista no pátio e não pode exceder a capacidade operacional
+  física configurada para ele.
+- O PostgreSQL também impede relações entre tenants, duplicidade evento–pátio,
+  período invertido e hierarquia de capacidades inválida.
+- `PATCH /api/v1/parking-allocations/{id}` altera exclusivamente as três
+  capacidades e exige `If-Match`; versão divergente retorna `412`.
+- Criação e alteração são auditadas; a criação persiste
+  `CapacidadeAlocadaAoEvento` na outbox da mesma transação.
+- Produtos, consumo de inventário, quotas, override e publicação não foram
+  antecipados.
+- A suíte passou de 383 para 393 testes sem regressões.
+
+---
+
+## Atualização — Produto de estacionamento / UC707 (2026-07-30)
+
+- “Oferta” permanece o conceito funcional materializado por
+  `ProdutoEstacionamento`; não foi criada entidade paralela ausente do DDD.
+- A migration `V17__produto_estacionamento.sql` cria produto, benefícios e
+  restrições normalizados, FK composta para alocação/evento/tenant, constraints,
+  índices e a permissão `pricing:manage`.
+- `POST /api/v1/events/{id}/parking-products` cria produto idempotente em
+  `RASCUNHO`, com `Location` e `ETag`, sem antecipar publicação.
+- A alocação é bloqueada pessimisticamente enquanto a soma de quotas é validada,
+  impedindo que produtos concorrentes comprometam capacidade vendável superior
+  à disponível.
+- Categoria, direito, janela, quota e códigos de benefícios/restrições são
+  campos explícitos; regras não foram escondidas em JSON genérico.
+- A criação é auditada. Não há evento de outbox nessa transição, pois o evento
+  aprovado é `ProdutoEstacionamentoPublicado`, reservado ao comando de publicação.
+- Setor e categorias físicas passaram a existir na UC704. A vinculação explícita
+  do produto a um setor e a validação cruzada continuam pendentes porque o
+  contrato atual de `ProdutoEstacionamento` referencia somente a alocação/pátio.
+- A suíte passou de 393 para 406 testes sem regressões.
+
+---
+
+## Atualização — Lote de preço / UC708 (2026-07-30)
+
+- A migration `V18__lote_preco.sql` cria `lote_preco` com FK composta
+  produto/tenant, índices, unicidade de nome normalizado, checks monetários e
+  trigger contra sobreposição ambígua na mesma prioridade.
+- `POST /api/v1/parking-products/{id}/price-tiers` cria o lote de forma
+  idempotente, tenant-aware e protegida por `pricing:manage`, retornando
+  `Location` e `ETag`.
+- O produto é bloqueado pessimisticamente durante a validação, serializando
+  criações concorrentes; a aplicação e o PostgreSQL rejeitam períodos
+  conflitantes com a mesma prioridade.
+- A janela comercial representa ativação imediata ou agendada, sem introduzir
+  uma máquina de estados de lote ausente da baseline.
+- Valor zero suporta cortesia controlada; valores negativos, moeda divergente
+  da organização e quantidade superior à quota do produto são rejeitados.
+- A criação é auditada; snapshot de preço em reserva/pedido permanece para as
+  histórias comerciais posteriores.
+- A suíte passou de 406 para 416 testes sem regressões.
+
+---
+
+## Atualização — Publicação de produto (2026-07-30)
+
+- `POST /api/v1/parking-products/{id}/publication` exige confirmação explícita
+  e `If-Match`, retornando o produto publicado e seu novo `ETag`.
+- A transição `RASCUNHO → PUBLICADO` somente ocorre quando existe ao menos um
+  lote de preço; produto já publicado ou sem preço é rejeitado.
+- O lock pessimista e a comparação com a versão JPA impedem publicação
+  concorrente ou replay com versão obsoleta; ausência de versão retorna `428`
+  e divergência retorna `412`.
+- Auditoria e `ProdutoEstacionamentoPublicado` na outbox são persistidos na
+  mesma transação do agregado.
+- A suíte passou de 416 para 419 testes sem regressões.
+
+---
+
+## Atualização — Publicação de evento / UC702 (2026-07-30)
+
+- A migration `V19__publicacao_evento.sql` adiciona `events:publish` somente a
+  `ADMIN_ORGANIZACAO` e `GESTOR`; `ORGANIZADOR` permanece sem aprovação.
+- `POST /api/v1/events/{id}/publication` exige confirmação e `If-Match`, com
+  respostas `428` para precondição ausente e `412` para versão divergente.
+- O evento é bloqueado pessimisticamente e somente publica com alocação de
+  capacidade vendável positiva e ao menos um produto publicado no mesmo tenant.
+- O comando materializa `RASCUNHO → CONFIGURADO → PUBLICADO`, incrementando a
+  versão em cada transição e persistindo `EventoConfigurado` e `EventoPublicado`
+  na outbox junto da auditoria final.
+- Na primeira entrega, o publicador autenticado assume a responsabilidade e a
+  política é fechada: publicação não abre vendas nem habilita acesso. Contratos
+  explícitos continuam necessários antes dessas fases.
+- A suíte passa de 419 para 423 testes sem regressões.
+
+---
+
+## Atualização — Disponibilidade da primeira entrega (2026-07-30)
+
+- `GET /api/v1/events/{id}/availability` projeta somente produtos publicados de
+  evento publicado no tenant autenticado, com filtro opcional por categoria.
+- A leitura usa projeção direta dos produtos e uma consulta em lote dos preços,
+  evitando carregar coleções de benefícios/restrições e consultas N+1.
+- Entre lotes simultaneamente vigentes, a maior prioridade numérica vence e o
+  ID desempata deterministicamente; lotes de mesma prioridade sobrepostos já
+  são impedidos pela V18.
+- O saldo é `min(quota do produto, quantidade do lote vigente)` enquanto ainda
+  não existem reservas/vendas. `guaranteesHold=false` explicita que a consulta
+  não protege a última vaga.
+- Canal, hold e redução por reservado/vendido permanecem para UC709; nenhum
+  estado ou migration foi antecipado.
+- A suíte passa de 423 para 425 testes sem regressões.
+
+---
+
+## Atualização — Abertura imediata de vendas (2026-07-30)
+
+- `POST /api/v1/events/{id}/sales-opening` exige `events:publish`, `If-Match` e
+  evento `PUBLICADO`, retornando a nova representação e `ETag`.
+- O comando executa somente `PUBLICADO → VENDAS_ABERTAS`, sob lock pessimista e
+  comparação da versão JPA; replay com versão anterior retorna `412`.
+- Auditoria `VENDAS_EVENTO_ABERTAS` e outbox `VendasDoEventoAbertas` são
+  persistidas na mesma transação do agregado.
+- `startsAt` futuro retorna `409` até existir scheduler confiável; a API não
+  aceita agendamento que não possa executar.
+- A consulta de disponibilidade permanece válida em `PUBLICADO` e
+  `VENDAS_ABERTAS`; o hold comercial exige o segundo estado.
+- Nenhuma migration ou permissão nova foi antecipada; a transição reutiliza
+  `events:publish` de Gestor/Admin da organização.
+- A suíte passa de 425 para 426 testes sem regressões.
+
+---
+
+## Atualização — Reserva de inventário / UC709 (2026-07-30)
+
+- A migration `V20__reserva_inventario.sql` cria `reserva_inventario`, adiciona
+  contadores reservado/vendido/bloqueado ao produto e protege no PostgreSQL a
+  invariante `reservado + vendido + bloqueado <= quota`.
+- `POST /api/v1/inventory-holds` exige `inventory:hold`, tenant ativo e chave
+  idempotente; somente evento `VENDAS_ABERTAS`, produto publicado e lote vigente
+  podem reservar.
+- O produto é bloqueado pessimisticamente antes de calcular o saldo. Um teste
+  com duas transações reais pela última vaga prova uma única reserva vencedora.
+- O hold congela lote, preço e moeda, nasce `MANTIDA` e usa prazo padrão
+  provisório/configurável de 15 minutos.
+- `GET /api/v1/inventory-holds/{id}` e
+  `POST /api/v1/inventory-holds/{id}/release` respeitam tenant e proprietário;
+  liberação e expiração devolvem saldo exatamente uma vez.
+- Um job interno processa vencimentos em lotes; consulta e nova reserva também
+  materializam expirações relevantes usando a ordem de locks produto → reserva.
+- Criação, expiração e liberação são auditadas. `InventarioReservado`,
+  `ReservaExpirada` e `InventarioLiberado` entram na outbox transacional.
+- A disponibilidade passa a subtrair os contadores comprometidos, mas continua
+  com `guaranteesHold=false`.
+- Confirmação como vendido, pedido, pagamento e identidade pública de cliente,
+  caixa ou integração não foram antecipados.
+- A suíte passa de 426 para 436 testes sem regressões.
+
+---
+
+## Atualização — Pedido em espera / UC710 parcial (2026-07-30)
+
+- A migration `V21__pedido_estacionamento.sql` cria `pedido`,
+  `comprador_pedido` e `item_pedido` com FKs tenant/ator/evento, unicidade por
+  hold e número, snapshots imutáveis e constraints de estado e valores.
+- `POST /api/v1/orders` exige `orders:create`, tenant ativo,
+  `Idempotency-Key` e hold `MANTIDA` pertencente ao ator. Canal divergente,
+  reserva vencida/liberada ou reutilizada são rejeitados.
+- A criação percorre `CRIADO → AGUARDANDO_PAGAMENTO` atomicamente, congela os
+  dados comerciais e deriva subtotal e total sem aceitar campos controlados.
+- `GET /api/v1/orders/{id}` aplica tenant e ownership; documento do comprador é
+  devolvido mascarado.
+- A migration `V34__leitura_paginada_pedido.sql` cria `orders:read`, concede-a
+  a Administrador da Organização, Gestor e Organizador e adiciona índice
+  tenant/ator/ID. `GET /api/v1/orders` usa cursor keyset, filtros opcionais de
+  evento, estado e canal e nunca amplia a leitura além do próprio ator.
+- A hidratação da página ocorre em consulta separada com comprador e itens,
+  evitando N+1 sem paginar sobre uma coleção JPA.
+- A suíte passa de 502 para 504 testes sem regressões; Flyway valida 34
+  migrations e o build de pacote permanece verde.
+- `PedidoCriado`, `PedidoAguardandoPagamento` e `PedidoExpirado` entram na
+  outbox; criação e expiração também são auditadas.
+- Um job interno expira pedidos aguardando pagamento no prazo do hold. O hold
+  continua reservado; sua própria expiração é a autoridade que devolve saldo.
+- Pagamento, confirmação do inventário, credencial e check-in não foram
+  antecipados.
+- A suíte passa de 436 para 444 testes sem regressões.
+
+---
+
+## Atualização — Confirmação manual conciliável (2026-07-30)
+
+- A migration `V22__confirmacao_manual_pedido.sql` cria a evidência tenant-aware
+  `confirmacao_manual_pedido`, única por pedido, com ator e estado inicial
+  `PENDENTE_CONCILIACAO`.
+- `POST /api/v1/orders/{id}/manual-confirmation` exige
+  `orders:manual-confirm`, `If-Match`, `Idempotency-Key`, meio, referência de
+  evidência e motivo. Somente Admin e Gestor recebem a permissão.
+- Pedido, produto e hold são bloqueados em ordem estável. A confirmação converte
+  exatamente uma vez o contador reservado em vendido e avança pedido e hold
+  para `CONFIRMADO`/`CONFIRMADA` na mesma transação.
+- Replays idênticos retornam o resultado persistido; payload divergente retorna
+  conflito e versão divergente retorna `412`.
+- `InventarioConfirmado` e `PedidoConfirmado` entram na outbox. Não há
+  `PagamentoAprovado`, pois a evidência manual ainda requer conciliação e não
+  simula resposta de gateway.
+- Testes cobrem domínio, API, RBAC, precondição, idempotência, expiração,
+  auditoria/outbox e duas transações concorrentes sobre o mesmo pedido.
+- A suíte passa de 444 para 450 testes sem regressões.
+
+---
+
+## Atualização — Emissão de credencial / UC711 (2026-07-30)
+
+- As migrations `V23__credencial_acesso.sql` e
+  `V24__credencial_escopo_integridade.sql` adicionam o snapshot de pátio ao item
+  do pedido e criam `credencial_acesso` com FKs tenant-aware, validade, estado,
+  versão e unicidade por unidade comprada. Evento, pátio, pedido e item são
+  coerentes por constraints compostas.
+- `POST /api/v1/orders/{id}/credentials` exige `credentials:issue`, tenant,
+  ownership e `Idempotency-Key`; Admin, Gestor e Organizador recebem a permissão.
+- Cada chamada emite a próxima unidade como `ATIVA`. O lock pessimista do pedido
+  e a constraint `(item_pedido_id, numero_unidade)` impedem emissão excedente,
+  inclusive em duas transações concorrentes.
+- A última unidade transiciona o pedido para `ATENDIDO`. `CredencialEmitida` e
+  `PedidoAtendido` entram na outbox e as mutações são auditadas.
+- `GET /api/v1/credentials/{id}` aplica tenant e proprietário. Pedido ou
+  credencial de outro ator é indistinguível de recurso inexistente.
+- O código `CRD-...` é identificador público não autorizador e permanece
+  separado da representação segura implementada posteriormente em UC712.
+- Placa é associada automaticamente somente a pedido unitário; pedidos com mais
+  unidades evitam vínculo ambíguo e aguardam associação individual futura.
+- A suíte passa de 450 para 456 testes sem regressões.
+
+---
+
+## Atualização — Representação QR / UC712 (2026-07-30)
+
+- As migrations `V25__representacao_qr.sql` e
+  `V26__representacao_qr_hash_varchar.sql` versionam QR na credencial e criam
+  `representacao_qr` com FK tenant-aware, hash único, validade e unicidade
+  parcial da representação ainda não revogada.
+- `POST /api/v1/credentials/{id}/qr-code` exige `credentials:issue`, tenant,
+  ownership e `If-Match`; ausência retorna `428` e versão divergente retorna
+  `412`.
+- Somente credencial `ATIVA`, com meio preferido `QR` e validade futura aceita
+  geração. Um lock pessimista e o `ETag` da credencial serializam concorrência.
+- O token usa 32 bytes de `SecureRandom`, formato Base64 URL-safe e não contém
+  dados pessoais. Ele é devolvido somente no `201`; PostgreSQL persiste apenas
+  seu SHA-256 e consultas da credencial não expõem o segredo.
+- Auditoria e `QRCodeGerado` carregam apenas identificadores, versão e validade,
+  nunca o token ou seu hash.
+- Testes cobrem domínio, API, RBAC, ownership, precondição, segredo não
+  persistido, constraints, OpenAPI e duas gerações concorrentes.
+
+---
+
+## Atualização — Bloqueio operacional de credencial (2026-08-01)
+
+- A migration `V35__bloqueio_operacional_credencial.sql` cria
+  `credentials:block` e a concede somente ao papel Supervisor.
+- `POST /api/v1/credentials/{id}/blocking` bloqueia credencial ativa no tenant,
+  exige motivo e devolve o novo `ETag`; recurso de outro tenant retorna `404`.
+- O caso de uso revoga a representação QR vigente na mesma transação e persiste
+  `CREDENCIAL_BLOQUEADA` e `CredencialBloqueada` sem token ou hash.
+- O replay sobre credencial já bloqueada devolve o estado atual sem repetir QR,
+  auditoria ou outbox. Desbloqueio e reemissão não foram antecipados.
+- A suíte passa de 504 para 506 testes sem regressões; Flyway valida 35
+  migrations e o build de pacote permanece verde.
+- A suíte passa de 456 para 462 testes sem regressões.
+
+---
+
+## Atualização — Cancelamento compensatório de pedido / UC713 (2026-07-30)
+
+- A migration `V27__cancelamento_pedido.sql` cria o processo tenant-aware e
+  único por pedido, adiciona o estado `CANCELADA` à reserva e os metadados de
+  bloqueio da credencial, além da permissão `orders:cancel`.
+- `POST /api/v1/orders/{id}/cancellation` exige tenant, ownership, `If-Match` e
+  `Idempotency-Key`; Admin, Gestor e Organizador recebem a permissão.
+- Pedido ainda não confirmado termina em `CANCELADO` e devolve o contador
+  reservado. Pedido confirmado ou atendido termina em `EM_REEMBOLSO`, compensa
+  o contador vendido, bloqueia credenciais e revoga a representação QR ativa.
+- Produto e reserva usam ordem estável de lock e consulta escalar prévia, sem
+  entidade stale no persistence context. Duas transações concorrentes não
+  liberam a mesma quantidade duas vezes.
+- O processo registra motivo, estado resultante, necessidade de reembolso,
+  quantidade liberada e credenciais bloqueadas. `PedidoCancelado` e
+  `InventarioLiberado` são persistidos na outbox; auditoria não expõe token/hash.
+- UC713 não simula gateway nem publica reembolso. A restituição financeira e as
+  políticas ainda não definidas de prazo, multa e crédito permanecem em UC714.
+- A suíte passa de 462 para 471 testes sem regressões.
+
+---
+
+## Atualização — Check-in QR online / UC715 e UC718 (2026-08-01)
+
+- As migrations `V28__checkin_evento_online.sql` e
+  `V29__checkin_escopo_integridade.sql` criam tentativa de acesso, presença e
+  sessão de estacionamento enterprise, acrescentam ocupação à alocação e
+  defendem os vínculos tenant/evento/pátio/credencial/QR por constraints compostas.
+- Comandos versionados encerram vendas e iniciam a operação do evento. O início
+  exige `access:operate`, concedida ao novo papel Supervisor.
+- `POST /api/v1/check-ins` exige `access:checkin` e `Idempotency-Key`. Supervisor,
+  Operador e Fiscal de acesso podem executar; Admin e Gestor não recebem poder
+  operacional por implicação.
+- O QR é resolvido exclusivamente por SHA-256. Token em claro não integra banco,
+  auditoria ou outbox. Evento, janela, alocação, pátio, credencial, representação,
+  estado, duplicidade e lotação são validados antes do consumo.
+- Autorização executa `ATIVA → DENTRO`, cria presença `DENTRO`, abre sessão com
+  origem `PEDIDO_EVENTO` e incrementa a ocupação no mesmo commit. Recusas de
+  negócio retornam decisão terminal estável e também são auditadas.
+- O lock pessimista da alocação serializa a capacidade física. Um teste com duas
+  credenciais válidas disputando a última vaga comprova uma autorização, uma
+  recusa `PATIO_LOTADO` e ocupação final igual a um.
+- `AcessoAutorizado`, `AcessoRecusado`, `CheckinRealizado`,
+  `MovimentacaoAberta` e `OcupacaoAlterada` entram na outbox. Barreira física,
+  override e offline continuam fora deste recorte.
+- A suíte passa de 471 para 481 testes sem regressões; Flyway V29, Hibernate
+  validate e OpenAPI permanecem verdes.
+
+---
+
+## Atualização — Política de reentrada, check-out e encerramento / UC717 e UC719 (2026-08-01)
+
+- A migration `V30__politica_reentrada_evento.sql` introduz a política explícita
+  `ENTRADA_UNICA/REENTRADA_PERMITIDA`. Eventos legados não recebem backfill
+  arbitrário; a constraint `NOT VALID` protege novas transições e a publicação
+  rejeita política ausente.
+- `PATCH /api/v1/events/{id}` usa `If-Match`, lista fechada e somente permite
+  definir a política enquanto o evento está em `RASCUNHO`; auditoria e
+  `PoliticaReentradaDefinida` registram a versão escolhida.
+- A migration `V31__checkout_evento_online.sql` amplia tentativas para direção
+  `SAIDA`, vincula tentativas de saída à presença e sessão por FKs compostas e
+  introduz `access:checkout` para Supervisor e Operador.
+- `POST /api/v1/check-outs` resolve QR somente por SHA-256, exige evento em
+  operação, credencial `DENTRO`, presença/sessão abertas e executa sob locks a
+  saída, o decremento da ocupação e `DENTRO → CONSUMIDA/ATIVA`.
+- Replay idempotente devolve a mesma tentativa; saída repetida termina como
+  `SAIDA_DUPLICADA`. `CheckoutRealizado`, `MovimentacaoEncerrada` e
+  `OcupacaoAlterada` são persistidos atomicamente. Nenhum comando físico de
+  barreira é simulado.
+- O legado `Movimentacao` permanece intacto e nenhuma tarifação rotativa foi
+  introduzida. Testes cobrem entrada única, reentrada, replay, duplicidade,
+  RBAC, domínio, banco e OpenAPI.
+- A suíte passa de 481 para 489 testes; Flyway V31, Hibernate validate e OpenAPI
+  permanecem sob regressão obrigatória.
+
+---
+
+## Atualização — Encerramento operacional do evento / UC720 (2026-08-01)
+
+- `POST /api/v1/events/{id}/operation-closing` exige `If-Match`, confirmação,
+  reconhecimento da pendência financeira e `access:operate` do Supervisor.
+- A transição `EM_OPERACAO → OPERACAO_ENCERRADA` somente ocorre depois de
+  bloquear deterministicamente as alocações e comprovar ocupação, presenças e
+  sessões abertas iguais a zero.
+- Check-in e check-out revalidam o estado do evento depois do lock da alocação,
+  impedindo que uma decisão iniciada antes do fechamento produza efeito depois
+  dele.
+- Auditoria operacional e `OperacaoDoEventoEncerrada` preservam o snapshot e a
+  ressalva `FONTES_FINANCEIRAS_PENDENTES`. Conciliação, fechamento financeiro,
+  DRE e finalização do evento permanecem pendentes, sem dados sintéticos.
+- A evolução é aditiva e não requer migration após V31; o legado
+  `Movimentacao` continua inalterado.
+
+---
+
+## Atualização — Endurecimento do Actuator (2026-08-01)
+
+- A regra ampla que liberava `/actuator/**` foi removida.
+- `health` e `info` continuam públicos para probes; `metrics` e qualquer outro
+  endpoint administrativo exigem autenticação JWT quando a segurança está ativa.
+- Teste integrado reproduz a exposição anterior e valida `200` nos probes,
+  `401` em métricas anônimas e `200` em métricas com token válido.
+
+---
+
+## Atualização — Setores e vagas / UC704 e UC705 (2026-08-01)
+
+- V32 introduz `Setor` tenant-aware com código normalizado, categorias físicas,
+  capacidade e versão; o lock do pátio serializa a soma dos setores.
+- V33 introduz `Vaga` com FK composta setor/tenant, código normalizado, tipo,
+  acessibilidade, posição opcional, estado e versão.
+- Os comandos exigem `facilities:manage`, retornam `404` fora do tenant e não
+  aceitam organização no payload.
+- O batch de até 500 vagas faz leitura em lote, reusa códigos equivalentes e
+  retorna `207` para conflitos pontuais, sem exceder a capacidade do setor.
+- Criações são auditadas e publicam `SetorCriado`/`VagaCriada` na outbox. Não há
+  efeito automático sobre inventário comercial.
+
+---
+
+## Atualização — Feed auditável de tentativas de acesso (2026-08-01)
+
+- A migration `V36__feed_tentativa_acesso.sql` cria o índice tenant/cursor e a
+  permissão `audit:read`, concedida a Administrador da Organização e Gestor.
+- `GET /api/v1/access-attempts` usa paginação keyset por ID e filtros opcionais
+  de evento, decisão e motivo, com limite de 1 a 100 registros.
+- A consulta deriva o tenant exclusivamente do JWT contextual e não retorna o
+  token QR nem seu hash. Outro tenant recebe somente sua própria projeção.
+- `access:operate` não foi ampliada. Supervisor, Operador e Fiscal de Acesso
+  aguardam o ABAC por evento, pátio, faixa e turno antes de receber leitura
+  operacional do feed completo.
+- Testes cobrem cursor, filtros, contrato de erro, RBAC, isolamento tenant e
+  publicação OpenAPI; a suíte passa de 506 para 508 testes.
+
+---
+
+## Atualização — Validação QR sem consumo (2026-08-01)
+
+- A migration `V37__validacao_acesso_sem_consumo.sql` discrimina operações
+  `VALIDACAO/CHECKIN/CHECKOUT`, preserva os registros anteriores por backfill e
+  impede no PostgreSQL que uma validação autorizada registre ocupação.
+- `POST /api/v1/access-validations` exige `Idempotency-Key`, tenant contextual e
+  `access:validate`, concedida a Supervisor, Operador e Fiscal de Acesso.
+- O fluxo aplica evento, pátio, janelas, QR, credencial, duplicidade e lotação,
+  mas não altera credencial, presença, sessão ou ocupação e informa
+  `consumptionPerformed=false`.
+- Decisões são auditadas e publicam `AcessoAutorizado/AcessoRecusado` com
+  `operacao=VALIDACAO` e `consumoRealizado=false`; não publicam check-in,
+  movimentação ou alteração de ocupação.
+- Testes cobrem domínio, não consumo, check-in posterior, replay, conflito de
+  payload, contrato estrito, RBAC e OpenAPI; a suíte passa de 508 para 511 testes.
+
+---
+
+## Atualização — Registro central de bloqueios (2026-08-02)
+
+- `bloqueios-externos.md` consolida provider, credenciais, infraestrutura e
+  decisões de negócio ausentes sem reclassificar capacidades TARGET como AS-IS.
+- Pagamento manual permanece evidência `PENDENTE_CONCILIACAO`; nenhum pagamento,
+  reembolso, documento fiscal externo ou comando de equipamento é simulado.
+- O registro define condições objetivas de retomada e passa a orientar avisos
+  informativos no frontend, sem expor ações que o backend não consegue concluir.
+
+---
+
+## Atualização — Fundação da unificação multi-tenant (2026-08-03)
+
+- `22-unificacao-multitenant.md` transforma a preservação dos módulos anteriores
+  em obrigação de migração: Fiscal, Financeiro, Conveniência, Pessoas,
+  Fornecedores, Logística, RH e Operação de Pátio são capacidades permanentes.
+- O inventário confirma ownership global indevido nas entidades de V1/V6/V7 e
+  preserva como globais somente identidade, geografia e catálogo estrutural de
+  RBAC.
+- O retrofit tenant-aware é Fundação transversal e não depende de gateway,
+  provedor fiscal ou conclusão integral do evento.
+- Nenhum backfill é inferido: linhas históricas permanecem intactas até existir
+  mapa explícito e auditável de organização.
+- Ordem de Compra e Ordem de Serviço são requisitos TARGET novos; notas atuais
+  não são renomeadas nem reinterpretadas como esses agregados.

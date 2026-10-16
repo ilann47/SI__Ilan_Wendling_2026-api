@@ -11,6 +11,8 @@ import java.time.OffsetDateTime;
  */
 public record ContaPagarResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         Long fornecedorId,
         String fornecedorNome,
         Long notaEntradaId,
@@ -32,12 +34,16 @@ public record ContaPagarResponse(
         SituacaoContaPagar situacao,
         String observacao,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        BigDecimal saldo,
+        OrigemFinanceiraResponse origem
 ) {
 
     public static ContaPagarResponse from(ContaPagar c) {
         return new ContaPagarResponse(
                 c.getId(),
+                c.getOrganizacaoId(),
+                c.getVersion(),
                 c.getFornecedor().getId(),
                 c.getFornecedor().getNome(),
                 c.getNotaEntrada() != null ? c.getNotaEntrada().getId() : null,
@@ -59,6 +65,9 @@ public record ContaPagarResponse(
                 c.getSituacao(),
                 c.getObservacao(),
                 c.getCreatedAt(),
-                c.getUpdatedAt());
+                c.getUpdatedAt(),
+                c.getSituacao() == SituacaoContaPagar.CANCELADA ? BigDecimal.ZERO
+                        : c.getValorTotal().subtract(c.getValorPago()),
+                OrigemFinanceiraResponse.from(c));
     }
 }

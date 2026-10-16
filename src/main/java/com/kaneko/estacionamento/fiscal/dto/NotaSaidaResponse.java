@@ -13,6 +13,8 @@ import java.util.List;
  */
 public record NotaSaidaResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         String numero,
         String modelo,
         String serie,
@@ -20,6 +22,9 @@ public record NotaSaidaResponse(
         String clienteNome,
         Long condicaoPagamentoId,
         String condicaoPagamentoNome,
+        Long localEstoqueId,
+        String localEstoqueNome,
+        Long vendaAdministrativaId,
         LocalDate dataEmissao,
         LocalDate dataSaida,
         TipoFrete tipoFrete,
@@ -39,6 +44,8 @@ public record NotaSaidaResponse(
     public static NotaSaidaResponse from(NotaSaida nota) {
         return new NotaSaidaResponse(
                 nota.getId(),
+                nota.getOrganizacaoId(),
+                nota.getVersion(),
                 nota.getNumero(),
                 nota.getModelo(),
                 nota.getSerie(),
@@ -46,6 +53,10 @@ public record NotaSaidaResponse(
                 nota.getCliente().getNome(),
                 nota.getCondicaoPagamento() != null ? nota.getCondicaoPagamento().getId() : null,
                 nota.getCondicaoPagamento() != null ? nota.getCondicaoPagamento().getNome() : null,
+                nota.getLocalEstoque() != null ? nota.getLocalEstoque().getId() : null,
+                nota.getLocalEstoque() != null ? nota.getLocalEstoque().getNome() : null,
+                nota.getVendaAdministrativa() != null
+                        ? nota.getVendaAdministrativa().getId() : null,
                 nota.getDataEmissao(),
                 nota.getDataSaida(),
                 nota.getTipoFrete(),

@@ -16,13 +16,21 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long>,
         JpaSpecificationExecutor<Produto> {
 
     /** Unicidade do codigo de barras (uq_produto_codigo_barras), quando informado. */
-    boolean existsByCodigoBarras(String codigoBarras);
+    @Query("""
+            select count(p)>0 from Produto p where p.organizacaoId=:org
+            and trim(p.codigoBarras)=trim(:codigo) and (:id is null or p.id<>:id)
+            """)
+    boolean existeCodigoNormalizado(Long org, String codigo, Long id);
 
-    boolean existsByCodigoBarrasAndIdNot(String codigoBarras, Long id);
+    @EntityGraph(attributePaths = {"marca", "unidadeMedida", "categoria"})
+    Optional<Produto> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    @EntityGraph(attributePaths = {"marca", "unidadeMedida", "categoria"})
+    Optional<Produto> findByIdAndOrganizacaoIdIsNull(Long id);
 
     /** Produtos ativos com estoque igual ou abaixo do minimo (relatorio 4.29). */
     @EntityGraph(attributePaths = {"marca", "categoria"})
-    @Query("SELECT p FROM Produto p WHERE p.ativo = true AND p.quantidade <= p.quantidadeMinima ORDER BY p.nome")
+    @Query("SELECT p FROM Produto p WHERE p.organizacaoId is null AND p.ativo = true AND p.quantidade <= p.quantidadeMinima ORDER BY p.nome")
     List<Produto> findComEstoqueAbaixoDoMinimo();
 
     @Override

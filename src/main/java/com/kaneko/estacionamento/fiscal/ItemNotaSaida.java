@@ -21,6 +21,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ItemNotaSaida extends AuditableEntity {
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "nota_saida_id", nullable = false)

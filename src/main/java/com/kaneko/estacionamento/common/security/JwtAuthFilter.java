@@ -8,6 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.ArrayList;
+import com.kaneko.estacionamento.rbac.RbacService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,10 +30,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UsuarioRepository usuarioRepository;
+    private final ContextoAutenticadoService contextoService;
+    private final RbacService rbacService;
 
-    public JwtAuthFilter(JwtService jwtService, UsuarioRepository usuarioRepository) {
+    public JwtAuthFilter(
+            JwtService jwtService,
+            UsuarioRepository usuarioRepository,
+            ContextoAutenticadoService contextoService, RbacService rbacService) {
         this.jwtService = jwtService;
         this.usuarioRepository = usuarioRepository;
+        this.contextoService = contextoService;
+        this.rbacService = rbacService;
     }
 
     @Override
@@ -42,21 +51,47 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 JwtService.Claims claims = jwtService.validar(header.substring(PREFIXO.length()));
-                // RN001: so autentica usuario existente e ATIVO — um token de usuario
-                // inativado ou removido deixa de valer, mesmo dentro da validade.
-                boolean usuarioAtivo = usuarioRepository.findByLoginIgnoreCase(claims.login())
-                        .filter(Usuario::getAtivo)
-                        .isPresent();
-                if (usuarioAtivo) {
-                    var authentication = new UsernamePasswordAuthenticationToken(
-                            claims.login(), null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + claims.perfil())));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
+                Usuario usuario = buscarUsuarioAtivo(claims);
+                ContextoOrganizacao contexto = validarContextoQuandoPresente(claims, usuario);
+                UsuarioAutenticado principal = new UsuarioAutenticado(
+                        usuario.getId(), usuario.getLogin(), usuario.getNome(), usuario.getEmail(),
+                        usuario.getPerfil(),
+                        contexto != null ? contexto.organizacaoId() : null,
+                        contexto != null ? contexto.membershipId() : null,
+                        contexto != null ? contexto.membershipVersion() : null);
+                var authorities = new ArrayList<SimpleGrantedAuthority>();
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + usuario.getPerfil().name()));
+                if (contexto != null) rbacService.permissoes(contexto.membershipId(), contexto.organizacaoId())
+                        .forEach(p -> authorities.add(new SimpleGrantedAuthority("PERMISSION_" + p)));
+                var authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (RuntimeException ignored) {
                 // Token invalido: segue sem autenticacao.
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private Usuario buscarUsuarioAtivo(JwtService.Claims claims) {
+        if (claims.usuarioId() != null) {
+            return usuarioRepository.findByIdAndAtivoTrue(claims.usuarioId())
+                    .orElseThrow(() -> new JwtService.TokenInvalidoException("Usuario inativo ou inexistente."));
+        }
+        return usuarioRepository.findByLoginIgnoreCase(claims.login())
+                .filter(Usuario::getAtivo)
+                .orElseThrow(() -> new JwtService.TokenInvalidoException("Usuario inativo ou inexistente."));
+    }
+
+    private ContextoOrganizacao validarContextoQuandoPresente(
+            JwtService.Claims claims, Usuario usuario) {
+        if (!claims.possuiAlgumClaimDeContexto()) {
+            return null;
+        }
+        if (!claims.possuiContextoCompleto()) {
+            throw new TokenContextoInvalidoException();
+        }
+        return contextoService.validarContextoToken(
+                claims.membershipId(), usuario.getId(), claims.organizacaoId(),
+                claims.membershipVersion());
     }
 }

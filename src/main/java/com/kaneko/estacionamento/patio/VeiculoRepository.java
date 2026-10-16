@@ -14,12 +14,15 @@ public interface VeiculoRepository extends JpaRepository<Veiculo, Long>,
         JpaSpecificationExecutor<Veiculo> {
 
     /** Unicidade da placa (uq_veiculo_placa). */
-    boolean existsByPlaca(String placa);
+    boolean existsByOrganizacaoIdAndPlaca(Long organizacaoId, String placa);
+    boolean existsByOrganizacaoIdIsNullAndPlaca(String placa);
 
     /** Mesma checagem, ignorando o proprio registro — usado em alteracoes. */
-    boolean existsByPlacaAndIdNot(String placa, Long id);
+    boolean existsByOrganizacaoIdAndPlacaAndIdNot(Long organizacaoId, String placa, Long id);
+    boolean existsByOrganizacaoIdIsNullAndPlacaAndIdNot(String placa, Long id);
 
-    @Override
     @EntityGraph(attributePaths = "cliente")
-    Optional<Veiculo> findById(Long id);
+    Optional<Veiculo> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+    @EntityGraph(attributePaths = "cliente")
+    Optional<Veiculo> findByIdAndOrganizacaoIdIsNull(Long id);
 }

@@ -20,6 +20,8 @@ public interface EstadoRepository extends JpaRepository<Estado, Long>,
     /** Mesma checagem, ignorando o proprio registro — usado em alteracoes. */
     boolean existsByPaisIdAndUfAndIdNot(Long paisId, String uf, Long id);
 
+    Optional<Estado> findByPaisIdAndUfIgnoreCase(Long paisId, String uf);
+
     @Override
     @EntityGraph(attributePaths = "pais")
     Optional<Estado> findById(Long id);

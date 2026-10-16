@@ -1,11 +1,14 @@
 package com.kaneko.estacionamento.rh;
 
+import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
 import com.kaneko.estacionamento.rh.dto.FuncionarioRequest;
 import com.kaneko.estacionamento.rh.dto.FuncionarioResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,33 +34,49 @@ public class FuncionarioController {
     }
 
     @GetMapping
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('workforce:read', authentication)")
     public Page<FuncionarioResponse> listar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) Long cargoId,
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable) {
-        return service.listar(nome, cargoId, ativo, pageable);
+        return service.listar(principal.organizacaoId(), nome, cargoId, ativo, pageable);
     }
 
     @GetMapping("/{id}")
-    public FuncionarioResponse buscar(@PathVariable Long id) {
-        return FuncionarioResponse.from(service.buscar(id));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('workforce:read', authentication)")
+    public FuncionarioResponse buscar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        return FuncionarioResponse.from(service.buscar(principal.organizacaoId(), id));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public FuncionarioResponse criar(@Valid @RequestBody FuncionarioRequest req) {
-        return FuncionarioResponse.from(service.criar(req));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('workforce:manage', authentication)")
+    public FuncionarioResponse criar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @Valid @RequestBody FuncionarioRequest req) {
+        return FuncionarioResponse.from(service.criar(principal.organizacaoId(), req));
     }
 
     @PutMapping("/{id}")
-    public FuncionarioResponse atualizar(@PathVariable Long id, @Valid @RequestBody FuncionarioRequest req) {
-        return FuncionarioResponse.from(service.atualizar(id, req));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('workforce:manage', authentication)")
+    public FuncionarioResponse atualizar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id,
+            @Valid @RequestBody FuncionarioRequest req) {
+        return FuncionarioResponse.from(
+                service.atualizar(principal.organizacaoId(), id, req));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void excluir(@PathVariable Long id) {
-        service.excluir(id);
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('workforce:manage', authentication)")
+    public void excluir(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        service.excluir(principal.organizacaoId(), id);
     }
 }

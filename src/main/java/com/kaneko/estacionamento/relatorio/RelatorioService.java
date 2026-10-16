@@ -11,6 +11,8 @@ import com.kaneko.estacionamento.financeiro.ContaReceber;
 import com.kaneko.estacionamento.financeiro.ContaReceberRepository;
 import com.kaneko.estacionamento.financeiro.SituacaoContaPagar;
 import com.kaneko.estacionamento.financeiro.SituacaoContaReceber;
+import com.kaneko.estacionamento.estoque.EstoqueMinimoTenantView;
+import com.kaneko.estacionamento.estoque.SaldoEstoqueRepository;
 import com.kaneko.estacionamento.fiscal.NotaSaida;
 import com.kaneko.estacionamento.fiscal.NotaSaidaRepository;
 import com.kaneko.estacionamento.fiscal.NotaServico;
@@ -63,6 +65,7 @@ public class RelatorioService {
     private final ContaPagarAvulsaRepository contaPagarAvulsaRepository;
     private final ProdutoRepository produtoRepository;
     private final MensalistaRepository mensalistaRepository;
+    private final SaldoEstoqueRepository saldoEstoqueRepository;
 
     public RelatorioService(MovimentacaoRepository movimentacaoRepository,
                             NotaSaidaRepository notaSaidaRepository,
@@ -71,7 +74,8 @@ public class RelatorioService {
                             ContaPagarRepository contaPagarRepository,
                             ContaPagarAvulsaRepository contaPagarAvulsaRepository,
                             ProdutoRepository produtoRepository,
-                            MensalistaRepository mensalistaRepository) {
+                            MensalistaRepository mensalistaRepository,
+                            SaldoEstoqueRepository saldoEstoqueRepository) {
         this.movimentacaoRepository = movimentacaoRepository;
         this.notaSaidaRepository = notaSaidaRepository;
         this.notaServicoRepository = notaServicoRepository;
@@ -80,12 +84,15 @@ public class RelatorioService {
         this.contaPagarAvulsaRepository = contaPagarAvulsaRepository;
         this.produtoRepository = produtoRepository;
         this.mensalistaRepository = mensalistaRepository;
+        this.saldoEstoqueRepository = saldoEstoqueRepository;
     }
 
     /** 4.26 — Patio atual. */
-    public PatioAtualResponse patioAtual() {
-        List<Movimentacao> abertas =
-                movimentacaoRepository.findByStatusOrderByDataEntradaAsc(StatusMovimentacao.ABERTO);
+    public PatioAtualResponse patioAtual(Long organizacaoId) {
+        List<Movimentacao> abertas = organizacaoId == null
+                ? movimentacaoRepository.findByStatusOrderByDataEntradaAsc(StatusMovimentacao.ABERTO)
+                : movimentacaoRepository.findByOrganizacaoIdAndStatusOrderByDataEntradaAsc(
+                        organizacaoId, StatusMovimentacao.ABERTO);
         OffsetDateTime agora = OffsetDateTime.now();
         List<PatioAtualResponse.ItemPatio> itens = abertas.stream()
                 .map(m -> new PatioAtualResponse.ItemPatio(
@@ -103,25 +110,40 @@ public class RelatorioService {
     }
 
     /** 4.27 — Faturamento do dia/periodo. */
-    public FaturamentoDiaResponse faturamento(LocalDate inicio, LocalDate fim) {
+    public FaturamentoDiaResponse faturamento(Long organizacaoId, LocalDate inicio, LocalDate fim) {
         validarPeriodo(inicio, fim);
         OffsetDateTime ini = inicio.atStartOfDay(FUSO).toOffsetDateTime();
         OffsetDateTime fimDia = fim.atTime(LocalTime.MAX).atZone(FUSO).toOffsetDateTime();
 
-        BigDecimal estacionamento = movimentacaoRepository
-                .findByStatusAndDataSaidaBetween(StatusMovimentacao.FECHADO, ini, fimDia).stream()
+        List<Movimentacao> movimentos = organizacaoId == null
+                ? movimentacaoRepository.findByOrganizacaoIdIsNullAndStatusAndDataSaidaBetween(
+                        StatusMovimentacao.FECHADO, ini, fimDia)
+                : movimentacaoRepository.findByOrganizacaoIdAndStatusAndDataSaidaBetween(
+                        organizacaoId, StatusMovimentacao.FECHADO, ini, fimDia);
+        BigDecimal estacionamento = movimentos.stream()
                 .map(m -> nz(m.getValorCobrado())).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal vendas = notaSaidaRepository
-                .findBySituacaoAndDataEmissaoBetween(SituacaoNota.CONFIRMADA, inicio, fim).stream()
+        List<NotaSaida> notasSaida = organizacaoId == null
+                ? notaSaidaRepository.findByOrganizacaoIdIsNullAndSituacaoAndDataEmissaoBetween(
+                        SituacaoNota.CONFIRMADA, inicio, fim)
+                : notaSaidaRepository.findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
+                        organizacaoId, SituacaoNota.CONFIRMADA, inicio, fim);
+        BigDecimal vendas = notasSaida.stream()
                 .map(NotaSaida::getValorTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal servicos = notaServicoRepository
-                .findBySituacaoAndDataEmissaoBetween(SituacaoNotaServico.EMITIDA, inicio, fim).stream()
+        List<NotaServico> notasServico = organizacaoId == null
+                ? notaServicoRepository.findByOrganizacaoIdIsNullAndSituacaoAndDataEmissaoBetween(
+                        SituacaoNotaServico.EMITIDA, inicio, fim)
+                : notaServicoRepository.findByOrganizacaoIdAndSituacaoAndDataEmissaoBetween(
+                        organizacaoId, SituacaoNotaServico.EMITIDA, inicio, fim);
+        BigDecimal servicos = notasServico.stream()
                 .map(NotaServico::getValorTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal recebimentos = contaReceberRepository
-                .findByDataRecebimentoBetween(inicio, fim).stream()
+        List<ContaReceber> contasRecebidas = organizacaoId == null
+                ? contaReceberRepository.findByOrganizacaoIdIsNullAndDataRecebimentoBetween(inicio, fim)
+                : contaReceberRepository.findByOrganizacaoIdAndDataRecebimentoBetween(
+                        organizacaoId, inicio, fim);
+        BigDecimal recebimentos = contasRecebidas.stream()
                 .map(ContaReceber::getValorRecebido).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalFaturado = estacionamento.add(vendas).add(servicos);
@@ -130,20 +152,28 @@ public class RelatorioService {
     }
 
     /** 4.28 — Contas a vencer (a pagar e a receber em aberto). */
-    public ContasAVencerResponse contasAVencer(LocalDate inicio, LocalDate fim) {
+    public ContasAVencerResponse contasAVencer(Long organizacaoId, LocalDate inicio, LocalDate fim) {
         validarPeriodo(inicio, fim);
         LocalDate hoje = LocalDate.now();
 
         List<ContasAVencerResponse.Titulo> aPagar = new ArrayList<>();
-        for (ContaPagar c : contaPagarRepository
-                .findBySituacaoInAndDataVencimentoBetween(ABERTAS_PAGAR, inicio, fim)) {
+        List<ContaPagar> contasPagar = organizacaoId == null
+                ? contaPagarRepository.findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
+                        ABERTAS_PAGAR, inicio, fim)
+                : contaPagarRepository.findByOrganizacaoIdAndSituacaoInAndDataVencimentoBetween(
+                        organizacaoId, ABERTAS_PAGAR, inicio, fim);
+        for (ContaPagar c : contasPagar) {
             aPagar.add(new ContasAVencerResponse.Titulo("CONTA_PAGAR", c.getId(),
                     c.getFornecedor().getNome(), c.getDataVencimento(),
                     c.getValorTotal().subtract(c.getValorPago()),
                     c.getDataVencimento().isBefore(hoje), c.getSituacao().name()));
         }
-        for (ContaPagarAvulsa c : contaPagarAvulsaRepository
-                .findBySituacaoInAndDataVencimentoBetween(ABERTAS_PAGAR, inicio, fim)) {
+        List<ContaPagarAvulsa> despesas = organizacaoId == null
+                ? contaPagarAvulsaRepository.findBySituacaoInAndDataVencimentoBetween(
+                        ABERTAS_PAGAR, inicio, fim)
+                : contaPagarAvulsaRepository.findByOrganizacaoIdAndSituacaoInAndDataVencimentoBetween(
+                        organizacaoId, ABERTAS_PAGAR, inicio, fim);
+        for (ContaPagarAvulsa c : despesas) {
             String contraparte = c.getFornecedor() != null ? c.getFornecedor().getNome() : c.getDescricao();
             aPagar.add(new ContasAVencerResponse.Titulo("DESPESA_AVULSA", c.getId(),
                     contraparte, c.getDataVencimento(),
@@ -153,8 +183,12 @@ public class RelatorioService {
         aPagar.sort(Comparator.comparing(ContasAVencerResponse.Titulo::vencimento));
 
         List<ContasAVencerResponse.Titulo> aReceber = new ArrayList<>();
-        for (ContaReceber c : contaReceberRepository
-                .findBySituacaoInAndDataVencimentoBetween(ABERTAS_RECEBER, inicio, fim)) {
+        List<ContaReceber> contasReceber = organizacaoId == null
+                ? contaReceberRepository.findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
+                        ABERTAS_RECEBER, inicio, fim)
+                : contaReceberRepository.findByOrganizacaoIdAndSituacaoInAndDataVencimentoBetween(
+                        organizacaoId, ABERTAS_RECEBER, inicio, fim);
+        for (ContaReceber c : contasReceber) {
             aReceber.add(new ContasAVencerResponse.Titulo("CONTA_RECEBER", c.getId(),
                     c.getCliente().getNome(), c.getDataVencimento(),
                     c.getValorTotal().subtract(c.getValorRecebido()),
@@ -168,7 +202,17 @@ public class RelatorioService {
     }
 
     /** 4.29 — Estoque minimo. */
-    public EstoqueMinimoResponse estoqueMinimo() {
+    public EstoqueMinimoResponse estoqueMinimo(Long organizacaoId) {
+        if (organizacaoId != null) {
+            List<EstoqueMinimoTenantView> posicoes = saldoEstoqueRepository
+                    .listarEstoqueMinimo(organizacaoId);
+            List<EstoqueMinimoResponse.ItemEstoque> itens = posicoes.stream()
+                    .map(p -> new EstoqueMinimoResponse.ItemEstoque(p.getProdutoId(),
+                            p.getProduto(), p.getMarca(), p.getCategoria(),
+                            p.getQuantidade(), p.getQuantidadeMinima()))
+                    .toList();
+            return new EstoqueMinimoResponse(itens.size(), itens);
+        }
         List<Produto> produtos = produtoRepository.findComEstoqueAbaixoDoMinimo();
         List<EstoqueMinimoResponse.ItemEstoque> itens = produtos.stream()
                 .map(p -> new EstoqueMinimoResponse.ItemEstoque(
@@ -183,9 +227,11 @@ public class RelatorioService {
     }
 
     /** 4.30 — Mensalistas ativos. */
-    public MensalistasAtivosResponse mensalistasAtivos() {
-        List<Mensalista> ativos =
-                mensalistaRepository.findByStatusOrderByDataInicioAsc(StatusMensalista.ATIVO);
+    public MensalistasAtivosResponse mensalistasAtivos(Long organizacaoId) {
+        List<Mensalista> ativos = organizacaoId == null
+                ? mensalistaRepository.findByStatusOrderByDataInicioAsc(StatusMensalista.ATIVO)
+                : mensalistaRepository.findByOrganizacaoIdAndStatusOrderByDataInicioAsc(
+                        organizacaoId, StatusMensalista.ATIVO);
         List<MensalistasAtivosResponse.ItemMensalista> itens = ativos.stream()
                 .map(m -> new MensalistasAtivosResponse.ItemMensalista(
                         m.getId(),

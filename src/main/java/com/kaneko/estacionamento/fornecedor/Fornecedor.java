@@ -35,6 +35,9 @@ import lombok.Setter;
 @Setter
 public class Fornecedor extends BaseEntity {
 
+    @Column(name = "organizacao_id")
+    private Long organizacaoId;
+
     @Column(name = "nome", nullable = false, length = 120)
     private String nome;
 
