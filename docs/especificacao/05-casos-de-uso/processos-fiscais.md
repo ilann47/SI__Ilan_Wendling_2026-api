@@ -10,168 +10,111 @@ Documentos relacionados: [[03-der]] (modelo entidade-relacionamento), [[07-dicio
 
 ## Convenções aplicáveis a todos os processos
 
-As convenções abaixo valem para os três processos e não são repetidas em cada um:
+Esta seção descreve o fluxo vigente com organização ativa. Consultas exigem `fiscal:read`; lançamento, revisão e confirmação exigem `fiscal:manage`. No detalhe, as contas e o estoque exigem também `finance:read` e `stock:read`, respectivamente. Informação sem permissão não é exibida como uma lista vazia. O sistema registra documentos e efeitos internos; não autoriza NF-e, não transmite devolução à SEFAZ e não executa operações bancárias.
 
-- **Atomicidade transacional.** Toda confirmação ou emissão que produza efeitos colaterais (baixa/entrada de estoque, geração de contas e parcelas, persistência da nota) é executada dentro de uma **única transação de banco**. Em caso de falha em qualquer passo, a transação inteira sofre *rollback* e nenhum efeito é persistido, preservando a consistência entre nota, estoque e financeiro.
-- **Imutabilidade após o efeito fiscal.** Uma nota nas situações `CONFIRMADA` (entrada/saída) ou `EMITIDA` (serviço) é considerada documento fiscal consolidado: seus itens e valores não podem ser editados. Alterações exigem cancelamento e nova emissão.
-- **Numeração.** A combinação que identifica a nota é única no banco: `(numero, serie, fornecedor_id)` para entrada, `(numero, serie, cliente_id)` para saída e `(numero, serie)` para serviço. Tentativas de duplicar essa combinação são rejeitadas.
-- **Valores monetários** seguem `NUMERIC(15,2)`; quantidades de produto seguem `NUMERIC(15,3)`, admitindo fração para itens vendidos por peso/volume (KG, L).
-- **Domínio de situação.** Entrada/saída: `PENDENTE`, `CONFIRMADA`, `CANCELADA`. Serviço: `PENDENTE`, `EMITIDA`, `CANCELADA`. Contas (pagar/receber): `PENDENTE`, `PARCIAL`, `PAGA`/`RECEBIDA`, `CANCELADA`.
+## UC401 — Gerenciar Compra (Nota de Entrada)
 
----
+### Objetivo e atores
 
-## UC401 — Processo 1 — Registrar Compra (Nota de Entrada)
+Registrar o documento do fornecedor e confirmar integralmente a entrada. Atuam o operador de compras/estoque com gestão fiscal e o usuário com permissão de consulta. A confirmação não depende de Ordem de Compra nem de um registro separado de recebimento.
 
-## Objetivo
+### Regras de negócio
 
-Registrar a compra de mercadorias para a loja de conveniência junto a um fornecedor, controlando o documento fiscal de entrada (`nota_entrada`) e seus itens (`item_nota_entrada`). Ao **confirmar** a nota, o sistema deve incorporar as quantidades adquiridas ao estoque dos produtos e provisionar o passivo financeiro correspondente, gerando as parcelas de contas a pagar (`conta_pagar`) conforme a condição de pagamento acordada. O processo garante que o estoque físico e o contas a pagar reflitam fielmente a entrada de mercadoria.
+| ID | Regra vigente |
+|---|---|
+| RN001 | O operador deve estar autenticado, com organização ativa e permissões do fluxo. |
+| RN002 | A identidade fiscal é organização + fornecedor + número + série + modelo. Espaços externos, caixa e zeros iniciais em identificadores numéricos são normalizados na comparação. |
+| RN003 | A emissão não pode ser posterior ao dia corrente. A regra vale para criação, edição, conferência e confirmação, inclusive no XML. A API manual usa a data corrente se a emissão for omitida; a interface exige preenchimento. |
+| RN004 | A chegada, se informada, não pode ser anterior à emissão. |
+| RN005 | Ao menos um item, com produto ativo do mesmo contexto, quantidade positiva e local de estoque ativo. |
+| RN006 | A condição de pagamento e a transportadora ativas são herdadas do fornecedor se omitidas; podem ser substituídas. As parcelas da revisão ficam gravadas com valor, vencimento e forma aplicável. |
+| RN007 | Nota confirmada com título que já teve baixa, inclusive parcial, não pode ser revertida. |
+| RN008 | Sem estoque reversível ou diante de histórico de movimentos incompatível, a reversão é bloqueada. |
+| RN009 | Valor e percentual de desconto de item devem concordar se ambos forem informados. O custo incorpora o rateio de despesas; o desconto geral reduz a obrigação, não o custo dos itens. |
+| RN010 | O rascunho não altera estoque, custo nem financeiro. Uma única confirmação atualiza saldo por local e custo médio, registra movimentos e gera títulos a pagar para as parcelas positivas. |
 
-## Regras de Negócio
+### Pré-condição, pós-condição e ativação
 
-- **RN101 — Cabeçalho obrigatório.** Toda nota de entrada exige `numero`, `serie`, `modelo` e um `fornecedor` previamente cadastrado e ativo. `modelo` e `serie` assumem `'55'` e `'1'` por padrão quando não informados.
-- **RN102 — Unicidade do documento.** Não é permitido registrar duas notas com o mesmo trio `(numero, serie, fornecedor_id)`. A tentativa é rejeitada pela restrição de unicidade `uq_nota_entrada`.
-- **RN103 — Nota não vazia para confirmação.** Uma nota só pode ser confirmada se possuir ao menos um item. A persistência de cada item exige `quantidade > 0` e `valor_unitario >= 0`.
-- **RN104 — Sequência do item.** A `sequencia` de cada item é única dentro da nota (`uq_item_entrada_seq`), atribuída de forma incremental (1, 2, 3, …) na ordem de inclusão.
-- **RN105 — Cálculo do total do item.** Para cada item, `valor_total = (quantidade × valor_unitario) − valor_desconto`. Quando informado `percentual_desconto`, o `valor_desconto` é derivado dele sobre o bruto. O `percentual_desconto` é limitado ao intervalo de 0 a 100.
-- **RN106 — Rateio de despesas acessórias.** Os valores de `valor_frete`, `valor_seguro` e `outras_despesas` do cabeçalho são rateados entre os itens proporcionalmente ao `valor_total` de cada um, gravando `rateio_frete`, `rateio_seguro` e `rateio_outras` em cada item.
-- **RN107 — Custo final do item.** O `custo_preco_final` de cada item é o custo unitário real após o rateio: `custo_preco_final = (valor_total + rateio_frete + rateio_seguro + rateio_outras) ÷ quantidade`. Este custo é o usado para atualizar o `valor_compra` do produto.
-- **RN108 — Total da nota.** `valor_total = valor_produtos + valor_frete + valor_seguro + outras_despesas − valor_desconto`, onde `valor_produtos` é o somatório dos `valor_total` dos itens. Todos os valores são restringidos a não-negativos.
-- **RN109 — Efeito de estoque somente na confirmação.** A entrada de estoque ocorre **exclusivamente** na transição `PENDENTE → CONFIRMADA`. Enquanto `PENDENTE`, a nota não altera estoque nem gera financeiro.
-- **RN110 — Soma ao estoque.** Ao confirmar, para cada item, `produto.quantidade` é incrementado em `item.quantidade`. O produto também tem seu `valor_compra` atualizado pelo `custo_preco_final` do item, e o `valor_venda`/`percentual_lucro` recalculados conforme a margem-alvo cadastrada (quando aplicável).
-- **RN111 — Geração de contas a pagar.** Ao confirmar, é gerado o passivo financeiro a partir do `valor_total` da nota e da `condicao_pagamento`. Quando a condição define múltiplas parcelas, são criados N registros em `conta_pagar`, um por parcela, com `numero_parcela`/`total_parcelas` preenchidos. O par `(nota_entrada_id, numero_parcela)` é único (`uq_conta_pagar_parcela`).
-- **RN112 — Datas e valores das parcelas.** Cada parcela nasce com `data_emissao` igual à data de geração (`CURRENT_DATE`, padrão da coluna) e `data_vencimento = data_emissao + dias` (a partir de `parcela_condicao_pagamento.dias` ou de `dias_primeira_parcela`/`dias_entre_parcelas`, com `dias >= 0`), satisfazendo `ck_conta_pagar_vencimento`; à vista (`dias = 0`), `data_vencimento = data_emissao`. O `valor_total` da parcela — coluna `NOT NULL` sem default — é definido obrigatoriamente como o rateio do `valor_total` da nota pelo `percentual` da parcela na condição de pagamento; `valor_original` recebe o mesmo rateio. O somatório dos `valor_total` das parcelas é igual ao `valor_total` da nota; eventual diferença de centavos por arredondamento é ajustada na última parcela. Cada parcela nasce com `situacao = 'PENDENTE'`, `valor_pago = 0` e `data_pagamento` nula — o que satisfaz `ck_conta_pagar_pago_teto` (`valor_pago <= valor_total`).
-- **RN113 — Condição ausente.** Se a nota não tiver `condicao_pagamento`, gera-se uma única parcela à vista (`total_parcelas = 1`), com vencimento igual à `data_emissao`.
-- **RN114 — Cancelamento.** Uma nota `PENDENTE` pode ser cancelada sem efeitos colaterais. O cancelamento de nota já `CONFIRMADA` é estorno: reverte o estoque (subtrai as quantidades) e cancela as parcelas de `conta_pagar` ainda não pagas; só é permitido se nenhuma parcela vinculada estiver `PAGA` ou `PARCIAL`. *(Regra de aplicação, garantida na camada de serviço; sem constraint correspondente no banco.)*
-- **RN115 — Coerência data de chegada.** Quando informada, `data_chegada` não pode ser anterior à `data_emissao` (`ck_nota_entrada_chegada`).
+**Pré-condição:** fornecedor, produtos e local de estoque do tenant cadastrados e ativos. **Ativação:** Estoque → Notas de Entrada → Nova nota ou Importar XML. **Pós-condição:** rascunho `PENDENTE` sem efeitos ou nota `CONFIRMADA` com estoque/custo/contas persistidos atomicamente.
 
-## Atores
+### Fluxo principal — Entrada manual
 
-- **Ator principal:** Operador de Estoque/Compras (perfil `OPERADOR` ou `ADMIN`), responsável por lançar a nota recebida do fornecedor.
-- **Atores de apoio (entidades):** Fornecedor, Produto, Condição de Pagamento, Forma de Pagamento.
-- **Sistemas impactados:** módulo de Estoque (`produto.quantidade`) e módulo Financeiro (`conta_pagar`).
+1. O operador informa fornecedor, número, série, modelo, emissão e, quando disponível, chegada.
+2. Seleciona o local de estoque, confere condição de pagamento e frete e informa itens, quantidades, valores e descontos.
+3. Salva o rascunho. A API responde com a identificação, versão e parcelas calculadas; a edição de pendente exige a versão corrente.
+4. Abre **Conferir valores e parcelas**. Confere mercadoria, custos por item, estimativa do custo médio e vencimentos da versão salva.
+5. Marca a conferência e confirma. A API bloqueia a nota, valida a versão e registra os efeitos integralmente.
+6. Consulta o detalhe para ver movimentações, saldos e títulos conforme as permissões.
 
-## Pré-Condição
+### Fluxos alternativos
 
-1. Existe ao menos um **fornecedor** ativo cadastrado.
-2. Todos os **produtos** dos itens estão previamente cadastrados e ativos.
-3. A **condição de pagamento** (quando utilizada) está cadastrada e, se parcelada, possui suas parcelas definidas em `parcela_condicao_pagamento`.
-4. O operador está autenticado e autorizado.
+- **Consultar:** pesquisar por número, fornecedor ou situação na lista e abrir o documento. O detalhe não altera nenhum registro.
+- **Editar:** salvar a nova composição da nota pendente e refazer a conferência; alterações não salvas não autorizam confirmação.
+- **Cancelar ou excluir rascunho:** somente sem efeitos confirmados, com comportamento previsto pelo contrato da nota. Para nota confirmada, utilizar UC404.
+- **Importar XML:** selecionar a NF-e de fornecedor, com destinatário correspondente à organização e moeda BRL. Associar fornecedor, local e todos os produtos; conferir a quantidade física de cada item. Divergência deixa a importação conciliada, sem confirmação. Com contagem completa e valores conciliados, consultar a prévia e confirmar. O sistema vincula a nota canônica, lança os efeitos uma única vez e retorna a mesma importação quando a confirmação é repetida.
 
-## Pós-Condição
+### Fluxos de exceção
 
-**Em caso de sucesso (confirmação):**
-1. A `nota_entrada` está persistida com `situacao = 'CONFIRMADA'` e `valor_total` calculado.
-2. A `quantidade` em estoque de cada produto da nota foi **incrementada**.
-3. Foram criados os registros em `conta_pagar` (uma ou mais parcelas), todos com `situacao = 'PENDENTE'`, cuja soma de `valor_original` equivale ao `valor_total` da nota.
+| ID | Situação e resposta |
+|---|---|
+| E1 | Emissão futura: “A data de emissão não pode ser futura.”; o documento não é gravado nem confirmado. |
+| E2 | Chegada anterior à emissão: “A chegada não pode ser anterior à emissão.” |
+| E3 | Identidade duplicada: indicar nota existente, sem criar outro documento. |
+| E4 | Revisão desatualizada: “A nota foi alterada. Recarregue e revise antes de confirmar.” |
+| E5 | XML com destinatário incorreto: “O destinatário do XML não corresponde à organização ativa.” |
+| E6 | XML não conciliável: “O total calculado diverge do XML. Nenhum lançamento foi confirmado.” |
+| E7 | Contagem divergente: “Conclua a conciliação e resolva a diferença da contagem antes de confirmar.” |
 
-**Em caso de falha:** nenhuma alteração é persistida (rollback total); estoque e financeiro permanecem inalterados.
+## UC402 — Gerenciar Venda (Nota de Saída)
 
-## Ativação
+### Objetivo e atores
 
-O processo é ativado quando o operador seleciona "Registrar Compra / Nota de Entrada" e, após preencher cabeçalho e itens, aciona a ação **Confirmar**. A simples gravação como rascunho mantém a nota em `PENDENTE` sem efeitos.
+Registrar diretamente a venda de mercadoria e os efeitos da saída. Atuam o operador com gestão fiscal e o usuário com leitura fiscal; não há Pedido de Venda como requisito ou entidade intermediária.
 
-## Fluxo Principal
+### Regras de negócio
 
-1. O operador abre o formulário de nota de entrada e informa o **fornecedor**, o `numero`, a `serie`, o `modelo`, a `data_emissao` (padrão: data atual), o `tipo_frete` (`CIF`/`FOB`/`SEM`) e, opcionalmente, a `condicao_pagamento` e a `data_chegada`.
-2. O sistema valida a unicidade do trio `(numero, serie, fornecedor_id)`. Se já existir, dispara **E1**.
-3. O operador adiciona os **itens**: para cada um, seleciona o `produto`, informa `quantidade` e `valor_unitario` e, opcionalmente, `valor_desconto`/`percentual_desconto`. O sistema atribui a `sequencia`, valida `quantidade > 0` (senão **E3**) e calcula `valor_total` do item (RN105).
-4. O operador informa, no cabeçalho, `valor_frete`, `valor_seguro`, `outras_despesas` e `valor_desconto` da nota (todos opcionais, padrão zero).
-5. O sistema consolida `valor_produtos` (somatório dos itens) e calcula `valor_total` da nota (RN108).
-6. O operador aciona **Confirmar**. O sistema abre uma transação e revalida que a nota possui ao menos um item (senão **E2**) e que a situação atual é `PENDENTE` (senão **E5**).
-7. O sistema executa o **rateio** das despesas acessórias entre os itens (RN106) e calcula o `custo_preco_final` de cada item (RN107).
-8. Para cada item, o sistema **incrementa** `produto.quantidade` em `item.quantidade` e atualiza o `valor_compra` do produto pelo `custo_preco_final`, recalculando `valor_venda`/`percentual_lucro` conforme a margem cadastrada.
-9. O sistema **gera o contas a pagar** (RN111–RN113): resolve o número de parcelas pela `condicao_pagamento`; para cada parcela, calcula `data_vencimento` e `valor_original`, ajustando centavos residuais na última parcela; insere os registros em `conta_pagar` com `situacao = 'PENDENTE'`, vinculados à nota e ao fornecedor.
-10. O sistema atualiza a `nota_entrada` para `situacao = 'CONFIRMADA'` e **confirma a transação** (commit).
-11. O sistema exibe a mensagem **"Nota de entrada confirmada. Estoque atualizado e {N} parcela(s) a pagar gerada(s)."** e retorna o identificador da nota.
+| ID | Regra vigente |
+|---|---|
+| RN001 | A chave contextual é organização emitente + número + série + modelo. O cliente é destinatário, não faz parte da unicidade contextual. |
+| RN002 | A nota tem cliente, local e itens da organização. A saída não pode deixar saldo negativo no local. |
+| RN003 | O rascunho salva a composição e as parcelas efetivas. A confirmação usa a revisão e o cronograma salvos, registra custo vigente por item, não recalcula o custo médio e gera contas a receber. |
+| RN004 | Rascunho não movimenta estoque nem gera títulos. Nota confirmada é imutável pelo cadastro comum; a reversão segue UC404. |
 
-## Fluxos de Exceção
+### Pré-condição, pós-condição e ativação
 
-- **E1 — Nota duplicada.** No passo 2, já existe nota com o mesmo `(numero, serie, fornecedor_id)`. Mensagem: **"Já existe uma nota de entrada com este número, série e fornecedor."** O processo é interrompido.
-- **E2 — Nota sem itens.** No passo 6, a nota não possui itens. Mensagem: **"Inclua ao menos um item antes de confirmar a nota de entrada."** A confirmação é abortada (rollback).
-- **E3 — Quantidade inválida.** No passo 3, `quantidade` é menor ou igual a zero. Mensagem: **"A quantidade do item deve ser maior que zero."** O item não é gravado.
-- **E4 — Fornecedor inexistente ou inativo.** No passo 1/6, o fornecedor informado não existe ou está inativo. Mensagem: **"Fornecedor inválido ou inativo. Selecione um fornecedor cadastrado."** O processo é interrompido.
-- **E5 — Situação não permite confirmação.** No passo 6, a nota já está `CONFIRMADA` ou `CANCELADA`. Mensagem: **"Esta nota já foi confirmada ou cancelada e não pode ser confirmada novamente."** Nenhuma alteração ocorre.
-- **E6 — Falha na geração financeira.** No passo 9, a soma das parcelas não fecha com o `valor_total` ou a condição de pagamento é inconsistente. Mensagem: **"Não foi possível gerar as parcelas: a soma das parcelas não confere com o total da nota."** A transação inteira sofre rollback (estoque não é alterado).
-- **E7 — Produto inexistente.** No passo 3/8, o produto referenciado não existe. Mensagem: **"Produto não encontrado para o item informado."** O processo é interrompido (rollback).
+**Pré-condição:** cliente, produtos e local cadastrados; disponibilidade física para confirmar. **Ativação:** Vendas → Notas de Saída → Nova nota. **Pós-condição:** `PENDENTE` sem efeitos ou `CONFIRMADA` com baixa do local e recebíveis.
 
----
+### Fluxo principal e alternativas
 
-## UC402 — Processo 2 — Registrar Venda (Nota de Saída)
+1. O operador abre a nova nota, preenche identificação, cliente, local, itens e valores.
+2. Salva o rascunho e confere totais e vencimentos previstos.
+3. Confirma a versão salva. O serviço valida disponibilidade, movimenta o razão, salva o custo de saída e gera títulos numa transação.
+4. O operador verifica a situação, os movimentos e os recebíveis no detalhe. Pode consultar ou editar o rascunho; cancelamento e exclusão só se aplicam antes da confirmação.
 
-## Objetivo
+### Fluxos de exceção
 
-Registrar a venda de mercadorias da conveniência a um cliente, controlando o documento fiscal de saída (`nota_saida`) e seus itens (`item_nota_saida`). Ao **confirmar** a nota, o sistema deve **baixar** as quantidades vendidas do estoque dos produtos e provisionar o ativo financeiro correspondente, gerando as parcelas de contas a receber (`conta_receber`) conforme a condição de pagamento. O processo impede a venda de mercadoria sem saldo de estoque suficiente e mantém o financeiro a receber sincronizado com a saída de mercadoria.
+| ID | Situação e resposta |
+|---|---|
+| E1 | Estoque insuficiente: “O movimento deixaria o saldo de estoque negativo.”; toda a confirmação é desfeita. |
+| E2 | Versão divergente: “A nota foi alterada. Recarregue e revise a versão atual.” |
+| E3 | Identidade duplicada ou situação incompatível: o sistema rejeita a operação, sem repetir estoque nem cobrança. |
 
-## Regras de Negócio
+## UC404 — Reverter nota confirmada internamente
 
-- **RN201 — Cabeçalho obrigatório.** Toda nota de saída exige `numero`, `serie`, `modelo` e um `cliente` previamente cadastrado e ativo. `modelo` e `serie` assumem `'55'` e `'1'` por padrão.
-- **RN202 — Unicidade do documento.** Não é permitido registrar duas notas com o mesmo trio `(numero, serie, cliente_id)` (`uq_nota_saida`).
-- **RN203 — Nota não vazia para confirmação.** A confirmação exige ao menos um item, cada um com `quantidade > 0` e `valor_unitario >= 0`.
-- **RN204 — Sequência do item.** A `sequencia` é única na nota (`uq_item_saida_seq`), atribuída incrementalmente.
-- **RN205 — Cálculo do total do item.** `valor_total = (quantidade × valor_unitario) − valor_desconto`; `percentual_desconto` limitado a 0–100.
-- **RN206 — Rateio e total da nota.** `valor_frete`, `valor_seguro` e `outras_despesas` são rateados entre os itens; `valor_produtos` é o somatório dos itens; `valor_total = valor_produtos + valor_frete + valor_seguro + outras_despesas − valor_desconto`.
-- **RN207 — Saldo de estoque obrigatório.** Na confirmação, para cada item, `produto.quantidade` deve ser **maior ou igual** à `item.quantidade`. Responsabilidades separadas: o **bloqueio** efetivo da venda por estoque insuficiente é uma validação *fail-fast* do serviço, que confere o saldo de cada item **antes** de qualquer baixa e aborta a transação ao detectar saldo inferior ao solicitado (ver **E4**). A restrição `ck_produto_valores` (que inclui `quantidade >= 0`) é apenas uma **guarda de integridade** do banco: garante que o estoque jamais fique negativo, servindo de última linha de defesa caso a validação de serviço falhe — não é o mecanismo que valida o saldo da venda.
-- **RN208 — Efeito de estoque somente na confirmação.** A baixa de estoque ocorre **exclusivamente** na transição `PENDENTE → CONFIRMADA`. Enquanto `PENDENTE`, a nota não altera estoque nem gera financeiro.
-- **RN209 — Baixa do estoque.** Ao confirmar, para cada item, `produto.quantidade` é **decrementado** em `item.quantidade`.
-- **RN210 — Geração de contas a receber.** Ao confirmar, é gerado o ativo financeiro a partir do `valor_total` e da `condicao_pagamento`, criando N registros em `conta_receber` (um por parcela), com `numero_parcela`/`total_parcelas`. O par `(nota_saida_id, numero_parcela)` é único (`uq_conta_receber_parcela`).
-- **RN211 — Datas e valores das parcelas.** Cada parcela nasce com `data_emissao` igual à data de geração (`CURRENT_DATE`, padrão da coluna) e `data_vencimento = data_emissao + dias` (`dias >= 0`), satisfazendo `ck_conta_receber_vencimento`; à vista (`dias = 0`), `data_vencimento = data_emissao`. O `valor_total` da parcela — coluna `NOT NULL` sem default — é definido obrigatoriamente como o rateio do `valor_total` da nota pelo `percentual` da parcela na condição de pagamento; `valor_original` recebe o mesmo rateio. A soma dos `valor_total` das parcelas equivale ao `valor_total` da nota, com ajuste de centavos na última parcela. Cada parcela nasce `PENDENTE`, `valor_recebido = 0`, `data_recebimento` nula — o que satisfaz `ck_conta_receber_recebido_teto` (`valor_recebido <= valor_total`).
-- **RN212 — Condição ausente.** Sem `condicao_pagamento`, gera-se parcela única à vista (`total_parcelas = 1`), vencimento igual à `data_emissao`.
-- **RN213 — Cancelamento.** Nota `PENDENTE` é cancelada sem efeito. Cancelamento de nota `CONFIRMADA` é estorno: devolve as quantidades ao estoque e cancela as parcelas de `conta_receber` ainda não recebidas; permitido apenas se nenhuma parcela estiver `RECEBIDA` ou `PARCIAL`. *(Regra de aplicação, garantida na camada de serviço; sem constraint correspondente no banco.)*
-- **RN214 — Coerência data de saída.** Quando informada, `data_saida` não pode ser anterior à `data_emissao` (`ck_nota_saida_data`).
+**Objetivo:** compensar estoque e cancelar títulos elegíveis, com histórico e autoria. **Ator:** usuário da organização ativa com `fiscal:manage`, `stock:manage` e `finance:manage`. **Pré-condição:** nota confirmada, versão vigente, razão reconciliável e títulos sem baixa. **Ativação:** ação de reversão no detalhe da nota. **Pós-condição:** nota `CANCELADA` com data/motivo de reversão, movimentos compensatórios e títulos cancelados sem apagar registros.
 
-## Atores
+1. O operador informa motivo de até 500 caracteres e confirma a reversão da versão exibida.
+2. O sistema verifica nota, títulos, histórico e estado atual do estoque sob bloqueio.
+3. Compensa os movimentos, restaura o custo médio anterior na Entrada quando aplicável, cancela os títulos e grava auditoria em uma transação.
+4. O detalhe apresenta a reversão sem sugerir transmissão fiscal ou estorno de pagamento.
 
-- **Ator principal:** Operador de Caixa/Vendas (perfil `OPERADOR` ou `ADMIN`).
-- **Atores de apoio (entidades):** Cliente, Produto, Condição de Pagamento, Forma de Pagamento.
-- **Sistemas impactados:** módulo de Estoque (`produto.quantidade`) e módulo Financeiro (`conta_receber`).
+**E1 — Baixa existente:** “A nota possui título com pagamento ou baixa. Não é possível reverter.” Na saída, a mensagem usa “recebimento ou baixa”. **E2 — Histórico incompatível:** “Há movimentos posteriores ou intercalados para um produto da nota.” **E3 — Divergência financeira:** “Os títulos vinculados não conciliam com o total da nota.” Em todos esses casos, a reversão é recusada.
 
-## Pré-Condição
+## UC403 — Processo 3 — Registrar Nota de Serviço interna
 
-1. Existe ao menos um **cliente** ativo cadastrado.
-2. Os **produtos** dos itens estão cadastrados, ativos e com **saldo de estoque suficiente** para a venda.
-3. A **condição de pagamento** (quando utilizada) está cadastrada e suas parcelas definidas.
-4. O operador está autenticado e autorizado.
-
-## Pós-Condição
-
-**Em caso de sucesso (confirmação):**
-1. A `nota_saida` está persistida com `situacao = 'CONFIRMADA'` e `valor_total` calculado.
-2. A `quantidade` em estoque de cada produto foi **decrementada**.
-3. Foram criados os registros em `conta_receber` (uma ou mais parcelas), todos `PENDENTE`, cuja soma de `valor_original` equivale ao `valor_total` da nota.
-
-**Em caso de falha:** rollback total; estoque e financeiro permanecem inalterados.
-
-## Ativação
-
-O processo é ativado quando o operador seleciona "Registrar Venda / Nota de Saída" e, após preencher cabeçalho e itens, aciona **Confirmar**. A gravação como rascunho mantém a nota em `PENDENTE`.
-
-## Fluxo Principal
-
-1. O operador abre o formulário de nota de saída e informa o **cliente**, o `numero`, a `serie`, o `modelo`, a `data_emissao` (padrão: atual), o `tipo_frete` e, opcionalmente, a `condicao_pagamento`.
-2. O sistema valida a unicidade do trio `(numero, serie, cliente_id)`. Se já existir, dispara **E1**.
-3. O operador adiciona os **itens**: para cada um, seleciona o `produto`, informa `quantidade` e `valor_unitario` e, opcionalmente, desconto. O sistema atribui a `sequencia`, valida `quantidade > 0` (senão **E3**) e calcula o `valor_total` do item (RN205).
-4. O operador informa os valores acessórios do cabeçalho (frete, seguro, outras despesas, desconto).
-5. O sistema consolida `valor_produtos` e calcula `valor_total` da nota (RN206).
-6. O operador aciona **Confirmar**. O sistema abre uma transação e revalida a existência de itens (senão **E2**) e que a situação é `PENDENTE` (senão **E5**).
-7. O sistema **verifica o saldo de estoque** de cada item: se `produto.quantidade < item.quantidade` para qualquer item, dispara **E4** e aborta antes de qualquer baixa (RN207).
-8. Com saldo confirmado, o sistema **decrementa** `produto.quantidade` em `item.quantidade` para cada item (RN209).
-9. O sistema **gera o contas a receber** (RN210–RN212): resolve as parcelas pela `condicao_pagamento`; para cada parcela calcula `data_vencimento` e `valor_original` (ajuste de centavos na última); insere os registros em `conta_receber` com `situacao = 'PENDENTE'`, vinculados à nota e ao cliente.
-10. O sistema atualiza a `nota_saida` para `situacao = 'CONFIRMADA'` e **confirma a transação**.
-11. O sistema exibe **"Nota de saída confirmada. Estoque baixado e {N} parcela(s) a receber gerada(s)."** e retorna o identificador da nota.
-
-## Fluxos de Exceção
-
-- **E1 — Nota duplicada.** No passo 2, já existe nota com o mesmo `(numero, serie, cliente_id)`. Mensagem: **"Já existe uma nota de saída com este número, série e cliente."** O processo é interrompido.
-- **E2 — Nota sem itens.** No passo 6, a nota não possui itens. Mensagem: **"Inclua ao menos um item antes de confirmar a nota de saída."** Confirmação abortada (rollback).
-- **E3 — Quantidade inválida.** No passo 3, `quantidade <= 0`. Mensagem: **"A quantidade do item deve ser maior que zero."** O item não é gravado.
-- **E4 — Estoque insuficiente.** No passo 7, algum produto não possui saldo. Mensagem: **"Estoque insuficiente para o produto '{nome}'. Saldo disponível: {saldo}, solicitado: {quantidade}."** A confirmação é abortada (rollback total, nenhum item é baixado).
-- **E5 — Situação não permite confirmação.** No passo 6, a nota já está `CONFIRMADA` ou `CANCELADA`. Mensagem: **"Esta nota já foi confirmada ou cancelada e não pode ser confirmada novamente."**
-- **E6 — Cliente inexistente ou inativo.** No passo 1/6, o cliente não existe ou está inativo. Mensagem: **"Cliente inválido ou inativo. Selecione um cliente cadastrado."** O processo é interrompido.
-- **E7 — Falha na geração financeira.** No passo 9, a soma das parcelas não fecha com o `valor_total` ou a condição é inconsistente. Mensagem: **"Não foi possível gerar as parcelas: a soma das parcelas não confere com o total da nota."** Rollback total (estoque já decrementado é revertido).
-
----
-
-## UC403 — Processo 3 — Emitir Nota de Serviço (NFS-e)
+O detalhamento abaixo é a especificação histórica do serviço avulso.
+Para o fluxo atual vinculado a OS, consulte [ADR 25](../25-adr-ordem-servico.md).
+O status interno `EMITIDA` não comprova transmissão ou autorização municipal.
 
 ## Objetivo
 
@@ -249,4 +192,5 @@ O processo é ativado quando o operador seleciona "Emitir Nota de Serviço", esc
 
 | Data | Ação |
 |------|------|
+| 2026-11-06 | Atualiza UC401/UC402 e documenta UC404 com datas, razão, cronograma e reversão do fluxo vigente. |
 | 2026-06-14 | Criação da Seção 5 — Processos Fiscais (Registrar Compra, Registrar Venda, Emitir Nota de Serviço), aterrada em `database/schema.sql`. |

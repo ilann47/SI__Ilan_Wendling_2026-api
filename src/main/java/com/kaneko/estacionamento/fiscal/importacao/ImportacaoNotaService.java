@@ -3,9 +3,6 @@ package com.kaneko.estacionamento.fiscal.importacao;
 import com.kaneko.estacionamento.auditoria.*;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
-import com.kaneko.estacionamento.compras.*;
-import com.kaneko.estacionamento.compras.dto.ItemRecebimentoCompraRequest;
-import com.kaneko.estacionamento.compras.dto.ReceberOrdemCompraRequest;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.estoque.LocalEstoqueRepository;
 import com.kaneko.estacionamento.fiscal.NotaEntradaService;
@@ -19,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -40,9 +38,6 @@ public class ImportacaoNotaService {
     private final ProdutoRepository produtos;
     private final LocalEstoqueRepository locais;
     private final CondicaoPagamentoRepository condicoes;
-    private final OrdemCompraRepository ordens;
-    private final RecebimentoCompraRepository recebimentos;
-    private final OrdemCompraService compras;
     private final NotaEntradaService notas;
     private final JdbcTemplate jdbc;
     private final AuditoriaService auditoria;
@@ -50,12 +45,10 @@ public class ImportacaoNotaService {
     public ImportacaoNotaService(ImportacaoNotaRepository repository, NotaEntradaXmlParser parser,
             OrganizacaoRepository organizacoes, FornecedorRepository fornecedores,
             ProdutoRepository produtos, LocalEstoqueRepository locais, CondicaoPagamentoRepository condicoes,
-            OrdemCompraRepository ordens, RecebimentoCompraRepository recebimentos,
-            OrdemCompraService compras, NotaEntradaService notas, JdbcTemplate jdbc, AuditoriaService auditoria) {
+            NotaEntradaService notas, JdbcTemplate jdbc, AuditoriaService auditoria) {
         this.repository=repository; this.parser=parser; this.organizacoes=organizacoes;
         this.fornecedores=fornecedores; this.produtos=produtos; this.locais=locais;
-        this.condicoes=condicoes; this.ordens=ordens; this.recebimentos=recebimentos;
-        this.compras=compras; this.notas=notas; this.jdbc=jdbc; this.auditoria=auditoria;
+        this.condicoes=condicoes; this.notas=notas; this.jdbc=jdbc; this.auditoria=auditoria;
     }
 
     @Transactional(readOnly=true)
@@ -87,6 +80,7 @@ public class ImportacaoNotaService {
                 throw new ConflitoException("A chave fiscal já foi importada com outro conteúdo. Consulte a importação existente.");
             return resposta(existente.get());
         }
+        NotaEntradaService.validarDataEmissao(documento.emissao(), LocalDate.now());
         var registro = new ImportacaoNotaEntrada();
         registro.setOrganizacaoId(org); registro.setAtorId(ator); registro.setChave(documento.chave());
         registro.setXmlOriginal(xml.clone()); registro.setXmlHash(hash); registro.setNumero(documento.numero());
@@ -114,25 +108,10 @@ public class ImportacaoNotaService {
         if (request.condicaoPagamentoId()!=null)
             condicoes.findByIdAndOrganizacaoId(request.condicaoPagamentoId(),org)
                     .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento",request.condicaoPagamentoId()));
-        RecebimentoCompra recebimento = request.recebimentoCompraId()==null ? null : recebimentos
-                .findByIdAndOrganizacaoId(request.recebimentoCompraId(),org)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("RecebimentoCompra",request.recebimentoCompraId()));
-        Long ordemId = request.ordemCompraId()!=null ? request.ordemCompraId()
-                : recebimento==null ? null : recebimento.getOrdemCompra().getId();
-        OrdemCompra ordem = ordemId==null ? null : ordens.findByIdAndOrganizacaoId(ordemId,org)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("OrdemCompra",ordemId));
-        if (ordem!=null && recebimento==null && !Boolean.TRUE.equals(request.registrarNovoRecebimento()))
-            throw new ConflitoException("Selecione o recebimento existente ou confirme explicitamente que esta mercadoria ainda não foi recebida.");
-        if (ordem!=null && !ordem.getFornecedor().getId().equals(fornecedor.getId()))
-            throw new ConflitoException("O fornecedor da compra diverge do emitente do XML.");
-        if (recebimento!=null && (!recebimento.getOrdemCompra().getId().equals(ordemId)
-                || !recebimento.getLocalEstoque().getId().equals(request.localEstoqueId())))
-            throw new ConflitoException("Pedido ou local diverge do recebimento selecionado.");
         var fonte = documento.itens().stream().collect(Collectors.toMap(DocumentoXmlEntrada.Item::sequencia,Function.identity()));
         if (request.itens().size()!=fonte.size()) throw new ConflitoException("Concilie todos os itens do XML.");
         var existentes = registro.getItens().stream().collect(Collectors.toMap(ItemImportacaoNotaEntrada::getSequencia,Function.identity()));
         Set<Integer> sequencias = new HashSet<>();
-        Set<Long> itensCompra = new HashSet<>();
         for (var item : request.itens()) {
             var origem = fonte.get(item.sequencia());
             if (origem==null || !sequencias.add(item.sequencia())) throw new IllegalArgumentException("Sequência de item ausente ou repetida.");
@@ -140,35 +119,24 @@ public class ImportacaoNotaService {
                     .filter(p -> Boolean.TRUE.equals(p.getAtivo()))
                     .orElseThrow(() -> new RecursoNaoEncontradoException("Produto",item.produtoId()));
             String unidade = produto.getUnidadeMedida().getSigla();
-            BigDecimal quantidade = valorExato(origem.quantidade().multiply(item.fatorConversao()),3,15);
-            BigDecimal unitario = valorExato(item.valorUnitario(),2,15);
+            BigDecimal quantidade = valorExato(origem.quantidade().multiply(item.fatorConversao()),6,18);
+            BigDecimal unitario = valorExato(item.valorUnitario(),6,19);
             if (quantidade.multiply(unitario).setScale(2,RoundingMode.HALF_UP).compareTo(origem.valorProdutos())!=0)
                 throw new ConflitoException("Preço e quantidade conciliados não preservam o valor do XML no item " + item.sequencia() + ".");
             String motivo = item.motivoDivergencia()==null ? null : item.motivoDivergencia().trim();
             if ((!unidade.equalsIgnoreCase(origem.unidade()) || item.fatorConversao().compareTo(BigDecimal.ONE)!=0)
                     && (motivo==null || motivo.isBlank()))
                 throw new ConflitoException("Explique a conversão de unidade no item " + item.sequencia() + ".");
-            if (ordem!=null) {
-                var comprado = ordem.getItens().stream().filter(i -> i.getId().equals(item.itemOrdemCompraId())).findFirst()
-                        .orElseThrow(() -> new ConflitoException("Relacione o item " + item.sequencia() + " ao item do pedido."));
-                if (!itensCompra.add(comprado.getId()) || !comprado.getProduto().getId().equals(produto.getId()))
-                    throw new ConflitoException("Item do pedido repetido ou com outro produto.");
-                if (recebimento==null && quantidade.compareTo(comprado.saldoReceber())>0)
-                    throw new ConflitoException("Quantidade do XML excede o saldo pendente da compra. Se já recebeu, selecione esse recebimento.");
-                if (unitario.compareTo(comprado.getValorUnitario())!=0 && (motivo==null || motivo.isBlank()))
-                    throw new ConflitoException("Registre o motivo da divergência entre preço negociado e XML no item " + item.sequencia() + ".");
-            } else if (item.itemOrdemCompraId()!=null) throw new IllegalArgumentException("Selecione o pedido antes de vincular seus itens.");
             var conciliado = existentes.get(item.sequencia());
             if (conciliado==null) { conciliado=new ItemImportacaoNotaEntrada(); conciliado.setSequencia(item.sequencia()); registro.adicionar(conciliado); }
             conciliado.setProduto(produto); conciliado.setUnidadeDestino(unidade); conciliado.setFatorConversao(item.fatorConversao());
             conciliado.setQuantidade(quantidade); conciliado.setValorUnitario(unitario); conciliado.setQuantidadeConferida(null);
-            conciliado.setOrdemCompraId(ordemId); conciliado.setItemOrdemCompraId(item.itemOrdemCompraId()); conciliado.setMotivoDivergencia(motivo);
+            conciliado.setMotivoDivergencia(motivo);
         }
-        if (recebimento!=null) validarRecebimento(registro,recebimento);
         registro.setFornecedorId(fornecedor.getId()); registro.setLocalEstoqueId(request.localEstoqueId());
-        registro.setCondicaoPagamentoId(request.condicaoPagamentoId()); registro.setOrdemCompraId(ordemId);
-        registro.setRecebimentoCompraId(request.recebimentoCompraId()); registro.setConferidoEm(null); registro.setConferidoPor(null);
-        registro.setRegistrarNovoRecebimento(ordem!=null && recebimento==null && Boolean.TRUE.equals(request.registrarNovoRecebimento()));
+        registro.setCondicaoPagamentoId(request.condicaoPagamentoId());
+        registro.setConferidoEm(null); registro.setConferidoPor(null);
+        registro.getParcelas().clear(); registro.setCronogramaDefinido(false);
         registro.setStatus(StatusImportacaoNota.CONCILIADA);
         salvar(registro,"XML_NOTA_CONCILIADO");
         return resposta(registro);
@@ -179,22 +147,32 @@ public class ImportacaoNotaService {
         var registro=bloquear(org,id); editavel(registro,versao);
         if (registro.getStatus()==StatusImportacaoNota.IMPORTADA) throw new ConflitoException("Concilie os produtos antes da conferência física.");
         var itens=registro.getItens().stream().collect(Collectors.toMap(ItemImportacaoNotaEntrada::getSequencia,Function.identity()));
-        Set<Integer> vistos=new HashSet<>();
+        Map<Integer,BigDecimal> contagens=new LinkedHashMap<>();
         if (request.itens().size()!=itens.size()) throw new ConflitoException("Informe a contagem de todos os itens.");
         for (var contagem:request.itens()) {
-            var item=itens.get(contagem.sequencia());
-            if (item==null || !vistos.add(contagem.sequencia())) throw new IllegalArgumentException("Sequência de contagem ausente ou repetida.");
-            item.setQuantidadeConferida(contagem.quantidadeConferida());
+            if (!itens.containsKey(contagem.sequencia()) || contagens.putIfAbsent(contagem.sequencia(),contagem.quantidadeConferida())!=null)
+                throw new IllegalArgumentException("Sequencia de contagem ausente ou repetida.");
         }
-        boolean confere=registro.getItens().stream().allMatch(i -> i.getQuantidade().compareTo(i.getQuantidadeConferida())==0);
+        boolean confere=registro.getItens().stream().allMatch(i -> i.getQuantidade().compareTo(contagens.get(i.getSequencia()))==0);
+        var quando=OffsetDateTime.now();
+        var documento=parser.ler(registro.getXmlOriginal());
+        // Calcular antes de sujar o agregado evita autoflush/versionamento intermediario.
+        var proposta=confere && valorRepresentado(documento).compareTo(documento.total())==0
+                ? notas.prepararConferencia(org,requisicao(registro,documento,quando.toLocalDate())) : null;
+        for(var item:registro.getItens()) item.setQuantidadeConferida(contagens.get(item.getSequencia()));
         registro.setStatus(confere ? StatusImportacaoNota.CONFERIDA : StatusImportacaoNota.CONCILIADA);
-        registro.setConferidoPor(ator); registro.setConferidoEm(OffsetDateTime.now());
+        registro.setConferidoPor(ator); registro.setConferidoEm(quando);
+        registro.getParcelas().clear(); registro.setCronogramaDefinido(proposta!=null);
+        if (proposta!=null) {
+            registro.getParcelas().addAll(NotaEntradaService.copiarCronograma(proposta.getParcelas()));
+            registro.setCondicaoPagamentoId(proposta.getCondicaoPagamento()==null ? null : proposta.getCondicaoPagamento().getId());
+        }
         salvar(registro,"XML_MERCADORIA_CONFERIDA");
         return resposta(registro);
     }
 
     @Transactional
-    public ImportacaoNotaResponse confirmar(Long org,Long ator,Long id,long versao,boolean podeReceberCompra) {
+    public ImportacaoNotaResponse confirmar(Long org,Long ator,Long id,long versao) {
         var registro=bloquear(org,id);
         if (registro.getStatus()==StatusImportacaoNota.CONFIRMADA) return resposta(registro);
         editavel(registro,versao);
@@ -202,29 +180,9 @@ public class ImportacaoNotaService {
         var documento=parser.ler(registro.getXmlOriginal());
         var divergencias=divergencias(registro,documento);
         if (!divergencias.isEmpty()) throw new ConflitoException(String.join(" ",divergencias));
-        if (registro.getOrdemCompraId()!=null && registro.getRecebimentoCompraId()==null) {
-            if (!registro.isRegistrarNovoRecebimento()) throw new ConflitoException("O novo recebimento precisa ser confirmado explicitamente na conciliação.");
-            if (!podeReceberCompra) throw new AuthorizationDeniedException("É necessária permissão para receber a compra.");
-            var ordem=ordens.findParaAtualizar(registro.getOrdemCompraId(),org)
-                    .orElseThrow(() -> new RecursoNaoEncontradoException("OrdemCompra",registro.getOrdemCompraId()));
-            var request=new ReceberOrdemCompraRequest(registro.getLocalEstoqueId(),registro.getConferidoEm(),
-                    "Conferência do XML " + registro.getChave(),registro.getItens().stream()
-                            .map(i -> new ItemRecebimentoCompraRequest(i.getItemOrdemCompraId(),i.getQuantidade())).toList());
-            var resultado=compras.receber(org,ator,ordem.getId(),ordem.getVersion(),"xml-"+id,request);
-            registro.setRecebimentoCompraId(resultado.recebimento().getId());
-        }
-        if (registro.getRecebimentoCompraId()!=null) {
-            var recebido=recebimentos.findParaAtualizar(registro.getRecebimentoCompraId(),org)
-                    .orElseThrow(() -> new RecursoNaoEncontradoException("RecebimentoCompra",registro.getRecebimentoCompraId()));
-            validarRecebimento(registro,recebido);
-        }
-        var fonte=documento.itens().stream().collect(Collectors.toMap(DocumentoXmlEntrada.Item::sequencia,Function.identity()));
-        var itens=registro.getItens().stream().map(i -> new ItemNotaEntradaRequest(i.getProduto().getId(),
-                i.getQuantidade(),i.getValorUnitario(),fonte.get(i.getSequencia()).desconto(),null)).toList();
-        var nota=notas.criar(org,new NotaEntradaRequest(documento.numero(),documento.modelo(),documento.serie(),
-                registro.getFornecedorId(),registro.getCondicaoPagamentoId(),registro.getLocalEstoqueId(),registro.getRecebimentoCompraId(),
-                documento.emissao(),registro.getConferidoEm().toLocalDate(),null,documento.frete(),documento.seguro(),
-                documento.outrasDespesas(),BigDecimal.ZERO,"Importação XML " + documento.chave(),itens));
+        if (!registro.isCronogramaDefinido())
+            throw new ConflitoException("Refaca a conferencia para congelar a previsao financeira desta importacao.");
+        var nota=notas.criarComCronograma(org,requisicao(registro,documento),registro.getParcelas());
         if (nota.getValorTotal().compareTo(documento.total())!=0) throw new ConflitoException("O total calculado diverge do XML. Nenhum lançamento foi confirmado.");
         notas.confirmar(org,ator,nota.getId());
         registro.setNotaEntradaId(nota.getId()); registro.setStatus(StatusImportacaoNota.CONFIRMADA);
@@ -232,15 +190,36 @@ public class ImportacaoNotaService {
         return resposta(registro);
     }
 
-    private static void validarRecebimento(ImportacaoNotaEntrada registro,RecebimentoCompra recebimento) {
-        if (registro.getItens().size()!=recebimento.getItens().size()) throw new ConflitoException("Os itens do XML devem corresponder a todos os itens do recebimento selecionado.");
-        for (var item:registro.getItens()) {
-            var recebido=recebimento.getItens().stream().filter(r -> r.getItemOrdemCompra().getId().equals(item.getItemOrdemCompraId())).findFirst()
-                    .orElseThrow(() -> new ConflitoException("O item conciliado não pertence ao recebimento selecionado."));
-            if (!recebido.getProduto().getId().equals(item.getProduto().getId()) || recebido.getQuantidade().compareTo(item.getQuantidade())!=0)
-                throw new ConflitoException("Produto ou quantidade diverge do recebimento já registrado. Não será repetida a entrada de estoque.");
-        }
+    @Transactional
+    public com.kaneko.estacionamento.fiscal.dto.PreviaNotaEntradaResponse previa(Long org, Long id) {
+        var registro = repository.findByIdAndOrganizacaoId(id, org)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("ImportacaoNotaEntrada", id));
+        if (registro.getStatus() == StatusImportacaoNota.CONFIRMADA)
+            return notas.previaPersistida(org, registro.getNotaEntradaId());
+        if (registro.getStatus() != StatusImportacaoNota.CONFERIDA)
+            throw new ConflitoException("Conclua a conciliacao e a conferencia antes da previa da nota.");
+        var documento = parser.ler(registro.getXmlOriginal());
+        var problemas = divergencias(registro, documento);
+        if (!problemas.isEmpty()) throw new ConflitoException(String.join(" ", problemas));
+        if (!registro.isCronogramaDefinido())
+            throw new ConflitoException("Refaca a conferencia para congelar a previsao financeira desta importacao.");
+        return notas.previaComCronograma(org, requisicao(registro, documento), registro.getParcelas());
     }
+
+    private static NotaEntradaRequest requisicao(ImportacaoNotaEntrada registro, DocumentoXmlEntrada documento) {
+        return requisicao(registro,documento,registro.getConferidoEm().toLocalDate());
+    }
+
+    private static NotaEntradaRequest requisicao(ImportacaoNotaEntrada registro, DocumentoXmlEntrada documento, java.time.LocalDate chegada) {
+        var fonte=documento.itens().stream().collect(Collectors.toMap(DocumentoXmlEntrada.Item::sequencia,Function.identity()));
+        var itens=registro.getItens().stream().map(i -> new ItemNotaEntradaRequest(i.getProduto().getId(),
+                i.getQuantidade(),i.getValorUnitario(),fonte.get(i.getSequencia()).desconto(),null)).toList();
+        return new NotaEntradaRequest(documento.numero(),documento.modelo(),documento.serie(),
+                registro.getFornecedorId(),registro.getCondicaoPagamentoId(),registro.getLocalEstoqueId(),
+                documento.emissao(),chegada,null,documento.frete(),documento.seguro(),
+                documento.outrasDespesas(),BigDecimal.ZERO,"Importação XML " + documento.chave(),itens);
+    }
+
     private ImportacaoNotaEntrada bloquear(Long org,Long id) {
         return repository.bloquear(id,org).orElseThrow(() -> new RecursoNaoEncontradoException("ImportacaoNotaEntrada",id));
     }
@@ -259,28 +238,32 @@ public class ImportacaoNotaService {
     private ImportacaoNotaResponse resposta(ImportacaoNotaEntrada registro) {
         var documento=parser.ler(registro.getXmlOriginal());
         return new ImportacaoNotaResponse(registro.getId(),registro.getVersion(),registro.getStatus(),documento,
-                registro.getFornecedorId(),registro.getLocalEstoqueId(),registro.getCondicaoPagamentoId(),registro.getOrdemCompraId(),
-                registro.getRecebimentoCompraId(),registro.getNotaEntradaId(),registro.isRegistrarNovoRecebimento(),registro.getItens().stream().map(i ->
+                registro.getFornecedorId(),registro.getLocalEstoqueId(),registro.getCondicaoPagamentoId(),
+                registro.getNotaEntradaId(),registro.getItens().stream().map(i ->
                     new ImportacaoNotaResponse.Item(i.getSequencia(),i.getProduto().getId(),i.getProduto().getNome(),i.getUnidadeDestino(),
-                            i.getFatorConversao(),i.getQuantidade(),i.getValorUnitario(),i.getQuantidadeConferida(),i.getItemOrdemCompraId(),i.getMotivoDivergencia())).toList(),
+                            i.getFatorConversao(),i.getQuantidade(),i.getValorUnitario(),i.getQuantidadeConferida(),i.getMotivoDivergencia())).toList(),
                 divergencias(registro,documento));
     }
     private static List<String> divergencias(ImportacaoNotaEntrada registro,DocumentoXmlEntrada documento) {
         var problemas=new ArrayList<String>();
-        var calculado=documento.itens().stream().map(i -> i.valorProdutos().subtract(i.desconto())).reduce(BigDecimal.ZERO,BigDecimal::add)
-                .add(documento.frete()).add(documento.seguro()).add(documento.outrasDespesas());
+        var calculado=valorRepresentado(documento);
         if (calculado.compareTo(documento.total())!=0)
             problemas.add("O total fiscal contém componentes não representados pelo cálculo atual da nota interna. A importação está preservada; a confirmação exige suporte explícito a esses componentes, sem ajustar valores artificialmente.");
         for (var i:registro.getItens()) if (i.getQuantidadeConferida()!=null && i.getQuantidade().compareTo(i.getQuantidadeConferida())!=0)
             problemas.add("Item " + i.getSequencia() + ": quantidade contada diverge da quantidade conciliada.");
         return List.copyOf(problemas);
     }
+    private static BigDecimal valorRepresentado(DocumentoXmlEntrada documento) {
+        return documento.itens().stream().map(i -> i.valorProdutos().subtract(i.desconto())).reduce(BigDecimal.ZERO,BigDecimal::add)
+                .add(documento.frete()).add(documento.seguro()).add(documento.outrasDespesas());
+    }
+
     private static BigDecimal valorExato(BigDecimal valor,int escala,int precisao) {
         try {
             var normalizado=valor.setScale(escala,RoundingMode.UNNECESSARY);
             if (normalizado.precision()>precisao) throw new ArithmeticException();
             return normalizado;
-        } catch (ArithmeticException e) { throw new ConflitoException("O valor não cabe na precisão atual do estoque/nota. Concilie unidade e preço sem perder centavos."); }
+        } catch (ArithmeticException e) { throw new ConflitoException("Concilie unidade e preço sem perder precisão: use até seis casas decimais."); }
     }
     private static String hash(byte[] xml) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(xml)); }

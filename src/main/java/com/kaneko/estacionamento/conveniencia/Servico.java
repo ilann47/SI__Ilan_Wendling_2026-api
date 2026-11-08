@@ -1,7 +1,9 @@
 package com.kaneko.estacionamento.conveniencia;
 
 import com.kaneko.estacionamento.common.BaseEntity;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -35,6 +37,7 @@ public class Servico extends BaseEntity {
     private String descricao;
 
     /** Valor sugerido do servico; opcional (sem default no schema). */
-    @Column(name = "valor_padrao", precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_padrao_micros", precision = 14, scale = 0)
     private BigDecimal valorPadrao;
 }

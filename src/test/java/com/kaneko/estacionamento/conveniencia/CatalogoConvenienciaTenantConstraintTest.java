@@ -418,16 +418,16 @@ class CatalogoConvenienciaTenantConstraintTest {
     private Long inserirItemEntrada(Long nota, Long produto) {
         return jdbc.queryForObject("""
                 INSERT INTO item_nota_entrada
-                    (nota_entrada_id,produto_id,sequencia,quantidade,valor_unitario,valor_total)
-                VALUES (?,?,1,1,1,1) RETURNING id
+                    (nota_entrada_id,produto_id,sequencia,quantidade_micros,valor_unitario_micros,valor_total_micros)
+                VALUES (?,?,1,1000000,1000000,1000000) RETURNING id
                 """, Long.class, nota, produto);
     }
 
     private Long inserirItemSaida(Long nota, Long produto) {
         return jdbc.queryForObject("""
                 INSERT INTO item_nota_saida
-                    (nota_saida_id,produto_id,sequencia,quantidade,valor_unitario,valor_total)
-                VALUES (?,?,1,1,1,1) RETURNING id
+                    (nota_saida_id,produto_id,sequencia,quantidade_micros,valor_unitario_micros,valor_total_micros)
+                VALUES (?,?,1,1000000,1000000,1000000) RETURNING id
                 """, Long.class, nota, produto);
     }
 }

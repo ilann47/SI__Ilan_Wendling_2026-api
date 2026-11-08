@@ -116,7 +116,7 @@ class FornecedorTenantConstraintTest {
         return jdbc.queryForObject("""
                 INSERT INTO fornecedor
                     (organizacao_id, nome, tipo, documento, condicao_pagamento_id,
-                     transportadora_id, limite_credito, ativo, created_at, updated_at)
+                     transportadora_id, limite_credito_micros, ativo, created_at, updated_at)
                 VALUES (?, 'Fornecedor teste', 'JURIDICA', ?, ?, ?, 0, true, now(), now())
                 RETURNING id
                 """, Long.class, organizacaoId, documento, condicaoId, transportadoraId);
@@ -125,8 +125,8 @@ class FornecedorTenantConstraintTest {
     private Long inserirCondicao(Long organizacaoId) {
         return jdbc.queryForObject("""
                 INSERT INTO condicao_pagamento
-                    (organizacao_id, nome, numero_parcelas, percentual_juros,
-                     percentual_multa, percentual_desconto, ativo, created_at, updated_at)
+                    (organizacao_id, nome, numero_parcelas, percentual_juros_micros,
+                     percentual_multa_micros, percentual_desconto_micros, ativo, created_at, updated_at)
                 VALUES (?, 'Condicao teste', 1, 0, 0, 0, true, now(), now()) RETURNING id
                 """, Long.class, organizacaoId);
     }

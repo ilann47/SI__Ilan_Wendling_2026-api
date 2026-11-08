@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 import com.kaneko.estacionamento.conveniencia.Produto;
 import com.kaneko.estacionamento.auditoria.AuditoriaService;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
-import com.kaneko.estacionamento.compras.RecebimentoCompraRepository;
 import com.kaneko.estacionamento.financeiro.ContaPagarRepository;
 import com.kaneko.estacionamento.financeiro.ContaReceberRepository;
 import com.kaneko.estacionamento.estoque.EstoqueService;
@@ -17,8 +16,8 @@ import com.kaneko.estacionamento.estoque.LocalEstoqueRepository;
 import com.kaneko.estacionamento.fornecedor.FornecedorRepository;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
-import com.kaneko.estacionamento.vendas.VendaAdministrativaRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -33,8 +32,11 @@ class NotaFiscalOptimisticLockPropagationTest {
         NotaEntradaService service = new NotaEntradaService(notas,
                 mock(FornecedorRepository.class), mock(CondicaoPagamentoRepository.class),
                 produtos, titulos, mock(LocalEstoqueRepository.class),
-                mock(EstoqueService.class), mock(RecebimentoCompraRepository.class),
-                mock(AuditoriaService.class), mock(com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository.class));
+                mock(EstoqueService.class),
+                mock(AuditoriaService.class), mock(com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository.class),
+                mock(com.kaneko.estacionamento.conveniencia.ProdutoFornecedorRepository.class),
+                mock(com.kaneko.estacionamento.logistica.TransportadoraRepository.class),
+                mock(org.springframework.jdbc.core.JdbcTemplate.class));
         NotaEntrada nota = notaEntradaPendente();
         OptimisticLockingFailureException conflito =
                 new OptimisticLockingFailureException("produto concorrente");
@@ -54,7 +56,7 @@ class NotaFiscalOptimisticLockPropagationTest {
                 mock(ClienteRepository.class), mock(CondicaoPagamentoRepository.class),
                 produtos, titulos, mock(LocalEstoqueRepository.class),
                 mock(EstoqueService.class), mock(AuditoriaService.class),
-                mock(VendaAdministrativaRepository.class));
+                mock(com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository.class));
         NotaSaida nota = notaSaidaPendente();
         OptimisticLockingFailureException conflito =
                 new OptimisticLockingFailureException("produto concorrente");
@@ -73,7 +75,9 @@ class NotaFiscalOptimisticLockPropagationTest {
         item.setValorUnitario(BigDecimal.ONE);
         item.setCustoPrecoFinal(BigDecimal.ZERO);
         NotaEntrada nota = new NotaEntrada();
+        nota.setDataEmissao(LocalDate.now().minusDays(1));
         nota.setSituacao(SituacaoNota.PENDENTE);
+        nota.setCronogramaDefinido(true);
         nota.addItem(item);
         return nota;
     }

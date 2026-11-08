@@ -14,6 +14,9 @@ e a V46 torna fisicamente imutável o owner de ambos os agregados.
 Novas escritas derivam o owner exclusivamente do JWT contextual. Linhas históricas
 continuam sem owner e não aparecem na API. `Usuario` permanece identidade global.
 
+No esquema local de teste V99, salário base, carga horária e salário são
+inteiros escalados por um milhão. A API aceita até seis casas em unidades usuais.
+
 ## Fluxo (camadas da arquitetura)
 
 ```text
@@ -92,3 +95,4 @@ CRUD preservado sob JWT contextual.
 | 2026-08-03 | Migra Cargo para tenancy real na V43 e preserva compatibilidade de Funcionário. |
 | 2026-08-03 | Migra Funcionário na V45 e restringe o vínculo de Usuário ao histórico sem owner. |
 | 2026-08-03 | Endurece na V46 o preflight do grafo e a imutabilidade física dos owners de RH. |
+| 2026-11-08 | V99 converte salário e carga horária para a escala inteira no banco de teste. |

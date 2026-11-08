@@ -5,54 +5,55 @@ import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
 import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
-import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
 import com.kaneko.estacionamento.conveniencia.Produto;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
-import com.kaneko.estacionamento.estoque.dto.AjusteEstoqueRequest;
-import com.kaneko.estacionamento.estoque.dto.CompensarMovimentoRequest;
 import com.kaneko.estacionamento.estoque.dto.MovimentoEstoqueResponse;
 import com.kaneko.estacionamento.estoque.dto.PosicaoEstoqueResponse;
 import com.kaneko.estacionamento.estoque.dto.SaldoEstoqueResponse;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
-import java.util.HexFormat;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EstoqueService {
-    private static final String OPERACAO_AJUSTAR = "ESTOQUE_AJUSTAR";
-    private static final String OPERACAO_COMPENSAR = "ESTOQUE_COMPENSAR";
     private static final String RECURSO = "MOVIMENTO_ESTOQUE";
 
     private final ProdutoRepository produtos;
     private final LocalEstoqueRepository locais;
     private final SaldoEstoqueRepository saldos;
     private final MovimentoEstoqueRepository movimentos;
-    private final IdempotenciaRepository idempotencia;
     private final AuditoriaService auditoria;
     private final OutboxService outbox;
     private final JdbcTemplate jdbc;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     public EstoqueService(ProdutoRepository produtos, LocalEstoqueRepository locais,
             SaldoEstoqueRepository saldos, MovimentoEstoqueRepository movimentos,
-            IdempotenciaRepository idempotencia, AuditoriaService auditoria,
+            AuditoriaService auditoria,
             OutboxService outbox, JdbcTemplate jdbc) {
         this.produtos = produtos;
         this.locais = locais;
         this.saldos = saldos;
         this.movimentos = movimentos;
-        this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.outbox = outbox;
         this.jdbc = jdbc;
@@ -90,52 +91,60 @@ public class EstoqueService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("MovimentoEstoque", id));
     }
 
-    @Transactional
-    public MovimentoEstoqueResponse ajustar(Long organizacaoId, Long atorId,
-            String chaveIdempotencia, AjusteEstoqueRequest request) {
-        String chave = validarChave(chaveIdempotencia);
-        validarDelta(request.delta());
-        String requestHash = hash(request.produtoId(), request.localEstoqueId(),
-                decimal(request.delta()), decimal(request.custoUnitario()), request.motivo().trim());
-        idempotencia.bloquear(organizacaoId, atorId, OPERACAO_AJUSTAR, chave);
-        var anterior = idempotencia.buscar(organizacaoId, atorId, OPERACAO_AJUSTAR, chave);
-        if (anterior.isPresent()) {
-            conferirHash(anterior.get().requestHash(), requestHash);
-            return buscarMovimento(organizacaoId, anterior.get().recursoId());
-        }
-
-        bloquearProduto(organizacaoId, request.produtoId());
-        Produto produto = buscarProdutoAtivo(organizacaoId, request.produtoId());
-        LocalEstoque local = buscarLocalAtivo(organizacaoId, request.localEstoqueId());
-        MovimentoEstoque movimento = aplicarMovimento(organizacaoId, atorId, produto, local,
-                TipoMovimentoEstoque.AJUSTE, request.delta(), request.custoUnitario(),
-                "AJUSTE_MANUAL", atorId + ":" + chave, null, request.motivo());
-        idempotencia.registrar(organizacaoId, atorId, OPERACAO_AJUSTAR, chave, requestHash,
-                RECURSO, movimento.getId());
-        return buscarMovimento(organizacaoId, movimento.getId());
-    }
-
     /** Registra o recebimento confirmado por um documento fiscal do mesmo tenant. */
     @Transactional
     public Long registrarRecebimento(Long organizacaoId, Long atorId, Long produtoId,
             Long localId, BigDecimal quantidade, BigDecimal custoUnitario,
             String origemTipo, String origemChave, String motivo) {
+        return registrarRecebimentoComCustoMedio(organizacaoId, atorId, produtoId, localId,
+                quantidade, custoUnitario, origemTipo, origemChave, motivo).movimentoId();
+    }
+
+    /** Registra a entrada e devolve a memoria do custo medio realmente aplicado. */
+    @Transactional
+    public RecebimentoEstoqueResultado registrarRecebimentoComCustoMedio(
+            Long organizacaoId, Long atorId, Long produtoId, Long localId,
+            BigDecimal quantidade, BigDecimal custoUnitario,
+            String origemTipo, String origemChave, String motivo) {
         validarDelta(quantidade);
         if (quantidade.signum() <= 0) {
             throw new IllegalArgumentException("A quantidade recebida deve ser positiva.");
         }
+        if (custoUnitario == null || custoUnitario.signum() < 0) {
+            throw new IllegalArgumentException("O custo unitario recebido deve ser nao negativo.");
+        }
         bloquearProduto(organizacaoId, produtoId);
         Produto produto = buscarProdutoAtivo(organizacaoId, produtoId);
+        // Um documento fiscal pode já ter carregado o produto antes do lock do razão.
+        entityManager.refresh(produto, LockModeType.PESSIMISTIC_WRITE);
         LocalEstoque local = buscarLocalAtivo(organizacaoId, localId);
-        return aplicarMovimento(organizacaoId, atorId, produto, local,
+        BigDecimal saldoTotalAnterior = saldos.somarPorProduto(organizacaoId, produtoId);
+        BigDecimal custoMedioAnterior = produto.getCusto() == null
+                ? BigDecimal.ZERO : produto.getCusto();
+        BigDecimal custoMedioPosterior = CustoMedioPonderado.calcularEmMilionesimos(saldoTotalAnterior,
+                custoMedioAnterior, quantidade, custoUnitario);
+        produto.setCusto(custoMedioPosterior);
+        produto.recalcularLucro();
+        produtos.saveAndFlush(produto);
+        MovimentoEstoque movimento = aplicarMovimento(organizacaoId, atorId, produto, local,
                 TipoMovimentoEstoque.RECEBIMENTO, quantidade, custoUnitario,
-                origemTipo, origemChave, null, motivo).getId();
+                custoMedioAnterior, custoMedioPosterior,
+                origemTipo, origemChave, null, motivo);
+        return new RecebimentoEstoqueResultado(movimento.getId(),
+                movimento.getSaldoTotalAnterior(), movimento.getSaldoTotalPosterior(),
+                custoMedioAnterior, custoMedioPosterior);
     }
 
-    /** Registra a baixa confirmada por um documento comercial/fiscal do tenant. */
+    /** Adquire os mesmos locks do razão em ordem determinística, até o commit do documento. */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void bloquearProdutos(Long organizacaoId, java.util.Collection<Long> ids) {
+        ids.stream().distinct().sorted().forEach(id -> bloquearProduto(organizacaoId, id));
+    }
+
+    /** Registra a baixa e devolve o custo médio efetivamente aplicado. */
     @Transactional
-    public Long registrarBaixa(Long organizacaoId, Long atorId, Long produtoId,
-            Long localId, BigDecimal quantidade, BigDecimal custoUnitario,
+    public BigDecimal registrarBaixa(Long organizacaoId, Long atorId, Long produtoId,
+            Long localId, BigDecimal quantidade,
             String origemTipo, String origemChave, String motivo) {
         validarDelta(quantidade);
         if (quantidade.signum() <= 0) {
@@ -144,43 +153,98 @@ public class EstoqueService {
         bloquearProduto(organizacaoId, produtoId);
         Produto produto = buscarProdutoAtivo(organizacaoId, produtoId);
         LocalEstoque local = buscarLocalAtivo(organizacaoId, localId);
-        return aplicarMovimento(organizacaoId, atorId, produto, local,
+        // O item pode ter carregado Produto no contexto JPA antes de obter o lock.
+        // Leia o custo no banco sob o lock, não a instância já gerenciada.
+        BigDecimal custoUnitario = jdbc.queryForObject(
+                "select coalesce(custo_micros, 0) * 0.000001 from produto where id=? and organizacao_id=? for update",
+                BigDecimal.class, produtoId, organizacaoId);
+        aplicarMovimento(organizacaoId, atorId, produto, local,
                 TipoMovimentoEstoque.BAIXA, quantidade.negate(), custoUnitario,
-                origemTipo, origemChave, null, motivo).getId();
+                custoUnitario, custoUnitario, origemTipo, origemChave, null, motivo);
+        return custoUnitario;
     }
 
-    @Transactional
-    public MovimentoEstoqueResponse compensar(Long organizacaoId, Long atorId,
-            Long movimentoId, String chaveIdempotencia, CompensarMovimentoRequest request) {
-        String chave = validarChave(chaveIdempotencia);
-        String requestHash = hash(movimentoId, request.motivo().trim());
-        idempotencia.bloquear(organizacaoId, atorId, OPERACAO_COMPENSAR, chave);
-        var anterior = idempotencia.buscar(organizacaoId, atorId, OPERACAO_COMPENSAR, chave);
-        if (anterior.isPresent()) {
-            conferirHash(anterior.get().requestHash(), requestHash);
-            return buscarMovimento(organizacaoId, anterior.get().recursoId());
-        }
+    /** Identifica cada lançamento esperado, inclusive produtos repetidos em linhas diferentes. */
+    public record ItemReversaoFiscal(int sequencia, Long produtoId, BigDecimal quantidade) {}
 
-        MovimentoEstoque original = buscarMovimentoEntidade(organizacaoId, movimentoId);
-        bloquearProduto(organizacaoId, original.getProdutoId());
-        if (movimentos.existsByCompensadoId(original.getId())) {
-            throw new ConflitoException("O movimento ja possui compensacao.");
+    /** Só pode ser chamado pelo comando fiscal já transacional e autorizado. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<Long> reverterNotaFiscal(Long org, Long ator, Long notaId, Long localId,
+            boolean entrada, List<ItemReversaoFiscal> itens, String motivo) {
+        String origem = entrada ? "NOTA_ENTRADA" : "NOTA_SAIDA";
+        String prefixo = notaId + ":";
+        Map<String, ItemReversaoFiscal> esperados = itens.stream().collect(Collectors.toMap(
+                item -> prefixo + item.sequencia(), Function.identity()));
+        itens.stream().map(ItemReversaoFiscal::produtoId).distinct().sorted()
+                .forEach(produto -> bloquearProduto(org, produto));
+        LocalEstoque local = buscarLocalAtivo(org, localId);
+        var originais = movimentos.findByOrganizacaoIdAndOrigemTipoAndOrigemChaveStartingWithOrderByIdDesc(
+                org, origem, prefixo);
+        if (originais.isEmpty() || originais.size() != esperados.size()) {
+            throw new ConflitoException("Os movimentos originais não conciliam com todos os itens da nota.");
         }
-        Produto produto = buscarProdutoAtivo(organizacaoId, original.getProdutoId());
-        LocalEstoque local = buscarLocalAtivo(organizacaoId, original.getLocalEstoqueId());
-        MovimentoEstoque compensacao = aplicarMovimento(organizacaoId, atorId, produto, local,
-                TipoMovimentoEstoque.COMPENSACAO, original.getDelta().negate(),
-                original.getCustoUnitario(), "COMPENSACAO_MOVIMENTO",
-                atorId + ":" + movimentoId + ":" + chave,
-                original.getId(), request.motivo());
-        idempotencia.registrar(organizacaoId, atorId, OPERACAO_COMPENSAR, chave, requestHash,
-                RECURSO, compensacao.getId());
-        return buscarMovimento(organizacaoId, compensacao.getId());
+        Map<Long, List<MovimentoEstoque>> porProduto = new TreeMap<>();
+        for (MovimentoEstoque original : originais) {
+            ItemReversaoFiscal item = esperados.get(original.getOrigemChave());
+            if (item == null || !item.produtoId().equals(original.getProdutoId())
+                    || !localId.equals(original.getLocalEstoqueId())
+                    || original.getTipo() != (entrada ? TipoMovimentoEstoque.RECEBIMENTO : TipoMovimentoEstoque.BAIXA)
+                    || original.getDelta().compareTo(entrada ? item.quantidade() : item.quantidade().negate()) != 0
+                    || original.getCompensadoId() != null
+                    || original.getCustoMedioAnterior() == null || original.getCustoMedioPosterior() == null
+                    || original.getSaldoTotalAnterior() == null || original.getSaldoTotalPosterior() == null) {
+                throw new ConflitoException("O movimento original não tem dados suficientes para reversão segura.");
+            }
+            if (movimentos.existsByCompensadoId(original.getId())) {
+                throw new ConflitoException("Um dos movimentos da nota já foi compensado.");
+            }
+            porProduto.computeIfAbsent(original.getProdutoId(), ignored -> new ArrayList<>()).add(original);
+        }
+        List<Long> ids = new ArrayList<>();
+        for (var grupo : porProduto.entrySet()) {
+            var movimentosProduto = grupo.getValue();
+            Long primeiro = movimentosProduto.getLast().getId();
+            if (movimentos.countByOrganizacaoIdAndProdutoIdAndIdGreaterThan(org, grupo.getKey(), primeiro)
+                    != movimentosProduto.size() - 1L) {
+                throw new ConflitoException("Há movimentos posteriores ou intercalados para um produto da nota.");
+            }
+            Produto produto = buscarProdutoAtivo(org, grupo.getKey());
+            // Nota/itens podem ter carregado Produto antes do lock do razão.
+            entityManager.refresh(produto, LockModeType.PESSIMISTIC_WRITE);
+            for (MovimentoEstoque original : movimentosProduto) {
+                BigDecimal custoAntes = produto.getCusto() == null ? BigDecimal.ZERO : produto.getCusto();
+                if (custoAntes.compareTo(original.getCustoMedioPosterior()) != 0) {
+                    throw new ConflitoException("O custo atual diverge do último movimento da nota.");
+                }
+                BigDecimal custoDepois = original.getCustoMedioAnterior();
+                if (entrada) {
+                    // valorCompra registra o último preço bruto histórico, inclusive de nota revertida.
+                    produto.setCusto(custoDepois);
+                    produto.recalcularLucro();
+                    produtos.saveAndFlush(produto);
+                } else if (custoDepois.compareTo(custoAntes) != 0) {
+                    throw new ConflitoException("O movimento de saída não pode alterar o custo médio.");
+                }
+                MovimentoEstoque inverso = aplicarMovimento(org, ator, produto, local,
+                        TipoMovimentoEstoque.COMPENSACAO, original.getDelta().negate(),
+                        original.getCustoUnitario(), custoAntes, custoDepois,
+                        "REVERSAO_" + origem, original.getOrigemChave(), original.getId(), motivo);
+                if (inverso.getSaldoAnterior().compareTo(original.getSaldoPosterior()) != 0
+                        || inverso.getSaldoPosterior().compareTo(original.getSaldoAnterior()) != 0
+                        || inverso.getSaldoTotalAnterior().compareTo(original.getSaldoTotalPosterior()) != 0
+                        || inverso.getSaldoTotalPosterior().compareTo(original.getSaldoTotalAnterior()) != 0) {
+                    throw new ConflitoException("O saldo atual diverge dos dados originais da nota.");
+                }
+                ids.add(inverso.getId());
+            }
+        }
+        return List.copyOf(ids);
     }
 
     private MovimentoEstoque aplicarMovimento(Long organizacaoId, Long atorId, Produto produto,
             LocalEstoque local, TipoMovimentoEstoque tipo, BigDecimal delta,
-            BigDecimal custoUnitario, String origemTipo, String origemChave,
+            BigDecimal custoUnitario, BigDecimal custoMedioAnterior,
+            BigDecimal custoMedioPosterior, String origemTipo, String origemChave,
             Long compensadoId, String motivo) {
         saldos.garantirCarrier(organizacaoId, produto.getId(), local.getId());
         SaldoEstoque saldo = saldos.buscarParaAtualizar(
@@ -191,12 +255,13 @@ public class EstoqueService {
         Long versaoAnterior = saldo.getVersion();
         BigDecimal saldoPosterior = saldo.aplicar(delta);
         saldo = saldos.saveAndFlush(saldo);
+        BigDecimal totalPosterior = totalAnterior.add(delta);
 
         MovimentoEstoque movimento = MovimentoEstoque.registrar(organizacaoId, produto.getId(),
                 local.getId(), saldo.getId(), tipo, delta, saldoAnterior, saldoPosterior,
-                custoUnitario, origemTipo, origemChave, compensadoId, atorId, motivo);
+                custoUnitario, totalAnterior, totalPosterior, custoMedioAnterior,
+                custoMedioPosterior, origemTipo, origemChave, compensadoId, atorId, motivo);
         movimento = movimentos.saveAndFlush(movimento);
-        BigDecimal totalPosterior = totalAnterior.add(delta);
         Map<String, Object> estadoAnterior = snapshotSaldo(
                 produto, local, saldoAnterior, totalAnterior);
         Map<String, Object> payloadMovimento = payloadMovimento(
@@ -242,11 +307,6 @@ public class EstoqueService {
                         "LocalEstoque ativo", localId));
     }
 
-    private MovimentoEstoque buscarMovimentoEntidade(Long organizacaoId, Long id) {
-        return movimentos.findByIdAndOrganizacaoId(id, organizacaoId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("MovimentoEstoque", id));
-    }
-
     private void publicar(MovimentoEstoque movimento, String evento,
             Map<String, Object> payload) {
         outbox.publicar(new PublicarEventoOutboxCommand(evento, movimento.getOrganizacaoId(),
@@ -284,6 +344,10 @@ public class EstoqueService {
         payload.put("tipo", movimento.getTipo().name());
         payload.put("delta", movimento.getDelta());
         payload.put("custoUnitario", movimento.getCustoUnitario());
+        payload.put("saldoTotalAnterior", movimento.getSaldoTotalAnterior());
+        payload.put("saldoTotalPosterior", movimento.getSaldoTotalPosterior());
+        payload.put("custoMedioAnterior", movimento.getCustoMedioAnterior());
+        payload.put("custoMedioPosterior", movimento.getCustoMedioPosterior());
         payload.put("origemTipo", movimento.getOrigemTipo());
         payload.put("origemChave", movimento.getOrigemChave());
         payload.put("atorId", movimento.getAtorId());
@@ -313,37 +377,4 @@ public class EstoqueService {
         }
     }
 
-    private static String validarChave(String valor) {
-        if (valor == null || valor.isBlank()) {
-            throw new IllegalArgumentException("O cabecalho Idempotency-Key e obrigatorio.");
-        }
-        String chave = valor.trim();
-        if (chave.length() > 100) {
-            throw new IllegalArgumentException("Idempotency-Key deve ter no maximo 100 caracteres.");
-        }
-        return chave;
-    }
-
-    private static void conferirHash(String anterior, String atual) {
-        if (!atual.equals(anterior)) {
-            throw new ConflitoException("A chave de idempotencia ja foi usada com outro payload.");
-        }
-    }
-
-    private static String decimal(BigDecimal valor) {
-        return valor == null ? "null" : valor.stripTrailingZeros().toPlainString();
-    }
-
-    private static String hash(Object... partes) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            for (Object parte : partes) {
-                digest.update(String.valueOf(parte).getBytes(StandardCharsets.UTF_8));
-                digest.update((byte) 0);
-            }
-            return HexFormat.of().formatHex(digest.digest());
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 indisponivel.", ex);
-        }
-    }
 }

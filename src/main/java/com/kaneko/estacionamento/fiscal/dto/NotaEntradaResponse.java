@@ -24,8 +24,6 @@ public record NotaEntradaResponse(
         String condicaoPagamentoNome,
         Long localEstoqueId,
         String localEstoqueNome,
-        Long recebimentoCompraId,
-        Long ordemCompraId,
         LocalDate dataEmissao,
         LocalDate dataChegada,
         TipoFrete tipoFrete,
@@ -39,7 +37,10 @@ public record NotaEntradaResponse(
         String observacao,
         List<ItemNotaEntradaResponse> itens,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Long transportadoraId, String transportadoraNome, String observacaoInterna,
+        OffsetDateTime revertidaEm,
+        String motivoReversao
 ) {
 
     public static NotaEntradaResponse from(NotaEntrada nota) {
@@ -56,9 +57,6 @@ public record NotaEntradaResponse(
                 nota.getCondicaoPagamento() != null ? nota.getCondicaoPagamento().getNome() : null,
                 nota.getLocalEstoque() != null ? nota.getLocalEstoque().getId() : null,
                 nota.getLocalEstoque() != null ? nota.getLocalEstoque().getNome() : null,
-                nota.getRecebimentoCompra() != null ? nota.getRecebimentoCompra().getId() : null,
-                nota.getRecebimentoCompra() != null
-                        ? nota.getRecebimentoCompra().getOrdemCompra().getId() : null,
                 nota.getDataEmissao(),
                 nota.getDataChegada(),
                 nota.getTipoFrete(),
@@ -72,6 +70,11 @@ public record NotaEntradaResponse(
                 nota.getObservacao(),
                 nota.getItens().stream().map(ItemNotaEntradaResponse::from).toList(),
                 nota.getCreatedAt(),
-                nota.getUpdatedAt());
+                nota.getUpdatedAt(),
+                nota.getTransportadora() == null ? null : nota.getTransportadora().getId(),
+                nota.getTransportadora() == null ? null : nota.getTransportadora().getNome(),
+                nota.getObservacaoInterna(),
+                nota.getRevertidaEm(),
+                nota.getMotivoReversao());
     }
 }

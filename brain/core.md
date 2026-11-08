@@ -1,6 +1,38 @@
-> Links: [[contas]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[compras]] · [[vendas-administrativas]] · [[ordens-servico]] · [[consultas]] · [[navegacao]]
+> Links: [[contas]] · [[organizacoes]] · [[membership]] · [[rbac]] · [[auditoria]] · [[instalacoes]] · [[venues]] · [[eventos]] · [[inventario]] · [[produtos-estacionamento]] · [[reservas-inventario]] · [[pedidos]] · [[credenciais]] · [[acesso]] · [[idempotencia]] · [[outbox]] · [[bloqueios]] · [[dados-demo]] · [[unificacao-multitenant]] · [[testes-multitenancy]] · [[pagamentos-cadastrais]] · [[clientes]] · [[logistica]] · [[fornecedores]] · [[rh]] · [[conveniencia]] · [[estoque]] · [[fiscal-financeiro]] · [[vendas-administrativas]] · [[ordens-servico]] · [[consultas]] · [[navegacao]]
 
 # Core do Estacionamento Kaneko
+
+## PARK-0003: notas de mercadoria, estoque e contas
+
+Entradas manuais ou XML usam somente NotaEntrada. O módulo de Ordem de Compra e
+Recebimento de Compra foi removido do código, contratos, migrations e dados locais.
+V78 acrescenta previa canonica, edicao/versionamento, rateio exato e cronograma efetivo.
+A V79 acrescenta o custo medio ponderado por item na entrada nova, com snapshots
+de saldo/custo no item e no movimento. Desconto geral e custo UC401 permanecem
+distintos e explicitos. Consulte [[fiscal-financeiro]] e [[importacao-xml]].
+V92–V95 ativam seis casas na compra e nos seus lançamentos de estoque e contas
+a pagar; leituras preferem as colunas inteiras sem recompor o histórico.
+V96 conclui o corte no PostgreSQL local de teste: uma coluna de escala zero
+por valor neste fluxo, com conversão na fronteira do banco. Está fora das
+migrações automáticas do serviço normal.
+V97 estende esse corte de teste à Nota de Saída (cabeçalho, itens e parcelas)
+e às Contas a Receber. A baixa usa a tabela compartilhada já migrada na V96.
+O contrato HTTP continua decimal nas unidades usuais.
+V98–V100 completam o corte operacional no mesmo banco de teste: serviços e
+ISS (incluindo itens e parcelas congelados), cadastros/financeiro/pátio e
+catálogo/pedidos de eventos. Contagens discretas, identificadores e datas
+não são escalados. XML original, logs de auditoria e payloads históricos
+de integração preservam o formato original.
+V80 torna o cronograma da Saída avulsa um snapshot da revisão e identifica a
+nota contextual por emitente + número + série + modelo. Para novas vendas
+de mercadoria, o fluxo começa diretamente na Nota de Saída avulsa.
+O Pedido de Venda foi removido da interface, da API e, pela V82, do banco.
+Pedidos de eventos e ordens de serviço permanecem independentes.
+V81 acrescenta reversão interna atômica de nota confirmada avulsa, sem
+transmissão fiscal, exclusão de histórico ou baixa bancária. O razão em
+[[estoque]] é append-only e a operação recusa baixas financeiras e movimentos
+posteriores incompatíveis.
+Execucao e aceite desta entrega sao registrados pelo Global na iniciativa do HUB.
 
 ## Fonte oficial
 
@@ -36,6 +68,12 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - Regras críticas possuem defesa na aplicação e constraints no PostgreSQL.
 - Funcionalidades enterprise são introduzidas incrementalmente e sem quebrar APIs legadas.
 
+Para campos já migrados, `MilionesimosConverter` converte BigDecimal para
+inteiro de escala zero sem arredondamento (120,000001 → 120000001). A API
+continua em unidades de negócio. O mapeamento mantém colunas históricas
+somente para leitura e usa a coluna nova sempre que preenchida.
+Não usar uma expressão SQL de fallback sem alias em mapeamento JPA.
+
 ## Módulos implementados na evolução enterprise
 
 - [[contas]] — autocadastro da identidade global sem privilegios ou tenant implicito.
@@ -65,8 +103,7 @@ A arquitetura normativa permanece em [docs/especificacao](../docs/especificacao/
 - [[fornecedores]] — fornecedores, contatos e referências comerciais do tenant.
 - [[rh]] — cargos e funcionários tenant-aware com compatibilidade histórica controlada.
 - [[conveniencia]] — categorias, marcas e unidades de medida isoladas por organização.
-- [[compras]] — ordens e recebimentos físicos tenant-aware integrados ao estoque e fiscal.
-- [[vendas-administrativas]] — venda comercial tenant-aware integrada ao estoque e recebíveis.
+- [[vendas-administrativas]] — registro histórico da retirada do Pedido de Venda pela V82.
 - [[consultas]] — busca transversal tenant-aware limitada pelas permissões efetivas.
 - [[navegacao]] — acesso contextual às áreas funcionais e rotas preservadas.
 
@@ -81,6 +118,13 @@ mapeamentos, verificou OpenAPI e empacotou o JAR.
 
 | Data | Ação |
 |---|---|
+| 2026-11-08 | V96 remove a gravação duplicada do fluxo de entrada e exige o banco de teste local explícito. |
+| 2026-11-08 | V97 grava Nota de Saída e Contas a Receber exclusivamente em milionésimos no banco fiscal de teste. |
+| 2026-11-08 | V98–V100 concluem a troca das colunas operacionais para escala zero no PostgreSQL fiscal de teste. |
+| 2026-11-08 | V92–V95 ativam milionésimos de Nota de Entrada a estoque e baixa, com decimais compatíveis e sem backfill. |
+| 2026-11-07 | V85–V87: escala fixa nos percentuais de pagamento, preço/mínimo do produto e valores de lote, reserva e pedido; saneado join fiscal. |
+| 2026-11-05 | V80/V81 consolidam conferência versionada de Nota de Saída, consulta de efeitos da origem e reversão interna auditável; DER e UML mantêm recorte vigente separado do legado. |
+| 2026-10-23 | V79 aplica custo médio ponderado na confirmação da Nota de Entrada e preserva snapshots auditáveis por item e movimento. |
 | 2026-09-29 | V74 completa os dados comerciais e logísticos da Ordem de Compra e restringe descontos ao nível do item. |
 | 2026-07-29 | Inicialização do brain e registro da História 1 de Organizações. |
 | 2026-07-29 | Registro da História 2 de Membership e JWT contextual. |

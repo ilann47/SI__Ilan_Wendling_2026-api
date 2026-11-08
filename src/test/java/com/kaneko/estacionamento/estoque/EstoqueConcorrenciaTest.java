@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.jayway.jsonpath.JsonPath;
+import com.kaneko.estacionamento.common.exception.ConflitoException;
+import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.conveniencia.Marca;
 import com.kaneko.estacionamento.conveniencia.MarcaRepository;
 import com.kaneko.estacionamento.conveniencia.Produto;
@@ -45,6 +47,7 @@ class EstoqueConcorrenciaTest {
     @Autowired private UnidadeMedidaRepository unidades;
     @Autowired private ProdutoRepository produtos;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private EstoqueService estoque;
 
     private TenantFixture fixture;
     private Long produtoId;
@@ -79,7 +82,7 @@ class EstoqueConcorrenciaTest {
 
     @Test
     void duasBaixasPelaUltimaUnidadeGeramUmSucessoEUmConflito() throws Exception {
-        postAjuste("entrada-unidade", "1");
+        lancarMovimento("entrada-unidade", "1");
         List<Integer> status = executarConcorrente("baixa-a", "baixa-b", "-1");
         assertThat(status).containsExactlyInAnyOrder(201, 409);
         assertThat(saldo()).isEqualByComparingTo("0");
@@ -96,9 +99,9 @@ class EstoqueConcorrenciaTest {
     }
 
     @Test
-    void ajusteConcorrenteComInativacaoNuncaDeixaSaldoEmLocalInativo() throws Exception {
+    void recebimentoConcorrenteComInativacaoNuncaDeixaSaldoEmLocalInativo() throws Exception {
         List<Integer> status = executarConcorrente(
-                () -> postAjuste("ajuste-versus-inativacao", "1"),
+                () -> lancarMovimento("recebimento-versus-inativacao", "1"),
                 () -> mvc.perform(delete("/api/v1/stock-locations/{id}", localId)
                                 .header(HttpHeaders.AUTHORIZATION, fixture.tokenContextual())
                                 .header(HttpHeaders.IF_MATCH, "\"0\""))
@@ -107,7 +110,7 @@ class EstoqueConcorrenciaTest {
         Boolean ativo = jdbc.queryForObject(
                 "SELECT ativo FROM local_estoque WHERE id=?", Boolean.class, localId);
         BigDecimal quantidade = jdbc.queryForObject("""
-                SELECT COALESCE(sum(quantidade),0) FROM saldo_estoque
+                SELECT COALESCE(sum(quantidade_micros),0) * 0.000001 FROM saldo_estoque
                 WHERE organizacao_id=? AND local_estoque_id=?
                 """, BigDecimal.class, fixture.organizacaoId(), localId);
         assertThat(Boolean.FALSE.equals(ativo) && quantidade.signum() != 0).isFalse();
@@ -124,7 +127,7 @@ class EstoqueConcorrenciaTest {
     private List<Integer> executarConcorrente(String chaveA, String chaveB, String delta)
             throws Exception {
         return executarConcorrente(
-                () -> postAjuste(chaveA, delta), () -> postAjuste(chaveB, delta));
+                () -> lancarMovimento(chaveA, delta), () -> lancarMovimento(chaveB, delta));
     }
 
     private List<Integer> executarConcorrente(Callable<Integer> operacaoA,
@@ -155,20 +158,26 @@ class EstoqueConcorrenciaTest {
                 .andReturn().getResponse().getStatus();
     }
 
-    private int postAjuste(String chave, String delta) throws Exception {
-        return mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, fixture.tokenContextual())
-                        .header("Idempotency-Key", chave)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"produtoId\":" + produtoId + ",\"localEstoqueId\":"
-                                + localId + ",\"delta\":" + delta
-                                + ",\"motivo\":\"Concorrencia\"}"))
-                .andReturn().getResponse().getStatus();
+    private int lancarMovimento(String chave, String delta) {
+        BigDecimal quantidade = new BigDecimal(delta);
+        try {
+            if (quantidade.signum() > 0) {
+                estoque.registrarRecebimento(fixture.organizacaoId(), fixture.usuarioId(), produtoId, localId,
+                        quantidade, BigDecimal.ZERO, "NOTA_ENTRADA", chave, "Concorrência de entrada");
+            } else {
+                estoque.registrarBaixa(fixture.organizacaoId(), fixture.usuarioId(), produtoId, localId,
+                        quantidade.negate(), "NOTA_SAIDA", chave, "Concorrência de saída");
+            }
+            return 201;
+        } catch (ConflitoException e) {
+            return 409;
+        } catch (RecursoNaoEncontradoException e) {
+            return 404;
+        }
     }
-
     private BigDecimal saldo() {
         return jdbc.queryForObject("""
-                SELECT quantidade FROM saldo_estoque
+                SELECT quantidade_micros * 0.000001 FROM saldo_estoque
                 WHERE organizacao_id=? AND produto_id=? AND local_estoque_id=?
                 """, BigDecimal.class, fixture.organizacaoId(), produtoId, localId);
     }

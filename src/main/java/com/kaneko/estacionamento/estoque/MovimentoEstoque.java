@@ -1,6 +1,9 @@
 package com.kaneko.estacionamento.estoque;
 
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -41,19 +44,37 @@ public class MovimentoEstoque {
     @Column(nullable = false, length = 20, updatable = false)
     private TipoMovimentoEstoque tipo;
 
-    @Column(nullable = false, precision = 15, scale = 3, updatable = false)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "delta_micros", nullable = false, precision = 18, scale = 0, updatable = false)
     private BigDecimal delta;
 
-    @Column(name = "saldo_anterior", nullable = false, precision = 15, scale = 3,
-            updatable = false)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "saldo_anterior_micros", nullable = false, precision = 18, scale = 0, updatable = false)
     private BigDecimal saldoAnterior;
 
-    @Column(name = "saldo_posterior", nullable = false, precision = 15, scale = 3,
-            updatable = false)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "saldo_posterior_micros", nullable = false, precision = 18, scale = 0, updatable = false)
     private BigDecimal saldoPosterior;
 
-    @Column(name = "custo_unitario", precision = 15, scale = 2, updatable = false)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_unitario_micros", precision = 19, scale = 0, updatable = false)
     private BigDecimal custoUnitario;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "saldo_total_anterior_micros", precision = 18, scale = 0, updatable = false)
+    private BigDecimal saldoTotalAnterior;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "saldo_total_posterior_micros", precision = 18, scale = 0, updatable = false)
+    private BigDecimal saldoTotalPosterior;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_medio_anterior_micros", precision = 19, scale = 0, updatable = false)
+    private BigDecimal custoMedioAnterior;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_medio_posterior_micros", precision = 19, scale = 0, updatable = false)
+    private BigDecimal custoMedioPosterior;
 
     @Column(name = "origem_tipo", nullable = false, length = 50, updatable = false)
     private String origemTipo;
@@ -80,6 +101,8 @@ public class MovimentoEstoque {
     static MovimentoEstoque registrar(Long organizacaoId, Long produtoId, Long localId,
             Long saldoId, TipoMovimentoEstoque tipo, BigDecimal delta,
             BigDecimal saldoAnterior, BigDecimal saldoPosterior, BigDecimal custoUnitario,
+            BigDecimal saldoTotalAnterior, BigDecimal saldoTotalPosterior,
+            BigDecimal custoMedioAnterior, BigDecimal custoMedioPosterior,
             String origemTipo, String origemChave, Long compensadoId, Long atorId,
             String motivo) {
         MovimentoEstoque movimento = new MovimentoEstoque();
@@ -92,6 +115,10 @@ public class MovimentoEstoque {
         movimento.saldoAnterior = saldoAnterior;
         movimento.saldoPosterior = saldoPosterior;
         movimento.custoUnitario = custoUnitario;
+        movimento.saldoTotalAnterior = saldoTotalAnterior;
+        movimento.saldoTotalPosterior = saldoTotalPosterior;
+        movimento.custoMedioAnterior = custoMedioAnterior;
+        movimento.custoMedioPosterior = custoMedioPosterior;
         movimento.origemTipo = origemTipo;
         movimento.origemChave = origemChave;
         movimento.compensadoId = compensadoId;

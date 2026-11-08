@@ -50,7 +50,7 @@ class EstoqueTenantConstraintTest {
     void saldoNuncaPodeFicarNegativo() {
         Long saldo = inserirSaldo(tenantA.organizacaoId(), produtoA, localA, "0");
         assertViolation(() -> jdbc.update(
-                        "UPDATE saldo_estoque SET quantidade=-1 WHERE id=?", saldo),
+                        "UPDATE saldo_estoque SET quantidade_micros=-1 WHERE id=?", saldo),
                 "23514", "ck_saldo_estoque_quantidade");
     }
 
@@ -58,7 +58,7 @@ class EstoqueTenantConstraintTest {
     void saldoRecusaAlteracaoDiretaSemMovimentoCorrespondente() {
         Long saldo = inserirSaldo(tenantA.organizacaoId(), produtoA, localA, "0");
         assertViolation(() -> {
-            jdbc.update("UPDATE saldo_estoque SET quantidade=1 WHERE id=?", saldo);
+            jdbc.update("UPDATE saldo_estoque SET quantidade_micros=1 WHERE id=?", saldo);
             validarRazaoDiferido();
         }, "23514", "ck_saldo_estoque_razao_consistente");
     }
@@ -163,7 +163,7 @@ class EstoqueTenantConstraintTest {
         assertViolation(() -> jdbc.update("""
                         INSERT INTO movimento_estoque
                             (id,organizacao_id,produto_id,local_estoque_id,saldo_estoque_id,
-                             tipo,delta,saldo_anterior,saldo_posterior,origem_tipo,
+                             tipo,delta_micros,saldo_anterior_micros,saldo_posterior_micros,origem_tipo,
                              origem_chave,compensado_id,ator_id,motivo,ocorrido_em,created_at)
                         VALUES (?,?,?,?,?,'COMPENSACAO',-1,1,0,'TESTE',?,?,?,
                                 'Auto referencia',now(),now())
@@ -175,7 +175,7 @@ class EstoqueTenantConstraintTest {
     @Test
     void produtoTenantNaoAceitaSaldoLegado() {
         assertViolation(() -> jdbc.update(
-                        "UPDATE produto SET quantidade=1 WHERE id=?", produtoA),
+                        "UPDATE produto SET quantidade_micros=1 WHERE id=?", produtoA),
                 "23514", "ck_estoque_produto_tenant_sem_saldo_legado");
     }
 
@@ -204,10 +204,10 @@ class EstoqueTenantConstraintTest {
     private Long inserirSaldo(Long org, Long produto, Long local, String quantidade) {
         return jdbc.queryForObject("""
                 INSERT INTO saldo_estoque
-                    (organizacao_id,produto_id,local_estoque_id,quantidade,version,
+                    (organizacao_id,produto_id,local_estoque_id,quantidade_micros,version,
                      created_at,updated_at)
                 VALUES (?,?,?,?,0,now(),now()) RETURNING id
-                """, Long.class, org, produto, local, new BigDecimal(quantidade));
+                """, Long.class, org, produto, local, new BigDecimal(quantidade).movePointRight(6));
     }
 
     private Long inserirMovimento(TenantFixture fixture, Long produto, Long local, Long saldo,
@@ -216,12 +216,12 @@ class EstoqueTenantConstraintTest {
         return jdbc.queryForObject("""
                 INSERT INTO movimento_estoque
                     (organizacao_id,produto_id,local_estoque_id,saldo_estoque_id,tipo,
-                     delta,saldo_anterior,saldo_posterior,origem_tipo,origem_chave,
+                     delta_micros,saldo_anterior_micros,saldo_posterior_micros,origem_tipo,origem_chave,
                      compensado_id,ator_id,motivo,ocorrido_em,created_at)
                 VALUES (?,?,?,?,?,?,?,?, 'TESTE', ?,?,?, 'Motivo teste',now(),now())
                 RETURNING id
                 """, Long.class, fixture.organizacaoId(), produto, local, saldo, tipo,
-                new BigDecimal(delta), new BigDecimal(anterior), new BigDecimal(posterior),
+                new BigDecimal(delta).movePointRight(6), new BigDecimal(anterior).movePointRight(6), new BigDecimal(posterior).movePointRight(6),
                 origem, compensado, fixture.usuarioId());
     }
 
@@ -238,9 +238,9 @@ class EstoqueTenantConstraintTest {
                 """, Long.class, org, sufixo, sufixo);
         return jdbc.queryForObject("""
                 INSERT INTO produto
-                    (organizacao_id,nome,marca_id,unidade_medida_id,quantidade_minima,
+                    (organizacao_id,nome,marca_id,unidade_medida_id,quantidade_minima_micros,
                      ativo,version,created_at,updated_at)
-                VALUES (?,'Produto Estoque Constraint ' || ?,?,?,1,true,0,now(),now())
+                VALUES (?,'Produto Estoque Constraint ' || ?,?,?,1000000,true,0,now(),now())
                 RETURNING id
                 """, Long.class, org, sufixo, marca, unidade);
     }

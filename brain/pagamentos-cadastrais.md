@@ -13,6 +13,13 @@ O pacote `pagamento` contém somente catálogos. A V38 inicia o retrofit do lega
 adicionando ownership opcional para preservar linhas históricas e obrigatório
 pela aplicação em toda nova escrita contextual.
 
+V85 grava juros, multa, desconto e percentuais de parcela em milionésimos.
+Os DTOs aceitam até seis casas, em pontos percentuais; a soma das parcelas
+continua exatamente 100. A V99 consolida a persistência no banco local de
+teste: prevalece o inteiro salvo; quando ausente, converte-se o percentual
+histórico. O conversor JPA grava apenas as colunas `*_micros`, sem colunas
+de compatibilidade, e a API não muda de unidade.
+
 ## Fluxo (camadas da arquitetura)
 
 ```text
@@ -61,6 +68,9 @@ CRUD anteriores agora usam JWT contextual real.
 ## Decisões Técnicas
 
 - Mesma forma/condição pode existir em organizações diferentes.
+- Editar uma condição atualiza parcelas existentes pelo número, sem reinseri-las
+  com a mesma chave. Parcelas retiradas são removidas do cadastro; os cronogramas
+  já gravados em notas de mercadoria não são recalculados por essa edição.
 - Linhas históricas com `organizacao_id IS NULL` são preservadas e invisíveis às APIs tenant.
 - A V38 não faz backfill nem aplica `NOT NULL`.
 - A V39 preserva unicidade para linhas históricas, rejeita campos desconhecidos
@@ -85,3 +95,5 @@ CRUD anteriores agora usam JWT contextual real.
 |---|---|
 | 2026-08-03 | Migra o catálogo de pagamentos para tenancy real na V38. |
 | 2026-08-03 | Endurece compatibilidade histórica e ownership de parcelas na V39. |
+| 2026-11-05 | Corrige a edição de parcelas preservando sua identidade e rejeita números repetidos; valida que notas já salvas mantêm o cronograma. |
+| 2026-11-08 | V99 elimina as colunas de compatibilidade no banco de teste sem recalcular parcelas de documentos. |

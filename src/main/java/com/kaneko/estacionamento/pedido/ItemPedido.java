@@ -12,6 +12,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+import jakarta.persistence.Convert;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.Currency;
@@ -25,6 +27,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ItemPedido extends AuditableEntity {
+    private static final int DIGITOS_INTEIROS = 17;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "pedido_id", nullable = false, updatable = false)
     private Pedido pedido;
@@ -50,12 +54,14 @@ public class ItemPedido extends AuditableEntity {
     private OffsetDateTime fimAcesso;
     @Column(nullable = false, updatable = false)
     private Integer quantidade;
-    @Column(name = "preco_unitario", nullable = false, updatable = false,
-            precision = 19, scale = 2)
+    @Column(name = "preco_unitario_micros", nullable = false, updatable = false, precision = 23, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal precoUnitario;
+
     @Column(nullable = false, updatable = false, length = 3)
     private String moeda;
-    @Column(nullable = false, updatable = false, precision = 19, scale = 2)
+    @Column(name = "total_micros", nullable = false, updatable = false, precision = 23, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal total;
 
     public static ItemPedido criar(
@@ -104,15 +110,22 @@ public class ItemPedido extends AuditableEntity {
         item.quantidade = quantidade;
         item.precoUnitario = preco;
         item.moeda = moeda(moeda);
-        item.total = preco.multiply(BigDecimal.valueOf(quantidade)).setScale(2);
+        item.total = validarCapacidade(preco.multiply(BigDecimal.valueOf(quantidade)));
         return item;
     }
 
     private static BigDecimal preco(BigDecimal valor) {
-        if (valor == null || valor.signum() < 0 || valor.stripTrailingZeros().scale() > 2) {
+        if (valor == null || valor.signum() < 0 || valor.stripTrailingZeros().scale() > MilionesimosConverter.ESCALA) {
             throw new IllegalArgumentException("O preco do item e invalido.");
         }
-        return valor.setScale(2, RoundingMode.UNNECESSARY);
+        return validarCapacidade(valor.setScale(MilionesimosConverter.ESCALA, RoundingMode.UNNECESSARY));
+    }
+
+    static BigDecimal validarCapacidade(BigDecimal valor) {
+        if (valor.precision() - valor.scale() > DIGITOS_INTEIROS) {
+            throw new IllegalArgumentException("O valor do pedido excede o limite suportado.");
+        }
+        return valor;
     }
 
     private static String moeda(String valor) {

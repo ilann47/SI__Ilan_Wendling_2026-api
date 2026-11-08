@@ -1,12 +1,20 @@
 package com.kaneko.estacionamento.fiscal;
 
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+
 import com.kaneko.estacionamento.common.AuditableEntity;
-import com.kaneko.estacionamento.compras.RecebimentoCompra;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
 import com.kaneko.estacionamento.estoque.LocalEstoque;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.OrderBy;
+import com.kaneko.estacionamento.logistica.Transportadora;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,6 +28,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.LinkedHashSet;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -65,8 +75,11 @@ public class NotaEntrada extends AuditableEntity {
     private LocalEstoque localEstoque;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recebimento_compra_id")
-    private RecebimentoCompra recebimentoCompra;
+    @JoinColumn(name = "transportadora_id")
+    private Transportadora transportadora;
+
+    @Column(name = "observacao_interna", length = 1000)
+    private String observacaoInterna;
 
     @Column(name = "data_emissao", nullable = false)
     private LocalDate dataEmissao;
@@ -78,22 +91,28 @@ public class NotaEntrada extends AuditableEntity {
     @Column(name = "tipo_frete", nullable = false, length = 3)
     private TipoFrete tipoFrete = TipoFrete.CIF;
 
-    @Column(name = "valor_produtos", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_produtos_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorProdutos = BigDecimal.ZERO;
 
-    @Column(name = "valor_frete", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_frete_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorFrete = BigDecimal.ZERO;
 
-    @Column(name = "valor_seguro", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_seguro_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorSeguro = BigDecimal.ZERO;
 
-    @Column(name = "outras_despesas", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "outras_despesas_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal outrasDespesas = BigDecimal.ZERO;
 
-    @Column(name = "valor_desconto", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_desconto_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorDesconto = BigDecimal.ZERO;
 
-    @Column(name = "valor_total", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_total_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorTotal = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
@@ -103,8 +122,23 @@ public class NotaEntrada extends AuditableEntity {
     @Column(name = "observacao", length = 255)
     private String observacao;
 
+    @Column(name = "revertida_em")
+    private java.time.OffsetDateTime revertidaEm;
+
+    @Column(name = "motivo_reversao", length = 500)
+    private String motivoReversao;
+
     @OneToMany(mappedBy = "notaEntrada", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sequencia ASC")
     private List<ItemNotaEntrada> itens = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "parcela_nota_entrada", joinColumns = @JoinColumn(name = "nota_entrada_id"))
+    @OrderBy("numeroParcela ASC")
+    private List<ParcelaNotaEntrada> parcelas = new ArrayList<>();
+
+    @Column(name = "cronograma_definido", nullable = false)
+    private boolean cronogramaDefinido;
 
     /** Adiciona um item mantendo a relacao bidirecional. */
     public void addItem(ItemNotaEntrada item) {

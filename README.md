@@ -188,16 +188,25 @@ invalidam imediatamente os tokens contextuais anteriores.
 
 ## Testes
 
-Os testes de integração usam o banco `estacionamento_kaneko_test` (Flyway aplica o
-schema; a cada classe a transação sofre rollback):
+Os cortes V96–V100 são **somente de teste**: entrada/estoque/pagar,
+saída/receber, serviços/ISS, financeiro/cadastros/pátio e comércio/eventos.
+O PostgreSQL guarda os valores operacionais em milionésimos inteiros e a API
+continua em unidades usuais. Não se recalculam documentos anteriores.
+Use `DB_HOST=127.0.0.1`, `DB_PORT=5433` e
+`DB_TEST_NAME=estacionamento_kaneko_fiscal_20261105_test` ao executar Maven.
+Os testes incluem `classpath:db/test-cutover`; a configuração normal do
+serviço não inclui esse caminho. Não use o artefato pós-corte com o esquema
+anterior nem habilite esse caminho em outro ambiente.
+
+Execute os testes de integração após definir o banco fiscal local acima
+(o Flyway aplica o schema):
 
 ```bash
 ./mvnw test
 ```
 
-São 436 testes cobrindo todos os fluxos de cada módulo (criar, listar, buscar,
-404, atualizar, excluir, filtros, e os conflitos/validações 409/400/401), além
-dos processos do pátio, fiscais, financeiros e dos relatórios.
+A suíte cobre operações de cadastro, filtros, permissões e conflitos, além
+dos processos de pátio, fiscais, financeiros e relatórios.
 
 ## Arquitetura
 

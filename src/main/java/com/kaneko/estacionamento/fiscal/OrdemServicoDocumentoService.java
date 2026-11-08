@@ -73,7 +73,7 @@ public class OrdemServicoDocumentoService {
         var nota = fiscal.criar(org, new NotaServicoRequest(request.numero(), request.modelo(),
                 request.serie(), ordem.getCliente().getId(), null, null, null, id,
                 request.condicaoPagamentoId(), request.formaPagamentoId(), request.dataEmissao(),
-                ordem.getSubtotal(), request.aliquotaIss(), ordem.getValorDesconto(), ordem.getObservacao()));
+                ordem.getSubtotal(), request.aliquotaIss(), ordem.getValorDesconto(), ordem.getObservacao(), null));
         idempotencia.registrar(org, ator, OPERACAO, chave, hash, "NOTA_SERVICO", nota.getId());
         return NotaServicoResponse.from(nota);
     }

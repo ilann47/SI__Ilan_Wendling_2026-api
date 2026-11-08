@@ -3,6 +3,8 @@ package com.kaneko.estacionamento.patio;
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -45,7 +47,8 @@ public class Mensalista extends AuditableEntity {
     @JoinColumn(name = "veiculo_id", nullable = false)
     private Veiculo veiculo;
 
-    @Column(name = "valor_mensal", nullable = false, precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_mensal_micros", nullable = false, precision = 14, scale = 0)
     private BigDecimal valorMensal;
 
     @Column(name = "data_inicio", nullable = false)

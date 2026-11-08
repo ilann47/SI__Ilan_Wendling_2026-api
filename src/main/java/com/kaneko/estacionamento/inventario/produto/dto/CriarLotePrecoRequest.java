@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
 
 public record CriarLotePrecoRequest(
         @NotBlank @Size(max = 160) String name,
-        @NotNull @DecimalMin("0.00") @Digits(integer = 17, fraction = 2) BigDecimal price,
+        @NotNull @DecimalMin("0.00") @Digits(integer = 17, fraction = 6) BigDecimal price,
         @NotBlank @Size(min = 3, max = 3) String currency,
         @NotNull OffsetDateTime salesStartsAt,
         @NotNull OffsetDateTime salesEndsAt,

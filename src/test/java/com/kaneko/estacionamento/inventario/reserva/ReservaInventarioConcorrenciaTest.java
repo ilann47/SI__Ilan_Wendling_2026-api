@@ -99,6 +99,7 @@ class ReservaInventarioConcorrenciaTest {
     private Long eventoId;
     private Long patioId;
     private Long alocacaoId;
+    private final OffsetDateTime inicioJanela = OffsetDateTime.now().withNano(0).minusHours(2);
 
     @BeforeEach
     void prepararUltimaVaga() {
@@ -127,21 +128,21 @@ class ReservaInventarioConcorrenciaTest {
                 organizacaoId, usuarioId, "evento-concorrencia",
                 new CriarEventoRequest(
                         "Evento Concorrencia", venueId,
-                        OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
-                        OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
+                        inicioJanela.plusHours(2),
+                        inicioJanela.plusHours(6).plusMinutes(30),
                         "America/Sao_Paulo", null)).id();
         alocacaoId = alocacoes.criar(
                 organizacaoId, usuarioId, eventoId, "alocacao-concorrencia",
                 new CriarAlocacaoPatioEventoRequest(
-                        patioId, OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
-                        OffsetDateTime.parse("2026-10-11T01:00:00-03:00"),
+                        patioId, inicioJanela,
+                        inicioJanela.plusHours(8),
                         1, 1, 0)).id();
         produtoId = produtos.criar(
                 organizacaoId, usuarioId, eventoId, "produto-concorrencia",
                 new CriarProdutoEstacionamentoRequest(
                         "Produto Ultima Vaga", CategoriaProduto.COMUM, alocacaoId,
-                        OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
-                        OffsetDateTime.parse("2026-10-11T01:00:00-03:00"),
+                        inicioJanela,
+                        inicioJanela.plusHours(8),
                         DireitoProduto.ESTACIONAMENTO_EVENTO, 1, List.of(), List.of())).id();
         OffsetDateTime agora = OffsetDateTime.now();
         lotes.criar(

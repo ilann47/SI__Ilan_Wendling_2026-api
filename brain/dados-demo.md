@@ -42,12 +42,11 @@ Nenhum. O seed é infraestrutura local de inicialização e não amplia a API.
 - política de reentrada explícita, produto publicado e vendas abertas.
 - formas e condições de pagamento, cargos, funcionário, clientes e fornecedor;
 - transportadora, frota, catálogo de conveniência, serviços e vínculos comerciais;
-- local, saldos e razão de estoque com recebimento, baixa e ajuste;
+- local, saldos e razão de estoque com entrada e baixa vinculadas às notas;
 - notas de entrada, saída e serviço, contas a pagar/receber e despesa avulsa;
-- ordem de compra recebida, recebimento imutável, movimento de estoque, nota de
-  entrada e conta a pagar ligados no mesmo fluxo;
-- venda administrativa em rascunho e venda confirmada ligada à nota de saída,
-  conta recebida e histórico financeiro;
+- nota de entrada confirmada, movimento de estoque e conta a pagar ligados no mesmo fluxo;
+- nota de saída avulsa, conta recebida e histórico financeiro, sem criar
+  Pedido de Venda;
 - tarifas, veículos, mensalista e movimentações aberta e fechada;
 - pedido confirmado, comprador, credencial, QR, presença, sessão e tentativas
   de acesso autorizada e recusada.
@@ -104,6 +103,11 @@ execução. Ausência do administrador gera falha explícita.
 
 | Data | Ação |
 |---|---|
+| 2026-11-08 | Seed do fluxo fiscal de teste usa o esquema V96 para novos registros, sem atualizar as notas demonstrativas já existentes. |
+| 2026-11-08 | Seed grava novos itens, totais e contas a receber em milionésimos no esquema V97, sem reprocessar registros existentes. |
+| 2026-11-08 | Seed de teste atualizado para a persistência inteira da V100 em serviços, financeiro, cadastros, pátio e comércio. |
+| 2026-11-06 | Remove o ajuste manual sintético do seed; os movimentos de demonstração têm origem fiscal. |
+| 2026-11-05 | O seed deixa de criar ou vincular pedidos de venda; não altera vínculos preexistentes. |
 | 2026-08-03 | Cria seed local opt-in, transacional e idempotente do fluxo de eventos. |
 | 2026-08-04 | Amplia o seed para perfis admin/operador e dados coerentes em todas as telas. |
 | 2026-08-14 | Acrescenta Ordem de Compra ao cenário local de todas as telas. |

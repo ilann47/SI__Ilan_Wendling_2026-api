@@ -106,7 +106,7 @@ class ClienteTenantApiTest {
     void historicoSemTenantPermaneceInvisivel() throws Exception {
         Long clienteId = jdbc.queryForObject("""
                 INSERT INTO cliente
-                    (nome, tipo, documento, limite_credito, ativo, created_at, updated_at)
+                    (nome, tipo, documento, limite_credito_micros, ativo, created_at, updated_at)
                 VALUES ('Historico', 'FISICA', '99999999999', 0, true, now(), now())
                 RETURNING id
                 """, Long.class);

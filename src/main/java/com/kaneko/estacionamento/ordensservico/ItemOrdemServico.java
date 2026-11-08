@@ -2,7 +2,9 @@ package com.kaneko.estacionamento.ordensservico;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.conveniencia.Servico;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -29,12 +31,16 @@ public class ItemOrdemServico extends AuditableEntity {
     private Integer sequencia;
     @Column(name = "descricao_snapshot", nullable = false, length = 255)
     private String descricaoSnapshot;
-    @Column(nullable = false, precision = 15, scale = 3)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "quantidade_micros", nullable = false, precision = 18, scale = 0)
     private BigDecimal quantidade;
-    @Column(name = "valor_unitario", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_unitario_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorUnitario;
-    @Column(name = "valor_desconto", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_desconto_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorDesconto = BigDecimal.ZERO;
-    @Column(name = "valor_total", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_total_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorTotal;
 }

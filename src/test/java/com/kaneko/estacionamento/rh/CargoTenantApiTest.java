@@ -101,7 +101,7 @@ class CargoTenantApiTest {
     void preservaHistoricoSemOwnerInvisivel() throws Exception {
         Long id = jdbc.queryForObject("""
                 INSERT INTO cargo
-                    (nome, salario_base, requer_cnh, ativo, created_at, updated_at)
+                    (nome, salario_base_micros, requer_cnh, ativo, created_at, updated_at)
                 VALUES ('Historico', 0, false, true, now(), now()) RETURNING id
                 """, Long.class);
         mvc.perform(get("/api/cargos").header("Authorization", tenantA.tokenContextual()))

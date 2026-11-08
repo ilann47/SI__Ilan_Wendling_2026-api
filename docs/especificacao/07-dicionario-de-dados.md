@@ -2,7 +2,7 @@
 
 # 7. Dicionário de Dados
 
-Este capítulo apresenta o dicionário de dados completo do sistema **Estacionamento Kaneko**, descrevendo de forma detalhada todas as 34 tabelas que compõem o esquema físico do banco de dados PostgreSQL 17 (banco `estacionamento_kaneko`). As definições aqui registradas foram extraídas diretamente do arquivo de DDL `database/schema.sql`, que constitui a fonte autoritativa do modelo e que dará origem à migração Flyway V1 no início da implementação.
+As seções 7.1 a 7.12 documentam a baseline de 34 tabelas do `database/schema.sql`, preservada como referência histórica. O banco executável segue as migrations Flyway. A seção 7.13 prevalece para a descrição atual de notas de mercadoria, estoque e contas; não representa inventário dos módulos fora desse recorte.
 
 Para cada tabela é apresentada uma subseção contendo uma tabela descritiva com as colunas **Campo**, **Tipo**, **Obrigatório**, **Tamanho**, **Regra de validação** e **Observações**. As convenções adotadas nesta documentação são as seguintes:
 
@@ -673,3 +673,54 @@ Restrição de unicidade do par: `uq_transp_veiculo_frota (transportadora_id, ve
 ## 7.12. Observações Finais
 
 Todas as 34 tabelas descritas neste dicionário de dados adotam, como chave primária, uma coluna `id` do tipo `BIGINT` gerada por identidade. As relações de integridade referencial empregam predominantemente a regra `ON DELETE RESTRICT`, impedindo a exclusão de registros-pai que possuam dependentes; as exceções são as tabelas de itens (`item_nota_entrada`, `item_nota_saida`), os contatos do fornecedor (`fornecedor_email`, `fornecedor_telefone`) e o detalhamento de parcelas (`parcela_condicao_pagamento`, esta com `ON DELETE CASCADE` em relação à condição), que utilizam `ON DELETE CASCADE`, além da coluna `forma_pagamento_id` de `parcela_condicao_pagamento`, que adota `ON DELETE SET NULL`. As restrições de verificação (`CHECK`) garantem a consistência de domínios (enumerações de status, tipo, sexo, estado civil e modalidade de frete), a não negatividade de valores monetários e quantitativos, a coerência temporal entre datas e a integridade das regras de baixa de títulos financeiros. Os índices únicos parciais reforçam regras de negócio específicas, como a existência de no máximo um contrato ativo por veículo, uma movimentação aberta por veículo e um contato principal por fornecedor.
+
+## 7.13. Recorte vigente — Notas, estoque e contas
+
+### Nota, item e títulos fiscais
+
+| Campo ou conjunto | Tipo | Obrigatório | Tamanho | Regra de validação / observações |
+|---|---|---|---|---|
+| `nota_entrada.id`, `nota_saida.id` | BIGINT | Sim | — | PK técnica. A identificação de negócio é independente. |
+| `organizacao_id` e `local_estoque_id` | BIGINT | No contexto ativo | — | Referências ao contexto e local. Legado pode não ter local; nas novas notas contextuais o local ativo da mesma organização é obrigatório. |
+| `numero`, `serie`, `modelo` | VARCHAR | Sim no registro | 20 / 10 / 10 | Entrada: unicidade normalizada com organização e fornecedor (V78). Saída: com organização emitente (V80), sem cliente na chave contextual. |
+| `fornecedor_id` / `cliente_id` | BIGINT | Sim | — | Contraparte da Entrada / da Saída, respectivamente. |
+| `data_emissao`, `data_chegada` (Entrada) | DATE | Emissão: sim; chegada: não | — | O banco verifica chegada não anterior à emissão. O serviço rejeita emissão posterior ao dia corrente. |
+| `cronograma_definido` | BOOLEAN | Sim | — | Indica se a revisão possui cronograma canônico. Rascunhos antigos precisam ser salvos antes de confirmar. |
+| `revertida_em`, `motivo_reversao` | TIMESTAMPTZ / VARCHAR | Somente na reversão | — / 500 | V81 exige os dois juntos para a nota cancelada por reversão; cancelamento simples não preenche esses campos. |
+| `item_nota_entrada.saldo_estoque_anterior`, `custo_medio_anterior`, `custo_medio_posterior` | NUMERIC | Não | 15,3 / 15,2 / 15,2 | V79 preserva o saldo consolidado anterior e os custos usados na confirmação; podem faltar em históricos. |
+| `conta_pagar.nota_entrada_id`, `conta_receber.nota_saida_id` | BIGINT | Quando originado na nota | — | FK de origem; número da parcela único dentro da nota. Títulos manuais não inventam vínculo. A V82 removeu referências do Pedido de Venda. |
+
+### Parcelas congeladas — V78 e V80
+
+Aplica-se a `parcela_nota_entrada`, `parcela_nota_saida` e `parcela_importacao_nota`.
+
+| Campo | Tipo | Obrigatório | Tamanho | Regra de validação / observações |
+|---|---|---|---|---|
+| `nota_entrada_id`, `nota_saida_id` ou `importacao_id` | BIGINT | Sim | — | FK do documento correspondente. Junto ao número compõe a PK. |
+| `numero_parcela` | INTEGER | Sim | — | Positivo e único dentro do documento. |
+| `valor` | NUMERIC | Sim | 15,2 | Positivo; não são gravadas parcelas de valor zero. |
+| `data_vencimento` | DATE | Sim | — | Vencimento congelado na revisão. |
+| `forma_pagamento_id`, `forma_pagamento_nome` | BIGINT / VARCHAR | Não | — / 100 | FK opcional e nome preservado conforme a revisão; vínculo validado no mesmo contexto. |
+
+### Estoque por local — V54 e V79
+
+| Entidade / campos | Tipo | Obrigatório | Tamanho | Regra de validação / observações |
+|---|---|---|---|---|
+| `local_estoque.id`, `organizacao_id`, `nome` | BIGINT / BIGINT / VARCHAR | Sim | — / — / 120 | PK, FK de organização e nome normalizado único na organização. |
+| `saldo_estoque.id`, `organizacao_id`, `produto_id`, `local_estoque_id`, `quantidade` | BIGINT / NUMERIC | Sim | Quantidade 15,3 | PK própria; combinação organização + produto + local única. Quantidade não negativa. |
+| `movimento_estoque.id`, `saldo_estoque_id`, `ator_id`, `tipo`, `origem_tipo`, `origem_chave` | BIGINT / VARCHAR | Sim | Tipo 20; origem 50/160 | PK e FKs ao saldo contextual e ator; rastreio de nota pela origem lógica `id:sequencia`. |
+| `delta`, `saldo_anterior`, `saldo_posterior`, `custo_unitario` | NUMERIC | Custo opcional | 15,3 / 15,3 / 15,3 / 15,2 | Delta não nulo e diferente de zero; saldo posterior é anterior + delta, ambos não negativos. |
+| `saldo_total_anterior`, `saldo_total_posterior`, `custo_medio_anterior`, `custo_medio_posterior` | NUMERIC | Não | 15,3 / 15,3 / 15,2 / 15,2 | Memória de custo e saldo consolidado V79. |
+| `compensado_id` | BIGINT | Só na compensação | — | FK ao movimento original do mesmo saldo; um original admite uma compensação. O razão não edita o movimento original. |
+
+### Histórico de baixas — V69
+
+| Campo | Tipo | Obrigatório | Tamanho | Regra de validação / observações |
+|---|---|---|---|---|
+| `id`, `organizacao_id` | BIGINT | ID: sim | — | PK; organização obrigatória no fluxo contextual, anulável para legado. |
+| `conta_pagar_id`, `conta_receber_id` | BIGINT | Exatamente um | — | FKs aos títulos com verificação de ownership. |
+| `valor`, `data` | NUMERIC / DATE | Valor: sim; data: novas baixas | 15,2 / — | Valor positivo; a data omitida na requisição é preenchida no novo registro. |
+| `chave`, `request_hash`, `saldo_anterior` | VARCHAR / VARCHAR / BOOLEAN | Chave e marcador: sim | 160 / 64 / — | Chave única por título; hash requerido nas baixas novas. Marcador identifica o acumulado legado sem inventar baixas individuais. |
+| `ator_id`, `ator_nome`, `created_at` | BIGINT / VARCHAR / TIMESTAMPTZ | Data de criação: sim | — / 150 / — | Identificação do responsável quando disponível. |
+
+[Diagrama do recorte](03-der.md) · [Regras e fluxos](05-casos-de-uso/processos-fiscais.md).

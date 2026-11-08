@@ -76,8 +76,8 @@ public class OrdemServicoController {
     public ResponseEntity<OrdemServicoResponse> iniciar(
             @AuthenticationPrincipal UsuarioAutenticado principal, @PathVariable Long id,
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch) {
-        var response = OrdemServicoResponse.from(service.iniciar(principal.organizacaoId(), id,
-                OrdemServicoHttpVersion.extrair(ifMatch)));
+        var response = service.iniciar(principal.organizacaoId(), id,
+                OrdemServicoHttpVersion.extrair(ifMatch));
         return ResponseEntity.ok().eTag(OrdemServicoHttpVersion.etag(response.version())).body(response);
     }
 
@@ -86,8 +86,8 @@ public class OrdemServicoController {
     public ResponseEntity<OrdemServicoResponse> concluir(
             @AuthenticationPrincipal UsuarioAutenticado principal, @PathVariable Long id,
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch) {
-        var response = OrdemServicoResponse.from(service.concluir(principal.organizacaoId(), id,
-                OrdemServicoHttpVersion.extrair(ifMatch)));
+        var response = service.concluir(principal.organizacaoId(), id,
+                OrdemServicoHttpVersion.extrair(ifMatch));
         return ResponseEntity.ok().eTag(OrdemServicoHttpVersion.etag(response.version())).body(response);
     }
 
@@ -97,8 +97,8 @@ public class OrdemServicoController {
             @AuthenticationPrincipal UsuarioAutenticado principal, @PathVariable Long id,
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
             @Valid @RequestBody CancelarOrdemServicoRequest request) {
-        var response = OrdemServicoResponse.from(service.cancelar(principal.organizacaoId(), id,
-                OrdemServicoHttpVersion.extrair(ifMatch), request.motivo()));
+        var response = service.cancelar(principal.organizacaoId(), id,
+                OrdemServicoHttpVersion.extrair(ifMatch), request.motivo());
         return ResponseEntity.ok().eTag(OrdemServicoHttpVersion.etag(response.version())).body(response);
     }
 }

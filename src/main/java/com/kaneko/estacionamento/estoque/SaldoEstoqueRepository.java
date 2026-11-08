@@ -15,23 +15,35 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque, Long
 
     @Query(value = """
             SELECT p.id AS produtoId, p.nome AS produto, m.nome AS marca,
-                   c.nome AS categoria, COALESCE(sum(s.quantidade),0) AS quantidade,
-                   p.quantidade_minima AS quantidadeMinima
+                   c.nome AS categoria, COALESCE(sum(s.quantidade_micros),0) * 0.000001 AS quantidade,
+                   p.quantidade_minima_micros * 0.000001 AS quantidadeMinima
             FROM produto p
             JOIN marca m ON m.id=p.marca_id AND m.organizacao_id=p.organizacao_id
             LEFT JOIN categoria c ON c.id=p.categoria_id AND c.organizacao_id=p.organizacao_id
             LEFT JOIN saldo_estoque s ON s.produto_id=p.id AND s.organizacao_id=p.organizacao_id
             WHERE p.organizacao_id=:organizacaoId AND p.ativo=true
-            GROUP BY p.id,p.nome,m.nome,c.nome,p.quantidade_minima
-            HAVING COALESCE(sum(s.quantidade),0)<=p.quantidade_minima
+            GROUP BY p.id,p.nome,m.nome,c.nome,p.quantidade_minima_micros
+            HAVING COALESCE(sum(s.quantidade_micros),0) * 0.000001<=p.quantidade_minima_micros * 0.000001
             ORDER BY p.nome
             """, nativeQuery = true)
     List<EstoqueMinimoTenantView> listarEstoqueMinimo(Long organizacaoId);
 
+    @Query(value = """
+            SELECT p.id AS produtoId, p.nome AS produto, m.nome AS marca,
+                   c.nome AS categoria, p.quantidade_micros * 0.000001 AS quantidade,
+                   p.quantidade_minima_micros * 0.000001 AS quantidadeMinima
+            FROM produto p JOIN marca m ON m.id=p.marca_id
+            LEFT JOIN categoria c ON c.id=p.categoria_id
+            WHERE p.organizacao_id IS NULL AND p.ativo
+              AND p.quantidade_micros * 0.000001<=p.quantidade_minima_micros * 0.000001
+            ORDER BY p.nome
+            """, nativeQuery = true)
+    List<EstoqueMinimoTenantView> listarEstoqueMinimoLegado();
+
     @Modifying
     @Query(value = """
             INSERT INTO saldo_estoque
-                (organizacao_id,produto_id,local_estoque_id,quantidade,version,created_at,updated_at)
+                (organizacao_id,produto_id,local_estoque_id,quantidade_micros,version,created_at,updated_at)
             VALUES (:organizacaoId,:produtoId,:localId,0,0,now(),now())
             ON CONFLICT (organizacao_id,produto_id,local_estoque_id) DO NOTHING
             """, nativeQuery = true)
@@ -46,10 +58,10 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque, Long
     Optional<SaldoEstoque> buscarParaAtualizar(
             Long organizacaoId, Long produtoId, Long localId);
 
-    @Query("""
-            select coalesce(sum(s.quantidade),0) from SaldoEstoque s
-            where s.organizacaoId=:organizacaoId and s.produtoId=:produtoId
-            """)
+    @Query(value = """
+            SELECT COALESCE(sum(s.quantidade_micros),0) * 0.000001 FROM saldo_estoque s
+            WHERE s.organizacao_id=:organizacaoId AND s.produto_id=:produtoId
+            """, nativeQuery = true)
     BigDecimal somarPorProduto(Long organizacaoId, Long produtoId);
 
     @Query("""
@@ -62,7 +74,7 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque, Long
     @Query(value = """
             SELECT s.id, s.produto_id AS produtoId, p.nome AS produto,
                    s.local_estoque_id AS localEstoqueId, l.nome AS localEstoque,
-                   s.quantidade, s.version
+                   s.quantidade_micros * 0.000001 AS quantidade, s.version
             FROM saldo_estoque s
             JOIN produto p ON p.id=s.produto_id AND p.organizacao_id=s.organizacao_id
             JOIN local_estoque l ON l.id=s.local_estoque_id
@@ -82,14 +94,15 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque, Long
 
     @Query(value = """
             WITH posicao AS (
-                SELECT p.id, p.nome, p.quantidade_minima,
-                       COALESCE(sum(s.quantidade),0) AS quantidade
+                SELECT p.id, p.nome,
+                       p.quantidade_minima_micros * 0.000001 AS quantidade_minima,
+                       COALESCE(sum(s.quantidade_micros),0) * 0.000001 AS quantidade
                 FROM produto p
                 LEFT JOIN saldo_estoque s
                   ON s.organizacao_id=p.organizacao_id AND s.produto_id=p.id
                 WHERE p.organizacao_id=:organizacaoId AND p.ativo=true
                   AND (:produtoId IS NULL OR p.id=:produtoId)
-                GROUP BY p.id, p.nome, p.quantidade_minima
+                GROUP BY p.id, p.nome, p.quantidade_minima_micros
             )
             SELECT id AS produtoId, nome AS produto, quantidade,
                    quantidade_minima AS quantidadeMinima,
@@ -100,14 +113,15 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque, Long
             """,
             countQuery = """
             WITH posicao AS (
-                SELECT p.id, p.quantidade_minima,
-                       COALESCE(sum(s.quantidade),0) AS quantidade
+                SELECT p.id,
+                       p.quantidade_minima_micros * 0.000001 AS quantidade_minima,
+                       COALESCE(sum(s.quantidade_micros),0) * 0.000001 AS quantidade
                 FROM produto p
                 LEFT JOIN saldo_estoque s
                   ON s.organizacao_id=p.organizacao_id AND s.produto_id=p.id
                 WHERE p.organizacao_id=:organizacaoId AND p.ativo=true
                   AND (:produtoId IS NULL OR p.id=:produtoId)
-                GROUP BY p.id, p.quantidade_minima
+                GROUP BY p.id, p.quantidade_minima_micros
             )
             SELECT count(*) FROM posicao
             WHERE (CAST(:abaixoMinimo AS boolean) IS NULL

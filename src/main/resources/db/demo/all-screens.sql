@@ -84,9 +84,9 @@ where not exists (
 );
 
 insert into condicao_pagamento
-    (id, nome, numero_parcelas, percentual_juros, percentual_multa,
-     percentual_desconto, ativo, organizacao_id)
-select nextval('condicao_pagamento_id_seq'), v.nome, v.parcelas, 0, 2, v.desconto,
+    (id, nome, numero_parcelas, percentual_juros_micros, percentual_multa_micros,
+     percentual_desconto_micros, ativo, organizacao_id)
+select nextval('condicao_pagamento_id_seq'), v.nome, v.parcelas, 0, kaneko_micros(2), kaneko_micros(v.desconto),
        true, c.organizacao_id
 from demo_seed_context c
 cross join (values
@@ -99,10 +99,10 @@ where not exists (
 );
 
 insert into parcela_condicao_pagamento
-    (id, condicao_pagamento_id, numero, dias, percentual,
+    (id, condicao_pagamento_id, numero, dias, percentual_micros,
      forma_pagamento_id, organizacao_id)
 select nextval('parcela_condicao_pagamento_id_seq'), cp.id, v.numero, v.dias,
-       v.percentual, fp.id, c.organizacao_id
+       kaneko_micros(v.percentual), fp.id, c.organizacao_id
 from demo_seed_context c
 join condicao_pagamento cp
   on cp.organizacao_id = c.organizacao_id and cp.nome = '30/60 dias Demo'
@@ -116,8 +116,8 @@ where not exists (
 );
 
 insert into cargo
-    (id, nome, descricao, salario_base, carga_horaria, requer_cnh, ativo, organizacao_id)
-select nextval('cargo_id_seq'), v.nome, v.descricao, v.salario, 44, false, true,
+    (id, nome, descricao, salario_base_micros, carga_horaria_micros, requer_cnh, ativo, organizacao_id)
+select nextval('cargo_id_seq'), v.nome, v.descricao, kaneko_micros(v.salario), kaneko_micros(44), false, true,
        c.organizacao_id
 from demo_seed_context c
 cross join (values
@@ -132,12 +132,12 @@ where not exists (
 insert into funcionario
     (id, nome, apelido, tipo, cpf, data_nascimento, sexo, estado_civil,
      telefone, email, endereco, numero, bairro, cep, cidade_id, cargo_id,
-     data_admissao, salario, observacao, ativo, organizacao_id)
+     data_admissao, salario_micros, observacao, ativo, organizacao_id)
 select nextval('funcionario_id_seq'), 'Operador Kaneko Demo', 'Operador Demo',
        'FISICA', '98765432100', date '1992-05-12', 'MASCULINO', 'SOLTEIRO',
        '(45) 99999-2000', 'operador.demo@kaneko.local', 'Rua Demo', '200',
        'Centro', '85810-000', c.cidade_id, ca.id, current_date - 365,
-       2800, 'Funcionario criado pelo seed local', true, c.organizacao_id
+       kaneko_micros(2800), 'Funcionario criado pelo seed local', true, c.organizacao_id
 from demo_seed_context c
 join cargo ca
   on ca.organizacao_id = c.organizacao_id and ca.nome = 'Operador de Patio Demo'
@@ -149,10 +149,10 @@ where not exists (
 insert into cliente
     (id, nome, apelido, tipo, documento, data_nascimento, sexo, estado_civil,
      telefone, email, endereco, numero, bairro, cep, cidade_id,
-     condicao_pagamento_id, limite_credito, observacao, ativo, organizacao_id)
+     condicao_pagamento_id, limite_credito_micros, observacao, ativo, organizacao_id)
 select nextval('cliente_id_seq'), v.nome, v.apelido, v.tipo, v.documento,
        v.nascimento, v.sexo, v.civil, v.telefone, v.email, 'Avenida Demo',
-       v.numero, 'Centro', '85810-000', c.cidade_id, cp.id, v.limite,
+       v.numero, 'Centro', '85810-000', c.cidade_id, cp.id, kaneko_micros(v.limite),
        'Cliente demonstrativo', true, c.organizacao_id
 from demo_seed_context c
 join condicao_pagamento cp
@@ -186,9 +186,9 @@ where not exists (
 );
 
 insert into veiculo_frota
-    (id, placa, modelo, marca, ano, capacidade, observacao, ativo, organizacao_id)
+    (id, placa, modelo, marca, ano, capacidade_micros, observacao, ativo, organizacao_id)
 select nextval('veiculo_frota_id_seq'), 'LOG2D26', 'Delivery 11.180',
-       'Volkswagen', 2024, 8500, 'Caminhao demo', true, c.organizacao_id
+       'Volkswagen', 2024, kaneko_micros(8500), 'Caminhao demo', true, c.organizacao_id
 from demo_seed_context c
 where not exists (
     select 1 from veiculo_frota v
@@ -211,11 +211,11 @@ where not exists (
 
 insert into fornecedor
     (id, nome, nome_fantasia, tipo, documento, endereco, numero, bairro, cep,
-     cidade_id, condicao_pagamento_id, limite_credito, observacao, ativo,
+     cidade_id, condicao_pagamento_id, limite_credito_micros, observacao, ativo,
      transportadora_id, organizacao_id)
 select nextval('fornecedor_id_seq'), 'Distribuidora Conveniencia Demo Ltda',
        'Distribuidora Demo', 'JURIDICA', '66777888000199', 'Rua das Industrias',
-       '900', 'Industrial', '85818-100', c.cidade_id, cp.id, 30000,
+       '900', 'Industrial', '85818-100', c.cidade_id, cp.id, kaneko_micros(30000),
        'Fornecedor demonstrativo', true, t.id, c.organizacao_id
 from demo_seed_context c
 join condicao_pagamento cp
@@ -283,11 +283,11 @@ where not exists (
 
 insert into produto
     (id, nome, codigo_barras, referencia, marca_id, unidade_medida_id,
-     categoria_id, valor_compra, valor_venda, percentual_lucro, quantidade,
-     quantidade_minima, descricao, observacao, ativo, custo, organizacao_id, version)
+     categoria_id, valor_compra_micros, valor_venda_micros, percentual_lucro_micros, quantidade_micros,
+     quantidade_minima_micros, descricao, observacao, ativo, custo_micros, organizacao_id, version)
 select nextval('produto_id_seq'), v.nome, v.codigo, v.referencia, m.id, u.id,
-       ca.id, v.compra, v.venda, v.lucro, v.quantidade, v.minimo,
-       v.descricao, 'Produto demonstrativo', true, v.compra, c.organizacao_id, 0
+       ca.id, kaneko_micros(v.compra), kaneko_micros(v.venda), kaneko_micros(v.lucro), kaneko_micros(v.quantidade), kaneko_micros(v.minimo),
+       v.descricao, 'Produto demonstrativo', true, kaneko_micros(v.compra), c.organizacao_id, 0
 from demo_seed_context c
 join marca m on m.organizacao_id = c.organizacao_id and m.nome = 'Kaneko Demo'
 join unidade_medida u on u.organizacao_id = c.organizacao_id and u.sigla = 'UN'
@@ -302,8 +302,8 @@ where not exists (
 );
 
 insert into servico
-    (id, nome, descricao, valor_padrao, ativo, organizacao_id, version)
-select nextval('servico_id_seq'), v.nome, v.descricao, v.valor, true,
+    (id, nome, descricao, valor_padrao_micros, ativo, organizacao_id, version)
+select nextval('servico_id_seq'), v.nome, v.descricao, kaneko_micros(v.valor), true,
        c.organizacao_id, 0
 from demo_seed_context c
 cross join (values
@@ -316,9 +316,9 @@ where not exists (
 );
 
 insert into produto_fornecedor
-    (id, produto_id, fornecedor_id, codigo_prod, custo, ativo, organizacao_id, version)
+    (id, produto_id, fornecedor_id, codigo_prod, custo_micros, ativo, organizacao_id, version)
 select nextval('produto_fornecedor_id_seq'), p.id, f.id,
-       'FORN-' || p.referencia, p.valor_compra, true, c.organizacao_id, 0
+       'FORN-' || p.referencia, p.valor_compra_micros, true, c.organizacao_id, 0
 from demo_seed_context c
 join fornecedor f
   on f.organizacao_id = c.organizacao_id and f.documento = '66777888000199'
@@ -340,74 +340,26 @@ where not exists (
 );
 
 insert into saldo_estoque
-    (id, organizacao_id, produto_id, local_estoque_id, quantidade, version)
-select nextval('saldo_estoque_id_seq'), c.organizacao_id, p.id, l.id,
-       case p.referencia when 'AGUA-DEMO' then 16 else 8 end, 0
-from demo_seed_context c
-join local_estoque l
-  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
-join produto p
-  on p.organizacao_id = c.organizacao_id and p.referencia in ('AGUA-DEMO', 'REFRI-DEMO')
-where not exists (
-    select 1 from saldo_estoque s
-    where s.organizacao_id = c.organizacao_id
-      and s.produto_id = p.id and s.local_estoque_id = l.id
-);
-
-insert into movimento_estoque
-    (id, organizacao_id, produto_id, local_estoque_id, saldo_estoque_id,
-     tipo, delta, saldo_anterior, saldo_posterior, custo_unitario,
-     origem_tipo, origem_chave, ator_id, motivo, ocorrido_em)
-select nextval('movimento_estoque_id_seq'), c.organizacao_id, p.id, l.id, s.id,
-       v.tipo, v.delta, v.anterior, v.posterior,
-       case when v.origem_tipo = 'NOTA_ENTRADA' then 2.25::numeric else p.valor_compra end,
-       v.origem_tipo, v.origem_chave, c.admin_id, v.motivo, now() + v.intervalo
+    (id, organizacao_id, produto_id, local_estoque_id, quantidade_micros, version)
+select nextval('saldo_estoque_id_seq'), c.organizacao_id, p.id, l.id, kaneko_micros(16), 0
 from demo_seed_context c
 join local_estoque l
   on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
 join produto p
   on p.organizacao_id = c.organizacao_id and p.referencia = 'AGUA-DEMO'
-join saldo_estoque s
-  on s.organizacao_id = c.organizacao_id and s.produto_id = p.id and s.local_estoque_id = l.id
-cross join (values
-    ('RECEBIMENTO', 20::numeric, 0::numeric, 20::numeric, 'NOTA_ENTRADA', 'NE-DEMO-001', 'Recebimento da compra demo', interval '-7 days'),
-    ('BAIXA', -4::numeric, 20::numeric, 16::numeric, 'NOTA_SAIDA', 'NS-DEMO-001', 'Venda na conveniencia demo', interval '-2 days')
-) v(tipo, delta, anterior, posterior, origem_tipo, origem_chave, motivo, intervalo)
 where not exists (
-    select 1 from movimento_estoque me
-    where me.organizacao_id = c.organizacao_id
-      and me.origem_tipo = v.origem_tipo and me.origem_chave = v.origem_chave
-      and me.produto_id = p.id and me.local_estoque_id = l.id and me.tipo = v.tipo
+    select 1 from saldo_estoque s
+    where s.organizacao_id = c.organizacao_id
+      and s.produto_id = p.id and s.local_estoque_id = l.id
 );
-
-insert into movimento_estoque
-    (id, organizacao_id, produto_id, local_estoque_id, saldo_estoque_id,
-     tipo, delta, saldo_anterior, saldo_posterior, custo_unitario,
-     origem_tipo, origem_chave, ator_id, motivo)
-select nextval('movimento_estoque_id_seq'), c.organizacao_id, p.id, l.id, s.id,
-       'AJUSTE', 8, 0, 8, p.valor_compra, 'AJUSTE_INICIAL', 'AJ-DEMO-REFRI',
-       c.admin_id, 'Inventario inicial demonstrativo'
-from demo_seed_context c
-join local_estoque l
-  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
-join produto p
-  on p.organizacao_id = c.organizacao_id and p.referencia = 'REFRI-DEMO'
-join saldo_estoque s
-  on s.organizacao_id = c.organizacao_id and s.produto_id = p.id and s.local_estoque_id = l.id
-where not exists (
-    select 1 from movimento_estoque me
-    where me.organizacao_id = c.organizacao_id and me.origem_tipo = 'AJUSTE_INICIAL'
-      and me.origem_chave = 'AJ-DEMO-REFRI' and me.produto_id = p.id
-);
-
 insert into nota_entrada
     (id, numero, modelo, serie, fornecedor_id, condicao_pagamento_id,
-     data_emissao, data_chegada, tipo_frete, valor_produtos, valor_frete,
-     valor_seguro, outras_despesas, valor_desconto, valor_total, situacao,
+     data_emissao, data_chegada, tipo_frete, valor_produtos_micros, valor_frete_micros,
+     valor_seguro_micros, outras_despesas_micros, valor_desconto_micros, valor_total_micros, situacao,
      observacao, organizacao_id, local_estoque_id, version)
 select nextval('nota_entrada_id_seq'), 'NE-DEMO-001', '55', 'D1', f.id, cp.id,
-       current_date - 7, current_date - 7, 'CIF', 40, 0, 0, 0, 0, 40,
-       'CONFIRMADA', 'Compra recebida para demonstracao', c.organizacao_id, l.id, 1
+       current_date - 7, current_date - 7, 'CIF', kaneko_micros(40), kaneko_micros(5), 0, 0, 0, kaneko_micros(45),
+       'CONFIRMADA', 'Entrada confirmada para demonstracao', c.organizacao_id, l.id, 1
 from demo_seed_context c
 join fornecedor f
   on f.organizacao_id = c.organizacao_id and f.documento = '66777888000199'
@@ -422,11 +374,11 @@ where not exists (
 );
 
 insert into item_nota_entrada
-    (id, nota_entrada_id, produto_id, sequencia, quantidade, valor_unitario,
-     valor_desconto, percentual_desconto, valor_total, rateio_frete,
-     rateio_seguro, rateio_outras, custo_preco_final, organizacao_id)
-select nextval('item_nota_entrada_id_seq'), n.id, p.id, 1, 20, 2, 0, 0,
-       40, 0, 0, 0, 2, c.organizacao_id
+    (id, nota_entrada_id, produto_id, sequencia, quantidade_micros, valor_unitario_micros,
+     valor_desconto_micros, percentual_desconto_micros, valor_total_micros, rateio_frete_micros,
+     rateio_seguro_micros, rateio_outras_micros, custo_preco_final_micros, organizacao_id)
+select nextval('item_nota_entrada_id_seq'), n.id, p.id, 1, kaneko_micros(20), kaneko_micros(2), 0, 0,
+       kaneko_micros(40), kaneko_micros(5), 0, 0, kaneko_micros(2.25), c.organizacao_id
 from demo_seed_context c
 join nota_entrada n
   on n.organizacao_id = c.organizacao_id and n.numero = 'NE-DEMO-001' and n.serie = 'D1'
@@ -437,13 +389,40 @@ where not exists (
     where i.nota_entrada_id = n.id and i.sequencia = 1
 );
 
+insert into movimento_estoque
+    (id, organizacao_id, produto_id, local_estoque_id, saldo_estoque_id,
+     tipo, delta_micros, saldo_anterior_micros, saldo_posterior_micros, custo_unitario_micros,
+     origem_tipo, origem_chave, ator_id, motivo, ocorrido_em)
+select nextval('movimento_estoque_id_seq'), c.organizacao_id, p.id, l.id, s.id,
+       v.tipo, kaneko_micros(v.delta), kaneko_micros(v.anterior), kaneko_micros(v.posterior),
+       case when v.origem_tipo = 'NOTA_ENTRADA' then kaneko_micros(2.25) else p.valor_compra_micros end,
+       v.origem_tipo, case when v.origem_tipo='NOTA_ENTRADA' then concat(n.id,':1') else v.origem_chave end, c.admin_id, v.motivo, now() + v.intervalo
+from demo_seed_context c
+join local_estoque l
+  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
+join produto p
+  on p.organizacao_id = c.organizacao_id and p.referencia = 'AGUA-DEMO'
+join saldo_estoque s
+  on s.organizacao_id = c.organizacao_id and s.produto_id = p.id and s.local_estoque_id = l.id
+join nota_entrada n on n.organizacao_id=c.organizacao_id and n.numero='NE-DEMO-001' and n.serie='D1'
+cross join (values
+    ('RECEBIMENTO', 20::numeric, 0::numeric, 20::numeric, 'NOTA_ENTRADA', 'NE-DEMO-001', 'Entrada da nota demo', interval '-7 days'),
+    ('BAIXA', -4::numeric, 20::numeric, 16::numeric, 'NOTA_SAIDA', 'NS-DEMO-001', 'Venda na conveniencia demo', interval '-2 days')
+) v(tipo, delta, anterior, posterior, origem_tipo, origem_chave, motivo, intervalo)
+where not exists (
+    select 1 from movimento_estoque me
+    where me.organizacao_id = c.organizacao_id
+      and me.origem_tipo = v.origem_tipo and me.origem_chave in (v.origem_chave, case when v.origem_tipo='NOTA_ENTRADA' then concat(n.id,':1') else v.origem_chave end)
+      and me.produto_id = p.id and me.local_estoque_id = l.id and me.tipo = v.tipo
+);
+
 insert into conta_pagar
     (id, fornecedor_id, nota_entrada_id, condicao_pagamento_id,
-     forma_pagamento_id, numero_parcela, total_parcelas, valor_original,
-     valor_pago, valor_desconto, valor_juros, valor_multa, valor_total,
+     forma_pagamento_id, numero_parcela, total_parcelas, valor_original_micros,
+     valor_pago_micros, valor_desconto_micros, valor_juros_micros, valor_multa_micros, valor_total_micros,
      data_emissao, data_vencimento, situacao, observacao, organizacao_id, version)
-select nextval('conta_pagar_id_seq'), f.id, n.id, cp.id, fp.id, 1, 1, 40,
-       0, 0, 0, 0, 40, current_date - 7, current_date + 23, 'PENDENTE',
+select nextval('conta_pagar_id_seq'), f.id, n.id, cp.id, fp.id, 1, 1, n.valor_total_micros,
+       0, 0, 0, 0, n.valor_total_micros, current_date - 7, current_date + 23, 'PENDENTE',
        'Parcela gerada pela nota de entrada demo', c.organizacao_id, 0
 from demo_seed_context c
 join fornecedor f
@@ -460,48 +439,15 @@ where not exists (
       and cp2.numero_parcela = 1
 );
 
--- Mantem todo o encadeamento demonstrativo com o mesmo custo da compra.
--- Isso tambem corrige bases locais criadas antes de a ordem possuir frete.
-update nota_entrada n
-set valor_frete = 5::numeric,
-    valor_total = 45::numeric,
-    updated_at = now()
-from demo_seed_context c
-where n.organizacao_id = c.organizacao_id
-  and n.numero = 'NE-DEMO-001'
-  and n.serie = 'D1';
-
-update item_nota_entrada i
-set rateio_frete = 5::numeric,
-    custo_preco_final = 2.25::numeric,
-    updated_at = now()
-from demo_seed_context c, nota_entrada n
-where i.organizacao_id = c.organizacao_id
-  and n.organizacao_id = c.organizacao_id
-  and n.numero = 'NE-DEMO-001'
-  and n.serie = 'D1'
-  and i.nota_entrada_id = n.id
-  and i.sequencia = 1;
-
-update conta_pagar cp
-set valor_original = 45::numeric,
-    valor_total = 45::numeric,
-    updated_at = now()
-from demo_seed_context c, nota_entrada n
-where cp.organizacao_id = c.organizacao_id
-  and n.organizacao_id = c.organizacao_id
-  and n.numero = 'NE-DEMO-001'
-  and n.serie = 'D1'
-  and cp.nota_entrada_id = n.id
-  and cp.numero_parcela = 1;
+-- Documento confirmado preexistente nao e reprecificado nem relancado pelo seed.
 
 insert into nota_saida
     (id, numero, modelo, serie, cliente_id, condicao_pagamento_id,
-     data_emissao, data_saida, tipo_frete, valor_produtos, valor_frete,
-     valor_seguro, outras_despesas, valor_desconto, valor_total, situacao,
+     data_emissao, data_saida, tipo_frete, valor_produtos_micros, valor_frete_micros,
+     valor_seguro_micros, outras_despesas_micros, valor_desconto_micros, valor_total_micros, situacao,
      observacao, organizacao_id, local_estoque_id, version)
 select nextval('nota_saida_id_seq'), 'NS-DEMO-001', '55', 'D1', cl.id, cp.id,
-       current_date - 2, current_date - 2, 'SEM', 20, 0, 0, 0, 0, 20,
+       current_date - 2, current_date - 2, 'SEM', 20000000, 0, 0, 0, 0, 20000000,
        'CONFIRMADA', 'Venda da conveniencia demonstrativa', c.organizacao_id, l.id, 1
 from demo_seed_context c
 join cliente cl
@@ -517,11 +463,11 @@ where not exists (
 );
 
 insert into item_nota_saida
-    (id, nota_saida_id, produto_id, sequencia, quantidade, valor_unitario,
-     valor_desconto, percentual_desconto, valor_total, rateio_frete,
-     rateio_seguro, rateio_outras, custo_preco_final, organizacao_id)
-select nextval('item_nota_saida_id_seq'), n.id, p.id, 1, 4, 5, 0, 0,
-       20, 0, 0, 0, 2, c.organizacao_id
+    (id, nota_saida_id, produto_id, sequencia, quantidade_micros, valor_unitario_micros,
+     valor_desconto_micros, percentual_desconto_micros, valor_total_micros, rateio_frete_micros,
+     rateio_seguro_micros, rateio_outras_micros, custo_preco_final_micros, organizacao_id)
+select nextval('item_nota_saida_id_seq'), n.id, p.id, 1, 4000000, 5000000, 0, 0,
+       20000000, 0, 0, 0, 2000000, c.organizacao_id
 from demo_seed_context c
 join nota_saida n
   on n.organizacao_id = c.organizacao_id and n.numero = 'NS-DEMO-001' and n.serie = 'D1'
@@ -534,11 +480,11 @@ where not exists (
 
 insert into conta_receber
     (id, cliente_id, nota_saida_id, condicao_pagamento_id, forma_pagamento_id,
-     numero_parcela, total_parcelas, valor_original, valor_recebido,
-     valor_desconto, valor_juros, valor_multa, valor_total, data_emissao,
+     numero_parcela, total_parcelas, valor_original_micros, valor_recebido_micros,
+     valor_desconto_micros, valor_juros_micros, valor_multa_micros, valor_total_micros, data_emissao,
      data_vencimento, data_recebimento, situacao, observacao, organizacao_id, version)
-select nextval('conta_receber_id_seq'), cl.id, n.id, cp.id, fp.id, 1, 1, 20,
-       20, 0, 0, 0, 20, current_date - 2, current_date - 2, current_date - 2,
+select nextval('conta_receber_id_seq'), cl.id, n.id, cp.id, fp.id, 1, 1, 20000000,
+       20000000, 0, 0, 0, 20000000, current_date - 2, current_date - 2, current_date - 2,
        'RECEBIDA', 'Recebimento da venda demo', c.organizacao_id, 1
 from demo_seed_context c
 join cliente cl
@@ -557,10 +503,10 @@ where not exists (
 
 insert into nota_servico
     (id, numero, modelo, serie, cliente_id, servico_id, condicao_pagamento_id,
-     forma_pagamento_id, data_emissao, valor_servico, aliquota_iss, valor_iss,
-     valor_desconto, valor_total, situacao, observacao, organizacao_id, version)
+     forma_pagamento_id, data_emissao, valor_servico_micros, aliquota_iss_micros, valor_iss_micros,
+     valor_desconto_micros, valor_total_micros, situacao, observacao, organizacao_id, version)
 select nextval('nota_servico_id_seq'), 'NFS-DEMO-001', 'NFS-e', 'D1', cl.id,
-       s.id, cp.id, fp.id, current_date - 1, 35, 5, 1.75, 0, 35,
+       s.id, cp.id, fp.id, current_date - 1, kaneko_micros(35), kaneko_micros(5), kaneko_micros(1.75), 0, kaneko_micros(35),
        'EMITIDA', 'Lavagem expressa demonstrativa', c.organizacao_id, 1
 from demo_seed_context c
 join cliente cl
@@ -579,11 +525,11 @@ where not exists (
 
 insert into conta_receber
     (id, cliente_id, nota_servico_id, condicao_pagamento_id, forma_pagamento_id,
-     numero_parcela, total_parcelas, valor_original, valor_recebido,
-     valor_desconto, valor_juros, valor_multa, valor_total, data_emissao,
+     numero_parcela, total_parcelas, valor_original_micros, valor_recebido_micros,
+     valor_desconto_micros, valor_juros_micros, valor_multa_micros, valor_total_micros, data_emissao,
      data_vencimento, situacao, observacao, organizacao_id, version)
-select nextval('conta_receber_id_seq'), cl.id, ns.id, cp.id, fp.id, 1, 1, 35,
-       0, 0, 0, 0, 35, current_date - 1, current_date + 14, 'PENDENTE',
+select nextval('conta_receber_id_seq'), cl.id, ns.id, cp.id, fp.id, 1, 1, 35000000,
+       0, 0, 0, 0, 35000000, current_date - 1, current_date + 14, 'PENDENTE',
        'Faturamento do servico demo', c.organizacao_id, 0
 from demo_seed_context c
 join cliente cl
@@ -602,11 +548,11 @@ where not exists (
 
 insert into contas_pagar_avulsa
     (id, descricao, fornecedor_id, forma_pagamento_id, numero_nota, modelo,
-     serie, numero_parcela, total_parcelas, valor_original, valor_pago,
-     valor_desconto, valor_juros, valor_multa, valor_total, data_emissao,
+     serie, numero_parcela, total_parcelas, valor_original_micros, valor_pago_micros,
+     valor_desconto_micros, valor_juros_micros, valor_multa_micros, valor_total_micros, data_emissao,
      data_vencimento, situacao, observacao, organizacao_id, version)
 select nextval('contas_pagar_avulsa_id_seq'), 'Energia eletrica Demo', null, fp.id,
-       'DESP-DEMO-001', 'FAT', 'D1', 1, 1, 480, 0, 0, 0, 0, 480,
+       'DESP-DEMO-001', 'FAT', 'D1', 1, 1, kaneko_micros(480), 0, 0, 0, 0, kaneko_micros(480),
        current_date, current_date + 10, 'PENDENTE',
        'Despesa operacional demonstrativa', c.organizacao_id, 0
 from demo_seed_context c
@@ -618,10 +564,10 @@ where not exists (
 );
 
 insert into tarifa
-    (id, descricao, valor_hora, valor_diaria, tolerancia_min,
-     valor_mensalidade, ativo, organizacao_id, version)
-select nextval('tarifa_id_seq'), v.descricao, v.hora, v.diaria, v.tolerancia,
-       v.mensalidade, true, c.organizacao_id, 0
+    (id, descricao, valor_hora_micros, valor_diaria_micros, tolerancia_min,
+     valor_mensalidade_micros, ativo, organizacao_id, version)
+select nextval('tarifa_id_seq'), v.descricao, kaneko_micros(v.hora), kaneko_micros(v.diaria), v.tolerancia,
+       kaneko_micros(v.mensalidade), true, c.organizacao_id, 0
 from demo_seed_context c
 cross join (values
     ('Tarifa Rotativa Demo', 8::numeric, 45::numeric, 15, 0::numeric),
@@ -651,9 +597,9 @@ where not exists (
 );
 
 insert into mensalista
-    (id, cliente_id, veiculo_id, valor_mensal, data_inicio, status,
+    (id, cliente_id, veiculo_id, valor_mensal_micros, data_inicio, status,
      organizacao_id, version)
-select nextval('mensalista_id_seq'), cl.id, v.id, 220, current_date - 90,
+select nextval('mensalista_id_seq'), cl.id, v.id, kaneko_micros(220), current_date - 90,
        'ATIVO', c.organizacao_id, 0
 from demo_seed_context c
 join cliente cl
@@ -668,11 +614,11 @@ where not exists (
 
 insert into conta_receber
     (id, cliente_id, mensalista_id, forma_pagamento_id, numero_parcela,
-     total_parcelas, valor_original, valor_recebido, valor_desconto,
-     valor_juros, valor_multa, valor_total, data_emissao, data_vencimento,
+     total_parcelas, valor_original_micros, valor_recebido_micros, valor_desconto_micros,
+     valor_juros_micros, valor_multa_micros, valor_total_micros, data_emissao, data_vencimento,
      situacao, observacao, organizacao_id, version)
-select nextval('conta_receber_id_seq'), cl.id, m.id, fp.id, 1, 1, 220,
-       0, 0, 0, 0, 220, current_date, current_date + 5, 'PENDENTE',
+select nextval('conta_receber_id_seq'), cl.id, m.id, fp.id, 1, 1, 220000000,
+       0, 0, 0, 0, 220000000, current_date, current_date + 5, 'PENDENTE',
        'Mensalidade demonstrativa', c.organizacao_id, 0
 from demo_seed_context c
 join cliente cl
@@ -689,9 +635,9 @@ where not exists (
 
 insert into movimentacao
     (id, veiculo_id, mensalista_id, tarifa_id, tipo, data_entrada,
-     data_saida, valor_cobrado, status, patio_id, organizacao_id, version)
+     data_saida, valor_cobrado_micros, status, patio_id, organizacao_id, version)
 select nextval('movimentacao_id_seq'), v.id, null, t.id, 'AVULSO',
-       now() - interval '5 hours', now() - interval '2 hours', 24,
+       now() - interval '5 hours', now() - interval '2 hours', kaneko_micros(24),
        'FECHADO', c.patio_id, c.organizacao_id, 1
 from demo_seed_context c
 join veiculo v on v.organizacao_id = c.organizacao_id and v.placa = 'XYZ9K87'
@@ -720,12 +666,13 @@ where not exists (
 
 insert into reserva_inventario
     (id, organizacao_id, evento_id, produto_id, ator_id, quantidade, canal,
-     referencia_comprador, chave_idempotencia, lote_preco_id, preco_unitario,
+     referencia_comprador, chave_idempotencia, lote_preco_id, preco_unitario_micros,
      moeda, status, expira_em, finalizada_em, motivo_finalizacao, version)
 select nextval('reserva_inventario_id_seq'), c.organizacao_id, c.evento_id,
        c.produto_estacionamento_id, c.admin_id, 1, 'WEB',
        'mariana.demo@kaneko.local', 'demo-reserva-confirmada-v1', c.lote_preco_id,
-       lp.preco, lp.moeda, 'CONFIRMADA', now() + interval '30 minutes', now(),
+       lp.preco_micros,
+       lp.moeda, 'CONFIRMADA', now() + interval '30 minutes', now(),
        'PEDIDO_CONFIRMADO', 1
 from demo_seed_context c
 join lote_preco lp on lp.id = c.lote_preco_id
@@ -737,11 +684,12 @@ where not exists (
 
 insert into pedido
     (id, organizacao_id, evento_id, reserva_inventario_id, ator_id, numero,
-     canal, placa_veiculo, status, subtotal, desconto, taxa, total, moeda,
+     canal, placa_veiculo, status, subtotal_micros, desconto_micros, taxa_micros, total_micros, moeda,
      expira_em, version)
 select nextval('pedido_id_seq'), c.organizacao_id, c.evento_id, r.id, c.admin_id,
        'PED-00000000000000000000000000000001', 'WEB', 'ABC1D23', 'CONFIRMADO',
-       r.preco_unitario, 0, 0, r.preco_unitario, r.moeda,
+       r.preco_unitario_micros, 0, 0,
+       r.preco_unitario_micros, r.moeda,
        now() + interval '30 minutes', 1
 from demo_seed_context c
 join reserva_inventario r
@@ -762,11 +710,12 @@ where not exists (select 1 from comprador_pedido cp where cp.pedido_id = p.id);
 
 insert into item_pedido
     (id, pedido_id, produto_id, alocacao_id, lote_preco_id, nome_produto,
-     categoria, direito, inicio_acesso, fim_acesso, quantidade, preco_unitario,
-     moeda, total, patio_id)
+     categoria, direito, inicio_acesso, fim_acesso, quantidade, preco_unitario_micros,
+     moeda, total_micros, patio_id)
 select nextval('item_pedido_id_seq'), p.id, pe.id, a.id, lp.id, pe.nome,
-       pe.categoria, pe.direito, pe.inicio_acesso, pe.fim_acesso, 1, lp.preco,
-       lp.moeda, lp.preco, a.patio_id
+       pe.categoria, pe.direito, pe.inicio_acesso, pe.fim_acesso, 1,
+       lp.preco_micros, lp.moeda,
+       lp.preco_micros, a.patio_id
 from demo_seed_context c
 join pedido p
   on p.organizacao_id = c.organizacao_id
@@ -910,134 +859,15 @@ where not exists (
       and ta.status = 'RECUSADA' and ta.motivo = 'CREDENCIAL_INVALIDA'
 );
 
-insert into ordem_compra
-    (id, organizacao_id, fornecedor_id, numero, numero_nota, serie_nota,
-     modelo_nota, status, data_emissao,
-     previsao_entrega, moeda, subtotal, valor_frete, valor_seguro,
-     outras_despesas, valor_desconto, valor_total, observacao, version,
-     condicao_pagamento_id, transportadora_id, local_estoque_entrega_id,
-     comprador_id, tipo_frete, referencia_fornecedor, observacao_interna)
-select nextval('ordem_compra_id_seq'), c.organizacao_id, f.id,
-       'OC-DEMO-001', 'NE-DEMO-001', 'D1', '55', 'APROVADA',
-       current_date - 2, current_date + 5,
-       'BRL', 40::numeric, 5::numeric, 0::numeric, 0::numeric,
-       0::numeric, 45::numeric,
-       'Entregar os produtos no deposito da conveniencia', 0,
-       cp.id, t.id, l.id, c.admin_id, 'FOB', 'PED-DEMO-001',
-       'Conferir lote e validade no recebimento'
-from demo_seed_context c
-join fornecedor f
-  on f.organizacao_id = c.organizacao_id
- and f.nome = 'Distribuidora Conveniencia Demo Ltda'
-join condicao_pagamento cp
-  on cp.organizacao_id = c.organizacao_id and cp.nome = '30/60 dias Demo'
-join transportadora t
-  on t.organizacao_id = c.organizacao_id and t.documento = '55666777000188'
-join local_estoque l
-  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
-where not exists (
-    select 1 from ordem_compra o
-    where o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
-);
-
-update ordem_compra o
-set numero_nota = 'NE-DEMO-001',
-    serie_nota = 'D1',
-    modelo_nota = '55',
-    condicao_pagamento_id = cp.id,
-    transportadora_id = t.id,
-    local_estoque_entrega_id = l.id,
-    comprador_id = c.admin_id,
-    tipo_frete = 'FOB',
-    referencia_fornecedor = 'PED-DEMO-001',
-    observacao = 'Entregar os produtos no deposito da conveniencia',
-    observacao_interna = 'Conferir lote e validade no recebimento',
-    updated_at = now()
-from demo_seed_context c
-join condicao_pagamento cp
-  on cp.organizacao_id = c.organizacao_id and cp.nome = '30/60 dias Demo'
-join transportadora t
-  on t.organizacao_id = c.organizacao_id and t.documento = '55666777000188'
-join local_estoque l
-  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
-where o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001';
-
-insert into item_ordem_compra
-    (id, organizacao_id, ordem_compra_id, produto_id, sequencia,
-     quantidade_pedida, quantidade_recebida, valor_unitario,
-     valor_desconto, valor_total, rateio_frete, rateio_seguro,
-     rateio_outras_despesas, custo_total, custo_unitario_final,
-     codigo_produto_fornecedor)
-select nextval('item_ordem_compra_id_seq'), c.organizacao_id, o.id, p.id, 1,
-       20::numeric, 0::numeric, 2::numeric, 0::numeric, 40::numeric,
-       5::numeric, 0::numeric, 0::numeric, 45::numeric, 2.25::numeric,
-       pf.codigo_prod
-from demo_seed_context c
-join ordem_compra o
-  on o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
-join produto p
-  on p.organizacao_id = c.organizacao_id and p.nome = 'Agua Mineral Demo 500ml'
-join produto_fornecedor pf
-  on pf.organizacao_id = c.organizacao_id and pf.produto_id = p.id
- and pf.fornecedor_id = o.fornecedor_id and pf.ativo = true
-where not exists (
-    select 1 from item_ordem_compra i
-    where i.ordem_compra_id = o.id and i.sequencia = 1
-);
-
--- Repara bases locais que receberam a ordem demonstrativa antes da inclusao
--- do rateio de despesas. O seed e reaplicavel e deve manter o exemplo coerente
--- com o total da ordem (R$ 40,00 de produtos + R$ 5,00 de frete).
-update item_ordem_compra i
-set rateio_frete = 5::numeric,
-    rateio_seguro = 0::numeric,
-    rateio_outras_despesas = 0::numeric,
-    custo_total = 45::numeric,
-    custo_unitario_final = 2.25::numeric,
-    updated_at = now()
-from demo_seed_context c, ordem_compra o
-where i.organizacao_id = c.organizacao_id
-  and o.organizacao_id = c.organizacao_id
-  and o.numero = 'OC-DEMO-001'
-  and i.ordem_compra_id = o.id
-  and i.sequencia = 1;
-
-insert into venda_administrativa
-    (id, organizacao_id, cliente_id, local_estoque_id, numero, status,
-     data_emissao, moeda, subtotal, valor_desconto, valor_total, observacao, version)
-select nextval('venda_administrativa_id_seq'), c.organizacao_id, cl.id, l.id,
-       'VENDA-DEMO-001', 'RASCUNHO', current_date, 'BRL', 10::numeric,
-       0::numeric, 10::numeric, 'Venda pronta para confirmacao demonstrativa', 0
-from demo_seed_context c
-join cliente cl on cl.organizacao_id = c.organizacao_id and cl.nome = 'Mariana Souza Demo'
-join local_estoque l on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
-where not exists (
-    select 1 from venda_administrativa v
-    where v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-001'
-);
-
-insert into item_venda_administrativa
-    (id, organizacao_id, venda_administrativa_id, produto_id, sequencia,
-     quantidade, valor_unitario, valor_desconto, valor_total)
-select nextval('item_venda_administrativa_id_seq'), c.organizacao_id, v.id,
-       p.id, 1, 2::numeric, 5::numeric, 0::numeric, 10::numeric
-from demo_seed_context c
-join venda_administrativa v
-  on v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-001'
-join produto p
-  on p.organizacao_id = c.organizacao_id and p.nome = 'Agua Mineral Demo 500ml'
-where not exists (
-    select 1 from item_venda_administrativa i
-    where i.venda_administrativa_id = v.id and i.sequencia = 1
-);
+-- Entradas e saídas de mercadoria usam somente as notas diretas criadas acima.
 
 insert into ordem_servico
     (id, organizacao_id, cliente_id, numero, status, data_abertura,
-     previsao_conclusao, iniciada_em, concluida_em, moeda, subtotal,
-     valor_desconto, valor_total, observacao, version)
+     previsao_conclusao, iniciada_em, concluida_em, moeda, subtotal_micros,
+     valor_desconto_micros, valor_total_micros, observacao, version)
 select nextval('ordem_servico_id_seq'), c.organizacao_id, cl.id, 'OS-DEMO-001',
        'CONCLUIDA', current_date - 2, current_date - 1, now() - interval '2 days',
-       now() - interval '1 day', 'BRL', 35::numeric, 0::numeric, 35::numeric,
+       now() - interval '1 day', 'BRL', kaneko_micros(35), 0, kaneko_micros(35),
        'Lavagem demonstrativa concluida e faturada', 2
 from demo_seed_context c
 join cliente cl
@@ -1049,9 +879,9 @@ where not exists (
 
 insert into item_ordem_servico
     (id, organizacao_id, ordem_servico_id, servico_id, sequencia,
-     descricao_snapshot, quantidade, valor_unitario, valor_desconto, valor_total)
+     descricao_snapshot, quantidade_micros, valor_unitario_micros, valor_desconto_micros, valor_total_micros)
 select nextval('item_ordem_servico_id_seq'), c.organizacao_id, o.id, s.id, 1,
-       s.nome, 1::numeric, 35::numeric, 0::numeric, 35::numeric
+       s.nome, kaneko_micros(1), kaneko_micros(35), 0, kaneko_micros(35)
 from demo_seed_context c
 join ordem_servico o
   on o.organizacao_id = c.organizacao_id and o.numero = 'OS-DEMO-001'
@@ -1070,133 +900,13 @@ where n.organizacao_id = c.organizacao_id
   and o.organizacao_id = c.organizacao_id and o.numero = 'OS-DEMO-001'
   and n.ordem_servico_id is null;
 
--- Encadeamento completo de compras: ordem -> recebimento -> estoque -> nota -> pagar.
-insert into recebimento_compra
-    (id, organizacao_id, ordem_compra_id, local_estoque_id, ator_id,
-     recebido_em, observacao)
-select nextval('recebimento_compra_id_seq'), c.organizacao_id, o.id, l.id,
-       c.admin_id, now() - interval '7 days',
-       'Recebimento completo da ordem demonstrativa'
-from demo_seed_context c
-join ordem_compra o
-  on o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
-join local_estoque l
-  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
-where not exists (
-    select 1 from recebimento_compra r
-    where r.organizacao_id = c.organizacao_id
-      and r.ordem_compra_id = o.id
-      and r.observacao = 'Recebimento completo da ordem demonstrativa'
-);
-
-insert into item_recebimento_compra
-    (id, organizacao_id, ordem_compra_id, recebimento_compra_id,
-     item_ordem_compra_id, produto_id, quantidade, custo_unitario,
-     movimento_estoque_id)
-select nextval('item_recebimento_compra_id_seq'), c.organizacao_id, o.id,
-       r.id, i.id, i.produto_id, i.quantidade_pedida,
-       i.custo_unitario_final, me.id
-from demo_seed_context c
-join ordem_compra o
-  on o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
-join recebimento_compra r
-  on r.organizacao_id = c.organizacao_id and r.ordem_compra_id = o.id
- and r.observacao = 'Recebimento completo da ordem demonstrativa'
-join item_ordem_compra i on i.ordem_compra_id = o.id
-join movimento_estoque me
-  on me.organizacao_id = c.organizacao_id
- and me.produto_id = i.produto_id
- and me.origem_tipo = 'NOTA_ENTRADA'
- and me.origem_chave = 'NE-DEMO-001'
-where not exists (
-    select 1 from item_recebimento_compra ir
-    where ir.recebimento_compra_id = r.id and ir.item_ordem_compra_id = i.id
-);
-
-update item_ordem_compra i
-set quantidade_recebida = i.quantidade_pedida, updated_at = now()
-from demo_seed_context c, ordem_compra o
-where i.organizacao_id = c.organizacao_id
-  and o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
-  and i.ordem_compra_id = o.id
-  and i.quantidade_recebida < i.quantidade_pedida;
-
-update ordem_compra o
-set status = 'RECEBIDA', version = o.version + 1, updated_at = now()
-from demo_seed_context c
-where o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
-  and o.status <> 'RECEBIDA';
-
-update nota_entrada n
-set recebimento_compra_id = r.id, updated_at = now()
-from demo_seed_context c, ordem_compra o, recebimento_compra r
-where n.organizacao_id = c.organizacao_id
-  and n.numero = 'NE-DEMO-001' and n.serie = 'D1'
-  and o.organizacao_id = c.organizacao_id and o.numero = 'OC-DEMO-001'
-  and r.organizacao_id = c.organizacao_id and r.ordem_compra_id = o.id
-  and r.observacao = 'Recebimento completo da ordem demonstrativa'
-  and n.recebimento_compra_id is null;
-
--- Mantem uma venda em rascunho e acrescenta outra com o ciclo ja confirmado.
-insert into venda_administrativa
-    (id, organizacao_id, cliente_id, condicao_pagamento_id, local_estoque_id,
-     numero, status, data_emissao, moeda, subtotal, valor_desconto,
-     valor_total, observacao, version)
-select nextval('venda_administrativa_id_seq'), c.organizacao_id, cl.id, cp.id,
-       l.id, 'VENDA-DEMO-002', 'CONFIRMADA', current_date - 2, 'BRL',
-       20::numeric, 0::numeric, 20::numeric,
-       'Venda demonstrativa confirmada, faturada e recebida', 1
-from demo_seed_context c
-join cliente cl
-  on cl.organizacao_id = c.organizacao_id and cl.documento = '12345678909'
-join condicao_pagamento cp
-  on cp.organizacao_id = c.organizacao_id and cp.nome = 'A vista Demo'
-join local_estoque l
-  on l.organizacao_id = c.organizacao_id and l.nome = 'Deposito Conveniencia Demo'
-where not exists (
-    select 1 from venda_administrativa v
-    where v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-002'
-);
-
-insert into item_venda_administrativa
-    (id, organizacao_id, venda_administrativa_id, produto_id, sequencia,
-     quantidade, valor_unitario, valor_desconto, valor_total)
-select nextval('item_venda_administrativa_id_seq'), c.organizacao_id, v.id,
-       p.id, 1, 4::numeric, 5::numeric, 0::numeric, 20::numeric
-from demo_seed_context c
-join venda_administrativa v
-  on v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-002'
-join produto p
-  on p.organizacao_id = c.organizacao_id and p.referencia = 'AGUA-DEMO'
-where not exists (
-    select 1 from item_venda_administrativa i
-    where i.venda_administrativa_id = v.id and i.sequencia = 1
-);
-
-update nota_saida n
-set venda_administrativa_id = v.id, updated_at = now()
-from demo_seed_context c, venda_administrativa v
-where n.organizacao_id = c.organizacao_id
-  and n.numero = 'NS-DEMO-001' and n.serie = 'D1'
-  and v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-002'
-  and n.venda_administrativa_id is null;
-
-update conta_receber cr
-set venda_administrativa_id = v.id, updated_at = now()
-from demo_seed_context c, venda_administrativa v, nota_saida n
-where cr.organizacao_id = c.organizacao_id
-  and v.organizacao_id = c.organizacao_id and v.numero = 'VENDA-DEMO-002'
-  and n.organizacao_id = c.organizacao_id
-  and n.numero = 'NS-DEMO-001' and n.serie = 'D1'
-  and cr.nota_saida_id = n.id
-  and cr.venda_administrativa_id is null;
 
 -- O seed roda depois das migrations; registra explicitamente o saldo recebido
 -- para que o historico financeiro tambem exista em uma base local nova.
 insert into baixa_financeira
-    (organizacao_id, conta_receber_id, valor, data, ator_id, ator_nome,
+    (organizacao_id, conta_receber_id, valor_micros, data, ator_id, ator_nome,
      chave, saldo_anterior)
-select c.organizacao_id, cr.id, cr.valor_recebido, cr.data_recebimento,
+select c.organizacao_id, cr.id, cr.valor_recebido_micros, cr.data_recebimento,
        c.admin_id, admin.nome, 'saldo-anterior-demo', true
 from demo_seed_context c
 join usuario admin on admin.id = c.admin_id
@@ -1205,7 +915,7 @@ join nota_saida n
  and n.numero = 'NS-DEMO-001' and n.serie = 'D1'
 join conta_receber cr
   on cr.organizacao_id = c.organizacao_id and cr.nota_saida_id = n.id
-where cr.valor_recebido > 0
+where cr.valor_recebido_micros > 0
   and not exists (
       select 1 from baixa_financeira b
       where b.conta_receber_id = cr.id and b.chave = 'saldo-anterior-demo'
@@ -1214,14 +924,14 @@ where cr.valor_recebido > 0
 -- XML valido e conciliado, pronto para exercitar conferencia/confirmacao.
 insert into importacao_nota_entrada
     (organizacao_id, ator_id, chave, xml_original, xml_hash, numero,
-     emitente_nome, total, status, version, fornecedor_id, local_estoque_id,
-     condicao_pagamento_id, revisado_em, registrar_novo_recebimento)
+     emitente_nome, total_micros, status, version, fornecedor_id, local_estoque_id,
+     condicao_pagamento_id, revisado_em)
 select c.organizacao_id, c.admin_id,
        '41260966777888000199550010000001231000000013',
        convert_to(x.conteudo, 'UTF8'),
        encode(sha256(convert_to(x.conteudo, 'UTF8')), 'hex'),
-       '123', f.nome, 20::numeric, 'CONCILIADA', 1, f.id, l.id, cp.id,
-       now() - interval '1 hour', false
+       '123', f.nome, kaneko_micros(20), 'CONCILIADA', 1, f.id, l.id, cp.id,
+       now() - interval '1 hour'
 from demo_seed_context c
 join fornecedor f
   on f.organizacao_id = c.organizacao_id and f.documento = '66777888000199'
@@ -1240,8 +950,8 @@ where not exists (
 
 insert into item_importacao_nota_entrada
     (organizacao_id, importacao_id, sequencia, produto_id, unidade_destino,
-     fator_conversao, quantidade, valor_unitario)
-select c.organizacao_id, i.id, 1, p.id, 'UN', 1::numeric, 2::numeric, 10::numeric
+     fator_conversao_micros, quantidade_micros, valor_unitario_micros)
+select c.organizacao_id, i.id, 1, p.id, 'UN', kaneko_micros(1), kaneko_micros(2), kaneko_micros(10)
 from demo_seed_context c
 join importacao_nota_entrada i
   on i.organizacao_id = c.organizacao_id

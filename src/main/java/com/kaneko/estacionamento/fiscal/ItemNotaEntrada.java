@@ -1,8 +1,11 @@
 package com.kaneko.estacionamento.fiscal;
 
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.conveniencia.Produto;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -37,30 +40,61 @@ public class ItemNotaEntrada extends AuditableEntity {
     @Column(name = "sequencia", nullable = false)
     private Integer sequencia;
 
-    @Column(name = "quantidade", nullable = false, precision = 15, scale = 3)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "quantidade_micros", nullable = false, precision = 18, scale = 0)
     private BigDecimal quantidade;
 
-    @Column(name = "valor_unitario", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_unitario_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorUnitario;
 
-    @Column(name = "valor_desconto", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_desconto_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorDesconto = BigDecimal.ZERO;
 
-    @Column(name = "percentual_desconto", nullable = false, precision = 5, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "percentual_desconto_micros", nullable = false, precision = 9, scale = 0)
     private BigDecimal percentualDesconto = BigDecimal.ZERO;
 
-    @Column(name = "valor_total", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_total_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorTotal;
 
-    @Column(name = "rateio_frete", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "rateio_frete_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal rateioFrete = BigDecimal.ZERO;
 
-    @Column(name = "rateio_seguro", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "rateio_seguro_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal rateioSeguro = BigDecimal.ZERO;
 
-    @Column(name = "rateio_outras", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "rateio_outras_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal rateioOutras = BigDecimal.ZERO;
 
-    @Column(name = "custo_preco_final", nullable = false, precision = 15, scale = 2)
+    @Column(name = "unidade_medida", length = 10)
+    private String unidadeMedida;
+
+    @Column(name = "codigo_produto_fornecedor", length = 60)
+    private String codigoProdutoFornecedor;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_total_micros", precision = 19, scale = 0)
+    private BigDecimal custoTotal;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_preco_final_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal custoPrecoFinal = BigDecimal.ZERO;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "saldo_estoque_anterior_micros", precision = 18, scale = 0)
+    private BigDecimal saldoEstoqueAnterior;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_medio_anterior_micros", precision = 19, scale = 0)
+    private BigDecimal custoMedioAnterior;
+
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_medio_posterior_micros", precision = 19, scale = 0)
+    private BigDecimal custoMedioPosterior;
 }

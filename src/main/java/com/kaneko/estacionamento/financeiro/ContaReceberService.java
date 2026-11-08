@@ -7,6 +7,7 @@ import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.financeiro.dto.BaixaRequest;
 import com.kaneko.estacionamento.financeiro.dto.ContaReceberRequest;
+import com.kaneko.estacionamento.financeiro.dto.ContaReceberResponse;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
@@ -108,7 +109,7 @@ public class ContaReceberService {
         conta.setValorDesconto(desconto);
         conta.setValorJuros(juros);
         conta.setValorMulta(multa);
-        conta.setValorTotal(FinanceiroRegras.total(original, desconto, juros, multa, req.valorTotal()));
+        conta.setValorTotal(FinanceiroRegras.totalEmMilionesimos(original, desconto, juros, multa, req.valorTotal()));
         conta.setValorRecebido(BigDecimal.ZERO);
         LocalDate emissao = req.dataEmissao() != null ? req.dataEmissao() : LocalDate.now();
         conta.setDataEmissao(emissao);
@@ -131,7 +132,7 @@ public class ContaReceberService {
 
     @Transactional
     public ContaReceber baixar(Long organizacaoId, Long id, BaixaRequest req, String chave) {
-        FinanceiroRegras.validarBaixa(req.valor());
+        FinanceiroRegras.validarBaixaEmMilionesimos(req.valor());
         ContaReceber conta = repository.buscarParaBaixa(id, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("ContaReceber", id));
         if (baixas.repetida(false, id, chave, req)) return conta;
@@ -155,6 +156,16 @@ public class ContaReceberService {
         auditar(conta, "CONTA_RECEBER_BAIXADA", anterior, snapshot(conta));
         baixas.registrar(false, organizacaoId, id, chave, req);
         return conta;
+    }
+
+    @Transactional
+    public ContaReceberResponse baixarComResposta(Long organizacaoId, Long id, BaixaRequest req, String chave) {
+        return ContaReceberResponse.from(baixar(organizacaoId, id, req, chave));
+    }
+
+    @Transactional
+    public ContaReceberResponse cancelarComResposta(Long organizacaoId, Long id) {
+        return ContaReceberResponse.from(cancelar(organizacaoId, id));
     }
 
     @Transactional

@@ -6,6 +6,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+import jakarta.persistence.Convert;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.Currency;
@@ -25,8 +27,10 @@ public class LotePreco extends AuditableEntity {
     private Long produtoId;
     @Column(nullable = false, length = 160)
     private String nome;
-    @Column(nullable = false, precision = 19, scale = 2)
+    @Column(name = "preco_micros", nullable = false, precision = 23, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal preco;
+
     @Column(nullable = false, length = 3)
     private String moeda;
     @Column(name = "inicio_venda", nullable = false)
@@ -86,10 +90,10 @@ public class LotePreco extends AuditableEntity {
         if (valor == null || valor.signum() < 0) {
             throw new IllegalArgumentException("O preco e obrigatorio e nao pode ser negativo.");
         }
-        if (valor.stripTrailingZeros().scale() > 2) {
-            throw new IllegalArgumentException("O preco deve possuir no maximo duas casas decimais.");
+        if (valor.stripTrailingZeros().scale() > MilionesimosConverter.ESCALA) {
+            throw new IllegalArgumentException("O preco deve possuir no maximo seis casas decimais.");
         }
-        BigDecimal normalizado = valor.setScale(2, RoundingMode.UNNECESSARY);
+        BigDecimal normalizado = valor.setScale(MilionesimosConverter.ESCALA, RoundingMode.UNNECESSARY);
         if (normalizado.precision() - normalizado.scale() > 17) {
             throw new IllegalArgumentException("O preco excede o limite suportado.");
         }

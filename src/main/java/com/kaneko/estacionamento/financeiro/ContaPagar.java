@@ -15,6 +15,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+import jakarta.persistence.Convert;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
@@ -58,22 +60,28 @@ public class ContaPagar extends AuditableEntity {
     @Column(name = "total_parcelas", nullable = false)
     private Integer totalParcelas = 1;
 
-    @Column(name = "valor_original", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_original_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorOriginal;
 
-    @Column(name = "valor_pago", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_pago_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorPago = BigDecimal.ZERO;
 
-    @Column(name = "valor_desconto", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_desconto_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorDesconto = BigDecimal.ZERO;
 
-    @Column(name = "valor_juros", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_juros_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorJuros = BigDecimal.ZERO;
 
-    @Column(name = "valor_multa", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_multa_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorMulta = BigDecimal.ZERO;
 
-    @Column(name = "valor_total", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_total_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorTotal;
 
     @Column(name = "data_emissao", nullable = false)

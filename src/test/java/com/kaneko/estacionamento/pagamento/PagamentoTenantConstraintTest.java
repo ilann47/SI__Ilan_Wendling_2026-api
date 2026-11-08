@@ -73,8 +73,8 @@ class PagamentoTenantConstraintTest {
                 () -> jdbc.update("""
                         INSERT INTO parcela_condicao_pagamento
                             (organizacao_id, condicao_pagamento_id, numero, dias,
-                             percentual, forma_pagamento_id, created_at, updated_at)
-                        VALUES (?, ?, 1, 0, 100.00, ?, now(), now())
+                             percentual_micros, forma_pagamento_id, created_at, updated_at)
+                        VALUES (?, ?, 1, 0, 100000000, ?, now(), now())
                         """, tenantA.organizacaoId(), condicaoA, formaB),
                 "23503",
                 "fk_parcela_forma_organizacao");
@@ -144,8 +144,8 @@ class PagamentoTenantConstraintTest {
     private Long inserirCondicao(Long organizacaoId, String nome) {
         return jdbc.queryForObject("""
                 INSERT INTO condicao_pagamento
-                    (organizacao_id, nome, numero_parcelas, percentual_juros,
-                     percentual_multa, percentual_desconto, ativo, created_at, updated_at)
+                    (organizacao_id, nome, numero_parcelas, percentual_juros_micros,
+                     percentual_multa_micros, percentual_desconto_micros, ativo, created_at, updated_at)
                 VALUES (?, ?, 1, 0, 0, 0, true, now(), now())
                 RETURNING id
                 """, Long.class, organizacaoId, nome);
@@ -158,8 +158,8 @@ class PagamentoTenantConstraintTest {
         jdbc.update("""
                 INSERT INTO parcela_condicao_pagamento
                     (organizacao_id, condicao_pagamento_id, numero, dias,
-                     percentual, forma_pagamento_id, created_at, updated_at)
-                VALUES (?, ?, 1, 0, 100.00, ?, now(), now())
+                     percentual_micros, forma_pagamento_id, created_at, updated_at)
+                VALUES (?, ?, 1, 0, 100000000, ?, now(), now())
                 """, organizacaoId, condicaoPagamentoId, formaPagamentoId);
     }
 }

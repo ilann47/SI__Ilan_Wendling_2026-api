@@ -109,7 +109,7 @@ class FornecedorTenantApiTest {
                 .andExpect(status().isBadRequest());
         Long historico = jdbc.queryForObject("""
                 INSERT INTO fornecedor
-                    (nome, tipo, documento, limite_credito, ativo, created_at, updated_at)
+                    (nome, tipo, documento, limite_credito_micros, ativo, created_at, updated_at)
                 VALUES ('Historico', 'JURIDICA', '99999999000199', 0, true, now(), now())
                 RETURNING id
                 """, Long.class);

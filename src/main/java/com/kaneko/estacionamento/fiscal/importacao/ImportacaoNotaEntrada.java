@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.fiscal.importacao;
 
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+
 import com.kaneko.estacionamento.common.AuditableEntity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -18,21 +20,26 @@ public class ImportacaoNotaEntrada extends AuditableEntity {
     @Column(name="xml_hash", nullable=false, length=64, updatable=false) private String xmlHash;
     @Column(nullable=false, length=20, updatable=false) private String numero;
     @Column(name="emitente_nome", nullable=false, length=120, updatable=false) private String emitenteNome;
-    @Column(nullable=false, precision=15, scale=2, updatable=false) private BigDecimal total;
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "total_micros", nullable = false, precision = 19, scale = 0, updatable = false)
+    private BigDecimal total;
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=20) private StatusImportacaoNota status;
     @Version @Column(nullable=false) private Long version;
     @Column(name="fornecedor_id") private Long fornecedorId;
     @Column(name="local_estoque_id") private Long localEstoqueId;
     @Column(name="condicao_pagamento_id") private Long condicaoPagamentoId;
-    @Column(name="ordem_compra_id") private Long ordemCompraId;
-    @Column(name="recebimento_compra_id") private Long recebimentoCompraId;
-    @Column(name="registrar_novo_recebimento", nullable=false) private boolean registrarNovoRecebimento;
     @Column(name="nota_entrada_id") private Long notaEntradaId;
     @Column(name="conferido_por") private Long conferidoPor;
     @Column(name="conferido_em") private OffsetDateTime conferidoEm;
     @Column(name="revisado_em", nullable=false) private OffsetDateTime revisadoEm;
     @OneToMany(mappedBy="importacao", cascade=CascadeType.ALL, orphanRemoval=true)
     @OrderBy("sequencia ASC") private List<ItemImportacaoNotaEntrada> itens = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name="parcela_importacao_nota", joinColumns=@JoinColumn(name="importacao_id"))
+    @OrderBy("numeroParcela ASC")
+    private List<com.kaneko.estacionamento.fiscal.ParcelaNotaEntrada> parcelas = new ArrayList<>();
+    @Column(name="cronograma_definido", nullable=false) private boolean cronogramaDefinido;
 
     public void adicionar(ItemImportacaoNotaEntrada item) {
         item.setImportacao(this);

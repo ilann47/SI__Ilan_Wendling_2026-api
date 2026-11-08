@@ -12,12 +12,12 @@ class LotePrecoTest {
     @Test
     void criaLoteNormalizandoNomeMoedaEValor() {
         var lote = LotePreco.criar(
-                1L, 2L, "  Primeiro Lote  ", new BigDecimal("75.5"), " brl ",
+                1L, 2L, "  Primeiro Lote  ", new BigDecimal("75.500001"), " brl ",
                 OffsetDateTime.parse("2026-08-01T00:00:00-03:00"),
                 OffsetDateTime.parse("2026-09-01T00:00:00-03:00"), 30, 10);
 
         assertThat(lote.getNome()).isEqualTo("Primeiro Lote");
-        assertThat(lote.getPreco()).isEqualByComparingTo("75.50");
+        assertThat(lote.getPreco()).isEqualByComparingTo("75.500001");
         assertThat(lote.getMoeda()).isEqualTo("BRL");
         assertThat(lote.getQuantidade()).isEqualTo(30);
         assertThat(lote.getPrioridade()).isEqualTo(10);
@@ -34,7 +34,7 @@ class LotePrecoTest {
                 1L, 2L, "Negativo", new BigDecimal("-0.01"), "BRL",
                 inicio, inicio.plusDays(1), 1, 0));
         assertThatIllegalArgumentException().isThrownBy(() -> LotePreco.criar(
-                1L, 2L, "Escala", new BigDecimal("1.001"), "BRL",
+                1L, 2L, "Escala", new BigDecimal("1.0000001"), "BRL",
                 inicio, inicio.plusDays(1), 1, 0));
         assertThatIllegalArgumentException().isThrownBy(() -> LotePreco.criar(
                 1L, 2L, "Periodo", BigDecimal.ONE, "BRL",

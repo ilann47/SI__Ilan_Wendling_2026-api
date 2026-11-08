@@ -123,6 +123,9 @@ public class CondicaoPagamentoService {
         if (parcelas.size() != req.numeroParcelas()) {
             throw new ConflitoException("A quantidade de parcelas detalhadas deve ser igual ao número de parcelas.");
         }
+        if (parcelas.stream().map(ParcelaRequest::numero).distinct().count() != parcelas.size()) {
+            throw new ConflitoException("Não repita a numeração das parcelas.");
+        }
         BigDecimal soma = parcelas.stream()
                 .map(ParcelaRequest::percentual)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -131,25 +134,30 @@ public class CondicaoPagamentoService {
         }
     }
 
-    /** Recria as parcelas mutando a colecao do agregado (preserva orphanRemoval). */
+    /** Atualiza parcelas existentes por número; só remove e insere as que mudaram de identidade. */
     private void sincronizarParcelas(
             Long organizacaoId,
             CondicaoPagamento condicao,
             List<ParcelaRequest> parcelas) {
-        condicao.getParcelas().clear();
-        if (parcelas == null) {
-            return;
-        }
-        for (ParcelaRequest pr : parcelas) {
-            ParcelaCondicaoPagamento parcela = new ParcelaCondicaoPagamento();
-            parcela.setOrganizacaoId(organizacaoId);
-            parcela.setCondicaoPagamento(condicao);
-            parcela.setNumero(pr.numero());
+        List<ParcelaRequest> recebidas = parcelas == null ? List.of() : parcelas;
+        var numeros = recebidas.stream().map(ParcelaRequest::numero)
+                .collect(java.util.stream.Collectors.toSet());
+        condicao.getParcelas().removeIf(p -> !numeros.contains(p.getNumero()));
+        var existentes = condicao.getParcelas().stream().collect(java.util.stream.Collectors.toMap(
+                ParcelaCondicaoPagamento::getNumero, java.util.function.Function.identity()));
+        for (ParcelaRequest pr : recebidas) {
+            ParcelaCondicaoPagamento parcela = existentes.get(pr.numero());
+            if (parcela == null) {
+                parcela = new ParcelaCondicaoPagamento();
+                parcela.setOrganizacaoId(organizacaoId);
+                parcela.setCondicaoPagamento(condicao);
+                parcela.setNumero(pr.numero());
+                condicao.getParcelas().add(parcela);
+            }
             parcela.setDias(pr.dias());
             parcela.setPercentual(pr.percentual());
             parcela.setFormaPagamento(pr.formaPagamentoId() != null
                     ? buscarForma(organizacaoId, pr.formaPagamentoId()) : null);
-            condicao.getParcelas().add(parcela);
         }
     }
 

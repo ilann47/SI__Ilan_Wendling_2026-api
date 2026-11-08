@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.fiscal.importacao;
 
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.conveniencia.Produto;
 import jakarta.persistence.*;
@@ -15,11 +17,17 @@ public class ItemImportacaoNotaEntrada extends AuditableEntity {
     @Column(nullable=false) private Integer sequencia;
     @ManyToOne(fetch=FetchType.LAZY, optional=false) @JoinColumn(name="produto_id", nullable=false) private Produto produto;
     @Column(name="unidade_destino", nullable=false, length=10) private String unidadeDestino;
-    @Column(name="fator_conversao", nullable=false, precision=18, scale=6) private BigDecimal fatorConversao;
-    @Column(nullable=false, precision=15, scale=3) private BigDecimal quantidade;
-    @Column(name="valor_unitario", nullable=false, precision=15, scale=2) private BigDecimal valorUnitario;
-    @Column(name="quantidade_conferida", precision=15, scale=3) private BigDecimal quantidadeConferida;
-    @Column(name="ordem_compra_id") private Long ordemCompraId;
-    @Column(name="item_ordem_compra_id") private Long itemOrdemCompraId;
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "fator_conversao_micros", nullable = false, precision = 18, scale = 0)
+    private BigDecimal fatorConversao;
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "quantidade_micros", nullable = false, precision = 18, scale = 0)
+    private BigDecimal quantidade;
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_unitario_micros", nullable = false, precision = 19, scale = 0)
+    private BigDecimal valorUnitario;
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "quantidade_conferida_micros", precision = 18, scale = 0)
+    private BigDecimal quantidadeConferida;
     @Column(name="motivo_divergencia", length=300) private String motivoDivergencia;
 }

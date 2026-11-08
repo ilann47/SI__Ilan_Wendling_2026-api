@@ -6,16 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
-import com.kaneko.estacionamento.conveniencia.Marca;
-import com.kaneko.estacionamento.conveniencia.MarcaRepository;
-import com.kaneko.estacionamento.conveniencia.Produto;
-import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.conveniencia.Servico;
 import com.kaneko.estacionamento.conveniencia.ServicoRepository;
-import com.kaneko.estacionamento.conveniencia.UnidadeMedida;
-import com.kaneko.estacionamento.conveniencia.UnidadeMedidaRepository;
-import com.kaneko.estacionamento.estoque.LocalEstoque;
-import com.kaneko.estacionamento.estoque.LocalEstoqueRepository;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
 import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
@@ -23,8 +15,7 @@ import com.kaneko.estacionamento.support.tenant.TenantFixture;
 import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
 import java.math.BigDecimal;
 import java.util.UUID;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -35,18 +26,13 @@ class ConsultasComerciaisTenantApiTest {
     @Autowired MockMvc mvc;
     @Autowired TenantTestSupport tenants;
     @Autowired ClienteRepository clientes;
-    @Autowired MarcaRepository marcas;
-    @Autowired UnidadeMedidaRepository unidades;
-    @Autowired ProdutoRepository produtos;
     @Autowired ServicoRepository servicos;
-    @Autowired LocalEstoqueRepository locais;
 
-    @ParameterizedTest
-    @ValueSource(strings = {"administrative-sales", "service-orders"})
-    void filtraNumeroESituacaoAntesDaPaginacaoComTotalEIsolamento(String modulo) throws Exception {
-        var a = contexto(modulo);
-        var b = contexto(modulo);
-        String rota = "/api/v1/" + modulo;
+    @Test
+    void filtraNumeroESituacaoAntesDaPaginacaoComTotalEIsolamento() throws Exception {
+        var a = contexto();
+        var b = contexto();
+        String rota = "/api/v1/service-orders";
         long primeiro = criar(rota, a, "BUSCA-01");
         long segundo = criar(rota, a, "BUSCA-02");
         long cancelado = criar(rota, a, "BUSCA-03");
@@ -93,7 +79,7 @@ class ConsultasComerciaisTenantApiTest {
                 .andExpect(status().isBadRequest());
     }
 
-    private Contexto contexto(String modulo) throws Exception {
+    private Contexto contexto() throws Exception {
         var tenant = tenants.criarTenantAdmin();
         Long org = tenant.organizacaoId();
         var cliente = new Cliente();
@@ -101,35 +87,16 @@ class ConsultasComerciaisTenantApiTest {
         cliente.setNome("Cliente consulta");
         cliente.setDocumento(UUID.randomUUID().toString().replace("-", "").substring(0, 11));
         Long clienteId = clientes.saveAndFlush(cliente).getId();
-        if ("service-orders".equals(modulo)) {
-            var servico = new Servico();
-            servico.setOrganizacaoId(org);
-            servico.setNome("Serviço consulta");
-            servico.setValorPadrao(BigDecimal.TEN);
-            return new Contexto(tenant, clienteId, servicos.saveAndFlush(servico).getId(), null);
-        }
-        var marca = new Marca();
-        marca.setOrganizacaoId(org);
-        marca.setNome("Marca consulta");
-        var unidade = new UnidadeMedida();
-        unidade.setOrganizacaoId(org);
-        unidade.setNome("Unidade consulta");
-        unidade.setSigla("UN");
-        var produto = new Produto();
-        produto.setOrganizacaoId(org);
-        produto.setNome("Produto consulta");
-        produto.setMarca(marcas.saveAndFlush(marca));
-        produto.setUnidadeMedida(unidades.saveAndFlush(unidade));
-        Long produtoId = produtos.saveAndFlush(produto).getId();
-        Long localId = locais.saveAndFlush(LocalEstoque.criar(org, "Local consulta")).getId();
-        return new Contexto(tenant, clienteId, produtoId, localId);
+        var servico = new Servico();
+        servico.setOrganizacaoId(org);
+        servico.setNome("Serviço consulta");
+        servico.setValorPadrao(BigDecimal.TEN);
+        return new Contexto(tenant, clienteId, servicos.saveAndFlush(servico).getId());
     }
 
     private long criar(String rota, Contexto contexto, String numero) throws Exception {
-        String tipoItem = contexto.localId() == null ? "servicoId" : "produtoId";
         String body = "{\"numero\":\"" + numero + "\",\"clienteId\":" + contexto.clienteId()
-                + (contexto.localId() == null ? "" : ",\"localEstoqueId\":" + contexto.localId())
-                + ",\"moeda\":\"BRL\",\"itens\":[{\"" + tipoItem + "\":" + contexto.itemId()
+                + ",\"moeda\":\"BRL\",\"itens\":[{\"servicoId\":" + contexto.itemId()
                 + ",\"quantidade\":1,\"valorUnitario\":10}]}";
         String response = mvc.perform(post(rota)
                 .header(HttpHeaders.AUTHORIZATION, contexto.tenant().tokenContextual())
@@ -139,5 +106,5 @@ class ConsultasComerciaisTenantApiTest {
         return JsonPath.<Number>read(response, "$.id").longValue();
     }
 
-    private record Contexto(TenantFixture tenant, Long clienteId, Long itemId, Long localId) {}
+    private record Contexto(TenantFixture tenant, Long clienteId, Long itemId) {}
 }

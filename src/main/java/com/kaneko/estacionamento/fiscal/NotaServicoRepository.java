@@ -7,11 +7,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 /**
  * Repositorio de {@link NotaServico}.
  */
-public interface NotaServicoRepository extends JpaRepository<NotaServico, Long> {
+public interface NotaServicoRepository extends JpaRepository<NotaServico, Long>, JpaSpecificationExecutor<NotaServico> {
 
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select n from NotaServico n where n.id=:id and "

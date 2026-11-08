@@ -5,12 +5,18 @@ import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
 import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import com.kaneko.estacionamento.conveniencia.ServicoRepository;
 import com.kaneko.estacionamento.financeiro.ContaReceber;
 import com.kaneko.estacionamento.financeiro.ContaReceberRepository;
 import com.kaneko.estacionamento.financeiro.SituacaoContaReceber;
+import com.kaneko.estacionamento.financeiro.dto.ContaReceberResponse;
+import com.kaneko.estacionamento.fiscal.dto.ItemNotaServicoResponse;
+import com.kaneko.estacionamento.fiscal.dto.NotaServicoDetalheResponse;
 import com.kaneko.estacionamento.fiscal.dto.NotaServicoRequest;
-import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
+import com.kaneko.estacionamento.fiscal.dto.NotaServicoResponse;
+import com.kaneko.estacionamento.fiscal.dto.ParcelaNotaEntradaResponse;
+import com.kaneko.estacionamento.pagamento.FormaPagamento;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pagamento.FormaPagamentoRepository;
 import com.kaneko.estacionamento.pagamento.ParcelaCondicaoPagamento;
@@ -24,13 +30,18 @@ import com.kaneko.estacionamento.ordensservico.StatusOrdemServico;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Regras de negocio da nota de servico (NFS-e): calcula o ISS e o total, e
@@ -81,6 +92,33 @@ public class NotaServicoService {
     }
 
     @Transactional(readOnly = true)
+    public Page<NotaServicoResponse> consultar(Long org, String numero, Long clienteId,
+            SituacaoNotaServico situacao, Pageable pageable) {
+        String busca = numero == null ? "" : numero.strip().toLowerCase(Locale.ROOT)
+                .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        return repository.findAll((root, query, cb) -> {
+            var filtro = org == null ? cb.isNull(root.get("organizacaoId"))
+                    : cb.equal(root.get("organizacaoId"), org);
+            if (!busca.isEmpty()) filtro = cb.and(filtro,
+                    cb.like(cb.lower(root.get("numero")), "%" + busca + "%", '\\'));
+            if (clienteId != null) filtro = cb.and(filtro, cb.equal(root.get("cliente").get("id"), clienteId));
+            if (situacao != null) filtro = cb.and(filtro, cb.equal(root.get("situacao"), situacao));
+            return filtro;
+        }, pageable).map(NotaServicoResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public NotaServicoDetalheResponse detalhes(Long org, Long id, boolean consultarFinanceiro) {
+        var nota = NotaServicoResponse.from(buscar(org, id));
+        var contas = !consultarFinanceiro ? null : (org == null
+                ? contaReceberRepository.findByNotaServicoIdAndOrganizacaoIdIsNull(id)
+                : contaReceberRepository.findByNotaServicoIdAndOrganizacaoId(id, org))
+                .stream().sorted(Comparator.comparing(ContaReceber::getNumeroParcela))
+                .map(ContaReceberResponse::from).toList();
+        return new NotaServicoDetalheResponse(nota, contas);
+    }
+
+    @Transactional(readOnly = true)
     public NotaServico buscar(Long organizacaoId, Long id) {
         return (organizacaoId == null ? repository.findByIdAndOrganizacaoIdIsNull(id)
                 : repository.findByIdAndOrganizacaoId(id, organizacaoId))
@@ -108,11 +146,12 @@ public class NotaServicoService {
     }
 
     @Transactional
-    public NotaServico atualizar(Long organizacaoId, Long id, NotaServicoRequest req) {
+    public NotaServico atualizar(Long organizacaoId, Long id, Long versao, NotaServicoRequest req) {
         NotaServico nota = bloquear(organizacaoId, id);
         if (nota.getSituacao() != SituacaoNotaServico.PENDENTE) {
             throw new ConflitoException("Apenas notas pendentes podem ser alteradas.");
         }
+        exigirVersao(nota, versao);
         Map<String, Object> anterior = snapshot(nota);
         aplicar(organizacaoId, nota, req);
         nota = repository.saveAndFlush(nota);
@@ -121,25 +160,37 @@ public class NotaServicoService {
     }
 
     @Transactional
-    public NotaServico emitir(Long organizacaoId, Long id) {
+    public NotaServicoResponse emitir(Long organizacaoId, Long id, Long versao) {
         NotaServico nota = bloquear(organizacaoId, id);
         if (nota.getSituacao() != SituacaoNotaServico.PENDENTE) {
             throw new ConflitoException("Apenas notas pendentes podem ser emitidas.");
+        }
+        exigirVersao(nota, versao);
+        validarEmissao(nota.getDataEmissao());
+        if (!nota.isCronogramaDefinido()) {
+            throw new ConflitoException("Salve o rascunho novamente para registrar as parcelas antes de emitir.");
+        }
+        if (organizacaoId != null && nota.getItens().isEmpty()) {
+            throw new ConflitoException("Inclua pelo menos um serviço antes de emitir.");
+        }
+        if (nota.getValorTotal().signum() <= 0) {
+            throw new ConflitoException("O total da nota deve ser maior que zero para emitir.");
         }
         Map<String, Object> anterior = snapshot(nota);
         gerarTitulos(nota);
         nota.setSituacao(SituacaoNotaServico.EMITIDA);
         nota = repository.saveAndFlush(nota);
         auditar(nota, "NOTA_SERVICO_EMITIDA", anterior, snapshot(nota));
-        return nota;
+        return NotaServicoResponse.from(nota);
     }
 
     @Transactional
-    public NotaServico cancelar(Long organizacaoId, Long id) {
+    public NotaServicoResponse cancelar(Long organizacaoId, Long id, Long versao, String motivo) {
         NotaServico nota = bloquear(organizacaoId, id);
         if (nota.getSituacao() == SituacaoNotaServico.CANCELADA) {
             throw new ConflitoException("A nota já está cancelada.");
         }
+        exigirVersao(nota, versao);
         List<ContaReceber> titulos = contaReceberRepository
                 .findIdsByNotaServicoIdAndOrganizacaoId(nota.getId(), nota.getOrganizacaoId())
                 .stream().map(tituloId -> contaReceberRepository
@@ -153,17 +204,20 @@ public class NotaServicoService {
         titulos.forEach(t -> t.setSituacao(SituacaoContaReceber.CANCELADA));
         contaReceberRepository.saveAll(titulos);
         nota.setSituacao(SituacaoNotaServico.CANCELADA);
+        nota.setMotivoCancelamento(motivo.strip());
+        nota.setCanceladaEm(OffsetDateTime.now());
         nota = repository.saveAndFlush(nota);
         auditar(nota, "NOTA_SERVICO_CANCELADA", anterior, snapshot(nota));
-        return nota;
+        return NotaServicoResponse.from(nota);
     }
 
     @Transactional
-    public void excluir(Long organizacaoId, Long id) {
+    public void excluir(Long organizacaoId, Long id, Long versao) {
         NotaServico nota = bloquear(organizacaoId, id);
-        if (nota.getSituacao() == SituacaoNotaServico.EMITIDA) {
-            throw new ConflitoException("Uma nota emitida não pode ser excluída.");
+        if (nota.getSituacao() != SituacaoNotaServico.PENDENTE) {
+            throw new ConflitoException("Somente notas pendentes podem ser excluídas.");
         }
+        exigirVersao(nota, versao);
         Map<String, Object> anterior = snapshot(nota);
         repository.delete(nota);
         repository.flush();
@@ -196,7 +250,11 @@ public class NotaServicoService {
         nota.setMensalista(req.mensalistaId() != null
                 ? mensalistaRepository.findById(req.mensalistaId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Mensalista", req.mensalistaId())) : null);
-        OrdemServico ordemServico = req.ordemServicoId() == null ? null
+        Long ordemAtual = nota.getOrdemServico() == null ? null : nota.getOrdemServico().getId();
+        if (ordemAtual != null && req.ordemServicoId() != null && !ordemAtual.equals(req.ordemServicoId())) {
+            throw new ConflitoException("Não é possível trocar a ordem de serviço da nota.");
+        }
+        OrdemServico ordemServico = req.ordemServicoId() == null ? nota.getOrdemServico()
                 : ordemServicoRepository.findParaAtualizar(
                         req.ordemServicoId(), organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
@@ -236,51 +294,135 @@ public class NotaServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("FormaPagamento", req.formaPagamentoId())) : null);
 
         LocalDate emissao = req.dataEmissao() != null ? req.dataEmissao() : LocalDate.now();
+        validarEmissao(emissao);
         nota.setDataEmissao(emissao);
 
-        BigDecimal valorServico = req.valorServico();
+        List<ItemNotaServicoResponse> itens = itensDaNota(nota, ordemServico, req);
+        BigDecimal valorServico = itens.isEmpty() ? nz(req.valorServico())
+                : itens.stream().map(ItemNotaServicoResponse::valorTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal aliquota = nz(req.aliquotaIss());
-        BigDecimal desconto = nz(req.valorDesconto());
+        BigDecimal desconto = ordemServico == null ? nz(req.valorDesconto()) : ordemServico.getValorDesconto();
+        if (ordemServico != null && req.valorServico() != null
+                && req.valorServico().subtract(nz(req.valorDesconto())).compareTo(ordemServico.getValorTotal()) != 0) {
+            throw new ConflitoException("O valor informado diverge da ordem de serviço.");
+        }
+        if (valorServico.compareTo(new BigDecimal("9999999999999.999999")) > 0) {
+            throw new ConflitoException("O valor dos serviços excede o limite da nota.");
+        }
         if (desconto.compareTo(valorServico) > 0) {
             throw new ConflitoException("O desconto não pode exceder o valor do serviço.");
         }
         nota.setValorServico(valorServico);
         nota.setAliquotaIss(aliquota);
-        nota.setValorIss(valorServico.multiply(aliquota).divide(CEM, 2, RoundingMode.HALF_UP));
+        nota.setValorIss(valorServico.multiply(aliquota).divide(CEM, MilionesimosConverter.ESCALA, RoundingMode.HALF_UP));
         nota.setValorDesconto(desconto);
-        nota.setValorTotal(valorServico.subtract(desconto).setScale(2, RoundingMode.HALF_UP));
+        nota.setValorTotal(valorServico.subtract(desconto));
         if (ordemServico != null
                 && nota.getValorTotal().compareTo(ordemServico.getValorTotal()) != 0) {
             throw new ConflitoException("O valor total da nota diverge da ordem de servico.");
         }
+        nota.setItens(itens);
+        nota.setParcelas(planejarParcelas(nota));
+        nota.setCronogramaDefinido(true);
         nota.setObservacao(req.observacao());
+    }
+
+    private List<ItemNotaServicoResponse> itensDaNota(NotaServico nota, OrdemServico ordem, NotaServicoRequest req) {
+        if (ordem != null) {
+            if (req.itens() != null && !req.itens().isEmpty())
+                throw new ConflitoException("Os itens de uma nota vinculada vêm da ordem de serviço.");
+            if (!nota.getItens().isEmpty()) return nota.getItens();
+            var ordenados = ordem.getItens().stream().sorted(Comparator
+                    .comparing(com.kaneko.estacionamento.ordensservico.ItemOrdemServico::getSequencia)
+                    .thenComparing(com.kaneko.estacionamento.ordensservico.ItemOrdemServico::getId)).toList();
+            return java.util.stream.IntStream.range(0, ordenados.size()).mapToObj(i -> {
+                var item = ordenados.get(i);
+                return new ItemNotaServicoResponse(i + 1, item.getServico().getId(), item.getDescricaoSnapshot(),
+                        item.getQuantidade(), item.getValorUnitario(), item.getValorDesconto(), item.getValorTotal());
+            }).toList();
+        }
+        if (req.itens() == null) {
+            if (nota.getServico() != null && req.valorServico() != null)
+                return List.of(new ItemNotaServicoResponse(1, nota.getServico().getId(), nota.getServico().getNome(),
+                        BigDecimal.ONE, req.valorServico(), BigDecimal.ZERO, req.valorServico()));
+            if (!nota.getItens().isEmpty()) throw new ConflitoException("Informe os serviços da nota.");
+            return List.of();
+        }
+        if (req.itens().isEmpty()) throw new ConflitoException("Inclua pelo menos um serviço na nota.");
+        var itens = new ArrayList<ItemNotaServicoResponse>();
+        Long org = nota.getOrganizacaoId();
+        for (var item : req.itens()) {
+            var servico = (org == null ? servicoRepository.findByIdAndOrganizacaoIdIsNull(item.servicoId())
+                    : servicoRepository.findByIdAndOrganizacaoId(item.servicoId(), org))
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Servico", item.servicoId()));
+            var bruto = item.quantidade().multiply(item.valorUnitario())
+                    .setScale(MilionesimosConverter.ESCALA, RoundingMode.HALF_UP);
+            var desconto = nz(item.valorDesconto());
+            if (desconto.compareTo(bruto) > 0)
+                throw new ConflitoException("O desconto de um serviço não pode exceder o valor do item.");
+            itens.add(new ItemNotaServicoResponse(itens.size() + 1, servico.getId(), servico.getNome(),
+                    item.quantidade(), item.valorUnitario(), desconto, bruto.subtract(desconto)));
+        }
+        return List.copyOf(itens);
+    }
+
+    private static void validarEmissao(LocalDate emissao) {
+        if (emissao.isAfter(LocalDate.now()))
+            throw new ConflitoException("A data de emissão não pode ser futura.");
+    }
+
+    private static void exigirVersao(NotaServico nota, Long versao) {
+        if (versao != null && !versao.equals(nota.getVersion()))
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
+                    "A nota mudou. Recarregue e confira a versão atual.");
     }
 
     private static BigDecimal nz(BigDecimal v) {
         return v != null ? v : BigDecimal.ZERO;
     }
 
-    private void gerarTitulos(NotaServico nota) {
+    private List<ParcelaNotaEntradaResponse> planejarParcelas(NotaServico nota) {
+        if (nota.getValorTotal().signum() == 0) return List.of();
         List<ParcelaCondicaoPagamento> parcelas = nota.getCondicaoPagamento() == null
                 ? List.of() : nota.getCondicaoPagamento().getParcelas().stream()
                         .sorted(Comparator.comparing(ParcelaCondicaoPagamento::getNumero)).toList();
         if (parcelas.isEmpty()) {
-            salvarTitulo(nota, 1, 1, nota.getValorTotal(), nota.getDataEmissao(),
-                    nota.getFormaPagamento());
-            return;
+            return List.of(parcela(1, 1, nota.getValorTotal(), nota.getDataEmissao(), nota.getFormaPagamento()));
         }
-        BigDecimal acumulado = BigDecimal.ZERO;
+        var percentuais = parcelas.stream().map(ParcelaCondicaoPagamento::getPercentual).toList();
+        if (percentuais.stream().reduce(BigDecimal.ZERO, BigDecimal::add).compareTo(CEM) != 0)
+            throw new ConflitoException("A condição de pagamento deve somar 100% nas parcelas.");
+        var valores = RateioMonetario.distribuirEmMilionesimos(nota.getValorTotal(), percentuais);
+        int efetivas = (int) valores.stream().filter(valor -> valor.signum() > 0).count();
+        var resultado = new ArrayList<ParcelaNotaEntradaResponse>();
         for (int i = 0; i < parcelas.size(); i++) {
-            ParcelaCondicaoPagamento parcela = parcelas.get(i);
-            BigDecimal valor = i == parcelas.size() - 1
-                    ? nota.getValorTotal().subtract(acumulado)
-                    : nota.getValorTotal().multiply(parcela.getPercentual())
-                            .divide(CEM, 2, RoundingMode.HALF_UP);
-            acumulado = acumulado.add(valor);
-            salvarTitulo(nota, i + 1, parcelas.size(), valor,
-                    nota.getDataEmissao().plusDays(parcela.getDias()),
-                    parcela.getFormaPagamento() != null
-                            ? parcela.getFormaPagamento() : nota.getFormaPagamento());
+            if (valores.get(i).signum() == 0) continue;
+            var regra = parcelas.get(i);
+            if (regra.getDias() < 0) throw new ConflitoException("O vencimento não pode ser anterior à emissão.");
+            resultado.add(parcela(resultado.size() + 1, efetivas, valores.get(i),
+                    nota.getDataEmissao().plusDays(regra.getDias()),
+                    regra.getFormaPagamento() != null ? regra.getFormaPagamento() : nota.getFormaPagamento()));
+        }
+        return List.copyOf(resultado);
+    }
+
+    private static ParcelaNotaEntradaResponse parcela(int numero, int total, BigDecimal valor,
+            LocalDate data, FormaPagamento forma) {
+        return new ParcelaNotaEntradaResponse(numero, total, valor, data,
+                forma == null ? null : forma.getId(), forma == null ? null : forma.getNome());
+    }
+
+    private void gerarTitulos(NotaServico nota) {
+        Long org = nota.getOrganizacaoId();
+        for (var parcela : nota.getParcelas()) {
+            Long formaId = parcela.formaPagamentoId();
+            FormaPagamento forma = formaId == null ? null : (org == null
+                    ? formaPagamentoRepository.findByIdAndOrganizacaoIdIsNull(formaId)
+                    : formaPagamentoRepository.findByIdAndOrganizacaoId(formaId, org))
+                    .orElseThrow(() -> new ConflitoException(
+                            "Uma forma de pagamento da conferência não está disponível. Salve e confira novamente."));
+            salvarTitulo(nota, parcela.numeroParcela(), parcela.totalParcelas(), parcela.valor(),
+                    parcela.dataVencimento(), forma);
         }
     }
 
@@ -315,6 +457,7 @@ public class NotaServicoService {
         return Map.of("situacao", nota.getSituacao().name(),
                 "clienteId", nota.getCliente().getId(),
                 "servicoId", nota.getServico() == null ? 0L : nota.getServico().getId(),
-                "valorTotal", nota.getValorTotal());
+                "valorTotal", nota.getValorTotal(),
+                "motivoCancelamento", nota.getMotivoCancelamento() == null ? "" : nota.getMotivoCancelamento());
     }
 }

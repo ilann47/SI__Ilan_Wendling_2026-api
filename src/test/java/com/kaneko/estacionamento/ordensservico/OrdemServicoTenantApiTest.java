@@ -24,9 +24,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @TenantApiIntegrationTest
+@TestPropertySource(properties = "spring.jpa.open-in-view=false")
 class OrdemServicoTenantApiTest {
 
     @Autowired MockMvc mvc;
@@ -80,6 +84,67 @@ class OrdemServicoTenantApiTest {
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void preservaMilionesimosDaOrdemAoRecebimentoDaNota() throws Exception {
+        String auth = tenantA.tokenContextual();
+        String corpo = """
+                {"numero":"OS-MICROS","clienteId":%d,"valorDesconto":0.000001,
+                 "itens":[{"servicoId":%d,"quantidade":1.000001,"valorUnitario":2.000001}]}
+                """.formatted(clienteA, servicoA);
+        mvc.perform(post("/api/v1/service-orders").header(HttpHeaders.AUTHORIZATION, auth)
+                .header("Idempotency-Key", "os-micros-invalida").contentType(MediaType.APPLICATION_JSON)
+                .content(corpo.replace("1.000001", "1.0000001")))
+                .andExpect(status().isBadRequest());
+        String criada = mvc.perform(post("/api/v1/service-orders").header(HttpHeaders.AUTHORIZATION, auth)
+                .header("Idempotency-Key", "os-micros").contentType(MediaType.APPLICATION_JSON).content(corpo))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.valorTotal").value(2.000002))
+                .andReturn().getResponse().getContentAsString();
+        long os = JsonPath.<Number>read(criada, "$.id").longValue();
+        mvc.perform(post("/api/v1/service-orders/{id}/start", os)
+                .header(HttpHeaders.AUTHORIZATION, auth).header(HttpHeaders.IF_MATCH, "\"0\""))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.clienteNome").isNotEmpty())
+                .andExpect(jsonPath("$.itens[0].quantidade").value(1.000001));
+        mvc.perform(post("/api/v1/service-orders/{id}/completion", os)
+                .header(HttpHeaders.AUTHORIZATION, auth).header(HttpHeaders.IF_MATCH, "\"1\""))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.clienteNome").isNotEmpty());
+        String nota = mvc.perform(post("/api/v1/service-orders/{id}/service-note", os)
+                .header(HttpHeaders.AUTHORIZATION, auth).header("Idempotency-Key", "nfs-micros")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"numero\":\"000128\",\"serie\":\"00S\",\"modelo\":\"NFS\",\"aliquotaIss\":5.123456}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.numero").value("000128"))
+                .andExpect(jsonPath("$.itens[0].quantidade").value(1.000001))
+                .andExpect(jsonPath("$.valorIss").value(0.102469))
+                .andExpect(jsonPath("$.parcelas[0].valor").value(2.000002))
+                .andReturn().getResponse().getContentAsString();
+        long notaId = JsonPath.<Number>read(nota, "$.id").longValue();
+        mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                .header(HttpHeaders.AUTHORIZATION, auth).header(HttpHeaders.IF_MATCH, "\"0\""))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.situacao").value("EMITIDA"));
+        long titulo = jdbc.queryForObject("select id from conta_receber where nota_servico_id=?", Long.class, notaId);
+        for (int repeticao = 0; repeticao < 2; repeticao++) {
+            mvc.perform(post("/api/contas-receber/{id}/baixa", titulo).header(HttpHeaders.AUTHORIZATION, auth)
+                    .header("Idempotency-Key", "nfs-micros-parcial").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"valor\":0.000001}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.saldo").value(2.000001));
+        }
+        mvc.perform(post("/api/contas-receber/{id}/baixa", titulo).header(HttpHeaders.AUTHORIZATION, auth)
+                .header("Idempotency-Key", "nfs-micros-total").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"valor\":2.000001}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.situacao").value("RECEBIDA"))
+                .andExpect(jsonPath("$.saldo").value(0));
+        assertThat(jdbc.queryForObject("select valor_total_micros from ordem_servico where id=?", Long.class, os))
+                .isEqualTo(2000002L);
+        assertThat(jdbc.queryForMap("""
+                select (itens_conferidos->0->>'quantidade')::bigint qtd,
+                    (parcelas_conferidas->0->>'valor')::bigint parcela, aliquota_iss_micros::bigint iss
+                from nota_servico where id=?
+                """, notaId)).containsEntry("qtd", 1000001L).containsEntry("parcela", 2000002L)
+                .containsEntry("iss", 5123456L);
+        assertThat(jdbc.queryForList("select valor_micros from baixa_financeira where conta_receber_id=? order by valor_micros",
+                Long.class, titulo)).containsExactly(1L, 2000001L);
+    }
+
+    @Test
     void notaVinculadaFaturaOrdemConcluidaUmaUnicaVez() throws Exception {
         long id = JsonPath.<Number>read(criarOrdem("OS-FISCAL", clienteA, servicoA), "$.id").longValue();
         mvc.perform(post("/api/v1/service-orders/{id}/start", id)
@@ -103,6 +168,7 @@ class OrdemServicoTenantApiTest {
                 .andReturn().getResponse().getContentAsString();
         long notaId = JsonPath.<Number>read(nota, "$.id").longValue();
         mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                        .header(HttpHeaders.IF_MATCH, "\"0\"")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.situacao").value("EMITIDA"));
 
@@ -170,6 +236,9 @@ class OrdemServicoTenantApiTest {
                 .content("{\"numero\":\"NFS-FLUXO\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.clienteId").value(clienteA))
                 .andExpect(jsonPath("$.valorTotal").value(100))
+                .andExpect(jsonPath("$.itens[0].servicoId").value(servicoA))
+                .andExpect(jsonPath("$.itens[0].valorTotal").value(100))
+                .andExpect(jsonPath("$.parcelas[0].valor").value(100))
                 .andExpect(jsonPath("$.situacao").value("PENDENTE"))
                 .andReturn().getResponse().getContentAsString();
         long notaId = JsonPath.<Number>read(nota, "$.id").longValue();
@@ -182,8 +251,15 @@ class OrdemServicoTenantApiTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.nota.id").value(notaId))
                 .andExpect(jsonPath("$.contas.length()").value(0));
         mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())).andExpect(status().isPreconditionRequired());
+        mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                .header(HttpHeaders.IF_MATCH, "\"99\"")
+                .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())).andExpect(status().isPreconditionFailed());
+        mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                .header(HttpHeaders.IF_MATCH, "\"0\"")
                 .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())).andExpect(status().isOk());
         mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                .header(HttpHeaders.IF_MATCH, "\"0\"")
                 .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())).andExpect(status().isConflict());
         mvc.perform(get("/api/v1/service-orders/{id}/documents", id)
                 .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
@@ -225,6 +301,7 @@ class OrdemServicoTenantApiTest {
             java.util.concurrent.Callable<Integer> emitir = () -> {
                 emitStart.await();
                 return mvc.perform(post("/api/notas-servico/{id}/emissao", notaId)
+                        .header(HttpHeaders.IF_MATCH, "\"0\"")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
                         .andReturn().getResponse().getStatus();
             };

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 
 /**
@@ -19,9 +20,11 @@ public record CargoRequest(
         String descricao,
 
         @PositiveOrZero(message = "O salário base não pode ser negativo.")
+        @Digits(integer = 8, fraction = 6)
         BigDecimal salarioBase,
 
         @PositiveOrZero(message = "A carga horária não pode ser negativa.")
+        @Digits(integer = 4, fraction = 6)
         BigDecimal cargaHoraria,
 
         Boolean requerCnh,

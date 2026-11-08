@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
 import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
 import com.kaneko.estacionamento.usuario.PerfilUsuario;
-import com.kaneko.estacionamento.fiscal.VendaDocumentoService;
 import com.kaneko.estacionamento.estoque.OrigemMovimentoService;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -17,7 +16,6 @@ class DemoAllScreensSeedIntegrationTest {
 
     @Autowired private DemoDataSeedService baseSeed;
     @Autowired private DemoAllScreensSeedService allScreensSeed;
-    @Autowired private VendaDocumentoService vendaDocumentoService;
     @Autowired private OrigemMovimentoService origemMovimentoService;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private TenantTestSupport tenant;
@@ -35,14 +33,13 @@ class DemoAllScreensSeedIntegrationTest {
         assertThat(primeiraExecucao.usuarios()).isEqualTo(2);
         assertThat(primeiraExecucao.memberships()).isEqualTo(2);
         assertThat(primeiraExecucao.produtos()).isGreaterThanOrEqualTo(2);
-        assertThat(primeiraExecucao.movimentosEstoque()).isGreaterThanOrEqualTo(3);
+        assertThat(primeiraExecucao.movimentosEstoque()).isGreaterThanOrEqualTo(2);
+        assertThat(count("""
+                select count(*) from movimento_estoque m
+                join nota_entrada n on n.organizacao_id=m.organizacao_id and n.numero='NE-DEMO-001'
+                where m.origem_tipo not in ('NOTA_ENTRADA', 'NOTA_SAIDA')
+                """)).isZero();
         assertThat(primeiraExecucao.documentosFiscais()).isGreaterThanOrEqualTo(3);
-        assertThat(primeiraExecucao.ordensCompra()).isGreaterThanOrEqualTo(1);
-        assertThat(primeiraExecucao.recebimentosCompra()).isGreaterThanOrEqualTo(1);
-        assertThat(primeiraExecucao.notasEntradaVinculadas()).isGreaterThanOrEqualTo(1);
-        assertThat(primeiraExecucao.vendasAdministrativas()).isGreaterThanOrEqualTo(1);
-        assertThat(primeiraExecucao.vendasConfirmadas()).isGreaterThanOrEqualTo(1);
-        assertThat(primeiraExecucao.notasSaidaVinculadas()).isGreaterThanOrEqualTo(1);
         assertThat(primeiraExecucao.ordensServico()).isGreaterThanOrEqualTo(1);
         assertThat(primeiraExecucao.baixasFinanceiras()).isGreaterThanOrEqualTo(1);
         assertThat(primeiraExecucao.importacoesXml()).isGreaterThanOrEqualTo(1);
@@ -50,92 +47,71 @@ class DemoAllScreensSeedIntegrationTest {
         assertThat(primeiraExecucao.pedidos()).isGreaterThanOrEqualTo(1);
         assertThat(primeiraExecucao.tentativasAcesso()).isGreaterThanOrEqualTo(2);
 
-        var chaveFiscal = jdbc.queryForMap("""
-                select numero_nota, serie_nota, modelo_nota
-                  from ordem_compra
-                 where numero = 'OC-DEMO-001'
-                """);
-        assertThat(chaveFiscal.get("numero_nota")).isEqualTo("NE-DEMO-001");
-        assertThat(chaveFiscal.get("serie_nota")).isEqualTo("D1");
-        assertThat(chaveFiscal.get("modelo_nota")).isEqualTo("55");
+        var nota = jdbc.queryForMap("select numero,serie,modelo from nota_entrada where numero='NE-DEMO-001'");
+        assertThat(nota.get("numero")).isEqualTo("NE-DEMO-001");
+        assertThat(nota.get("serie")).isEqualTo("D1");
+        assertThat(nota.get("modelo")).isEqualTo("55");
     }
 
     @Test
-    void reaplicaCustosDaCompraDemonstrativaEmBaseLocalPreexistente() {
+    void reaplicarSeedNaoReprecificaNotaConfirmadaExistente() {
         tenant.criarUsuario("admin", PerfilUsuario.ADMIN);
-        baseSeed.seed("admin");
+        baseSeed.seed("admin"); allScreensSeed.seed("admin", "operador-seed-test");
+        jdbc.update("update nota_entrada set valor_frete_micros=0,valor_total_micros=40000000 where numero='NE-DEMO-001'");
+        jdbc.update("update item_nota_entrada set rateio_frete_micros=0,custo_preco_final_micros=2000000 where nota_entrada_id in "
+                +"(select id from nota_entrada where numero='NE-DEMO-001')");
         allScreensSeed.seed("admin", "operador-seed-test");
-        jdbc.update("""
-                update item_ordem_compra i
-                   set rateio_frete = 0, custo_total = 40, custo_unitario_final = 2
-                  from ordem_compra o
-                 where o.id = i.ordem_compra_id and o.numero = 'OC-DEMO-001'
-                """);
-
-        allScreensSeed.seed("admin", "operador-seed-test");
-
-        var custos = jdbc.queryForMap("""
-                select i.rateio_frete, i.custo_total, i.custo_unitario_final
-                  from item_ordem_compra i
-                  join ordem_compra o on o.id = i.ordem_compra_id
-                 where o.numero = 'OC-DEMO-001'
-                """);
-        assertThat(custos.get("rateio_frete")).isEqualTo(new BigDecimal("5.00"));
-        assertThat(custos.get("custo_total")).isEqualTo(new BigDecimal("45.00"));
-        assertThat(custos.get("custo_unitario_final")).isEqualTo(new BigDecimal("2.25"));
+        assertThat(jdbc.queryForObject("select valor_total_micros * 0.000001 from nota_entrada where numero='NE-DEMO-001'",BigDecimal.class))
+                .isEqualByComparingTo("40");
+        assertThat(jdbc.queryForObject("select custo_preco_final_micros * 0.000001 from item_nota_entrada where nota_entrada_id in "
+                +"(select id from nota_entrada where numero='NE-DEMO-001')",BigDecimal.class)).isEqualByComparingTo("2");
     }
 
     @Test
-    void mantemOrdemNotaEstoqueEContaPagarComOMesmoCustoTotal() {
+    void notaDiretaEstoqueEContaPagarMantemComposicaoSemOC() {
         tenant.criarUsuario("admin", PerfilUsuario.ADMIN);
-        baseSeed.seed("admin");
-        allScreensSeed.seed("admin", "operador-seed-test");
-
-        var valores = jdbc.queryForMap("""
-                select o.valor_total as total_ordem,
-                       n.valor_total as total_nota,
-                       i.rateio_frete as frete_item_nota,
-                       i.custo_preco_final as custo_unitario_nota,
-                       cp.valor_total as total_conta,
-                       me.custo_unitario as custo_unitario_estoque
-                  from ordem_compra o
-                  join recebimento_compra r on r.ordem_compra_id = o.id
-                  join nota_entrada n on n.recebimento_compra_id = r.id
-                  join item_nota_entrada i on i.nota_entrada_id = n.id and i.sequencia = 1
-                  join conta_pagar cp on cp.nota_entrada_id = n.id and cp.numero_parcela = 1
-                  join movimento_estoque me on me.organizacao_id = o.organizacao_id
-                     and me.origem_tipo = 'NOTA_ENTRADA'
-                     and me.origem_chave = n.numero
-                     and me.produto_id = i.produto_id
-                 where o.numero = 'OC-DEMO-001'
-                """);
-
-        assertThat(valores.get("total_ordem")).isEqualTo(new BigDecimal("45.00"));
-        assertThat(valores.get("total_nota")).isEqualTo(new BigDecimal("45.00"));
-        assertThat(valores.get("frete_item_nota")).isEqualTo(new BigDecimal("5.00"));
-        assertThat(valores.get("custo_unitario_nota")).isEqualTo(new BigDecimal("2.25"));
-        assertThat(valores.get("total_conta")).isEqualTo(new BigDecimal("45.00"));
-        assertThat(valores.get("custo_unitario_estoque")).isEqualTo(new BigDecimal("2.25"));
+        baseSeed.seed("admin"); allScreensSeed.seed("admin", "operador-seed-test");
+        var valores=jdbc.queryForMap("""
+            select n.valor_total_micros * 0.000001 total_nota,i.rateio_frete_micros * 0.000001 frete_item_nota,i.custo_preco_final_micros * 0.000001 custo_unitario_nota,
+                   cp.valor_total_micros * 0.000001 total_conta,me.custo_unitario_micros * 0.000001 custo_unitario_estoque
+            from nota_entrada n join item_nota_entrada i on i.nota_entrada_id=n.id
+            join conta_pagar cp on cp.nota_entrada_id=n.id
+            join movimento_estoque me on me.organizacao_id=n.organizacao_id and me.produto_id=i.produto_id
+              and me.origem_tipo='NOTA_ENTRADA' and me.origem_chave=concat(n.id,':1')
+            where n.numero='NE-DEMO-001'
+            """);
+        assertThat((BigDecimal) valores.get("total_nota")).isEqualByComparingTo("45.00");
+        assertThat((BigDecimal) valores.get("frete_item_nota")).isEqualByComparingTo("5.00");
+        assertThat((BigDecimal) valores.get("custo_unitario_nota")).isEqualByComparingTo("2.25");
+        assertThat((BigDecimal) valores.get("total_conta")).isEqualByComparingTo("45.00");
+        assertThat((BigDecimal) valores.get("custo_unitario_estoque")).isEqualByComparingTo("2.25");
     }
 
     @Test
-    void exibeMovimentoLegadoDaNotaNoEncadeamentoDaVendaDemonstrativa() {
+    void preservaNotaDeSaidaDemonstrativaEContaSemPedido() {
         tenant.criarUsuario("admin", PerfilUsuario.ADMIN);
         baseSeed.seed("admin");
         allScreensSeed.seed("admin", "operador-seed-test");
         Long organizacaoId = jdbc.queryForObject(
                 "select id from organizacao where documento = ?", Long.class,
                 DemoDataSeedService.DOCUMENTO_ORGANIZACAO);
-        Long vendaId = jdbc.queryForObject(
-                "select id from venda_administrativa where organizacao_id = ? and numero = 'VENDA-DEMO-002'",
-                Long.class, organizacaoId);
-
-        var documentos = vendaDocumentoService.documentos(
-                organizacaoId, vendaId, true, true, true);
-
-        assertThat(documentos.movimentos()).hasSize(1);
-        assertThat(documentos.movimentos().getFirst().origemTipo()).isEqualTo("NOTA_SAIDA");
-        assertThat(documentos.movimentos().getFirst().origemChave()).isEqualTo("NS-DEMO-001");
+        assertThat(jdbc.queryForObject("select to_regclass('public.venda_administrativa')::text",
+                String.class)).isNull();
+        assertThat(jdbc.queryForObject("select to_regclass('public.item_venda_administrativa')::text",
+                String.class)).isNull();
+        assertThat(count("""
+                select count(*) from information_schema.columns where table_schema='public'
+                  and table_name in ('nota_saida','conta_receber') and column_name='venda_administrativa_id'
+                """)).isZero();
+        assertThat(count("""
+                select count(*) from nota_saida n
+                join conta_receber cr on cr.nota_saida_id=n.id and cr.organizacao_id=n.organizacao_id
+                where n.organizacao_id=? and n.numero='NS-DEMO-001' and n.situacao='CONFIRMADA'
+                """, organizacaoId)).isEqualTo(1);
+        assertThat(count("""
+                select count(*) from movimento_estoque where organizacao_id=?
+                  and origem_tipo='NOTA_SAIDA' and origem_chave='NS-DEMO-001'
+                """, organizacaoId)).isEqualTo(1);
     }
 
     @Test
@@ -177,15 +153,6 @@ class DemoAllScreensSeedIntegrationTest {
                                 + " + (select count(*) from nota_saida where organizacao_id = ?)"
                                 + " + (select count(*) from nota_servico where organizacao_id = ?)",
                         organizacaoId, organizacaoId, organizacaoId),
-                count("select count(*) from ordem_compra where organizacao_id = ?", organizacaoId),
-                count("select count(*) from recebimento_compra where organizacao_id = ?", organizacaoId),
-                count("select count(*) from nota_entrada where organizacao_id = ?"
-                        + " and recebimento_compra_id is not null", organizacaoId),
-                count("select count(*) from venda_administrativa where organizacao_id = ?", organizacaoId),
-                count("select count(*) from venda_administrativa where organizacao_id = ?"
-                        + " and status = 'CONFIRMADA'", organizacaoId),
-                count("select count(*) from nota_saida where organizacao_id = ?"
-                        + " and venda_administrativa_id is not null", organizacaoId),
                 count("select count(*) from ordem_servico where organizacao_id = ?", organizacaoId),
                 count("select count(*) from baixa_financeira where organizacao_id = ?", organizacaoId),
                 count("select count(*) from importacao_nota_entrada where organizacao_id = ?", organizacaoId),
@@ -204,12 +171,6 @@ class DemoAllScreensSeedIntegrationTest {
             long produtos,
             long movimentosEstoque,
             long documentosFiscais,
-            long ordensCompra,
-            long recebimentosCompra,
-            long notasEntradaVinculadas,
-            long vendasAdministrativas,
-            long vendasConfirmadas,
-            long notasSaidaVinculadas,
             long ordensServico,
             long baixasFinanceiras,
             long importacoesXml,

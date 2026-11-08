@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.fiscal.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.kaneko.estacionamento.fiscal.TipoFrete;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -28,7 +29,6 @@ public record NotaSaidaRequest(
 
         Long condicaoPagamentoId,
         Long localEstoqueId,
-        Long vendaAdministrativaId,
 
         LocalDate dataEmissao,
         LocalDate dataSaida,
@@ -45,4 +45,8 @@ public record NotaSaidaRequest(
         @NotEmpty(message = "A nota deve conter ao menos um item.")
         @Valid List<ItemNotaSaidaRequest> itens
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException("Campo não reconhecido no lançamento da nota de saída.");
+    }
 }

@@ -57,17 +57,32 @@ public class FinanceiroConsultaService {
         Root<?> root = query.from(tipo);
         boolean pagar = tipo == ContaPagar.class;
         String baixado = pagar ? "valorPago" : "valorRecebido";
+        Expression<BigDecimal> original = valorParaAgregacao(cb, root, "valorOriginal");
+        Expression<BigDecimal> total = valorParaAgregacao(cb, root, "valorTotal");
+        Expression<BigDecimal> efetivado = valorParaAgregacao(cb, root, baixado);
         Expression<BigDecimal> saldo = cb.<BigDecimal>selectCase()
                 .when(cb.equal(root.get("situacao"), pagar ? SituacaoContaPagar.CANCELADA : SituacaoContaReceber.CANCELADA), BigDecimal.ZERO)
-                .otherwise(cb.diff(root.<BigDecimal>get("valorTotal"), root.<BigDecimal>get(baixado)));
-        query.multiselect(cb.count(root), cb.coalesce(cb.sum(root.<BigDecimal>get("valorOriginal")), BigDecimal.ZERO),
-                cb.coalesce(cb.sum(root.<BigDecimal>get("valorTotal")), BigDecimal.ZERO),
-                cb.coalesce(cb.sum(root.<BigDecimal>get(baixado)), BigDecimal.ZERO),
+                .otherwise(cb.diff(total, efetivado));
+        query.multiselect(cb.count(root), cb.coalesce(cb.sum(original), BigDecimal.ZERO),
+                cb.coalesce(cb.sum(total), BigDecimal.ZERO),
+                cb.coalesce(cb.sum(efetivado), BigDecimal.ZERO),
                 cb.coalesce(cb.sum(saldo), BigDecimal.ZERO));
         query.where(predicados(root, cb, org, filtro, pagar));
         Tuple r = em.createQuery(query).getSingleResult();
-        return new FinanceiroResumoResponse(r.get(0, Long.class), r.get(1, BigDecimal.class),
-                r.get(2, BigDecimal.class), r.get(3, BigDecimal.class), r.get(4, BigDecimal.class));
+        return new FinanceiroResumoResponse(r.get(0, Long.class), valorAgregado(r, 1),
+                valorAgregado(r, 2), valorAgregado(r, 3), valorAgregado(r, 4));
+    }
+
+    private static Expression<BigDecimal> valorParaAgregacao(CriteriaBuilder cb, Root<?> root,
+            String campo) {
+        // A expressão SQL não carrega o conversor do atributo. Os somatórios
+        // de contas a pagar e a receber são inteiros em milionésimos até a projeção final.
+        return cb.function("trunc", BigDecimal.class, root.get(campo));
+    }
+
+    private static BigDecimal valorAgregado(Tuple resultado, int coluna) {
+        BigDecimal valor = resultado.get(coluna, BigDecimal.class);
+        return valor.movePointLeft(com.kaneko.estacionamento.common.util.MilionesimosConverter.ESCALA);
     }
 
     private Predicate[] predicados(Root<?> root, CriteriaBuilder cb, Long org, FinanceiroFiltro f, boolean pagar) {
@@ -86,13 +101,13 @@ public class FinanceiroConsultaService {
         if (f.dataVencimentoAte() != null) p.add(cb.lessThanOrEqualTo(root.get("dataVencimento"), f.dataVencimentoAte()));
         Map<String, Long> ids = new HashMap<>();
         ids.put("notaEntrada", f.notaEntradaId()); ids.put("notaSaida", f.notaSaidaId());
-        ids.put("notaServico", f.notaServicoId()); ids.put("vendaAdministrativa", f.vendaAdministrativaId());
+        ids.put("notaServico", f.notaServicoId());
         ids.forEach((campo, id) -> { if (id != null) p.add(origens(pagar).contains(campo)
                 ? cb.equal(root.get(campo).get("id"), id) : cb.disjunction()); });
         if (f.origem() != null) {
             String campo = switch (f.origem()) {
                 case NOTA_ENTRADA -> "notaEntrada"; case NOTA_SAIDA -> "notaSaida";
-                case NOTA_SERVICO -> "notaServico"; case VENDA -> "vendaAdministrativa";
+                case NOTA_SERVICO -> "notaServico";
                 case MENSALIDADE -> "mensalista"; case MANUAL -> null;
             };
             if (campo == null) for (String origem : origens(pagar)) p.add(cb.isNull(root.get(origem)));
@@ -117,6 +132,6 @@ public class FinanceiroConsultaService {
     }
 
     private List<String> origens(boolean pagar) {
-        return pagar ? List.of("notaEntrada") : List.of("notaSaida", "notaServico", "vendaAdministrativa", "mensalista");
+        return pagar ? List.of("notaEntrada") : List.of("notaSaida", "notaServico", "mensalista");
     }
 }

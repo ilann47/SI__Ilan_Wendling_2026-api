@@ -12,13 +12,16 @@ import org.springframework.data.jpa.repository.Query;
 public interface MovimentoEstoqueRepository extends JpaRepository<MovimentoEstoque, Long> {
 
     Optional<MovimentoEstoque> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+    java.util.List<MovimentoEstoque> findByOrganizacaoIdAndOrigemTipoAndOrigemChaveStartingWithOrderByIdDesc(
+            Long organizacaoId, String origemTipo, String prefixoOrigem);
+    long countByOrganizacaoIdAndProdutoIdAndIdGreaterThan(Long organizacaoId, Long produtoId, Long id);
 
     @Query(value = """
             SELECT m.id, m.produto_id AS produtoId, p.nome AS produto,
                    m.local_estoque_id AS localEstoqueId, l.nome AS localEstoque,
-                   m.saldo_estoque_id AS saldoEstoqueId, m.tipo, m.delta,
-                   m.saldo_anterior AS saldoAnterior, m.saldo_posterior AS saldoPosterior,
-                   m.custo_unitario AS custoUnitario, m.origem_tipo AS origemTipo,
+                   m.saldo_estoque_id AS saldoEstoqueId, m.tipo, m.delta_micros * 0.000001 AS delta,
+                   m.saldo_anterior_micros * 0.000001 AS saldoAnterior, m.saldo_posterior_micros * 0.000001 AS saldoPosterior,
+                   m.custo_unitario_micros * 0.000001 AS custoUnitario, m.origem_tipo AS origemTipo,
                    m.origem_chave AS origemChave, m.compensado_id AS compensadoId,
                    m.ator_id AS atorId, u.nome AS atorNome, m.motivo, m.ocorrido_em AS ocorridoEm,
                    m.created_at AS createdAt
@@ -36,9 +39,9 @@ public interface MovimentoEstoqueRepository extends JpaRepository<MovimentoEstoq
     @Query(value = """
             SELECT m.id, m.produto_id AS produtoId, p.nome AS produto,
                    m.local_estoque_id AS localEstoqueId, l.nome AS localEstoque,
-                   m.saldo_estoque_id AS saldoEstoqueId, m.tipo, m.delta,
-                   m.saldo_anterior AS saldoAnterior, m.saldo_posterior AS saldoPosterior,
-                   m.custo_unitario AS custoUnitario, m.origem_tipo AS origemTipo,
+                   m.saldo_estoque_id AS saldoEstoqueId, m.tipo, m.delta_micros * 0.000001 AS delta,
+                   m.saldo_anterior_micros * 0.000001 AS saldoAnterior, m.saldo_posterior_micros * 0.000001 AS saldoPosterior,
+                   m.custo_unitario_micros * 0.000001 AS custoUnitario, m.origem_tipo AS origemTipo,
                    m.origem_chave AS origemChave, m.compensado_id AS compensadoId,
                    m.ator_id AS atorId, u.nome AS atorNome, m.motivo, m.ocorrido_em AS ocorridoEm,
                    m.created_at AS createdAt
@@ -58,9 +61,9 @@ public interface MovimentoEstoqueRepository extends JpaRepository<MovimentoEstoq
     @Query(value = """
             SELECT m.id, m.produto_id AS produtoId, p.nome AS produto,
                    m.local_estoque_id AS localEstoqueId, l.nome AS localEstoque,
-                   m.saldo_estoque_id AS saldoEstoqueId, m.tipo, m.delta,
-                   m.saldo_anterior AS saldoAnterior, m.saldo_posterior AS saldoPosterior,
-                   m.custo_unitario AS custoUnitario, m.origem_tipo AS origemTipo,
+                   m.saldo_estoque_id AS saldoEstoqueId, m.tipo, m.delta_micros * 0.000001 AS delta,
+                   m.saldo_anterior_micros * 0.000001 AS saldoAnterior, m.saldo_posterior_micros * 0.000001 AS saldoPosterior,
+                   m.custo_unitario_micros * 0.000001 AS custoUnitario, m.origem_tipo AS origemTipo,
                    m.origem_chave AS origemChave, m.compensado_id AS compensadoId,
                    m.ator_id AS atorId, u.nome AS atorNome, m.motivo, m.ocorrido_em AS ocorridoEm,
                    m.created_at AS createdAt
@@ -77,9 +80,9 @@ public interface MovimentoEstoqueRepository extends JpaRepository<MovimentoEstoq
     @Query(value = """
             SELECT m.id, m.produto_id AS produtoId, p.nome AS produto,
                    m.local_estoque_id AS localEstoqueId, l.nome AS localEstoque,
-                   m.saldo_estoque_id AS saldoEstoqueId, m.tipo, m.delta,
-                   m.saldo_anterior AS saldoAnterior, m.saldo_posterior AS saldoPosterior,
-                   m.custo_unitario AS custoUnitario, m.origem_tipo AS origemTipo,
+                   m.saldo_estoque_id AS saldoEstoqueId, m.tipo, m.delta_micros * 0.000001 AS delta,
+                   m.saldo_anterior_micros * 0.000001 AS saldoAnterior, m.saldo_posterior_micros * 0.000001 AS saldoPosterior,
+                   m.custo_unitario_micros * 0.000001 AS custoUnitario, m.origem_tipo AS origemTipo,
                    m.origem_chave AS origemChave, m.compensado_id AS compensadoId,
                    m.ator_id AS atorId, u.nome AS atorNome, m.motivo, m.ocorrido_em AS ocorridoEm,
                    m.created_at AS createdAt

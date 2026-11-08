@@ -2,6 +2,47 @@
 
 # Relatório de Conformidade — Estacionamento Kaneko (v1)
 
+## Atualização — Modelo acadêmico aplicado ao fluxo vigente (2026-11-06)
+
+O PDF disponibilizado tem 31 páginas e termina na primeira página do caso de
+uso Compra. A avaliação das RN001–RN008 se baseia no texto disponível. Os
+processos de Vendas, Contas e OS são nomeados no sumário/requisitos, mas o
+recorte não permite confirmar suas especificações detalhadas.
+
+| Regra do exemplo | Aplicação no Kaneko | Verificação |
+|---|---|---|
+| RN001 — autenticação | Organização ativa e permissão contextual em cada operação. | Controladores e testes de acesso. |
+| RN002 — identidade fiscal da compra | Fornecedor, número, série e modelo normalizados dentro da organização. | Índice da V78 e validação da Nota de Entrada. |
+| RN003 — emissão até hoje | Validação canônica no serviço, compartilhada pelo XML. Calendário e formulário manual bloqueiam data futura. | Regressões manual/XML e interface; upload inválido não persiste. |
+| RN004 — chegada a partir da emissão | Chegada opcional, validada quando informada. | Serviço e restrição SQL. |
+| RN005 — um ou mais itens | Nota vazia não é aceita; confirmação é integral. | DTO, serviço e teste de confirmação. |
+| RN006 — condição do fornecedor editável | Sugestão ativa herdada, substituível; parcelas congeladas na revisão. | Serviço e testes de cronograma. |
+| RN007 — não desfazer compra baixada | A reversão rejeita baixa parcial ou total e preserva títulos. | Teste de reversão com baixa parcial. |
+| RN008 — estoque ainda reversível | Compensa somente cadeia de movimentos conciliada, sem reescrever o razão original. | Teste de reversão com movimento posterior. |
+
+**Divergências deliberadas.** A compra é a Nota de Entrada e a venda de
+mercadoria começa na Nota de Saída; Ordem de Compra e Pedido de Venda não
+integram esses fluxos. Não há edição direta de títulos fiscais nem estorno
+bancário. Uma despesa avulsa pendente pode ser editada. A opção “alterar
+contas” do exemplo não foi usada para liberar mudança de origem, valor ou
+histórico de títulos fiscais. O caso de uso distingue cancelamento de rascunho
+de reversão interna da confirmada; não há emissão/estorno fiscal externo.
+
+**Artefatos atualizados:** [matriz de rastreabilidade](README.md#rastreabilidade-acadêmica--fiscal-e-financeiro-vigentes),
+[requisitos](04-requisitos-funcionais.md), [casos fiscais](05-casos-de-uso/processos-fiscais.md),
+[casos financeiros](05-casos-de-uso/processos-financeiros.md), [telas](06-prototipos.md),
+[dicionário](07-dicionario-de-dados.md), [DER](03-der.md), [UML](08-diagramas-classe.md)
+e [sequências](09-diagramas-sequencia.md). O relatório histórico começa abaixo.
+
+**Plano de complementação.** Capturar em sessão de demonstração autenticada
+o editor, a conferência, o detalhe confirmado e a baixa, sem expor dados
+pessoais. Se a alteração de títulos pendentes for exigida na avaliação,
+definir antes quais origens/campos serão autorizados e como a auditoria
+preservará o histórico. Expandir o dicionário vigente aos demais módulos
+sem usar o esquema inicial como fonte executável.
+
+---
+
 **Documento:** Relatório de Conformidade e Plano de Refatoração
 **Sistema:** Estacionamento Kaneko Ltda. (Maringá-PR) — controle de estacionamento (mensalista + avulso) com módulos de Conveniência, Fiscal e Financeiro
 **Versão do sistema auditado:** v1 (modelagem + especificação). **Atualização 2026-06-16:** o backend foi implementado (Spring Boot 4 / Java 25, 279 testes automatizados) — ver a seção **"Atualização — Status de Implementação"** ao final.

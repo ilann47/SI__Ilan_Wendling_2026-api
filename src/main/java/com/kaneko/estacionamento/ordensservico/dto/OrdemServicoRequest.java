@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.ordensservico.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +17,7 @@ public record OrdemServicoRequest(
         LocalDate dataAbertura,
         LocalDate previsaoConclusao,
         @Size(max = 3) String moeda,
-        @PositiveOrZero BigDecimal valorDesconto,
+        @PositiveOrZero @Digits(integer = 13, fraction = 6) BigDecimal valorDesconto,
         @Size(max = 500) String observacao,
         @NotEmpty @Valid List<ItemOrdemServicoRequest> itens) {
 }

@@ -13,6 +13,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * Repositorio de {@link ContaPagar}.
  */
 public interface ContaPagarRepository extends JpaRepository<ContaPagar, Long> {
+    @org.springframework.data.jpa.repository.Query("""
+            select c.id from ContaPagar c
+            where c.organizacaoId = :org and c.notaEntrada.id = :notaId
+            order by c.id
+            """)
+    List<Long> findIdsPorNota(@org.springframework.data.repository.query.Param("org") Long org,
+            @org.springframework.data.repository.query.Param("notaId") Long notaId);
 
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
     List<ContaPagar> findByOrganizacaoIdAndNotaEntradaIdInOrderByDataVencimentoAsc(

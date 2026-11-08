@@ -11,6 +11,8 @@ ownership explícito, sem misturar cadastros entre organizações.
 
 A V41 migra Transportadora. A V48 migra `veiculo_frota` e o vínculo N:N
 `transportadora_veiculo_frota`, preservando sem owner todo o histórico.
+No esquema local de teste V99, a capacidade de carga é inteira escalada por
+um milhão; a API continua usando a unidade de carga habitual.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -81,3 +83,4 @@ executa V47→V48 preservando o grafo histórico.
 | 2026-08-03 | V41 migra Transportadora para tenancy contextual e preserva dados históricos. |
 | 2026-08-03 | V48 migra Veículo de Frota e vínculo N:N com integridade tenant-aware. |
 | 2026-08-03 | V49 torna o owner de Transportadora incondicionalmente imutável. |
+| 2026-11-08 | V99 migra a capacidade de carga para até seis casas no banco de teste. |

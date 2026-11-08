@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.pedido;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.math.BigDecimal;
@@ -29,6 +30,24 @@ class PedidoTest {
         pedido.aguardarPagamento();
         assertThat(pedido.getStatus()).isEqualTo(StatusPedido.AGUARDANDO_PAGAMENTO);
         assertThatIllegalStateException().isThrownBy(pedido::aguardarPagamento);
+    }
+
+    @Test
+    void rejeitaEstouroDaPrecisaoSemAlterarPedido() {
+        Pedido pedido = Pedido.criar(
+                1L, 2L, 3L, 4L, "PED-0123456789ABCDEF0123456789ABCDEF",
+                "DIRECT_WEB", "Comprador", "comprador@example.com", null, null,
+                OffsetDateTime.parse("2099-07-30T12:15:00Z"));
+        BigDecimal maximo = new BigDecimal("99999999999999999.999999");
+        assertThatIllegalArgumentException().isThrownBy(() -> ItemPedido.criar(
+                pedido, 5L, "Estacionamento VIP", 2, maximo, "BRL"));
+        pedido.adicionarItem(ItemPedido.criar(
+                pedido, 5L, "Estacionamento VIP", 1, maximo, "BRL"));
+        var outro = ItemPedido.criar(
+                pedido, 6L, "Estacionamento comum", 1, new BigDecimal("0.000001"), "BRL");
+        assertThatIllegalArgumentException().isThrownBy(() -> pedido.adicionarItem(outro));
+        assertThat(pedido.getItens()).hasSize(1);
+        assertThat(pedido.getTotal()).isEqualTo(maximo);
     }
 
     @Test

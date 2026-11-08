@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.patio;
 
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -30,7 +31,7 @@ public final class CalculoTarifa {
 
     /**
      * Calcula o valor a cobrar de uma permanencia avulsa entre {@code entrada}
-     * e {@code saida}, com escala monetaria de 2 casas.
+     * e {@code saida}, com escala monetaria de seis casas.
      */
     public static BigDecimal calcular(BigDecimal valorHora,
                                       BigDecimal valorDiaria,
@@ -40,7 +41,7 @@ public final class CalculoTarifa {
         long minutos = Duration.between(entrada, saida).toMinutes();
 
         if (minutos <= toleranciaMin) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            return BigDecimal.ZERO.setScale(MilionesimosConverter.ESCALA);
         }
 
         long horas = teto(minutos, MINUTOS_POR_HORA);
@@ -49,7 +50,7 @@ public final class CalculoTarifa {
         BigDecimal porHora = valorHora.multiply(BigDecimal.valueOf(horas));
         BigDecimal tetoDiarias = valorDiaria.multiply(BigDecimal.valueOf(diarias));
 
-        return porHora.min(tetoDiarias).setScale(2, RoundingMode.HALF_UP);
+        return porHora.min(tetoDiarias).setScale(MilionesimosConverter.ESCALA, RoundingMode.UNNECESSARY);
     }
 
     /** Divisao inteira arredondada para cima (ceil). */

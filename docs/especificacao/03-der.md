@@ -4,7 +4,9 @@
 
 ## 3.1. Apresentação
 
-Este capítulo descreve o modelo lógico de dados do sistema **Estacionamento Kaneko**, em conformidade com o esquema físico definido em `database/schema.sql` (PostgreSQL 17, banco `estacionamento_kaneko`). O modelo cobre a totalidade das **34 (trinta e quatro) entidades** persistentes do sistema, distribuídas nos seguintes domínios funcionais:
+As seções 3.1 a 3.5 preservam o modelo lógico histórico de **34 (trinta e quatro) entidades**, baseado em `database/schema.sql`. Esse recorte antecede a evolução multiempresa e não é o inventário do banco atual. Para as notas de mercadoria, estoque e contas no contexto de uma organização, use o **recorte vigente da seção 3.5.1**, baseado nas migrações Flyway.
+
+O modelo histórico distribui as entidades nos seguintes domínios funcionais:
 
 1. **Geografia** — `pais`, `estado`, `cidade`.
 2. **Recursos Humanos** — `cargo`, `funcionario`.
@@ -387,9 +389,173 @@ O esquema físico privilegia a integridade de dados em nível de banco, compleme
 2. **Índices únicos parciais** (cláusula `WHERE`) materializam regras de negócio sensíveis ao estado, tais como o máximo de um contrato mensalista ativo e de uma movimentação aberta por veículo, além de um único e-mail e telefone principal por fornecedor.
 3. **Políticas de exclusão** combinam `ON DELETE RESTRICT` para preservar referências de cadastros estruturais, `ON DELETE CASCADE` para propagar a remoção de itens e contatos dependentes, e `ON DELETE SET NULL` para desvincular a forma de pagamento específica de uma parcela sem removê-la.
 
+### 3.5.1. Recorte vigente — notas de mercadoria, estoque e contas (V54–V82)
+
+O diagrama representa as chaves estrangeiras físicas relevantes ao fluxo multiempresa. As cardinalidades de organização, local e itens refletem as regras das notas contextuais, não a nulabilidade de registros históricos sem organização. As demais associações de escopo são omitidas. As origens operacionais do razão não são chaves estrangeiras para as notas.
+
+A V82 remove a estrutura de Pedido de Venda. Venda de mercadoria começa
+diretamente na Nota de Saída.
+
+```mermaid
+erDiagram
+    ORGANIZACAO ||--o{ NOTA_ENTRADA : possui
+    ORGANIZACAO ||--o{ NOTA_SAIDA : possui
+    FORNECEDOR ||--o{ NOTA_ENTRADA : emite
+    CLIENTE ||--o{ NOTA_SAIDA : recebe
+    CONDICAO_PAGAMENTO o|--o{ NOTA_ENTRADA : referencia
+    CONDICAO_PAGAMENTO o|--o{ NOTA_SAIDA : referencia
+    LOCAL_ESTOQUE ||--o{ NOTA_ENTRADA : recebe
+    LOCAL_ESTOQUE ||--o{ NOTA_SAIDA : expede
+    NOTA_ENTRADA ||--|{ ITEM_NOTA_ENTRADA : compoe
+    NOTA_SAIDA ||--|{ ITEM_NOTA_SAIDA : compoe
+    PRODUTO ||--o{ ITEM_NOTA_ENTRADA : identifica
+    PRODUTO ||--o{ ITEM_NOTA_SAIDA : identifica
+    NOTA_ENTRADA ||--o{ PARCELA_NOTA_ENTRADA : congela
+    NOTA_SAIDA ||--o{ PARCELA_NOTA_SAIDA : congela_se_avulsa
+    FORMA_PAGAMENTO o|--o{ PARCELA_NOTA_ENTRADA : referencia
+    FORMA_PAGAMENTO o|--o{ PARCELA_NOTA_SAIDA : referencia
+    NOTA_ENTRADA o|--o{ CONTA_PAGAR : origina
+    NOTA_SAIDA o|--o{ CONTA_RECEBER : origina_se_avulsa
+    CONTA_PAGAR o|--o{ BAIXA_FINANCEIRA : recebe_baixa
+    CONTA_RECEBER o|--o{ BAIXA_FINANCEIRA : recebe_baixa
+    PRODUTO ||--o{ SALDO_ESTOQUE : tem
+    LOCAL_ESTOQUE ||--o{ SALDO_ESTOQUE : concentra
+    SALDO_ESTOQUE ||--o{ MOVIMENTO_ESTOQUE : registra
+    MOVIMENTO_ESTOQUE o|--o| MOVIMENTO_ESTOQUE : compensa
+
+    NOTA_ENTRADA {
+        bigint id PK
+        bigint organizacao_id FK
+        bigint fornecedor_id FK
+        bigint local_estoque_id FK
+        bigint condicao_pagamento_id FK
+        string numero
+        string serie
+        string modelo
+        bigint version
+        boolean cronograma_definido
+        numeric valor_total
+        string situacao
+        timestamptz revertida_em
+        string motivo_reversao
+    }
+    NOTA_SAIDA {
+        bigint id PK
+        bigint organizacao_id FK
+        bigint cliente_id FK
+        bigint local_estoque_id FK
+        bigint condicao_pagamento_id FK
+        string numero
+        string serie
+        string modelo
+        bigint version
+        boolean cronograma_definido
+        numeric valor_total
+        string situacao
+        timestamptz revertida_em
+        string motivo_reversao
+    }
+    ITEM_NOTA_ENTRADA {
+        bigint id PK
+        bigint nota_entrada_id FK
+        bigint produto_id FK
+        int sequencia
+        numeric quantidade
+        numeric custo_total
+        numeric custo_medio_anterior
+        numeric custo_medio_posterior
+    }
+    ITEM_NOTA_SAIDA {
+        bigint id PK
+        bigint nota_saida_id FK
+        bigint produto_id FK
+        int sequencia
+        numeric quantidade
+        numeric valor_desconto
+        numeric custo_preco_final
+    }
+    PARCELA_NOTA_ENTRADA {
+        bigint nota_entrada_id PK, FK
+        int numero_parcela PK
+        numeric valor
+        date data_vencimento
+        bigint forma_pagamento_id FK
+        string forma_pagamento_nome
+    }
+    PARCELA_NOTA_SAIDA {
+        bigint nota_saida_id PK, FK
+        int numero_parcela PK
+        numeric valor
+        date data_vencimento
+        bigint forma_pagamento_id FK
+        string forma_pagamento_nome
+    }
+    CONTA_PAGAR {
+        bigint id PK
+        bigint nota_entrada_id FK
+        int numero_parcela
+        numeric valor_original
+        numeric valor_pago
+        string situacao
+    }
+    CONTA_RECEBER {
+        bigint id PK
+        bigint nota_saida_id FK
+        int numero_parcela
+        numeric valor_original
+        numeric valor_recebido
+        string situacao
+    }
+    BAIXA_FINANCEIRA {
+        bigint id PK
+        bigint organizacao_id FK
+        bigint conta_pagar_id FK
+        bigint conta_receber_id FK
+        numeric valor
+        date data
+        string chave
+    }
+    SALDO_ESTOQUE {
+        bigint id PK
+        bigint organizacao_id FK
+        bigint produto_id FK
+        bigint local_estoque_id FK
+        numeric quantidade
+    }
+    MOVIMENTO_ESTOQUE {
+        bigint id PK
+        bigint saldo_estoque_id FK
+        bigint compensado_id FK
+        string tipo
+        numeric delta
+        numeric saldo_anterior
+        numeric saldo_posterior
+        numeric saldo_total_anterior
+        numeric saldo_total_posterior
+        numeric custo_unitario
+        numeric custo_medio_anterior
+        numeric custo_medio_posterior
+        string origem_tipo
+        string origem_chave
+    }
+```
+
+| Regra do recorte | Cardinalidade, chave ou restrição |
+|---|---|
+| Identidade da Entrada | `id` é a PK. A chave de negócio normalizada da V78 é organização, fornecedor, número, série e modelo. |
+| Identidade da Saída | `id` é a PK. Para uma organização ativa, a V80 exige unicidade de organização emissora, número, série e modelo normalizados. O cliente é destinatário e não permite reutilizar a identificação para outro cliente. Nota legada sem organização conserva a unicidade de número, série e cliente. |
+| Normalização da identidade | Remove espaços nas extremidades; para um identificador só numérico, desconsidera zeros à esquerda; para os demais, compara em maiúsculas. Não reescreve o valor exibido na nota. |
+| Itens e parcelas | A aplicação exige ao menos um item por nota; cada linha referencia um produto e tem sequência única na nota. Cada parcela prevista tem PK composta de nota e número de parcela, valor positivo, vencimento e forma opcional validada no mesmo escopo. Uma nota de total zero não gera parcelas efetivas. |
+| Datas da Entrada | `data_emissao` é obrigatória no banco; `data_chegada` é opcional e não pode antecedê-la. O serviço rejeita emissão posterior ao dia corrente, inclusive no XML. |
+| Obrigação e baixa | Na confirmação da Entrada, as parcelas previstas são materializadas em contas a pagar. Na Saída avulsa, são materializadas em contas a receber. O vínculo físico do título é com a nota e a numeração de parcela, não com a tabela do cronograma. Cada baixa financeira referencia **exatamente um** título, a pagar ou a receber; um título admite várias baixas. |
+| Saldo e razão | O saldo é único por organização, produto e local, e não pode ser negativo. O movimento guarda o delta, os saldos e custos registrados e referencia o saldo e, na compensação, o movimento original. Cada original pode ser compensado uma única vez. |
+| Rastreabilidade documental | `origem_tipo` e `origem_chave` referenciam logicamente `NOTA_ENTRADA` ou `NOTA_SAIDA`, com chave `id:sequencia`. A reversão registra nova linha de razão ligada pela FK `compensado_id`, com origem `REVERSAO_NOTA_ENTRADA` ou `REVERSAO_NOTA_SAIDA`. |
+| Reversão interna | A V81 registra data e motivo na nota cancelada por reversão. Compensações e cancelamento de títulos sem baixa são atômicos; não se apagam lançamentos. Baixa financeira, histórico físico incompleto ou posterioridade impeditiva bloqueiam a reversão. Não há transmissão ao fisco. |
+
 ## 3.6. Histórico
 
 | Data | Ação |
 |------|------|
 | 2026-06-14 | Elaboração inicial da Seção 3 (DER) com diagrama Mermaid das 31 entidades, tabela-resumo e considerações de cardinalidade e integridade, aterrada em `database/schema.sql`. |
 | 2026-07-03 | Inclusão do Módulo de Logística (`transportadora`, `veiculo_frota`, `transportadora_veiculo_frota`) e da FK `fornecedor.transportadora_id` — total de 34 entidades (migração `V6`). Remoção do campo `nacionalidade_id` (FK → pais) de `funcionario`, `fornecedor` e `cliente`, tornado redundante pela cadeia Cidade → Estado → País (migração `V4`). |
+| 2026-11-05 | Separa o DER histórico do recorte vigente de notas, cronogramas, contas, baixas e razão multiempresa (V54–V81). |

@@ -6,6 +6,8 @@ import com.kaneko.estacionamento.pessoas.EstadoCivil;
 import com.kaneko.estacionamento.pessoas.Sexo;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -101,7 +103,8 @@ public class Funcionario extends BaseEntity {
     @Column(name = "data_demissao")
     private LocalDate dataDemissao;
 
-    @Column(name = "salario", precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "salario_micros", precision = 14, scale = 0)
     private BigDecimal salario;
 
     @Column(name = "observacao", length = 255)

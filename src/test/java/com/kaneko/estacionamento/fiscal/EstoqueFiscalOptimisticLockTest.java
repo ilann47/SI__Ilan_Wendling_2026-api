@@ -56,8 +56,8 @@ class EstoqueFiscalOptimisticLockTest {
 
             Produto persistido = produtos.findById(produtoId).orElseThrow();
             assertThat(persistido.getVersion()).isEqualTo(1L);
-            assertThat(persistido.getQuantidade()).isIn(
-                    new BigDecimal("110.000"), new BigDecimal("95.000"));
+            assertThat(persistido.getQuantidade().stripTrailingZeros()).isIn(
+                    new BigDecimal("110").stripTrailingZeros(), new BigDecimal("95"));
         } finally {
             executor.shutdownNow();
         }

@@ -7,7 +7,7 @@ import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.patio.dto.EntradaRequest;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -130,7 +130,7 @@ public class MovimentacaoService {
 
         BigDecimal valor;
         if (mov.getTipo() == TipoMovimentacao.MENSALISTA) {
-            valor = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            valor = BigDecimal.ZERO.setScale(MilionesimosConverter.ESCALA);
         } else {
             Tarifa t = mov.getTarifa();
             valor = CalculoTarifa.calcular(

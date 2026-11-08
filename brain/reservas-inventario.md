@@ -113,6 +113,7 @@ pedido.
 
 | Data | Ação |
 |---|---|
+| 2026-11-08 | V100 deixa o preço congelado da reserva somente em milionésimos, mantendo contagens de ingressos e a validade das reservas. |
 | 2026-07-30 | Implementa UC709 com hold atômico, expiração e liberação única. |
 | 2026-07-30 | Converte hold confirmado de reservado para vendido na transação do pedido. |
 | 2026-07-30 | Compensa cancelamento do pedido uma vez, inclusive sobre saldo vendido. |

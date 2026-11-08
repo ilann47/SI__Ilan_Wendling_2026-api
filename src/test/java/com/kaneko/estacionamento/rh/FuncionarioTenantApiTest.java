@@ -218,7 +218,7 @@ class FuncionarioTenantApiTest {
     private Long inserirCargoHistorico(String nome) {
         return jdbc.queryForObject("""
                 INSERT INTO cargo
-                    (nome, salario_base, requer_cnh, ativo, created_at, updated_at)
+                    (nome, salario_base_micros, requer_cnh, ativo, created_at, updated_at)
                 VALUES (?, 0, false, true, now(), now()) RETURNING id
                 """, Long.class, nome);
     }

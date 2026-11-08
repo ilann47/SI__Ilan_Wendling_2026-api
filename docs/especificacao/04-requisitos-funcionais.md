@@ -365,83 +365,99 @@ O sistema deve permitir gerar a conta a receber referente à mensalidade de um c
 
 ## 4.20 Registrar Compra / Nota de Entrada
 
-Processo de registro da compra de mercadorias, com atualização de estoque e geração do financeiro.
+Rastreabilidade: [UC401 e UC404](05-casos-de-uso/processos-fiscais.md). A compra é registrada pela Nota de Entrada, manualmente ou por XML, sem documento intermediário de pedido ou recebimento.
 
-### 4.20.1 Registrar Nota de Entrada
-O sistema deve permitir registrar uma nota de entrada informando **número**, **fornecedor** (obrigatórios), modelo, série, condição de pagamento, datas de emissão/chegada, tipo de frete (`CIF`/`FOB`/`SEM`) e os valores acessórios (frete, seguro, outras despesas, desconto). A nota deve conter um ou mais itens (produto, quantidade > 0, valor unitário, descontos e rateios). A situação inicial é `PENDENTE`. Não é permitido registrar a mesma nota (número + série + fornecedor) duas vezes (restrição `uq_nota_entrada`).
+### 4.20.1 Registrar e editar rascunho
 
-### 4.20.2 Confirmar Nota de Entrada
-O sistema deve permitir confirmar uma nota de entrada `PENDENTE`, alterando sua situação para `CONFIRMADA`. Na confirmação, o sistema deve **somar** as quantidades dos itens ao estoque dos produtos, recalcular o custo final (com rateios de frete/seguro/outras despesas) e gerar as parcelas de contas a pagar conforme a condição de pagamento (ver 4.22).
+Registrar fornecedor, número, série, modelo, emissão, chegada quando informada, local, condição de pagamento, frete, despesas e um ou mais itens. A chave normalizada é organização + fornecedor + número + série + modelo. A emissão não pode ser futura e a chegada não pode anteceder a emissão. O sistema herda referências ativas do fornecedor quando omitidas e permite substituí-las. O rascunho pode ser editado sob controle de versão, sem gerar lançamentos.
 
-### 4.20.3 Cancelar Nota de Entrada
-O sistema deve permitir cancelar uma nota de entrada, alterando a situação para `CANCELADA`. Quando a nota já estiver confirmada, o cancelamento deve estornar o estoque adicionado e cancelar as contas a pagar geradas.
+### 4.20.2 Conferir e confirmar
 
-### 4.20.4 Consultar Notas de Entrada
-O sistema deve permitir consultar e listar notas de entrada por fornecedor, período de emissão e situação, exibindo seus itens e valores totalizados.
+Apresentar totais, rateios, custo médio previsto e parcelas da revisão salva. Confirmar integralmente os itens da versão revisada, acrescentar estoque no local, calcular custo médio ponderado e gerar as contas a pagar previstas, na mesma transação. A importação XML exige conciliação e conferência integral da mercadoria antes da confirmação; não movimenta estoque durante a importação do arquivo.
+
+### 4.20.3 Cancelar ou reverter
+
+Permitir cancelar/excluir rascunho sem efeitos. Nota confirmada é imutável pelo cadastro comum. Permitir reversão interna autorizada, auditada e motivada somente sem baixa financeira e quando os movimentos ainda puderem ser compensados. Preservar documento, títulos e movimentos originais.
+
+### 4.20.4 Consultar
+
+Listar por número, fornecedor e situação. O detalhe apresenta composição, custos e, conforme permissões, estoque, parcelas e títulos de origem.
 
 ## 4.21 Registrar Venda / Nota de Saída
 
-Processo de registro da venda de produtos, com baixa de estoque e geração do financeiro.
+Rastreabilidade: [UC402 e UC404](05-casos-de-uso/processos-fiscais.md). Venda de mercadoria é registrada diretamente pela Nota de Saída.
 
-### 4.21.1 Registrar Nota de Saída
-O sistema deve permitir registrar uma nota de saída informando **número**, **cliente** (obrigatórios), modelo, série, condição de pagamento, datas, tipo de frete e valores acessórios. A nota deve conter um ou mais itens (produto, quantidade > 0, valor unitário, descontos). A situação inicial é `PENDENTE`. Não é permitido registrar a mesma nota (número + série + cliente) duas vezes (restrição `uq_nota_saida`).
+### 4.21.1 Registrar e editar rascunho
 
-### 4.21.2 Confirmar Nota de Saída
-O sistema deve permitir confirmar uma nota de saída `PENDENTE`, alterando sua situação para `CONFIRMADA`. Na confirmação, o sistema deve **subtrair** as quantidades dos itens do estoque dos produtos (validando saldo suficiente) e gerar as parcelas de contas a receber conforme a condição de pagamento (ver 4.23).
+Registrar cliente, número, série, modelo, local, datas e itens; calcular a composição e congelar as parcelas. A chave contextual normalizada é organização emitente + número + série + modelo. Trocar o cliente não permite reutilizar a chave. O rascunho não gera estoque ou títulos.
 
-### 4.21.3 Cancelar Nota de Saída
-O sistema deve permitir cancelar uma nota de saída, alterando a situação para `CANCELADA`. Quando a nota já estiver confirmada, o cancelamento deve estornar o estoque (devolução) e cancelar as contas a receber geradas.
+### 4.21.2 Confirmar
 
-### 4.21.4 Consultar Notas de Saída
-O sistema deve permitir consultar e listar notas de saída por cliente, período de emissão e situação, exibindo seus itens e valores totalizados.
+Validar versão e saldo do local, baixar o estoque, gravar o custo unitário vigente e gerar recebíveis pelas parcelas salvas na mesma transação. Uma falha não deixa confirmação, saldo ou título parcialmente aplicado.
 
-## 4.22 Emitir Nota de Serviço
+### 4.21.3 Cancelar ou reverter
 
-Processo de emissão da nota fiscal de serviço (NFS-e) do estacionamento, com cálculo de ISS, podendo originar-se de uma movimentação avulsa ou de uma mensalidade.
+Cancelar/excluir rascunho sem efeitos. A reversão da confirmada segue UC404, sem transmissão fiscal externa e sem estorno de recebimento.
+
+### 4.21.4 Consultar
+
+Listar por número e situação e abrir o detalhe. Exibir parcelas/contas e movimentos somente com as respectivas permissões de leitura.
+
+## 4.22 Registrar Nota de Serviço interna
+
+Processo interno de faturamento do serviço, com cálculo de ISS e possibilidade de vínculo com movimentação, mensalidade ou Ordem de Serviço, conforme a operação. Não transmite NFS-e ao município.
 
 ### 4.22.1 Emitir Nota de Serviço
 O sistema deve permitir emitir uma nota de serviço informando **cliente** (obrigatório), serviço, condição e forma de pagamento, valor do serviço, alíquota de ISS e desconto, com situação inicial `PENDENTE`. A nota pode estar vinculada a uma movimentação **ou** a um mensalista, nunca a ambos simultaneamente (restrição `ck_nota_servico_origem`). O número + série deve ser único (restrição `uq_nota_servico`). O sistema deve calcular o valor do ISS a partir da alíquota e validar a coerência fiscal (ISS ≤ valor do serviço, desconto ≤ valor do serviço, alíquota entre 0 e 100 — `ck_nota_servico_*`).
 
 ### 4.22.2 Confirmar/Emitir Nota de Serviço
-O sistema deve permitir efetivar a emissão de uma nota de serviço `PENDENTE`, alterando sua situação para `EMITIDA` e gerando, conforme a condição de pagamento, a conta a receber correspondente (ver 4.23).
+O sistema deve permitir efetivar a emissão interna de uma nota de serviço `PENDENTE`, alterando sua situação para `EMITIDA` e gerando as contas a receber aplicáveis (ver 4.24).
 
 ### 4.22.3 Cancelar Nota de Serviço
-O sistema deve permitir cancelar uma nota de serviço, alterando a situação para `CANCELADA` e cancelando as contas a receber geradas.
+O sistema deve permitir cancelar uma nota de serviço sem recebimento vinculado, alterando a situação para `CANCELADA` e cancelando os títulos correspondentes.
 
 ### 4.22.4 Consultar Notas de Serviço
 O sistema deve permitir consultar e listar notas de serviço por cliente, período de emissão e situação.
 
 ## 4.23 Gerenciar Contas a Pagar
 
-Processo de controle das obrigações financeiras da empresa, geradas a partir de notas de entrada ou lançadas manualmente.
+Rastreabilidade: [UC501](05-casos-de-uso/processos-financeiros.md).
 
-### 4.23.1 Gerar/Lançar Conta a Pagar
-O sistema deve gerar contas a pagar (parceladas) automaticamente na confirmação de notas de entrada, conforme a condição de pagamento, registrando fornecedor, valores, número da parcela, total de parcelas e data de vencimento (não anterior à emissão — `ck_conta_pagar_vencimento`). Não deve haver duas parcelas com o mesmo número para a mesma nota de entrada (restrição `uq_conta_pagar_parcela`).
+### 4.23.1 Gerar ou lançar
 
-### 4.23.2 Baixar (Pagar) Conta a Pagar
-O sistema deve permitir registrar o pagamento (total ou parcial) de uma conta a pagar, informando data de pagamento, valor pago, descontos, juros e multa, atualizando a situação para `PARCIAL` ou `PAGA`. O valor pago não pode exceder o valor total (`ck_conta_pagar_pago_teto`); quando `PAGA`, a data de pagamento é obrigatória (`ck_conta_pagar_baixa`).
+Gerar títulos com origem e número de parcela na confirmação da Entrada, a partir do cronograma salvo. Permitir lançamento manual nos termos do contrato financeiro, sem vínculo fiscal inventado.
 
-### 4.23.3 Cancelar Conta a Pagar
-O sistema deve permitir cancelar uma conta a pagar pendente (situação `CANCELADA`), em casos de erro ou estorno de nota.
+### 4.23.2 Registrar pagamento
 
-### 4.23.4 Consultar Contas a Pagar
-O sistema deve permitir consultar e listar contas a pagar por fornecedor, situação e período de vencimento, totalizando os valores em aberto.
+Receber valor e data opcional. Aceitar baixa parcial ou total até o saldo, registrar histórico e atualizar a situação. Repetir a mesma chave e os mesmos dados sem duplicar a baixa; rejeitar a chave se os dados divergirem. Não enviar pagamento ao banco.
+
+### 4.23.3 Cancelar ou editar
+
+Cancelar somente título sem baixa. Não editar diretamente parcelas fiscais. A edição de despesa avulsa pendente tem fluxo próprio.
+
+### 4.23.4 Consultar
+
+Listar, filtrar, apresentar resumo, vencimento, saldo, origem e histórico de baixas.
 
 ## 4.24 Gerenciar Contas a Receber
 
-Processo de controle dos créditos a receber, gerados a partir de notas de saída, notas de serviço ou mensalidades.
+Rastreabilidade: [UC502](05-casos-de-uso/processos-financeiros.md).
 
-### 4.24.1 Gerar/Lançar Conta a Receber
-O sistema deve gerar contas a receber (parceladas) automaticamente na confirmação de notas de saída/serviço e na geração de mensalidades, registrando cliente, origem (nota ou mensalista — nunca ambos, `ck_conta_receber_origem`), valores, parcela e data de vencimento. Não deve haver duas parcelas com o mesmo número para a mesma nota de saída (restrição `uq_conta_receber_parcela`).
+### 4.24.1 Gerar ou lançar
 
-### 4.24.2 Baixar (Receber) Conta a Receber
-O sistema deve permitir registrar o recebimento (total ou parcial) de uma conta a receber, informando data, valor recebido, descontos, juros e multa, atualizando a situação para `PARCIAL` ou `RECEBIDA`. O valor recebido não pode exceder o valor total (`ck_conta_receber_recebido_teto`); quando `RECEBIDA`, a data de recebimento é obrigatória (`ck_conta_receber_baixa`).
+Gerar títulos conforme a origem do lançamento (Nota de Saída, Nota de Serviço ou mensalidade), com possibilidade de lançamento manual. A Nota de Saída usa as parcelas salvas.
 
-### 4.24.3 Cancelar Conta a Receber
-O sistema deve permitir cancelar uma conta a receber pendente (situação `CANCELADA`).
+### 4.24.2 Registrar recebimento
 
-### 4.24.4 Consultar Contas a Receber
-O sistema deve permitir consultar e listar contas a receber por cliente, situação e período de vencimento, totalizando os valores em aberto.
+Receber valor e data opcional, sem ultrapassar o saldo. Atualizar para `PARCIAL` ou `RECEBIDA`, preservar o histórico e aplicar a mesma idempotência da baixa a pagar. Não executar cobrança bancária.
+
+### 4.24.3 Cancelar
+
+Permitir cancelar título sem baixa. Não existe edição direta no contrato atual.
+
+### 4.24.4 Consultar
+
+Listar, filtrar, apresentar resumo, vencimento, saldo, origem e histórico de baixas.
 
 ## 4.25 Lançar Despesa Avulsa
 
@@ -451,7 +467,7 @@ Processo de registro de despesas sem nota fiscal de mercadoria (ex.: aluguel, lu
 O sistema deve permitir lançar uma despesa avulsa informando **descrição**, **valor original**, **valor total** e **data de vencimento** (obrigatórios), além de fornecedor (opcional), forma de pagamento, dados de nota (número/modelo/série), parcelamento e observação, com situação inicial `PENDENTE`. Os valores devem ser não negativos e coerentes (valor total ≥ valor original − desconto — `ck_contas_pagar_avulsa_total_min`), e o vencimento não pode ser anterior à emissão.
 
 ### 4.25.2 Baixar (Pagar) Despesa Avulsa
-O sistema deve permitir registrar o pagamento (total ou parcial) de uma despesa avulsa, informando data de pagamento, valor pago, descontos, juros e multa, atualizando a situação para `PARCIAL` ou `PAGA`, respeitando o teto do valor pago e a obrigatoriedade da data de pagamento quando `PAGA`.
+O sistema deve registrar pagamento total ou parcial com valor e data opcional, sem ultrapassar o saldo. Na quitação, grava a data informada ou a data corrente. Desconto, juros e multa pertencem ao lançamento da despesa, não ao comando de baixa.
 
 ### 4.25.3 Cancelar Despesa Avulsa
 O sistema deve permitir cancelar uma despesa avulsa pendente (situação `CANCELADA`).

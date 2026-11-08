@@ -1,8 +1,11 @@
 package com.kaneko.estacionamento.estoque;
 
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -26,7 +29,8 @@ public class SaldoEstoque extends AuditableEntity {
     @Column(name = "local_estoque_id", nullable = false, updatable = false)
     private Long localEstoqueId;
 
-    @Column(nullable = false, precision = 15, scale = 3)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "quantidade_micros", nullable = false, precision = 18, scale = 0)
     private BigDecimal quantidade = BigDecimal.ZERO;
 
     @Version
@@ -34,7 +38,7 @@ public class SaldoEstoque extends AuditableEntity {
     private Long version;
 
     public BigDecimal aplicar(BigDecimal delta) {
-        BigDecimal posterior = quantidade.add(delta);
+        BigDecimal posterior = getQuantidade().add(delta);
         if (posterior.signum() < 0) {
             throw new ConflitoException("O movimento deixaria o saldo de estoque negativo.");
         }

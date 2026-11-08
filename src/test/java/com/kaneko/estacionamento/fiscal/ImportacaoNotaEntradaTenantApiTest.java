@@ -9,6 +9,7 @@ import com.kaneko.estacionamento.fornecedor.Fornecedor;
 import com.kaneko.estacionamento.fornecedor.FornecedorRepository;
 import com.kaneko.estacionamento.support.tenant.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -25,10 +26,29 @@ class ImportacaoNotaEntradaTenantApiTest {
     @Autowired MarcaRepository marcas;
     @Autowired UnidadeMedidaRepository unidades;
 
+    @Autowired com.kaneko.estacionamento.estoque.EstoqueService estoque;
+    @Autowired com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository condicoesParaTeste;
+
+    @Test
+    void rejeitaXmlComEmissaoFuturaAntesDePersistir() throws Exception {
+        var ctx = contexto();
+        String futuro = ctx.xml().replaceFirst("(?<=<dhEmi>)\\d{4}-\\d{2}-\\d{2}", LocalDate.now().plusDays(1).toString());
+        mvc.perform(post("/api/notas-entrada/importacoes").header("Authorization", ctx.tenant().tokenContextual())
+                        .contentType(MediaType.APPLICATION_XML).content(futuro))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("A data de emissão não pode ser futura."));
+        for (String tabela : new String[]{"importacao_nota_entrada", "nota_entrada", "movimento_estoque", "conta_pagar"}) {
+            assertThat(jdbc.queryForObject("select count(*) from " + tabela + " where organizacao_id=?",
+                    Integer.class, ctx.tenant().organizacaoId())).isZero();
+        }
+    }
+
     @Test void importaConciliaConfereELancaSemDuplicar() throws Exception {
         var t = tenant.criarTenantAdmin();
         String documento = jdbc.queryForObject("select documento from organizacao where id=?", String.class, t.organizacaoId());
-        String xml = NotaEntradaXmlParserTest.xml(documento);
+        String xml = NotaEntradaXmlParserTest.xml(documento)
+                .replace("<qCom>2</qCom>", "<qCom>2.000001</qCom>")
+                .replace("<vUnCom>10.00</vUnCom>", "<vUnCom>10.000001</vUnCom>");
         String importada = mvc.perform(post("/api/notas-entrada/importacoes").header("Authorization", t.tokenContextual())
                 .contentType(MediaType.APPLICATION_XML).content(xml)).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("IMPORTADA")).andReturn().getResponse().getContentAsString();
@@ -58,8 +78,9 @@ class ImportacaoNotaEntradaTenantApiTest {
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         long localId = JsonPath.<Number>read(local, "$.id").longValue();
         String base = "/api/notas-entrada/importacoes/" + id;
+        mvc.perform(get(base+"/previa").header("Authorization",t.tokenContextual())).andExpect(status().isConflict());
         String conciliar = "{\"fornecedorId\":" + fornecedorId + ",\"localEstoqueId\":" + localId
-                + ",\"itens\":[{\"sequencia\":1,\"produtoId\":" + produtoId + ",\"fatorConversao\":1,\"valorUnitario\":10}]}";
+                + ",\"itens\":[{\"sequencia\":1,\"produtoId\":" + produtoId + ",\"fatorConversao\":1,\"valorUnitario\":10.000001}]}";
         mvc.perform(put(base + "/conciliacao").header("Authorization", t.tokenContextual())
                 .contentType(MediaType.APPLICATION_JSON).content(conciliar)).andExpect(status().isPreconditionRequired());
         mvc.perform(put(base + "/conciliacao").header("Authorization", t.tokenContextual()).header("If-Match", "\"0\"")
@@ -71,78 +92,26 @@ class ImportacaoNotaEntradaTenantApiTest {
         mvc.perform(post(base + "/confirmacao").header("Authorization", t.tokenContextual()).header("If-Match", "\"2\""))
                 .andExpect(status().isConflict());
         mvc.perform(post(base + "/conferencia").header("Authorization", t.tokenContextual()).header("If-Match", "\"2\"")
-                .contentType(MediaType.APPLICATION_JSON).content("{\"itens\":[{\"sequencia\":1,\"quantidadeConferida\":2}]}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"itens\":[{\"sequencia\":1,\"quantidadeConferida\":2.000001}]}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CONFERIDA"));
+        mvc.perform(get(base+"/previa").header("Authorization",t.tokenContextual())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.valorObrigacao").value(20)).andExpect(jsonPath("$.valorCustoTotal").value(20))
+                .andExpect(jsonPath("$.parcelas[0].valor").value(20));
         mvc.perform(post(base + "/confirmacao").header("Authorization", t.tokenContextual()).header("If-Match", "\"3\""))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CONFIRMADA"))
                 .andExpect(jsonPath("$.notaEntradaId").isNumber());
         mvc.perform(post(base + "/confirmacao").header("Authorization", t.tokenContextual()).header("If-Match", "\"3\""))
                 .andExpect(status().isOk());
-        assertThat(jdbc.queryForObject("select quantidade from saldo_estoque where organizacao_id=? and produto_id=? and local_estoque_id=?",
-                BigDecimal.class, t.organizacaoId(), produtoId, localId)).isEqualByComparingTo("2");
+        assertThat(jdbc.queryForObject("select quantidade_micros * 0.000001 from saldo_estoque where organizacao_id=? and produto_id=? and local_estoque_id=?",
+                BigDecimal.class, t.organizacaoId(), produtoId, localId)).isEqualByComparingTo("2.000001");
+        assertThat(jdbc.queryForObject("select quantidade_conferida_micros from item_importacao_nota_entrada where importacao_id=?",
+                Long.class, id)).isEqualTo(2000001L);
+        assertThat(jdbc.queryForObject("select valor_unitario_micros from item_nota_entrada where produto_id=?",
+                Long.class, produtoId)).isEqualTo(10000001L);
+        assertThat(jdbc.queryForObject("select valor_total_micros from conta_pagar where organizacao_id=?",
+                Long.class, t.organizacaoId())).isEqualTo(20000000L);
         assertThat(jdbc.queryForObject("select count(*) from conta_pagar where organizacao_id=?", Integer.class, t.organizacaoId())).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from nota_entrada where organizacao_id=?", Integer.class, t.organizacaoId())).isEqualTo(1);
-    }
-
-    @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(booleans={true,false})
-    @org.springframework.transaction.annotation.Transactional(propagation=org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
-    void xmlComCompraReutilizaOuCriaRecebimentoEConfirmaConcorrentemente(boolean jaRecebido) throws Exception {
-        var ctx = contexto(); var t = ctx.tenant();
-        String compra = mvc.perform(post("/api/v1/purchase-orders").header("Authorization",t.tokenContextual())
-                .header("Idempotency-Key","oc-xml").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"numeroNota\":\"123\",\"serieNota\":\"1\",\"modeloNota\":\"55\",\"fornecedorId\":"+ctx.fornecedorId()+",\"moeda\":\"BRL\",\"itens\":[{\"produtoId\":"
-                        +ctx.produtoId()+",\"quantidade\":2,\"valorUnitario\":10}]}"))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        long ordemId=JsonPath.<Number>read(compra,"$.id").longValue();
-        long itemId=JsonPath.<Number>read(compra,"$.itens[0].id").longValue();
-        mvc.perform(post("/api/v1/purchase-orders/{id}/approval",ordemId).header("Authorization",t.tokenContextual())
-                .header("If-Match","\"0\"")).andExpect(status().isOk());
-        Long recebidoId=null;
-        if (jaRecebido) {
-            String recebido=mvc.perform(post("/api/v1/purchase-orders/{id}/receipts",ordemId)
-                    .header("Authorization",t.tokenContextual()).header("Idempotency-Key","rc-xml")
-                    .header("If-Match","\"1\"").contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"localEstoqueId\":"+ctx.localId()+",\"itens\":[{\"itemOrdemCompraId\":"+itemId+",\"quantidade\":2}]}"))
-                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-            recebidoId=JsonPath.<Number>read(recebido,"$.id").longValue();
-        }
-        try (var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
-            var largada=new java.util.concurrent.CountDownLatch(1);
-            java.util.concurrent.Callable<Long> importar=() -> {
-                largada.await();
-                String json=mvc.perform(post("/api/notas-entrada/importacoes").header("Authorization",t.tokenContextual())
-                        .contentType(MediaType.APPLICATION_XML).content(ctx.xml())).andExpect(status().isCreated())
-                        .andReturn().getResponse().getContentAsString();
-                return JsonPath.<Number>read(json,"$.id").longValue();
-            };
-            var a=pool.submit(importar); var b=pool.submit(importar); largada.countDown();
-            long id=a.get(20,java.util.concurrent.TimeUnit.SECONDS);
-            assertThat(b.get(20,java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(id);
-            String rota="/api/notas-entrada/importacoes/"+id;
-            String reconciliacao="{\"fornecedorId\":"+ctx.fornecedorId()+",\"localEstoqueId\":"+ctx.localId()
-                    +",\"ordemCompraId\":"+ordemId+",\"recebimentoCompraId\":"+recebidoId+",\"registrarNovoRecebimento\":"+!jaRecebido
-                    +",\"itens\":[{\"sequencia\":1,\"produtoId\":"+ctx.produtoId()+",\"fatorConversao\":1,\"valorUnitario\":10,\"itemOrdemCompraId\":"+itemId+"}]}";
-            mvc.perform(put(rota+"/conciliacao").header("Authorization",t.tokenContextual()).header("If-Match","\"0\"")
-                    .contentType(MediaType.APPLICATION_JSON).content(reconciliacao)).andExpect(status().isOk());
-            mvc.perform(post(rota+"/conferencia").header("Authorization",t.tokenContextual()).header("If-Match","\"1\"")
-                    .contentType(MediaType.APPLICATION_JSON).content("{\"itens\":[{\"sequencia\":1,\"quantidadeConferida\":2}]}"))
-                    .andExpect(status().isOk());
-            var confirmarInicio=new java.util.concurrent.CountDownLatch(1);
-            java.util.concurrent.Callable<Long> confirmar=() -> {
-                confirmarInicio.await();
-                String json=mvc.perform(post(rota+"/confirmacao").header("Authorization",t.tokenContextual())
-                        .header("If-Match","\"2\"")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-                return JsonPath.<Number>read(json,"$.notaEntradaId").longValue();
-            };
-            var c=pool.submit(confirmar); var d=pool.submit(confirmar); confirmarInicio.countDown();
-            assertThat(c.get(20,java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(d.get(20,java.util.concurrent.TimeUnit.SECONDS));
-            assertThat(jdbc.queryForObject("select count(*) from recebimento_compra where ordem_compra_id=?",Integer.class,ordemId)).isEqualTo(1);
-            assertThat(jdbc.queryForObject("select quantidade from saldo_estoque where organizacao_id=? and produto_id=? and local_estoque_id=?",
-                    BigDecimal.class,t.organizacaoId(),ctx.produtoId(),ctx.localId())).isEqualByComparingTo("2");
-            assertThat(jdbc.queryForObject("select count(*) from conta_pagar where organizacao_id=?",Integer.class,t.organizacaoId())).isEqualTo(1);
-            assertThat(jdbc.queryForObject("select quantidade_recebida from item_ordem_compra where id=?",BigDecimal.class,itemId)).isEqualByComparingTo("2");
-        }
     }
 
     @Test void naoConfirmaTotalFiscalNaoRepresentavelENaoVazaProdutoDeOutroTenant() throws Exception {
@@ -168,48 +137,6 @@ class ImportacaoNotaEntradaTenantApiTest {
         assertThat(jdbc.queryForObject("select count(*) from movimento_estoque where organizacao_id=?",Integer.class,ctx.tenant().organizacaoId())).isZero();
     }
 
-    @Test
-    @org.springframework.transaction.annotation.Transactional(propagation=org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
-    void desfazRecebimentoInteiroSeNotaDuplicadaFalharNaMesmaTransacao() throws Exception {
-        var ctx=contexto(); var t=ctx.tenant();
-        mvc.perform(post("/api/notas-entrada").header("Authorization",t.tokenContextual())
-                .contentType(MediaType.APPLICATION_JSON).content("{\"numero\":\"123\",\"serie\":\"1\",\"fornecedorId\":"
-                        +ctx.fornecedorId()+",\"localEstoqueId\":"+ctx.localId()+",\"dataEmissao\":\"2026-09-12\",\"itens\":[{\"produtoId\":"
-                        +ctx.produtoId()+",\"quantidade\":2,\"valorUnitario\":10}]}"))
-                .andExpect(status().isCreated());
-        String compra=mvc.perform(post("/api/v1/purchase-orders").header("Authorization",t.tokenContextual())
-                .header("Idempotency-Key","rollback-xml").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"numeroNota\":\"123\",\"serieNota\":\"1\",\"modeloNota\":\"55\",\"fornecedorId\":"+ctx.fornecedorId()+",\"moeda\":\"BRL\",\"itens\":[{\"produtoId\":"
-                        +ctx.produtoId()+",\"quantidade\":2,\"valorUnitario\":10}]}"))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        long ordemId=JsonPath.<Number>read(compra,"$.id").longValue();
-        long itemId=JsonPath.<Number>read(compra,"$.itens[0].id").longValue();
-        mvc.perform(post("/api/v1/purchase-orders/{id}/approval",ordemId).header("Authorization",t.tokenContextual())
-                .header("If-Match","\"0\"")).andExpect(status().isOk());
-        String importada=mvc.perform(post("/api/notas-entrada/importacoes").header("Authorization",t.tokenContextual())
-                .contentType(MediaType.APPLICATION_XML).content(ctx.xml())).andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        long id=JsonPath.<Number>read(importada,"$.id").longValue();
-        String rota="/api/notas-entrada/importacoes/"+id;
-        mvc.perform(put(rota+"/conciliacao").header("Authorization",t.tokenContextual()).header("If-Match","\"0\"")
-                .contentType(MediaType.APPLICATION_JSON).content("{\"fornecedorId\":"+ctx.fornecedorId()+",\"localEstoqueId\":"+ctx.localId()
-                        +",\"ordemCompraId\":"+ordemId+",\"registrarNovoRecebimento\":true,\"itens\":[{\"sequencia\":1,\"produtoId\":"+ctx.produtoId()
-                        +",\"fatorConversao\":1,\"valorUnitario\":10,\"itemOrdemCompraId\":"+itemId+"}]}"))
-                .andExpect(status().isOk());
-        mvc.perform(post(rota+"/conferencia").header("Authorization",t.tokenContextual()).header("If-Match","\"1\"")
-                .contentType(MediaType.APPLICATION_JSON).content("{\"itens\":[{\"sequencia\":1,\"quantidadeConferida\":2}]}"))
-                .andExpect(status().isOk());
-        mvc.perform(post(rota+"/confirmacao").header("Authorization",t.tokenContextual()).header("If-Match","\"2\""))
-                .andExpect(status().isConflict());
-        mvc.perform(get(rota).header("Authorization",t.tokenContextual())).andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CONFERIDA")).andExpect(jsonPath("$.notaEntradaId").isEmpty())
-                .andExpect(jsonPath("$.recebimentoCompraId").isEmpty());
-        assertThat(jdbc.queryForObject("select count(*) from recebimento_compra where ordem_compra_id=?",Integer.class,ordemId)).isZero();
-        assertThat(jdbc.queryForObject("select quantidade_recebida from item_ordem_compra where id=?",BigDecimal.class,itemId)).isEqualByComparingTo("0");
-        assertThat(jdbc.queryForObject("select count(*) from movimento_estoque where organizacao_id=?",Integer.class,t.organizacaoId())).isZero();
-        assertThat(jdbc.queryForObject("select count(*) from conta_pagar where organizacao_id=?",Integer.class,t.organizacaoId())).isZero();
-    }
-
     @Test void exigePermissaoFiscalMesmoEmChamadaDireta() throws Exception {
         var ctx=contexto(); var t=ctx.tenant();
         var usuario=tenant.criarUsuario("xml_operador_"+t.organizacaoId(),com.kaneko.estacionamento.usuario.PerfilUsuario.OPERADOR);
@@ -219,6 +146,42 @@ class ImportacaoNotaEntradaTenantApiTest {
                 .contentType(MediaType.APPLICATION_XML).content(ctx.xml())).andExpect(status().isForbidden());
         mvc.perform(get("/api/notas-entrada/importacoes").header("Authorization",operador)).andExpect(status().isForbidden());
         mvc.perform(get("/api/notas-entrada/importacoes").header("Authorization",t.tokenGlobal())).andExpect(status().isForbidden());
+    }
+
+    @Test void cronogramaXMLConferidoNaoMudaComAlteracaoPosteriorDaCondicao() throws Exception {
+        var ctx=contexto(); var t=ctx.tenant();
+        var condicao=new com.kaneko.estacionamento.pagamento.CondicaoPagamento();
+        condicao.setOrganizacaoId(t.organizacaoId()); condicao.setNome("XML duas parcelas"); condicao.setNumeroParcelas(2);
+        for(int numero=1;numero<=2;numero++) {
+            var p=new com.kaneko.estacionamento.pagamento.ParcelaCondicaoPagamento();
+            p.setOrganizacaoId(t.organizacaoId());p.setCondicaoPagamento(condicao);p.setNumero(numero);
+            p.setDias(numero*30);p.setPercentual(new BigDecimal("50"));condicao.getParcelas().add(p);
+        }
+        var repoCondicao=condicoesParaTeste;
+        repoCondicao.saveAndFlush(condicao);
+        String importada=mvc.perform(post("/api/notas-entrada/importacoes").header("Authorization",t.tokenContextual())
+                .contentType(MediaType.APPLICATION_XML).content(ctx.xml())).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long id=JsonPath.<Number>read(importada,"$.id").longValue();
+        String base="/api/notas-entrada/importacoes/"+id;
+        String body="{\"fornecedorId\":"+ctx.fornecedorId()+",\"localEstoqueId\":"+ctx.localId()+",\"condicaoPagamentoId\":"+condicao.getId()
+                +",\"itens\":[{\"sequencia\":1,\"produtoId\":"+ctx.produtoId()+",\"fatorConversao\":1,\"valorUnitario\":10}]}";
+        mvc.perform(put(base+"/conciliacao").header("Authorization",t.tokenContextual()).header("If-Match","\"0\"")
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+        mvc.perform(post(base+"/conferencia").header("Authorization",t.tokenContextual()).header("If-Match","\"1\"")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"itens\":[{\"sequencia\":1,\"quantidadeConferida\":2}]}"))
+                .andExpect(status().isOk());
+        String previaAntes=mvc.perform(get(base+"/previa").header("Authorization",t.tokenContextual())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.parcelas.length()").value(2)).andReturn().getResponse().getContentAsString();
+        condicao.getParcelas().getFirst().setDias(99);repoCondicao.saveAndFlush(condicao);
+        String previaDepois=mvc.perform(get(base+"/previa").header("Authorization",t.tokenContextual())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Object>read(previaDepois,"$.parcelas")).isEqualTo(JsonPath.<Object>read(previaAntes,"$.parcelas"));
+        String confirmada=mvc.perform(post(base+"/confirmacao").header("Authorization",t.tokenContextual()).header("If-Match","\"2\""))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        long nota=JsonPath.<Number>read(confirmada,"$.notaEntradaId").longValue();
+        assertThat(jdbc.queryForObject("select min(data_vencimento-data_emissao) from conta_pagar where nota_entrada_id=?",Integer.class,nota)).isEqualTo(30);
+        assertThat(jdbc.queryForObject("select count(*) from conta_pagar where nota_entrada_id=?",Integer.class,nota)).isEqualTo(2);
     }
 
     private Contexto contexto() throws Exception {

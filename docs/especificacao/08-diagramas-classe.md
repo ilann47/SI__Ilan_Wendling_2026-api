@@ -2,7 +2,7 @@
 
 # 8. Diagramas de Classe (UML)
 
-Esta seção apresenta o modelo de classes do sistema **Estacionamento Kaneko**, derivado diretamente do esquema relacional (`database/schema.sql`, 34 tabelas), que originará as entidades JPA da camada de domínio. Cada tabela é representada por uma classe em notação UML, com atributos tipados no estilo Java/JPA (`Long`, `String`, `BigDecimal`, `Integer`, `LocalDate`, `LocalDateTime`, `Boolean`) e enumerações modeladas como classes `<<enumeration>>`.
+As seções 8.1 a 8.10 preservam a representação histórica de classes do **Estacionamento Kaneko**, derivada de `database/schema.sql` (34 tabelas), com atributos tipados no estilo Java/JPA e enumerações modeladas como classes `<<enumeration>>`. A seção **8.10.1** apresenta o recorte vigente das notas de mercadoria, estoque e contas multiempresa, em correspondência com o [[03-der]].
 
 As associações refletem as chaves estrangeiras do banco, com rótulos de cardinalidade. Adotam-se as convenções:
 
@@ -14,7 +14,7 @@ Para legibilidade, os mapeamentos `LocalDateTime criadoEm` / `atualizadoEm` (col
 
 ---
 
-> 🖼️ **Diagrama completo (todos os módulos, alta resolução):** [`diagramas/completo.png`](diagramas/completo.png) — 14684×7854 px.
+> 🖼️ **Diagrama completo do modelo histórico (alta resolução):** [`diagramas/completo.png`](diagramas/completo.png) — 14684×7854 px. Os PNGs por módulo também são históricos.
 
 ## 8.1 Módulo Geografia
 
@@ -748,6 +748,142 @@ Observa-se que `VeiculoFrota` é uma classe **distinta** de `Veiculo` (Seção 8
 - **Composição:** itens de nota (`item_nota_entrada`, `item_nota_saida`) e contatos de fornecedor (`fornecedor_email`, `fornecedor_telefone`) têm `ON DELETE CASCADE`, justificando a composição UML (`*--`) e `cascade = ALL, orphanRemoval = true`.
 - **Regras de coerência:** restrições como "no máximo 1 contrato ATIVO por veículo", "no máximo 1 movimentação ABERTA por veículo" e a exclusividade de origem em `nota_servico` / `conta_receber` são invariantes de domínio, validadas na camada de serviço além dos índices parciais e `CHECK` do banco.
 
+### 8.10.1 Recorte vigente — agregados e efeitos de notas de mercadoria
+
+Itens e parcelas de conferência são componentes dos agregados fiscais. Os títulos, as baixas financeiras e o razão têm persistência própria: sua existência não se confunde com o rascunho ou com a visualização do documento.
+
+```mermaid
+classDiagram
+    class NotaEntrada {
+        +Long id
+        +Long organizacaoId
+        +Long version
+        +String numero
+        +String serie
+        +String modelo
+        +boolean cronogramaDefinido
+        +BigDecimal valorTotal
+        +SituacaoNota situacao
+        +OffsetDateTime revertidaEm
+        +String motivoReversao
+    }
+    class NotaSaida {
+        +Long id
+        +Long organizacaoId
+        +Long version
+        +String numero
+        +String serie
+        +String modelo
+        +boolean cronogramaDefinido
+        +BigDecimal valorTotal
+        +SituacaoNota situacao
+        +OffsetDateTime revertidaEm
+        +String motivoReversao
+    }
+    class ItemNotaEntrada {
+        +Integer sequencia
+        +BigDecimal quantidade
+        +BigDecimal custoTotal
+        +BigDecimal custoMedioAnterior
+        +BigDecimal custoMedioPosterior
+    }
+    class ItemNotaSaida {
+        +Integer sequencia
+        +BigDecimal quantidade
+        +BigDecimal valorDesconto
+        +BigDecimal custoPrecoFinal
+    }
+    class ParcelaNotaEntrada {
+        +int numeroParcela
+        +BigDecimal valor
+        +LocalDate dataVencimento
+        +String formaPagamentoNome
+    }
+    class ParcelaNotaSaida {
+        +int numeroParcela
+        +BigDecimal valor
+        +LocalDate dataVencimento
+        +String formaPagamentoNome
+    }
+    class ContaPagar {
+        +Integer numeroParcela
+        +BigDecimal valorOriginal
+        +BigDecimal valorPago
+    }
+    class ContaReceber {
+        +Integer numeroParcela
+        +BigDecimal valorOriginal
+        +BigDecimal valorRecebido
+    }
+    class BaixaFinanceira {
+        +Long contaPagarId
+        +Long contaReceberId
+        +BigDecimal valor
+        +LocalDate data
+        +String chave
+    }
+    class SaldoEstoque {
+        +Long organizacaoId
+        +Long produtoId
+        +Long localEstoqueId
+        +BigDecimal quantidade
+    }
+    class MovimentoEstoque {
+        +Long saldoEstoqueId
+        +TipoMovimentoEstoque tipo
+        +BigDecimal delta
+        +BigDecimal saldoAnterior
+        +BigDecimal saldoPosterior
+        +BigDecimal saldoTotalAnterior
+        +BigDecimal saldoTotalPosterior
+        +BigDecimal custoUnitario
+        +BigDecimal custoMedioAnterior
+        +BigDecimal custoMedioPosterior
+        +String origemTipo
+        +String origemChave
+        +Long compensadoId
+    }
+    class ReversaoNotaService {
+        +entrada(org, ator, id, versao, motivo)
+        +saida(org, ator, id, versao, motivo)
+    }
+    NotaEntrada "1" *-- "1..*" ItemNotaEntrada : contem
+    NotaSaida "1" *-- "1..*" ItemNotaSaida : contem
+    NotaEntrada "1" *-- "0..*" ParcelaNotaEntrada : congela
+    NotaSaida "1" *-- "0..*" ParcelaNotaSaida : congela se avulsa
+    NotaEntrada "0..*" --> "1" Fornecedor : emitente
+    NotaSaida "0..*" --> "1" Cliente : destinatario
+    NotaEntrada "0..*" --> "1" LocalEstoque : entrada fisica
+    NotaSaida "0..*" --> "1" LocalEstoque : saida fisica
+    ItemNotaEntrada "0..*" --> "1" Produto : referencia
+    ItemNotaSaida "0..*" --> "1" Produto : referencia
+    ParcelaNotaEntrada "0..*" --> "0..1" FormaPagamento : referencia
+    ParcelaNotaSaida "0..*" --> "0..1" FormaPagamento : referencia
+    ContaPagar "0..*" --> "0..1" NotaEntrada : origem fiscal
+    ContaReceber "0..*" --> "0..1" NotaSaida : origem avulsa
+    BaixaFinanceira ..> ContaPagar : contaPagarId
+    BaixaFinanceira ..> ContaReceber : contaReceberId
+    SaldoEstoque ..> LocalEstoque : localEstoqueId
+    MovimentoEstoque ..> SaldoEstoque : saldoEstoqueId
+    MovimentoEstoque ..> MovimentoEstoque : compensadoId
+    MovimentoEstoque ..> NotaEntrada : origem logica
+    MovimentoEstoque ..> NotaSaida : origem logica
+    ReversaoNotaService ..> NotaEntrada : reverte entrada
+    ReversaoNotaService ..> NotaSaida : reverte saida avulsa
+    ReversaoNotaService ..> EstoqueService : compensa no razao
+    ReversaoNotaService ..> ContaPagar : cancela sem baixa
+    ReversaoNotaService ..> ContaReceber : cancela sem baixa
+```
+
+As multiplicidades de local e item representam as regras da nota no tenant, não uma obrigação de preenchimento dos registros históricos sem organização. Relações por `contaPagarId`, `contaReceberId`, `localEstoqueId`, `saldoEstoqueId` e `compensadoId` são referências escalares nas classes e possuem FKs no banco. Relações rotuladas **origem lógica** são resolvidas pelo serviço a partir de tipo e chave do movimento.
+
+| Processo | Coordenação e efeito |
+|---|---|
+| Entrada | `NotaEntradaService` valida a emissão não futura no lançamento, na conferência e na confirmação; a importação XML usa a mesma regra. Calcula a conferência e salva parcelas previstas. Ao confirmar, registra recebimento por item, atualiza o custo médio ponderado e cria os títulos a pagar, em uma transação. |
+| Saída avulsa | `NotaSaidaService` recalcula descontos e despesas, congela as parcelas no rascunho e exige a revisão vigente na confirmação contextual. O `EstoqueService` lê o custo médio sob lock, registra a baixa e devolve o custo usado para o item. O financeiro usa o cronograma salvo para gerar os títulos a receber. |
+| Reversão | `ReversaoNotaService` aceita Entrada ou Saída avulsa confirmada com autorização e versão vigentes. Rejeita efeitos financeiros já baixados ou histórico físico que não possa ser compensado; mantém os movimentos originais, cria compensações e cancela os títulos elegíveis. O resultado é interno, sem cancelamento fiscal externo. |
+| Baixa financeira | `ContaPagarService` e `ContaReceberService` validam o saldo sob lock e usam `BaixaFinanceiraService` para registrar histórico e idempotência. A resposta com a contraparte e a origem é montada dentro da transação. |
+
 ## 8.11 Módulos relacionados
 
 [[03-der]] · [[07-dicionario-de-dados]] · [[04-requisitos-funcionais]] · [[02-analise-negocio]]
@@ -759,3 +895,4 @@ Observa-se que `VeiculoFrota` é uma classe **distinta** de `Veiculo` (Seção 8
 | 2026-06-15 | Criação da Seção 8 — Diagramas de Classe (UML) em Mermaid, 8 diagramas por módulo aterrados nas 31 tabelas de `database/schema.sql`. |
 | 2026-07-03 | Inclusão da Seção 8.9 — Módulo de Logística (`Transportadora`, `VeiculoFrota`, `TransportadoraVeiculoFrota`) e da associação `Fornecedor → Transportadora`. |
 | 2026-07-06 | Renderização dos 9 diagramas por módulo + 1 diagrama completo em PNG de alta resolução (`diagramas/`), com links a partir de cada bloco Mermaid. |
+| 2026-11-05 | Acrescenta o UML vigente de agregados fiscais, cronogramas, baixas financeiras, razão e reversão interna; identifica os PNGs como históricos. |

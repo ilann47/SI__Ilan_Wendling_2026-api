@@ -4,7 +4,9 @@
 
 ## Status
 
-Aceita e implementada em 2026-08-14 pela migration V64.
+Histórica. Implementada em 2026-08-14 pela migration V64, substituída em
+2026-11-05 pelo lançamento direto de mercadorias na Nota de Saída avulsa.
+A V82 também removeu o esquema do módulo. Este ADR é histórico.
 
 ## Contexto
 

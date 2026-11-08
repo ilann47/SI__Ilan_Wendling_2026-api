@@ -1,44 +1,40 @@
 > Links: [[core]] · [[clientes]] · [[conveniencia]] · [[estoque]] · [[fiscal-financeiro]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
 
-# Vendas Administrativas
+# Vendas Administrativas — histórico
+
+**Encerrado pela V82.** A interface, a API, o código operacional e o esquema
+foram removidos. As seções abaixo registram a fase intermediária anterior à V82;
+não descrevem o contrato atual. Para mercadorias, use [[fiscal-financeiro]].
+O Flyway não reescreve as migrações históricas. A V82 remove tabelas, vínculos
+e permissões exclusivos e não apaga o razão nem os títulos de outros fluxos.
 
 ## Objetivo
 
-Registrar vendas fora do PDV com baixa física e geração de contas a receber,
-mantendo correlação opcional com a Nota de Saída.
+Preservar os vínculos de estoque, contas e notas do antigo Pedido de Venda.
+Novas vendas de mercadoria são lançadas diretamente pela Nota de Saída.
 
 ## Contexto
 
-A V64 implementa a Onda 5 para mercadorias. A venda nasce em `RASCUNHO` e pode
-ser alterada, confirmada ou cancelada. `CONFIRMADA` e `CANCELADA` são terminais.
+A V64 registrava pedidos em `RASCUNHO`, `CONFIRMADA` ou `CANCELADA`. Esses
+estados ficam no histórico; não há novos pedidos, confirmações ou cancelamentos.
 
 ## Fluxo (camadas da arquitetura)
 
-O controller exige JWT contextual, `sales:read/manage`, idempotência e
-`If-Match`. O service valida Cliente, Local e Produtos do tenant. A confirmação
-serializa o agregado, baixa o razão, cria as parcelas a receber, audita e publica
-outbox na mesma transação. Nota de Saída vinculada apenas documenta a venda.
+Contas a receber e razão exibem a origem histórica sem abrir o pedido.
+Notas já vinculadas mantêm o vínculo. Confirmar um rascunho fiscal legado
+apenas documenta a baixa e os títulos que já existiam na venda.
 
 ## Endpoints (se houver)
 
-- `GET/POST /api/v1/administrative-sales`
-- `GET/PUT /api/v1/administrative-sales/{id}`
-- `POST /api/v1/administrative-sales/{id}/confirmation`
-- `POST /api/v1/administrative-sales/{id}/cancellation`
-- `GET /api/v1/administrative-sales/{id}/documents`: nota, recebíveis e movimentos, com `null` nas seções sem permissão de leitura do respectivo módulo.
-- `POST /api/v1/administrative-sales/{id}/outbound-note`: prepara nota `PENDENTE` a partir da venda confirmada. Número obrigatório; modelo, série e datas opcionais. `Idempotency-Key` obrigatório; exige `sales:read` e `fiscal:manage`.
-
-A listagem aceita `numero` (trecho literal, sem diferenciar maiúsculas e
-minúsculas, removendo espaços das extremidades) e `status` (`RASCUNHO`,
-`CONFIRMADA` ou `CANCELADA`). Os filtros e a organização são aplicados no
-PostgreSQL antes de `page`, `size` e `sort`; `totalElements` representa todo o
-resultado filtrado, inclusive em página vazia. `%` e `_` são caracteres literais,
-não curingas. Status desconhecido retorna 400.
+Não há mais API pública de Pedido de Venda: `/api/v1/administrative-sales`
+e subrotas foram retiradas do roteamento e do OpenAPI. Para novas operações
+use `/api/notas-saida`; os efeitos anteriores seguem consultáveis pelos
+respectivos módulos, conforme RBAC.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
-`VendaAdministrativa`, `ItemVendaAdministrativa`, vínculo opcional em
-`NotaSaida` e origem em `ContaReceber`.
+`VendaAdministrativa`, `ItemVendaAdministrativa`, vínculo preexistente em
+`NotaSaida` e origem em `ContaReceber`. Sem alteração nas tabelas ou nos dados.
 
 ## Integrações externas (se houver)
 
@@ -46,33 +42,25 @@ Nenhuma. A Nota de Saída é documento interno; transmissão fiscal permanece fo
 
 ## Tratamento de Erros
 
-Contexto/permissão `401/403`; cross-tenant `404`; versão `428/412`; estoque,
-duplicidade ou transição inválida `409`.
+A rota antiga não existe. Com autenticação válida, a API responde `404`.
+Criar Nota de Saída com `vendaAdministrativaId` responde `409`.
 
 ## Testes (curl ou equivalente)
 
-Há cobertura de isolamento, confirmação, estoque, recebível, ETag e Nota de
-Saída sem efeitos duplicados, além de seed e V1→V64.
-
-`VendaAdministrativaConsultaTest` cobre normalização, total e ordenação da
-consulta com filtros, preservando a assinatura `listar(organizacaoId, pageable)`.
-`ConsultasComerciaisTenantApiTest` exercita os filtros pela API com banco real,
-paginação, tenant, total, caracteres literais e compatibilidade sem filtros.
-`VendaFluxoConcorrenciaTenantApiTest` verifica confirmação simultânea da mesma
-versão, geração concorrente com chaves iguais/diferentes e RBAC de cada seção de
-documentos, com contagens reais de nota, títulos e razão de estoque.
+As regressões cobrem remoção das rotas, Nota de Saída avulsa e
+preservação dos efeitos de registros legados sem duplicação.
 
 ## Decisões Técnicas
 
-- A venda é a origem comercial, física e financeira.
-- A Nota de Saída vinculada é documental e não repete estoque/recebível.
-- Confirmação é atômica; saldo insuficiente reverte toda a operação.
-- ETag deriva de `@Version`; números são únicos por organização.
-- Cliente, local, itens, descontos e condição de pagamento da nota vinculada são copiados no servidor. A nova operação não permite sobrescrever os dados comerciais da venda.
-- Geração bloqueia a venda e usa idempotência persistida; repetição com mesmo corpo retorna a nota existente. Corpo divergente ou segunda intenção sobre venda já documentada retorna 409. A unicidade V64 permanece a última proteção no banco.
-- Listagem mantém paginação de IDs antes de carregar os relacionamentos com
-  `EntityGraph`, preserva a ordem solicitada e o total filtrado. O overload sem
-  filtros continua disponível aos consumidores legados.
+- O Pedido de Venda e a geração de notas a partir dele foram descontinuados.
+- A Nota de Saída já vinculada é documental e não repete estoque/recebível.
+  O detalhe da nota consulta movimentos e contas originais da venda conforme
+  RBAC; na confirmação documental, o custo é lido da baixa original, não
+  recalculado. A reversão fiscal V81 não reverte uma venda vinculada.
+- A edição de rascunho fiscal legado não pode mudar a venda original nem
+  sobrescrever os dados comerciais registrados.
+- Baixas de venda históricas não são compensadas isoladamente no razão.
+- Pedidos de eventos, ordens de serviço e baixas de títulos não são removidos.
 
 ## Módulos relacionados
 
@@ -83,6 +71,8 @@ documentos, com contagens reais de nota, títulos e razão de estoque.
 
 | Data | Ação |
 |---|---|
+| 2026-11-05 | Retira Pedido de Venda da interface/API e preserva somente vínculos e efeitos históricos; nova venda parte da Nota de Saída avulsa. |
+| 2026-11-05 | V80 reaproveita custo, razão e títulos da venda na nota vinculada sem repetir efeitos; V81 limita reversão à saída avulsa. |
 | 2026-09-12 | Conecta geração idempotente de nota, documentos, contas e movimentos ao pedido; frontend mantém rota/entidade e usa o rótulo Pedidos de venda. |
 | 2026-09-12 | Adiciona filtros reais de número/situação antes da paginação e testes dedicados de consulta, concorrência de confirmação/nota e seções documentais com RBAC. |
 | 2026-08-14 | V64 implementa Venda Administrativa e integração fiscal/financeira. |

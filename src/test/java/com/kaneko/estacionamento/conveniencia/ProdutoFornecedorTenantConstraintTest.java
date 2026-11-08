@@ -115,7 +115,7 @@ class ProdutoFornecedorTenantConstraintTest {
     private Long inserirFornecedor(Long org, String sufixo) {
         return jdbc.queryForObject("""
                 INSERT INTO fornecedor
-                    (organizacao_id,nome,tipo,documento,limite_credito,ativo,
+                    (organizacao_id,nome,tipo,documento,limite_credito_micros,ativo,
                      created_at,updated_at)
                 VALUES (?,'Fornecedor PFC ' || ?,'JURIDICA',?,0,true,now(),now())
                 RETURNING id

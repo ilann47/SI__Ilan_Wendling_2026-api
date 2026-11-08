@@ -1,8 +1,6 @@
 package com.kaneko.estacionamento.relatorio;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
-import com.kaneko.estacionamento.conveniencia.Produto;
-import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.financeiro.ContaPagar;
 import com.kaneko.estacionamento.financeiro.ContaPagarAvulsa;
 import com.kaneko.estacionamento.financeiro.ContaPagarAvulsaRepository;
@@ -63,7 +61,6 @@ public class RelatorioService {
     private final ContaReceberRepository contaReceberRepository;
     private final ContaPagarRepository contaPagarRepository;
     private final ContaPagarAvulsaRepository contaPagarAvulsaRepository;
-    private final ProdutoRepository produtoRepository;
     private final MensalistaRepository mensalistaRepository;
     private final SaldoEstoqueRepository saldoEstoqueRepository;
 
@@ -73,7 +70,6 @@ public class RelatorioService {
                             ContaReceberRepository contaReceberRepository,
                             ContaPagarRepository contaPagarRepository,
                             ContaPagarAvulsaRepository contaPagarAvulsaRepository,
-                            ProdutoRepository produtoRepository,
                             MensalistaRepository mensalistaRepository,
                             SaldoEstoqueRepository saldoEstoqueRepository) {
         this.movimentacaoRepository = movimentacaoRepository;
@@ -82,7 +78,6 @@ public class RelatorioService {
         this.contaReceberRepository = contaReceberRepository;
         this.contaPagarRepository = contaPagarRepository;
         this.contaPagarAvulsaRepository = contaPagarAvulsaRepository;
-        this.produtoRepository = produtoRepository;
         this.mensalistaRepository = mensalistaRepository;
         this.saldoEstoqueRepository = saldoEstoqueRepository;
     }
@@ -203,25 +198,13 @@ public class RelatorioService {
 
     /** 4.29 — Estoque minimo. */
     public EstoqueMinimoResponse estoqueMinimo(Long organizacaoId) {
-        if (organizacaoId != null) {
-            List<EstoqueMinimoTenantView> posicoes = saldoEstoqueRepository
-                    .listarEstoqueMinimo(organizacaoId);
-            List<EstoqueMinimoResponse.ItemEstoque> itens = posicoes.stream()
-                    .map(p -> new EstoqueMinimoResponse.ItemEstoque(p.getProdutoId(),
-                            p.getProduto(), p.getMarca(), p.getCategoria(),
-                            p.getQuantidade(), p.getQuantidadeMinima()))
-                    .toList();
-            return new EstoqueMinimoResponse(itens.size(), itens);
-        }
-        List<Produto> produtos = produtoRepository.findComEstoqueAbaixoDoMinimo();
-        List<EstoqueMinimoResponse.ItemEstoque> itens = produtos.stream()
-                .map(p -> new EstoqueMinimoResponse.ItemEstoque(
-                        p.getId(),
-                        p.getNome(),
-                        p.getMarca().getNome(),
-                        p.getCategoria() != null ? p.getCategoria().getNome() : null,
-                        p.getQuantidade(),
-                        p.getQuantidadeMinima()))
+        List<EstoqueMinimoTenantView> posicoes = organizacaoId == null
+                ? saldoEstoqueRepository.listarEstoqueMinimoLegado()
+                : saldoEstoqueRepository.listarEstoqueMinimo(organizacaoId);
+        List<EstoqueMinimoResponse.ItemEstoque> itens = posicoes.stream()
+                .map(p -> new EstoqueMinimoResponse.ItemEstoque(p.getProdutoId(),
+                        p.getProduto(), p.getMarca(), p.getCategoria(),
+                        p.getQuantidade(), p.getQuantidadeMinima()))
                 .toList();
         return new EstoqueMinimoResponse(itens.size(), itens);
     }

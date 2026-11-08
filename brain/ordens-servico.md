@@ -12,7 +12,7 @@ A V65 implementa o agregado `OrdemServico`, itens com snapshot do servico e o ci
 
 ## Fluxo (camadas da arquitetura)
 
-`OrdemServicoController` valida contexto e versao, `OrdemServicoService` resolve cliente e servicos no tenant, persiste o agregado, registra [[auditoria]] e publica fatos pela [[outbox]]. A [[fiscal-financeiro|Nota de Servico]] pode referenciar uma ordem concluida e gera a Conta a Receber na emissao.
+`OrdemServicoController` valida contexto e versao, `OrdemServicoService` resolve cliente e servicos no tenant, persiste o agregado, registra [[auditoria]] e publica fatos pela [[outbox]]. A [[fiscal-financeiro|Nota de Servico]] copia os itens congelados da ordem concluída, guarda o plano de parcelas da revisão salva e só gera contas a receber na emissão interna dessa revisão.
 
 ## Endpoints
 
@@ -34,7 +34,11 @@ antes da paginação; o total filtrado não é perdido quando a página está va
 
 - `OrdemServico`: cliente, numero, estado, datas, moeda, totais, versao e itens.
 - `ItemOrdemServico`: servico, descricao congelada, quantidade, precos e desconto.
-- `NotaServico.ordemServico`: vinculo fiscal opcional e unico.
+- `NotaServico.ordemServico`: vínculo opcional, único e não substituível na edição. A V83 adiciona composição e parcelas congeladas ao rascunho; uma nota vinculada não aceita substituir os itens da ordem.
+- A V98 de teste guarda quantidade, valores da OS, preço de catálogo,
+  Nota de Serviço e seus itens/parcelas em milionésimos inteiros. A API
+  continua em unidades usuais. Quantidade × preço é arredondado apenas na
+  sexta casa; a nota vinculada usa a composição salva na ordem.
 
 ## Integracoes externas
 
@@ -56,6 +60,7 @@ situação, ordenação, paginação, isolamento e caracteres literais.
 ## Decisoes Tecnicas
 
 - A ordem nao gera titulo financeiro na conclusao; a emissao da Nota de Servico e a origem contabil do recebivel.
+- Início, conclusão e cancelamento montam a resposta na transação; o HTTP não depende de sessão Hibernate aberta para mostrar o cliente e os itens.
 - Uma ordem concluida admite no maximo uma Nota de Servico.
 - Preparação e emissão são etapas distintas. A emissão interna existente continua gerando títulos, sem representar autorização fiscal externa.
 - Geração serializa por OS e chave idempotente; a emissão, edição, exclusão e cancelamento bloqueiam a nota. Cancelamento bloqueia títulos em ordem de ID antes de verificar recebimentos.
@@ -72,6 +77,9 @@ situação, ordenação, paginação, isolamento e caracteres literais.
 
 | Data | Acao |
 |---|---|
+| 2026-11-08 | V98 usa seis casas da ordem ao recebimento, preserva o snapshot histórico e rejeita entradas com sete casas. |
+| 2026-11-08 | Corrige 500 nas transições da OS com sessão fechada, coberto em teste com open-in-view desabilitado. |
+| 2026-11-06 | OS concluída passa a preparar itens e parcelas persistidos para conferência versionada; conclusão continua sem cobrança. |
 | 2026-09-12 | Conecta documentos/recebíveis à OS, preparação server-side idempotente e exclusão mútua das transições fiscais. |
 | 2026-09-12 | Acrescenta filtros reais de número/situação antes da paginação, total preservado e testes de contrato de consulta com compatibilidade legada. |
 | 2026-08-14 | Implementa ordem tenant-aware, execucao, conclusao e faturamento vinculado na V65. |

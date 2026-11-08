@@ -458,18 +458,17 @@ rotas exigem JWT contextual; recursos históricos ou de outro tenant retornam
 | `GET /api/v1/stock-balances` | `stock:read` | página por produto/local, com nomes e saldo por local |
 | `GET /api/v1/stock-positions` | `stock:read` | posição agregada; filtros `produtoId` e `abaixoMinimo` |
 | `GET /api/v1/stock-movements[/{id}]` | `stock:read` | razão/detalhe com nomes, origem, ator e saldos anterior/posterior |
-| `POST /api/v1/stock-adjustments` | `stock:manage` | ajuste com `produtoId`, `localEstoqueId`, `delta`, `custoUnitario?`, `motivo` |
-| `POST /api/v1/stock-movements/{id}/compensation` | `stock:manage` | contrapartida única com `{motivo}` |
 
 O razão aceita filtros `produtoId`, `localEstoqueId`, `tipo`, `de` e `ate`; `de`
-maior que `ate` retorna `400`. Os comandos exigem `Idempotency-Key`, retornam
-`201` com `Location`, rejeitam delta zero/saldo negativo e retornam `409` quando
-a mesma chave é reutilizada com payload diferente. A resposta do movimento inclui
+maior que `ate` retorna `400`. A resposta do movimento inclui
 nomes de Produto e Local e não exige `catalog:read`.
 
-No comando manual, o escopo de idempotência e a origem do movimento incluem o
-ator autenticado: a mesma chave pode ser usada independentemente por dois atores,
-mas é repetível por um mesmo ator. Eventos normais da outbox e o estado posterior
+O módulo não aceita ajuste manual nem compensação avulsa: os POST antigos
+`/api/v1/stock-adjustments` e `/api/v1/stock-movements/{id}/compensation`
+foram retirados e retornam `404` com sessão autorizada. Confirmação de Nota
+de Entrada recebe, confirmação de Nota de Saída baixa e reversão interna é
+feita na nota de origem. Movimentos antigos seguem disponíveis nas consultas.
+Eventos normais da outbox e o estado posterior
 da auditoria carregam uma allowlist explícita com IDs/nome de Produto e Local,
 tipo, delta, custo, origem, ator, motivo, saldo anterior/posterior e compensação.
 `EstoqueMinimoAtingido` publica apenas identificação, total agregado e mínimo.

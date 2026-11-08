@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -34,18 +35,23 @@ public record ContaPagarAvulsaRequest(
 
         @NotNull(message = "O valor original é obrigatório.")
         @PositiveOrZero(message = "O valor original não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal valorOriginal,
 
         @PositiveOrZero(message = "O desconto não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal valorDesconto,
 
         @PositiveOrZero(message = "Os juros não podem ser negativos.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal valorJuros,
 
         @PositiveOrZero(message = "A multa não pode ser negativa.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal valorMulta,
 
         @PositiveOrZero(message = "O valor total não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal valorTotal,
 
         LocalDate dataEmissao,

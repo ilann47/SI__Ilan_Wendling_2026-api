@@ -17,6 +17,7 @@ import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +48,44 @@ class ProdutoServicoTenantApiTest {
         marcaA = criar("/api/marcas", tenantA, "{\"nome\":\"Marca A\"}");
         unidadeA = criar("/api/unidades-medida", tenantA,
                 "{\"nome\":\"Unidade A\",\"sigla\":\"UNA\"}");
+    }
+
+    @Test
+    void gravaPrecoEMinimoFracionarioEmInteirosEscalados() throws Exception {
+        String payload = """
+                {"nome":"Precisão", "codigoBarras":"QA-MICROS", "marcaId":%d,"unidadeMedidaId":%d,
+                 "valorVenda":120.000001,"quantidadeMinima":1.125001}
+                """.formatted(marcaA, unidadeA);
+        long id = criar("/api/produtos", tenantA, payload);
+        assertThat(jdbc.queryForObject("select valor_venda_micros from produto where id=?",
+                BigDecimal.class, id)).isEqualTo(new BigDecimal("120000001"));
+        assertThat(jdbc.queryForObject("select quantidade_minima_micros from produto where id=?",
+                BigDecimal.class, id)).isEqualTo(new BigDecimal("1125001"));
+        mvc.perform(get("/api/produtos/{id}", id).header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.valorVenda").value(120.000001))
+                .andExpect(jsonPath("$.quantidadeMinima").value(1.125001));
+        mvc.perform(post("/api/produtos").header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload.replace("1.125001", "1.1250001")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void calculaEGravaMargemNaSextaCasaSemArredondarDuasVezes() throws Exception {
+        String payload = """
+                {"nome":"Precisão da margem","marcaId":%d,"unidadeMedidaId":%d,"valorVenda":2}
+                """.formatted(marcaA, unidadeA);
+        long id = criar("/api/produtos", tenantA, payload);
+        jdbc.update("UPDATE produto SET custo_micros=3000000 WHERE id=?", id);
+        entityManager.clear();
+        mvc.perform(put("/api/produtos/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header(HttpHeaders.IF_MATCH, "\"0\"")
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.percentualLucro").value(-33.333333));
+        assertThat(jdbc.queryForObject("SELECT percentual_lucro_micros FROM produto WHERE id=?",
+                Long.class, id)).isEqualTo(-33333333L);
     }
 
     @Test

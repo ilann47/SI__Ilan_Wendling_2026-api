@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.estoque;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -10,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.kaneko.estacionamento.common.exception.ConflitoException;
+import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.conveniencia.Marca;
 import com.kaneko.estacionamento.conveniencia.MarcaRepository;
 import com.kaneko.estacionamento.conveniencia.Produto;
@@ -104,6 +107,28 @@ class EstoqueTenantApiTest {
     }
 
     @Test
+    void recebimentosCalculamCustoMedioPonderadoEGuardamMemoria() {
+        estoqueService.registrarRecebimento(tenantA.organizacaoId(), tenantA.usuarioId(),
+                produtoA, localA, new BigDecimal("10"), new BigDecimal("20.00"),
+                "NOTA_ENTRADA", "media:1", "Primeira entrada");
+
+        var resultado = estoqueService.registrarRecebimentoComCustoMedio(
+                tenantA.organizacaoId(), tenantA.usuarioId(), produtoA, localA,
+                new BigDecimal("5"), new BigDecimal("30.00"),
+                "NOTA_ENTRADA", "media:2", "Segunda entrada");
+
+        assertThat(resultado.saldoTotalAnterior()).isEqualByComparingTo("10");
+        assertThat(resultado.saldoTotalPosterior()).isEqualByComparingTo("15");
+        assertThat(resultado.custoMedioAnterior()).isEqualByComparingTo("20.00");
+        assertThat(resultado.custoMedioPosterior()).isEqualByComparingTo("23.333333");
+        assertThat(jdbc.queryForObject("SELECT custo_micros * 0.000001 FROM produto WHERE id=?",
+                BigDecimal.class, produtoA)).isEqualByComparingTo("23.333333");
+        assertThat(jdbc.queryForObject("""
+                SELECT custo_medio_posterior_micros * 0.000001 FROM movimento_estoque WHERE id=?
+                """, BigDecimal.class, resultado.movimentoId())).isEqualByComparingTo("23.333333");
+    }
+
+    @Test
     void exigeStockPermissionEJwtContextual() throws Exception {
         mvc.perform(get("/api/v1/stock-locations")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/stock-locations")
@@ -121,39 +146,41 @@ class EstoqueTenantApiTest {
     }
 
     @Test
-    void ajusteEIdempotenteExibeNomesEPosicaoAgregada() throws Exception {
-        String payload = "{\"produtoId\":" + produtoA + ",\"localEstoqueId\":" + localA
-                + ",\"delta\":2.500,\"custoUnitario\":12.30,"
-                + "\"motivo\":\"Contagem inicial\"}";
-        String primeira = mvc.perform(post("/api/v1/stock-adjustments")
+    void nemAdministradorPodeAjustarOuCompensarSaldoSemDocumento() throws Exception {
+        long movimento = estoqueService.registrarRecebimento(tenantA.organizacaoId(), tenantA.usuarioId(),
+                produtoA, localA, BigDecimal.ONE, BigDecimal.TEN, "NOTA_ENTRADA", "1:1", "Estoque de teste");
+        mvc.perform(post("/api/v1/stock-adjustments")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "ajuste-1")
-                        .contentType(MediaType.APPLICATION_JSON).content(payload))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.produto").value("Produto Estoque A"))
-                .andExpect(jsonPath("$.localEstoque").value("Estoque principal"))
-                .andExpect(jsonPath("$.delta").value(2.5))
-                .andExpect(jsonPath("$.atorNome").isNotEmpty())
-                .andReturn().getResponse().getContentAsString();
-        long movimento = ((Number) JsonPath.read(primeira, "$.id")).longValue();
-        mvc.perform(get("/api/v1/stock-movements/{id}/origin", movimento)
+                        .header("Idempotency-Key", "nao-ajustar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ajuste(produtoA, localA, "2", "Não deve alterar saldo")))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/stock-movements/{id}/compensation", movimento)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header("Idempotency-Key", "nao-compensar")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\":\"Não deve alterar saldo\"}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/stock-balances").header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .param("produtoId", produtoA.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].quantidade").value(1));
+        mvc.perform(get("/api/v1/stock-movements").header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .param("produtoId", produtoA.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void recebimentoFiscalExibeNomesPosicaoEAuditoria() throws Exception {
+        long movimento = estoqueService.registrarRecebimento(tenantA.organizacaoId(), tenantA.usuarioId(),
+                produtoA, localA, new BigDecimal("2.500"), new BigDecimal("12.30"),
+                "NOTA_ENTRADA", "42:1", "Entrada conferida");
+        mvc.perform(get("/api/v1/stock-movements/{id}", movimento)
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.descricao").value("Ajuste manual de estoque"))
-                .andExpect(jsonPath("$.caminho").isEmpty());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.produto").value("Produto Estoque A"))
+                .andExpect(jsonPath("$.localEstoque").value("Estoque principal"))
+                .andExpect(jsonPath("$.delta").value(2.5)).andExpect(jsonPath("$.atorNome").isNotEmpty());
         mvc.perform(get("/api/v1/stock-movements/{id}/origin", movimento)
                         .header(HttpHeaders.AUTHORIZATION, tenantB.tokenContextual()))
                 .andExpect(status().isNotFound());
-        mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "ajuste-1")
-                        .contentType(MediaType.APPLICATION_JSON).content(payload))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(movimento));
-        mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "ajuste-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ajuste(produtoA, localA, "3", "Outro payload")))
-                .andExpect(status().isConflict());
         mvc.perform(get("/api/v1/stock-balances")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
                         .param("produtoId", produtoA.toString())
@@ -168,12 +195,12 @@ class EstoqueTenantApiTest {
                 .andExpect(jsonPath("$.content[0].abaixoMinimo").value(false));
         Produto persistido = produtos.findById(produtoA).orElseThrow();
         assertThat(persistido.getQuantidade()).isEqualByComparingTo("0");
-        assertThat(persistido.getVersion()).isZero();
+        assertThat(persistido.getCusto()).isEqualByComparingTo("12.30");
 
         String evento = jdbc.queryForObject("""
                 SELECT payload::text FROM evento_outbox
                 WHERE aggregate_type='MOVIMENTO_ESTOQUE' AND aggregate_id=?
-                  AND event_type='EstoqueAjustado'
+                  AND event_type='EstoqueRecebido'
                 """, String.class, movimento);
         Map<String, Object> payloadEvento = JsonPath.read(evento, "$");
         assertThat(payloadEvento).containsKeys("movimentoId", "produtoId", "produto",
@@ -185,9 +212,9 @@ class EstoqueTenantApiTest {
         assertThat(((Number) payloadEvento.get("localEstoqueId")).longValue()).isEqualTo(localA);
         assertThat(payloadEvento).containsEntry("produto", "Produto Estoque A")
                 .containsEntry("localEstoque", "Estoque principal")
-                .containsEntry("tipo", "AJUSTE")
-                .containsEntry("origemTipo", "AJUSTE_MANUAL")
-                .containsEntry("motivo", "Contagem inicial")
+                .containsEntry("tipo", "RECEBIMENTO")
+                .containsEntry("origemTipo", "NOTA_ENTRADA")
+                .containsEntry("motivo", "Entrada conferida")
                 .containsEntry("compensadoId", null);
         assertThat(new BigDecimal(payloadEvento.get("delta").toString()))
                 .isEqualByComparingTo("2.5");
@@ -208,112 +235,59 @@ class EstoqueTenantApiTest {
     }
 
     @Test
-    void mesmaChaveDeIdempotenciaEIndependentePorAtor() throws Exception {
-        String login = "stock_actor_" + UUID.randomUUID().toString().replace("-", "")
-                .substring(0, 10);
-        Usuario outro = tenant.criarUsuario(login, PerfilUsuario.ADMIN);
-        Long membership = tenant.criarMembership(tenantA.organizacaoId(), outro.getId(),
-                tenantA.tokenContextual());
-        tenant.concederPapel(tenantA.organizacaoId(), membership,
-                tenantA.tokenContextual(), "ADMIN_ORGANIZACAO");
-        String tokenOutro = tenant.selecionarOrganizacao(tenantA.organizacaoId(),
-                tenant.autenticar(login, "senha123"));
-        String payload = ajuste(produtoA, localA, "1", "Ajuste por ator");
-
-        String primeiro = mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "chave-compartilhada")
-                        .contentType(MediaType.APPLICATION_JSON).content(payload))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        String segundo = mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, tokenOutro)
-                        .header("Idempotency-Key", "chave-compartilhada")
-                        .contentType(MediaType.APPLICATION_JSON).content(payload))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        assertThat(JsonPath.<Number>read(primeiro, "$.id").longValue())
-                .isNotEqualTo(JsonPath.<Number>read(segundo, "$.id").longValue());
-        assertThat(jdbc.queryForObject("""
-                SELECT quantidade FROM saldo_estoque
-                WHERE organizacao_id=? AND produto_id=? AND local_estoque_id=?
-                """, BigDecimal.class, tenantA.organizacaoId(), produtoA, localA))
-                .isEqualByComparingTo("2");
-    }
-
-    @Test
-    void recusaSaldoNegativoCrossTenantEParentInativo() throws Exception {
-        mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "negativo")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ajuste(produtoA, localA, "-1", "Baixa indevida")))
-                .andExpect(status().isConflict());
-        mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "cross")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ajuste(produtoB, localA, "1", "Cross tenant")))
-                .andExpect(status().isNotFound());
+    void recusaSaldoNegativoCrossTenantEParentInativo() {
+        assertThatThrownBy(() -> estoqueService.registrarBaixa(tenantA.organizacaoId(), tenantA.usuarioId(),
+                produtoA, localA, BigDecimal.ONE, "NOTA_SAIDA", "1:1", "Baixa fiscal"))
+                .isInstanceOf(ConflitoException.class);
+        assertThatThrownBy(() -> receber(produtoB, "1", "2:1"))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
         jdbc.update("UPDATE local_estoque SET ativo=false WHERE id=?", localA);
-        mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "inativo")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ajuste(produtoA, localA, "1", "Local inativo")))
-                .andExpect(status().isNotFound());
+        assertThatThrownBy(() -> receber(produtoA, "1", "3:1"))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
     }
 
     @Test
-    void compensacaoEUnicaEInativacaoExigeSaldoZero() throws Exception {
-        long original = ajustar("comp-base", "2");
+    void inativacaoDeLocalExigeSaldoZero() throws Exception {
+        receber(produtoA, "2", "1:1");
         mvc.perform(delete("/api/v1/stock-locations/{id}", localA)
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
                         .header(HttpHeaders.IF_MATCH, "\"0\""))
                 .andExpect(status().isConflict());
-        mvc.perform(post("/api/v1/stock-movements/{id}/compensation", original)
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "comp-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"motivo\":\"Corrigir contagem\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.tipo").value("COMPENSACAO"))
-                .andExpect(jsonPath("$.delta").value(-2))
-                .andExpect(jsonPath("$.compensadoId").value(original));
-        mvc.perform(post("/api/v1/stock-movements/{id}/compensation", original)
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", "comp-2")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"motivo\":\"Duplicada\"}"))
-                .andExpect(status().isConflict());
+        estoqueService.registrarBaixa(tenantA.organizacaoId(), tenantA.usuarioId(),
+                produtoA, localA, new BigDecimal("2"), "NOTA_SAIDA", "1:1", "Baixa fiscal");
         mvc.perform(delete("/api/v1/stock-locations/{id}", localA)
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
                         .header(HttpHeaders.IF_MATCH, "\"0\""))
                 .andExpect(status().isNoContent()).andExpect(header().string("ETag", "\"1\""));
     }
-
     @Test
     void produtoComSaldoNaoZeroNaoPodeSerInativadoPelaApi() throws Exception {
-        ajustar("produto-ativo", "1");
+        receber(produtoA, "1", "1:1");
+        String etag = mvc.perform(get("/api/produtos/{id}", produtoA)
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andReturn().getResponse().getHeader(HttpHeaders.ETAG);
+        assertThat(etag).isNotBlank();
         mvc.perform(delete("/api/produtos/{id}", produtoA)
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header(HttpHeaders.IF_MATCH, "\"0\""))
+                        .header(HttpHeaders.IF_MATCH, etag))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void filtraRazaoEPublicaLimiarSomenteNoCruzamento() throws Exception {
-        long primeiro = ajustar("limiar-entrada", "2");
-        long segundo = ajustar("limiar-saida", "-1");
+        receber(produtoA, "2", "1:1");
+        estoqueService.registrarBaixa(tenantA.organizacaoId(), tenantA.usuarioId(),
+                produtoA, localA, BigDecimal.ONE, "NOTA_SAIDA", "1:1", "Baixa fiscal");
         String agora = OffsetDateTime.now().plusMinutes(1).toString();
         mvc.perform(get("/api/v1/stock-movements")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
                         .param("produtoId", produtoA.toString())
                         .param("localEstoqueId", localA.toString())
-                        .param("tipo", "AJUSTE")
+                        .param("tipo", "BAIXA")
                         .param("de", OffsetDateTime.now().minusMinutes(5).toString())
                         .param("ate", agora))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.content[0].id").value(segundo))
-                .andExpect(jsonPath("$.content[1].id").value(primeiro));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].origemTipo").value("NOTA_SAIDA"));
         mvc.perform(get("/api/v1/stock-movements")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
                         .param("de", agora).param("ate", OffsetDateTime.now().toString()))
@@ -345,16 +319,11 @@ class EstoqueTenantApiTest {
         return ((Number) JsonPath.read(body, "$.id")).longValue();
     }
 
-    private long ajustar(String chave, String delta) throws Exception {
-        String body = mvc.perform(post("/api/v1/stock-adjustments")
-                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
-                        .header("Idempotency-Key", chave)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ajuste(produtoA, localA, delta, "Ajuste " + chave)))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        return ((Number) JsonPath.read(body, "$.id")).longValue();
+    private long receber(Long produto, String quantidade, String origem) {
+        return estoqueService.registrarRecebimento(tenantA.organizacaoId(), tenantA.usuarioId(),
+                produto, localA, new BigDecimal(quantidade), BigDecimal.TEN,
+                "NOTA_ENTRADA", origem, "Entrada de teste");
     }
-
     private String ajuste(Long produto, Long local, String delta, String motivo) {
         return "{\"produtoId\":" + produto + ",\"localEstoqueId\":" + local
                 + ",\"delta\":" + delta + ",\"motivo\":\"" + motivo + "\"}";

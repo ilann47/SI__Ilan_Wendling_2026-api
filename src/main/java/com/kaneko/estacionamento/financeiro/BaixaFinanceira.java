@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.financeiro;
 
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,7 +16,9 @@ public class BaixaFinanceira {
     @Column(name = "organizacao_id", updatable = false) private Long organizacaoId;
     @Column(name = "conta_pagar_id", updatable = false) private Long contaPagarId;
     @Column(name = "conta_receber_id", updatable = false) private Long contaReceberId;
-    @Column(nullable = false, precision = 15, scale = 2, updatable = false) private BigDecimal valor;
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_micros", nullable = false, precision = 19, scale = 0, updatable = false)
+    private BigDecimal valor;
     @Column(updatable = false) private LocalDate data;
     @Column(name = "ator_id", updatable = false) private Long atorId;
     @Column(name = "ator_nome", length = 150, updatable = false) private String atorNome;

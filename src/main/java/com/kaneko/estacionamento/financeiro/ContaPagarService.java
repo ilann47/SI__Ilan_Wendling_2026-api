@@ -7,6 +7,7 @@ import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.financeiro.dto.BaixaRequest;
 import com.kaneko.estacionamento.financeiro.dto.ContaPagarRequest;
+import com.kaneko.estacionamento.financeiro.dto.ContaPagarResponse;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
 import com.kaneko.estacionamento.fornecedor.FornecedorRepository;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
@@ -108,7 +109,7 @@ public class ContaPagarService {
         conta.setValorDesconto(desconto);
         conta.setValorJuros(juros);
         conta.setValorMulta(multa);
-        conta.setValorTotal(FinanceiroRegras.total(original, desconto, juros, multa, req.valorTotal()));
+        conta.setValorTotal(FinanceiroRegras.totalEmMilionesimos(original, desconto, juros, multa, req.valorTotal()));
         conta.setValorPago(BigDecimal.ZERO);
         LocalDate emissao = req.dataEmissao() != null ? req.dataEmissao() : LocalDate.now();
         conta.setDataEmissao(emissao);
@@ -123,6 +124,16 @@ public class ContaPagarService {
         return conta;
     }
 
+    @Transactional
+    public ContaPagarResponse baixarComResposta(Long organizacaoId, Long id, BaixaRequest req, String chave) {
+        return ContaPagarResponse.from(baixar(organizacaoId, id, req, chave));
+    }
+
+    @Transactional
+    public ContaPagarResponse cancelarComResposta(Long organizacaoId, Long id) {
+        return ContaPagarResponse.from(cancelar(organizacaoId, id));
+    }
+
     /** Registra um pagamento (baixa). Acumula o valor pago e atualiza a situacao. */
     @Transactional
     public ContaPagar baixar(Long organizacaoId, Long id, BaixaRequest req) {
@@ -131,7 +142,7 @@ public class ContaPagarService {
 
     @Transactional
     public ContaPagar baixar(Long organizacaoId, Long id, BaixaRequest req, String chave) {
-        FinanceiroRegras.validarBaixa(req.valor());
+        FinanceiroRegras.validarBaixaEmMilionesimos(req.valor());
         ContaPagar conta = repository.buscarParaBaixa(id, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("ContaPagar", id));
         if (baixas.repetida(true, id, chave, req)) return conta;

@@ -88,6 +88,30 @@ class ProdutoFornecedorTenantApiTest {
     }
 
     @Test
+    void preservaCustoEmMilionesimosERejeitaSetimaCasa() throws Exception {
+        String payload = """
+                {"produtoId":%d,"fornecedorId":%d,"codigoProd":"MICROS","custo":120.000001}
+                """.formatted(produtoA, fornecedorA);
+        String response = mvc.perform(post("/api/produto-fornecedores")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.custo").value(120.000001))
+                .andReturn().getResponse().getContentAsString();
+        Number id = JsonPath.read(response, "$.id");
+        assertThat(jdbc.queryForObject("SELECT custo_micros FROM produto_fornecedor WHERE id=?",
+                Long.class, id.longValue())).isEqualTo(120000001L);
+        mvc.perform(put("/api/produto-fornecedores/{id}", id.longValue())
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .header(HttpHeaders.IF_MATCH, "\"0\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload.replace("120.000001", "120.0000001")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/produto-fornecedores/{id}", id.longValue())
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.custo").value(120.000001));
+    }
+
+    @Test
     void exigeAutenticacaoEPermissaoCatalogo() throws Exception {
         mvc.perform(get("/api/produto-fornecedores")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/produto-fornecedores")

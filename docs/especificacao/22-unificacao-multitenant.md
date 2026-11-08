@@ -29,8 +29,7 @@ Estão no escopo:
 - migração aditiva de dados e contratos;
 - preservação das rotas `/api/*` durante a transição;
 - integração entre operação, conveniência, fiscal, financeiro e eventos;
-- especificação futura de Ordem de Compra e Ordem de Serviço como agregados
-  distintos de notas fiscais.
+- especificação de Ordem de Serviço como agregado distinto de notas fiscais.
 
 Não estão no escopo desta fundação: associar automaticamente dados históricos a
 uma organização, simular transmissão fiscal, pagamento capturado, gateway,
@@ -68,7 +67,7 @@ seguintes problemas:
 - administrador da plataforma: provisiona organizações sem operar seus dados;
 - administrador da organização: governa cadastros, acessos e configurações;
 - gestor: acompanha operação, vendas, estoque e resultado;
-- compras: administra fornecedores, ordens e recebimentos;
+- fiscal/estoque: administra fornecedores, notas de entrada e conferência;
 - operador de estoque/conveniência: mantém catálogo, saldo e movimentos;
 - operador de estacionamento: executa entrada, saída e atendimento;
 - fiscal tributário: administra documentos e integrações fiscais;
@@ -84,7 +83,7 @@ seguintes problemas:
 | Administrador da plataforma | Provisionar tenant e primeiro vínculo | Não acessa dados empresariais sem contexto autorizado |
 | Administrador da organização | Administrar todos os domínios internos | Não atravessa organização |
 | Gestor | Operação, catálogo, estoque e relatórios | Sem administração de segurança por padrão |
-| Compras | Fornecedores, ordens e recebimento | Sem baixa financeira incompatível com segregação |
+| Fiscal/Estoque | Fornecedores, notas de entrada e conferência | Sem baixa financeira incompatível com segregação |
 | Estoque/Conveniência | Produto, serviço, saldo e PDV | Sem alterar documentos confirmados |
 | Operador | Entrada, saída e movimentação | Sem preço, fiscal ou baixa financeira |
 | Fiscal tributário | Documento fiscal interno/externo | Sem alterar estoque fora do workflow |
@@ -122,11 +121,7 @@ erDiagram
     CLIENTE ||--o{ MENSALISTA : contrata
     VEICULO ||--o{ MOVIMENTACAO : realiza
     PATIO ||--o{ MOVIMENTACAO : recebe
-    ORGANIZACAO ||--o{ ORDEM_COMPRA : emite
-    FORNECEDOR ||--o{ ORDEM_COMPRA : recebe
-    ORDEM_COMPRA ||--|{ ITEM_ORDEM_COMPRA : contem
-    ORDEM_COMPRA ||--o{ RECEBIMENTO : origina
-    RECEBIMENTO ||--o{ NOTA_ENTRADA : documenta
+    FORNECEDOR ||--o{ NOTA_ENTRADA : emite
     NOTA_ENTRADA ||--|{ ITEM_NOTA_ENTRADA : contem
     NOTA_ENTRADA ||--o{ CONTA_PAGAR : gera
     ORGANIZACAO ||--o{ VENDA_ADMINISTRATIVA : realiza
@@ -171,7 +166,7 @@ estados e contrato próprios antes de migration.
 | RF-MT-007 | Preservar linhas históricas sem owner até reconciliação explícita e auditável. |
 | RF-MT-008 | Manter URLs compatíveis enquanto controller, service e repository passam a ser contextuais. |
 | RF-MT-009 | Auditar criação, alteração, inativação e transições materiais. |
-| RF-MT-010 | Integrar compra, estoque, fiscal e financeiro pela mesma origem rastreável. |
+| RF-MT-010 | Integrar Nota de Entrada, estoque e financeiro pela mesma origem rastreável. |
 | RF-MT-011 | Integrar venda/serviço, fiscal e contas a receber pela mesma origem rastreável. |
 | RF-MT-012 | Consolidar evento, operação, conveniência e financeiro sem confundir seus agregados. |
 
@@ -179,7 +174,6 @@ Processos obrigatórios:
 
 - selecionar tenant e resolver permissões;
 - reconciliar ownership histórico;
-- registrar compra e recebimento;
 - confirmar nota de entrada e gerar efeitos de estoque/financeiro;
 - registrar venda administrativa e seus efeitos;
 - executar ordem de serviço e faturamento;
@@ -320,7 +314,6 @@ não são considerados seguros até a conclusão da respectiva história backend
 | `veiculo`, `tarifa`, `mensalista` | Global | Tenant direto | cliente/pátio/veículo coerentes por tenant | 3 |
 | `movimentacao` | Global | Tenant direto | pátio, veículo, tarifa e mensalista no tenant | 3 |
 | `colaborador` | Global de pátio | Tenant direto | vínculo laboral canônico via Membership | 3 |
-| `ordem_compra`, itens, `recebimento` | Inexistentes | Novos agregados tenant | ADR e máquina de estados antes do DDL | 4 |
 | `nota_entrada`, `item_nota_entrada` | Global | Raiz/filho tenant | fornecedor, produto e condição do tenant | 4 |
 | `conta_pagar` | Global | Tenant direto | origem fiscal/ordem no mesmo tenant | 4/6 |
 | venda administrativa e itens | Inexistentes como agregado | Novo agregado tenant | contrato antes do DDL | 5 |
@@ -509,7 +502,7 @@ apenas uma `DataIntegrityViolationException` genérica.
 2. **Onda 1:** formas/condições de pagamento; clientes; fornecedores; RH e logística.
 3. **Onda 2:** catálogo de conveniência e razão de estoque.
 4. **Onda 3:** operação de estacionamento com origens evento, rotativo e mensalista.
-5. **Onda 4:** ADR de Ordem de Compra; ordem, recebimento, nota e contas a pagar.
+5. **Onda 4:** Nota de Entrada, estoque e contas a pagar.
 6. **Onda 5:** venda administrativa e Ordem de Serviço implementadas pelas V64/V65; notas e contas a receber integradas sem efeitos duplicados.
 7. **Onda 6:** baixas, conciliação, despesas, relatórios e fechamento por evento.
 8. **Onda 7:** consolidação de frontend, permissões e E2E ponta a ponta.
@@ -542,13 +535,9 @@ menu e listagens por organização ativa.
 A V62 migra `ContaPagarAvulsa`, incluindo baixa e cancelamento, com Fornecedor
 e Forma de Pagamento do mesmo tenant. Registros históricos permanecem separados.
 
-A V63 conclui a Onda 4 com `OrdemCompra`, itens e recebimentos tenant-aware.
-Ordens usam RBAC `purchases:read/manage`, ETag/If-Match, idempotência, auditoria
-e outbox. O recebimento parcial ou completo é append-only e registra a entrada
-no razão V54. A Nota de Entrada pode referenciar exatamente um recebimento do
-mesmo tenant, fornecedor, local, produtos e quantidades; nesse caso sua
-confirmação gera Conta a Pagar sem repetir o movimento físico. A decisão está
-registrada em [[23-adr-ordem-compra]].
+O módulo experimental de Ordem/Recebimento de Compra foi removido em 2026-10-30.
+A entrada vigente ocorre exclusivamente por Nota de Entrada, cuja confirmação
+gera o movimento físico e a Conta a Pagar na mesma transação.
 
 A V64 implementa `VendaAdministrativa` e itens tenant-aware. O agregado usa
 `sales:read/manage`, idempotência na criação, ETag/If-Match, auditoria e outbox.
@@ -671,7 +660,7 @@ a mesma linha quando um par inativo é reativado. PUT/DELETE usam `If-Match`; PO
 concorrente resolve o perdedor como `409`. Consumers fiscais globais continuam
 restritos a Produto histórico e não foram ampliados.
 
-A V54 cria a fronteira tenant-aware de Estoque sem alterar o fluxo fiscal
+Registro histórico da implantação: a V54 criou a fronteira tenant-aware de Estoque sem alterar o fluxo fiscal
 histórico. `local_estoque` é um local lógico; `saldo_estoque` mantém uma linha
 por Produto/Local; `movimento_estoque` é razão append-only com origem, ator,
 saldos anterior/posterior e compensação vinculada ao mesmo saldo. Constraints
@@ -691,3 +680,7 @@ Local coordenam inativação com ajustes; Produto com saldo não zero permanece
 ativo. A origem manual incorpora ator e chave, enquanto a unicidade documental
 continua independente do ator. Nenhuma dessas proteções altera notas/relatórios
 históricos ou cria dependência Java de Conveniência para Estoque.
+
+Regra vigente: somente a confirmação ou reversão da Nota de Entrada ou Nota
+de Saída altera o estoque de mercadorias. O ajuste manual e a compensação
+avulsa não estão disponíveis; registros anteriores seguem consultáveis.

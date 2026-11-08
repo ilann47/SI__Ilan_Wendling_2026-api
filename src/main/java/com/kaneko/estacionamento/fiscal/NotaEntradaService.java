@@ -6,19 +6,26 @@ import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
-import com.kaneko.estacionamento.compras.ItemRecebimentoCompra;
-import com.kaneko.estacionamento.compras.OrdemCompra;
-import com.kaneko.estacionamento.compras.RecebimentoCompra;
-import com.kaneko.estacionamento.compras.RecebimentoCompraRepository;
 import com.kaneko.estacionamento.conveniencia.Produto;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.financeiro.ContaPagar;
 import com.kaneko.estacionamento.financeiro.ContaPagarRepository;
 import com.kaneko.estacionamento.financeiro.SituacaoContaPagar;
 import com.kaneko.estacionamento.estoque.EstoqueService;
+import com.kaneko.estacionamento.estoque.CustoMedioPonderado;
 import com.kaneko.estacionamento.estoque.LocalEstoque;
 import com.kaneko.estacionamento.estoque.LocalEstoqueRepository;
 import com.kaneko.estacionamento.fiscal.dto.ItemNotaEntradaRequest;
+import com.kaneko.estacionamento.fiscal.dto.NotaEntradaResponse;
+import com.kaneko.estacionamento.fiscal.dto.PreviaNotaEntradaResponse;
+import com.kaneko.estacionamento.fiscal.dto.CustoMedioItemNotaEntradaResponse;
+import com.kaneko.estacionamento.fiscal.dto.ParcelaNotaEntradaResponse;
+import com.kaneko.estacionamento.conveniencia.ProdutoFornecedorRepository;
+import com.kaneko.estacionamento.logistica.TransportadoraRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Locale;
 import com.kaneko.estacionamento.fiscal.dto.NotaEntradaRequest;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
 import com.kaneko.estacionamento.fornecedor.FornecedorRepository;
@@ -60,9 +67,12 @@ public class NotaEntradaService {
     private final ContaPagarRepository contaPagarRepository;
     private final LocalEstoqueRepository localEstoqueRepository;
     private final EstoqueService estoqueService;
-    private final RecebimentoCompraRepository recebimentoCompraRepository;
     private final AuditoriaService auditoria;
     private final IdempotenciaRepository idempotencia;
+
+    private final ProdutoFornecedorRepository produtoFornecedores;
+    private final TransportadoraRepository transportadoras;
+    private final JdbcTemplate jdbc;
 
     public NotaEntradaService(NotaEntradaRepository repository,
                               FornecedorRepository fornecedorRepository,
@@ -71,8 +81,9 @@ public class NotaEntradaService {
                               ContaPagarRepository contaPagarRepository,
                               LocalEstoqueRepository localEstoqueRepository,
                               EstoqueService estoqueService,
-                              RecebimentoCompraRepository recebimentoCompraRepository,
-                              AuditoriaService auditoria, IdempotenciaRepository idempotencia) {
+                              AuditoriaService auditoria, IdempotenciaRepository idempotencia,
+                              ProdutoFornecedorRepository produtoFornecedores,
+                              TransportadoraRepository transportadoras, JdbcTemplate jdbc) {
         this.repository = repository;
         this.fornecedorRepository = fornecedorRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
@@ -80,16 +91,23 @@ public class NotaEntradaService {
         this.contaPagarRepository = contaPagarRepository;
         this.localEstoqueRepository = localEstoqueRepository;
         this.estoqueService = estoqueService;
-        this.recebimentoCompraRepository = recebimentoCompraRepository;
         this.auditoria = auditoria;
         this.idempotencia = idempotencia;
+        this.produtoFornecedores = produtoFornecedores;
+        this.transportadoras = transportadoras;
+        this.jdbc = jdbc;
     }
 
     @Transactional(readOnly = true)
     public Page<NotaEntrada> listar(Long organizacaoId, Pageable pageable) {
-        Page<Long> ids = organizacaoId == null
-                ? repository.findIdsByOrganizacaoIdIsNull(pageable)
-                : repository.findIdsByOrganizacaoId(organizacaoId, pageable);
+        return listar(organizacaoId, null, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<NotaEntrada> listar(Long organizacaoId, String numero, SituacaoNota situacao,
+            Long fornecedorId, Pageable pageable) {
+        Page<Long> ids = repository.filtrarIds(organizacaoId,
+                numero == null ? "" : numero.trim(), situacao, fornecedorId, pageable);
         if (ids.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, ids.getTotalElements());
         }
@@ -139,132 +157,304 @@ public class NotaEntradaService {
 
     @Transactional
     public NotaEntrada criar(Long organizacaoId, NotaEntradaRequest req) {
-        Fornecedor fornecedor = (organizacaoId == null
-                ? fornecedorRepository.findByIdAndOrganizacaoIdIsNull(req.fornecedorId())
-                : fornecedorRepository.findByIdAndOrganizacaoId(req.fornecedorId(), organizacaoId))
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor", req.fornecedorId()));
-        if (Boolean.FALSE.equals(fornecedor.getAtivo())) {
-            throw new ConflitoException("O fornecedor está inativo e não pode receber notas.");
-        }
-
-        NotaEntrada nota = new NotaEntrada();
-        nota.setOrganizacaoId(organizacaoId);
-        nota.setNumero(req.numero().trim());
-        nota.setModelo(req.modelo() != null && !req.modelo().isBlank() ? req.modelo() : "55");
-        nota.setSerie(req.serie() != null && !req.serie().isBlank() ? req.serie() : "1");
-        nota.setFornecedor(fornecedor);
-        nota.setCondicaoPagamento(req.condicaoPagamentoId() != null
-                ? buscarCondicao(organizacaoId, req.condicaoPagamentoId()) : null);
-        if (organizacaoId != null) {
-            if (req.localEstoqueId() == null) {
-                throw new IllegalArgumentException("O local de estoque e obrigatorio.");
-            }
-            LocalEstoque local = localEstoqueRepository
-                    .findByIdAndOrganizacaoId(req.localEstoqueId(), organizacaoId)
-                    .filter(l -> Boolean.TRUE.equals(l.getAtivo()))
-                    .orElseThrow(() -> new RecursoNaoEncontradoException(
-                            "LocalEstoque", req.localEstoqueId()));
-            nota.setLocalEstoque(local);
-        }
-        if (req.recebimentoCompraId() != null) {
-            if (organizacaoId == null) {
-                throw new IllegalArgumentException(
-                        "Recebimento de compra exige contexto de organizacao.");
-            }
-            RecebimentoCompra recebimento = recebimentoCompraRepository
-                    .findParaAtualizar(req.recebimentoCompraId(), organizacaoId)
-                    .orElseThrow(() -> new RecursoNaoEncontradoException(
-                            "RecebimentoCompra", req.recebimentoCompraId()));
-            if (!recebimento.getOrdemCompra().getFornecedor().getId().equals(fornecedor.getId())
-                    || !recebimento.getLocalEstoque().getId().equals(nota.getLocalEstoque().getId())) {
-                throw new ConflitoException(
-                        "Fornecedor e local da nota devem corresponder ao recebimento.");
-            }
-            OrdemCompra ordemCompra = recebimento.getOrdemCompra();
-            if (!ordemCompra.getNumeroNota().equalsIgnoreCase(nota.getNumero())
-                    || !ordemCompra.getSerieNota().equalsIgnoreCase(nota.getSerie())
-                    || !ordemCompra.getModeloNota().equalsIgnoreCase(nota.getModelo())) {
-                throw new ConflitoException(
-                        "Numero, serie e modelo da nota devem corresponder a compra recebida.");
-            }
-            if (repository.existsByOrganizacaoIdAndRecebimentoCompraId(
-                    organizacaoId, recebimento.getId())) {
-                throw new ConflitoException("O recebimento ja possui uma nota de entrada.");
-            }
-            nota.setRecebimentoCompra(recebimento);
-        }
-
-        boolean duplicada = organizacaoId == null
-                ? repository.existsByOrganizacaoIdIsNullAndNumeroAndSerieAndModeloAndFornecedorId(
-                        nota.getNumero(), nota.getSerie(), nota.getModelo(), fornecedor.getId())
-                : repository.existsByOrganizacaoIdAndNumeroAndSerieAndModeloAndFornecedorId(
-                        organizacaoId, nota.getNumero(), nota.getSerie(), nota.getModelo(),
-                        fornecedor.getId());
-        if (duplicada) {
-            throw new ConflitoException("Já existe uma nota com este número/série para este fornecedor.");
-        }
-
-        LocalDate emissao = req.dataEmissao() != null ? req.dataEmissao() : LocalDate.now();
-        nota.setDataEmissao(emissao);
-        if (req.dataChegada() != null && req.dataChegada().isBefore(emissao)) {
-            throw new ConflitoException("A data de chegada não pode ser anterior à emissão.");
-        }
-        nota.setDataChegada(req.dataChegada());
-        nota.setTipoFrete(req.tipoFrete() != null ? req.tipoFrete() : TipoFrete.CIF);
-
-        BigDecimal frete = nz(req.valorFrete());
-        BigDecimal seguro = nz(req.valorSeguro());
-        BigDecimal outras = nz(req.outrasDespesas());
-        BigDecimal descontoNota = nz(req.valorDesconto());
-        nota.setValorFrete(frete);
-        nota.setValorSeguro(seguro);
-        nota.setOutrasDespesas(outras);
-        nota.setValorDesconto(descontoNota);
-        nota.setObservacao(req.observacao());
-        nota.setSituacao(SituacaoNota.PENDENTE);
-
-        BigDecimal valorProdutos = BigDecimal.ZERO;
-        int seq = 1;
-        for (ItemNotaEntradaRequest ir : req.itens()) {
-            Produto produto = (organizacaoId == null
-                    ? produtoRepository.findByIdAndOrganizacaoIdIsNull(ir.produtoId())
-                    : produtoRepository.findByIdAndOrganizacaoId(ir.produtoId(), organizacaoId))
-                    .orElseThrow(() -> new RecursoNaoEncontradoException("Produto", ir.produtoId()));
-            ItemNotaEntrada item = new ItemNotaEntrada();
-            item.setOrganizacaoId(organizacaoId);
-            item.setProduto(produto);
-            item.setSequencia(seq++);
-            item.setQuantidade(ir.quantidade());
-            item.setValorUnitario(ir.valorUnitario());
-            BigDecimal descItem = nz(ir.valorDesconto());
-            item.setValorDesconto(descItem);
-            item.setPercentualDesconto(nz(ir.percentualDesconto()));
-            BigDecimal totalItem = ir.quantidade().multiply(ir.valorUnitario())
-                    .subtract(descItem).setScale(2, RoundingMode.HALF_UP);
-            if (totalItem.signum() < 0) {
-                throw new ConflitoException("O desconto do item não pode exceder o seu valor.");
-            }
-            item.setValorTotal(totalItem);
-            nota.addItem(item);
-            valorProdutos = valorProdutos.add(totalItem);
-        }
-        nota.setValorProdutos(valorProdutos);
-
-        BigDecimal total = valorProdutos.add(frete).add(seguro).add(outras)
-                .subtract(descontoNota).setScale(2, RoundingMode.HALF_UP);
-        if (total.signum() < 0) {
-            throw new ConflitoException("O desconto da nota não pode exceder o seu valor.");
-        }
-        nota.setValorTotal(total);
-
-        if (nota.getRecebimentoCompra() != null) {
-            validarItensRecebimento(nota, nota.getRecebimentoCompra());
-        }
-
-        ratearDespesas(nota.getItens(), valorProdutos, frete, seguro, outras);
+        NotaEntrada nota = preparar(organizacaoId, req, null);
         nota = repository.saveAndFlush(nota);
         auditar(nota, "NOTA_ENTRADA_CRIADA", null, snapshot(nota));
         return nota;
+    }
+
+    @Transactional
+    public PreviaNotaEntradaResponse previa(Long org, NotaEntradaRequest req) {
+        return resumo(preparar(org, req, null));
+    }
+
+    @Transactional
+    public PreviaNotaEntradaResponse previa(Long org, Long id, long versao, NotaEntradaRequest req) {
+        NotaEntrada atual = bloquear(org, id);
+        NotaEntradaHttpVersion.exigir(atual, versao);
+        NotaEntradaHttpVersion.pendente(atual);
+        exigirCronogramaSalvo(atual);
+        NotaEntrada proposta = preparar(org, req, id);
+        if (!assinatura(atual).equals(assinatura(proposta)))
+            throw new ConflitoException("Salve as alteracoes do rascunho e confira a nova revisao antes de confirmar.");
+        return resumo(atual);
+    }
+
+    @Transactional
+    public NotaEntrada prepararConferencia(Long org, NotaEntradaRequest req) {
+        return preparar(org, req, null, 2);
+    }
+
+    private static List<Object> assinatura(NotaEntrada n) {
+        return java.util.Arrays.asList(n.getNumero(), n.getModelo(), n.getSerie(), n.getFornecedor().getId(),
+                n.getCondicaoPagamento() == null ? null : n.getCondicaoPagamento().getId(),
+                n.getTransportadora() == null ? null : n.getTransportadora().getId(),
+                n.getLocalEstoque() == null ? null : n.getLocalEstoque().getId(), n.getDataEmissao(), n.getDataChegada(),
+                n.getTipoFrete(), n.getValorFrete().stripTrailingZeros(), n.getValorSeguro().stripTrailingZeros(),
+                n.getOutrasDespesas().stripTrailingZeros(), n.getValorDesconto().stripTrailingZeros(),
+                texto(n.getObservacao()), texto(n.getObservacaoInterna()),
+                n.getItens().stream().map(i -> java.util.Arrays.asList(i.getProduto().getId(),
+                        i.getQuantidade().stripTrailingZeros(), i.getValorUnitario().stripTrailingZeros(),
+                        i.getValorDesconto().stripTrailingZeros())).toList());
+    }
+
+    private static String texto(String s) { return s == null ? "" : s.trim(); }
+
+    private static void exigirCronogramaSalvo(NotaEntrada nota) {
+        if (!nota.isCronogramaDefinido())
+            throw new ConflitoException("Este rascunho anterior ao fluxo atual ainda nao possui parcelas congeladas. "
+                    + "Salve o rascunho, mesmo sem alterar os campos, antes de conferir e confirmar.");
+    }
+
+    @Transactional
+    public PreviaNotaEntradaResponse previaComCronograma(Long org, NotaEntradaRequest req, List<ParcelaNotaEntrada> parcelas) {
+        NotaEntrada nota = preparar(org, req, null, 2);
+        aplicarCronograma(nota, parcelas);
+        return resumo(nota);
+    }
+
+    @Transactional
+    public NotaEntrada criarComCronograma(Long org, NotaEntradaRequest req, List<ParcelaNotaEntrada> parcelas) {
+        NotaEntrada nota = preparar(org, req, null, 2);
+        aplicarCronograma(nota, parcelas);
+        nota = repository.saveAndFlush(nota);
+        auditar(nota, "NOTA_ENTRADA_CRIADA", null, snapshot(nota));
+        return nota;
+    }
+
+    public static List<ParcelaNotaEntrada> copiarCronograma(List<ParcelaNotaEntrada> parcelas) {
+        return parcelas.stream().map(p -> {
+            var copia = new ParcelaNotaEntrada(); copia.setNumeroParcela(p.getNumeroParcela());
+            copia.setValor(p.getValor()); copia.setDataVencimento(p.getDataVencimento());
+            copia.setFormaPagamento(p.getFormaPagamento()); copia.setFormaPagamentoNome(p.getFormaPagamentoNome());
+            return copia;
+        }).toList();
+    }
+
+    private static void aplicarCronograma(NotaEntrada nota, List<ParcelaNotaEntrada> parcelas) {
+        BigDecimal soma = parcelas.stream().map(ParcelaNotaEntrada::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (soma.compareTo(nota.getValorTotal()) != 0 || parcelas.stream().anyMatch(p -> p.getValor().signum()<=0
+                || p.getDataVencimento().isBefore(nota.getDataEmissao())))
+            throw new ConflitoException("A previsao congelada nao corresponde ao documento. Refaca a conferencia.");
+        nota.getParcelas().clear(); nota.getParcelas().addAll(copiarCronograma(parcelas));
+        nota.setCronogramaDefinido(true);
+    }
+
+    @Transactional(readOnly = true)
+    public PreviaNotaEntradaResponse previaPersistida(Long org, Long id) {
+        return resumo(buscar(org, id));
+    }
+
+    public PreviaNotaEntradaResponse resumo(NotaEntrada nota) {
+        var parcelas = cronograma(nota);
+        var valores = new ArrayList<ParcelaNotaEntradaResponse>();
+        for (var p : parcelas) valores.add(new ParcelaNotaEntradaResponse(p.getNumeroParcela(),
+                parcelas.size(), p.getValor(), p.getDataVencimento(),
+                p.getFormaPagamento() == null ? null : p.getFormaPagamento().getId(), p.getFormaPagamentoNome()));
+        BigDecimal custo = nota.getItens().stream().map(i -> i.getCustoTotal() == null
+                ? i.getValorTotal().add(i.getRateioFrete()).add(i.getRateioSeguro()).add(i.getRateioOutras())
+                : i.getCustoTotal()).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new PreviaNotaEntradaResponse(NotaEntradaResponse.from(nota), valores, custo,
+                nota.getValorTotal(), nota.getValorDesconto(), calcularCustosMedios(nota));
+    }
+
+    private List<CustoMedioItemNotaEntradaResponse> calcularCustosMedios(NotaEntrada nota) {
+        Map<Long, BigDecimal> saldos = new HashMap<>();
+        Map<Long, BigDecimal> custos = new HashMap<>();
+        List<CustoMedioItemNotaEntradaResponse> resultado = new ArrayList<>();
+        for (ItemNotaEntrada item : nota.getItens()) {
+            boolean registrado = item.getSaldoEstoqueAnterior() != null
+                    && item.getCustoMedioAnterior() != null
+                    && item.getCustoMedioPosterior() != null;
+            if (registrado) {
+                resultado.add(custoMedioItem(item, item.getSaldoEstoqueAnterior(),
+                        item.getCustoMedioAnterior(), item.getCustoMedioPosterior(), true, false));
+                continue;
+            }
+            boolean projetar = nota.getSituacao() == SituacaoNota.PENDENTE;
+            if (!projetar) {
+                resultado.add(custoMedioItem(item, null, null, null, false, false));
+                continue;
+            }
+            Long produtoId = item.getProduto().getId();
+            BigDecimal saldoAnterior = saldos.computeIfAbsent(produtoId,
+                    ignored -> saldoTotalAtual(nota.getOrganizacaoId(), item.getProduto()));
+            BigDecimal custoAnterior = custos.computeIfAbsent(produtoId,
+                    ignored -> item.getProduto().getCusto() == null
+                            ? BigDecimal.ZERO : item.getProduto().getCusto());
+            BigDecimal custoPosterior = CustoMedioPonderado.calcularEmMilionesimos(saldoAnterior,
+                    custoAnterior, item.getQuantidade(), item.getCustoPrecoFinal());
+            resultado.add(custoMedioItem(item, saldoAnterior, custoAnterior,
+                    custoPosterior, true, true));
+            saldos.put(produtoId, saldoAnterior.add(item.getQuantidade()));
+            custos.put(produtoId, custoPosterior);
+        }
+        return resultado;
+    }
+
+    private BigDecimal saldoTotalAtual(Long organizacaoId, Produto produto) {
+        if (organizacaoId == null) {
+            return produto.getQuantidade() == null ? BigDecimal.ZERO : produto.getQuantidade();
+        }
+        return jdbc.queryForObject("""
+                SELECT COALESCE(sum(quantidade_micros),0) * 0.000001 FROM saldo_estoque
+                WHERE organizacao_id=? AND produto_id=?
+                """, BigDecimal.class, organizacaoId, produto.getId());
+    }
+
+    private static CustoMedioItemNotaEntradaResponse custoMedioItem(ItemNotaEntrada item,
+            BigDecimal saldoAnterior, BigDecimal custoAnterior, BigDecimal custoPosterior,
+            boolean aplicaAoEstoque, boolean projecao) {
+        return new CustoMedioItemNotaEntradaResponse(item.getSequencia(),
+                item.getProduto().getId(), saldoAnterior, custoAnterior,
+                item.getQuantidade(), item.getCustoPrecoFinal(), custoPosterior,
+                aplicaAoEstoque, projecao);
+    }
+
+    @Transactional
+    public NotaEntrada atualizar(Long org, Long id, long versao, NotaEntradaRequest req) {
+        NotaEntrada atual = bloquear(org, id);
+        NotaEntradaHttpVersion.exigir(atual, versao);
+        NotaEntradaHttpVersion.pendente(atual);
+        NotaEntrada nova = preparar(org, req, id);
+        Map<String, Object> anterior = snapshot(atual);
+        atual.setNumero(nova.getNumero()); atual.setModelo(nova.getModelo()); atual.setSerie(nova.getSerie());
+        atual.setFornecedor(nova.getFornecedor()); atual.setCondicaoPagamento(nova.getCondicaoPagamento());
+        atual.setLocalEstoque(nova.getLocalEstoque());
+        atual.setTransportadora(nova.getTransportadora()); atual.setObservacaoInterna(nova.getObservacaoInterna());
+        atual.setDataEmissao(nova.getDataEmissao()); atual.setDataChegada(nova.getDataChegada());
+        atual.setTipoFrete(nova.getTipoFrete()); atual.setValorProdutos(nova.getValorProdutos());
+        atual.setValorFrete(nova.getValorFrete()); atual.setValorSeguro(nova.getValorSeguro());
+        atual.setOutrasDespesas(nova.getOutrasDespesas()); atual.setValorDesconto(nova.getValorDesconto());
+        atual.setValorTotal(nova.getValorTotal()); atual.setObservacao(nova.getObservacao());
+        // Recriar linhas em dois passos evita conflito da sequencia unica durante orphanRemoval.
+        atual.getItens().clear(); repository.flush();
+        nova.getItens().forEach(atual::addItem);
+        atual.getParcelas().clear(); atual.getParcelas().addAll(nova.getParcelas());
+        atual.setCronogramaDefinido(true);
+        atual.setUpdatedAt(java.time.OffsetDateTime.now());
+        atual = repository.saveAndFlush(atual);
+        auditar(atual, "NOTA_ENTRADA_ATUALIZADA", anterior, snapshot(atual));
+        return atual;
+    }
+
+    public static void validarDataEmissao(LocalDate emissao, LocalDate hoje) {
+        if (emissao.isAfter(hoje)) {
+            throw new ConflitoException("A data de emissão não pode ser futura.");
+        }
+    }
+
+    private NotaEntrada preparar(Long org, NotaEntradaRequest req, Long ignorarId) {
+        return preparar(org, req, ignorarId, 6);
+    }
+
+    private NotaEntrada preparar(Long org, NotaEntradaRequest req, Long ignorarId, int escalaValorBruto) {
+        if (req.itens() == null || req.itens().isEmpty()) throw new IllegalArgumentException("Informe os itens da nota.");
+        Fornecedor fornecedor = (org == null ? fornecedorRepository.findByIdAndOrganizacaoIdIsNull(req.fornecedorId())
+                : fornecedorRepository.findByIdAndOrganizacaoId(req.fornecedorId(), org))
+                .filter(f -> !Boolean.FALSE.equals(f.getAtivo()))
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Fornecedor ativo", req.fornecedorId()));
+        NotaEntrada nota = new NotaEntrada(); nota.setOrganizacaoId(org);
+        nota.setNumero(normalizar(req.numero()));
+        nota.setModelo(normalizar(req.modelo() == null || req.modelo().isBlank() ? "55" : req.modelo()));
+        nota.setSerie(normalizar(req.serie() == null || req.serie().isBlank() ? "1" : req.serie()));
+        nota.setFornecedor(fornecedor);
+        if (repository.existeIdentidade(org, fornecedor.getId(), nota.getNumero(), nota.getSerie(), nota.getModelo(), ignorarId))
+            throw new ConflitoException("J? existe uma nota com este numero/serie/modelo para este fornecedor.");
+        var condicao = req.condicaoPagamentoId() == null ? fornecedor.getCondicaoPagamento()
+                : buscarCondicao(org, req.condicaoPagamentoId());
+        if (condicao != null && !Boolean.TRUE.equals(condicao.getAtivo())) {
+            if (req.condicaoPagamentoId() != null) throw new ConflitoException("A condicao de pagamento esta inativa.");
+            condicao = null;
+        }
+        nota.setCondicaoPagamento(condicao);
+        var transportadora = req.transportadoraId() == null ? fornecedor.getTransportadora()
+                : (org == null ? transportadoras.findByIdAndOrganizacaoIdIsNull(req.transportadoraId())
+                        : transportadoras.findByIdAndOrganizacaoId(req.transportadoraId(), org))
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Transportadora", req.transportadoraId()));
+        if (transportadora != null && !Boolean.TRUE.equals(transportadora.getAtivo())) {
+            if (req.transportadoraId() != null) throw new ConflitoException("A transportadora esta inativa.");
+            transportadora = null;
+        }
+        nota.setTransportadora(transportadora); nota.setObservacaoInterna(req.observacaoInterna());
+        if (org != null) {
+            if (req.localEstoqueId() == null) throw new IllegalArgumentException("O local de estoque e obrigatorio.");
+            nota.setLocalEstoque(localEstoqueRepository.findByIdAndOrganizacaoId(req.localEstoqueId(), org)
+                    .filter(l -> Boolean.TRUE.equals(l.getAtivo()))
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("LocalEstoque ativo", req.localEstoqueId())));
+        }
+        LocalDate hoje = LocalDate.now();
+        LocalDate emissao = req.dataEmissao() == null ? hoje : req.dataEmissao();
+        validarDataEmissao(emissao, hoje);
+        if (req.dataChegada() != null && req.dataChegada().isBefore(emissao))
+            throw new ConflitoException("A chegada não pode ser anterior à emissão.");
+        nota.setDataEmissao(emissao); nota.setDataChegada(req.dataChegada());
+        nota.setTipoFrete(req.tipoFrete() == null ? TipoFrete.CIF : req.tipoFrete());
+        nota.setValorFrete(exato(nz(req.valorFrete()), 19));
+        nota.setValorSeguro(exato(nz(req.valorSeguro()), 19));
+        nota.setOutrasDespesas(exato(nz(req.outrasDespesas()), 19));
+        nota.setValorDesconto(exato(nz(req.valorDesconto()), 19));
+        nota.setObservacao(req.observacao());
+        BigDecimal valorProdutos = BigDecimal.ZERO;
+        int seq = 1;
+        for (ItemNotaEntradaRequest ir : req.itens()) {
+            Produto produto = (org == null ? produtoRepository.findByIdAndOrganizacaoIdIsNull(ir.produtoId())
+                    : produtoRepository.findByIdAndOrganizacaoId(ir.produtoId(), org))
+                    .filter(p -> !Boolean.FALSE.equals(p.getAtivo()))
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Produto ativo", ir.produtoId()));
+            ItemNotaEntrada item = new ItemNotaEntrada(); item.setOrganizacaoId(org); item.setProduto(produto);
+            item.setSequencia(seq++); item.setQuantidade(exato(ir.quantidade(), 18));
+            if (item.getQuantidade().signum() <= 0) throw new ConflitoException("A quantidade deve ser positiva.");
+            item.setValorUnitario(exato(ir.valorUnitario(), 19));
+            // O XML já fixa o bruto fiscal em centavos, validado na conciliação.
+            BigDecimal bruto = item.getQuantidade().multiply(item.getValorUnitario())
+                    .setScale(escalaValorBruto, RoundingMode.HALF_UP).setScale(6);
+            BigDecimal percentual = exato(nz(ir.percentualDesconto()), 9);
+            if (percentual.compareTo(CEM) > 0) throw new ConflitoException("O percentual nao pode exceder 100.");
+            BigDecimal porPercentual = bruto.multiply(percentual).divide(CEM, 6, RoundingMode.HALF_UP);
+            BigDecimal desconto = ir.valorDesconto() == null ? porPercentual : exato(ir.valorDesconto(), 19);
+            if (ir.percentualDesconto() != null && ir.valorDesconto() != null && desconto.compareTo(porPercentual) != 0)
+                throw new ConflitoException("O valor e o percentual de desconto do item sao contraditorios.");
+            if (desconto.compareTo(bruto) > 0) throw new ConflitoException("O desconto do item nao pode exceder o seu valor.");
+            item.setValorDesconto(desconto);
+            item.setPercentualDesconto(ir.percentualDesconto() != null ? percentual : bruto.signum() == 0
+                    ? BigDecimal.ZERO : desconto.multiply(CEM).divide(bruto, 6, RoundingMode.HALF_UP));
+            item.setValorTotal(bruto.subtract(desconto));
+            item.setUnidadeMedida(produto.getUnidadeMedida() == null ? null : produto.getUnidadeMedida().getSigla());
+            item.setCodigoProdutoFornecedor(produtoFornecedores.findByProdutoIdAndFornecedorIdAndOrganizacaoId(
+                    produto.getId(), fornecedor.getId(), org).filter(v -> Boolean.TRUE.equals(v.getAtivo()))
+                    .map(v -> v.getCodigoProd()).orElse(null));
+            nota.addItem(item); valorProdutos = valorProdutos.add(item.getValorTotal());
+        }
+        nota.setValorProdutos(exato(valorProdutos, 19));
+        BigDecimal total = valorProdutos.add(nota.getValorFrete()).add(nota.getValorSeguro())
+                .add(nota.getOutrasDespesas()).subtract(nota.getValorDesconto());
+        if (total.signum() < 0) throw new ConflitoException("O desconto da nota nao pode exceder o seu valor.");
+        nota.setValorTotal(exato(total, 19));
+        ratearDespesas(nota.getItens(), valorProdutos, nota.getValorFrete(), nota.getValorSeguro(), nota.getOutrasDespesas());
+        nota.getParcelas().addAll(calcularParcelas(nota)); nota.setCronogramaDefinido(true);
+        return nota;
+    }
+
+    private static String normalizar(String valor) {
+        if (valor == null || valor.isBlank()) throw new IllegalArgumentException("O identificador da nota e obrigatorio.");
+        String texto = valor.trim().toUpperCase(Locale.ROOT);
+        return texto.matches("[0-9]+") ? texto.replaceFirst("^0+(?!$)", "") : texto;
+    }
+
+    private static BigDecimal exato(BigDecimal valor, int precisao) {
+        try {
+            BigDecimal exato = Objects.requireNonNull(valor).setScale(6, RoundingMode.UNNECESSARY);
+            if (exato.signum() < 0 || exato.precision() > precisao) throw new ArithmeticException();
+            return exato;
+        } catch (ArithmeticException | NullPointerException ex) {
+            throw new ConflitoException("Valor inválido: informe no máximo seis casas decimais e respeite o limite do campo.");
+        }
+    }
+
+    private NotaEntrada bloquear(Long org, Long id) {
+        return org == null ? buscar(null, id) : repository.findParaAtualizar(id, org)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("NotaEntrada", id));
     }
 
     /**
@@ -273,30 +463,46 @@ public class NotaEntradaService {
      */
     @Transactional
     public NotaEntrada confirmar(Long organizacaoId, Long atorId, Long id) {
-        NotaEntrada nota = organizacaoId == null ? buscar(null, id)
-                : repository.findParaAtualizar(id, organizacaoId)
-                    .orElseThrow(() -> new RecursoNaoEncontradoException("NotaEntrada", id));
-        if (nota.getSituacao() != SituacaoNota.PENDENTE) {
-            throw new ConflitoException("Apenas notas pendentes podem ser confirmadas.");
-        }
+        return confirmar(organizacaoId, atorId, id, null);
+    }
+
+    @Transactional
+    public NotaEntrada confirmar(Long organizacaoId, Long atorId, Long id, Long versao) {
+        NotaEntrada nota = bloquear(organizacaoId, id);
+        if (nota.getSituacao() != SituacaoNota.PENDENTE)
+            throw new ConflitoException("Apenas notas pendentes podem ser confirmadas. Consulte o documento existente.");
+        if (versao != null) NotaEntradaHttpVersion.exigir(nota, versao);
+        validarDataEmissao(nota.getDataEmissao(), LocalDate.now());
+        exigirCronogramaSalvo(nota);
+        // Mesmo ordenamento em todos os documentos; locks duram ate o commit.
+        if (organizacaoId != null) estoqueService.bloquearProdutos(organizacaoId,
+                nota.getItens().stream().map(i -> i.getProduto().getId()).toList());
         for (ItemNotaEntrada item : nota.getItens()) {
-            Produto produto = item.getProduto();
-            if (organizacaoId == null) {
-                produto.setQuantidade(produto.getQuantidade().add(item.getQuantidade()));
-            }
-            produto.setValorCompra(item.getValorUnitario());
-            if (item.getCustoPrecoFinal().signum() > 0) {
-                produto.setCusto(item.getCustoPrecoFinal());
-            }
-            produto.recalcularLucro();
-            produtoRepository.saveAndFlush(produto);
-            if (organizacaoId != null && nota.getRecebimentoCompra() == null) {
-                estoqueService.registrarRecebimento(organizacaoId, atorId, produto.getId(),
-                        nota.getLocalEstoque().getId(), item.getQuantidade(),
-                        item.getCustoPrecoFinal(), "NOTA_ENTRADA",
-                        nota.getId() + ":" + item.getSequencia(),
-                        "Confirmacao da nota de entrada " + nota.getNumero());
-            }
+                Produto produto = item.getProduto();
+                if (organizacaoId == null) {
+                    BigDecimal saldoAnterior = produto.getQuantidade();
+                    BigDecimal custoAnterior = produto.getCusto() == null
+                            ? BigDecimal.ZERO : produto.getCusto();
+                    BigDecimal custoPosterior = CustoMedioPonderado.calcularEmMilionesimos(saldoAnterior,
+                            custoAnterior, item.getQuantidade(), item.getCustoPrecoFinal());
+                    produto.setQuantidade(saldoAnterior.add(item.getQuantidade()));
+                    produto.setCusto(custoPosterior);
+                    item.setSaldoEstoqueAnterior(saldoAnterior);
+                    item.setCustoMedioAnterior(custoAnterior);
+                    item.setCustoMedioPosterior(custoPosterior);
+                } else {
+                    var recebimento = estoqueService.registrarRecebimentoComCustoMedio(
+                            organizacaoId, atorId, produto.getId(), nota.getLocalEstoque().getId(),
+                            item.getQuantidade(), item.getCustoPrecoFinal(), "NOTA_ENTRADA",
+                            nota.getId() + ":" + item.getSequencia(),
+                            "Confirmacao da nota de entrada " + nota.getNumero());
+                    item.setSaldoEstoqueAnterior(recebimento.saldoTotalAnterior());
+                    item.setCustoMedioAnterior(recebimento.custoMedioAnterior());
+                    item.setCustoMedioPosterior(recebimento.custoMedioPosterior());
+                }
+                produto.setValorCompra(item.getValorUnitario());
+                produto.recalcularLucro();
+                produtoRepository.saveAndFlush(produto);
         }
         gerarTitulos(nota);
         Map<String, Object> anterior = snapshot(nota);
@@ -308,11 +514,20 @@ public class NotaEntradaService {
 
     @Transactional
     public NotaEntrada cancelar(Long organizacaoId, Long id) {
+        return cancelar(organizacaoId, id, null);
+    }
+
+    @Transactional
+    public NotaEntrada cancelar(Long organizacaoId, Long id, Long versao) {
         NotaEntrada nota = organizacaoId == null ? buscar(null, id)
                 : repository.findParaAtualizar(id, organizacaoId)
                     .orElseThrow(() -> new RecursoNaoEncontradoException("NotaEntrada", id));
+        if (versao != null) NotaEntradaHttpVersion.exigir(nota, versao);
         if (nota.getSituacao() == SituacaoNota.CONFIRMADA) {
             throw new ConflitoException("Uma nota confirmada não pode ser cancelada.");
+        }
+        if (nota.getRevertidaEm() != null) {
+            throw new ConflitoException("Uma nota revertida deve permanecer no histórico.");
         }
         Map<String, Object> anterior = snapshot(nota);
         nota.setSituacao(SituacaoNota.CANCELADA);
@@ -323,11 +538,20 @@ public class NotaEntradaService {
 
     @Transactional
     public void excluir(Long organizacaoId, Long id) {
+        excluir(organizacaoId, id, null);
+    }
+
+    @Transactional
+    public void excluir(Long organizacaoId, Long id, Long versao) {
         NotaEntrada nota = organizacaoId == null ? buscar(null, id)
                 : repository.findParaAtualizar(id, organizacaoId)
                     .orElseThrow(() -> new RecursoNaoEncontradoException("NotaEntrada", id));
+        if (versao != null) NotaEntradaHttpVersion.exigir(nota, versao);
         if (nota.getSituacao() == SituacaoNota.CONFIRMADA) {
             throw new ConflitoException("Uma nota confirmada não pode ser excluída.");
+        }
+        if (nota.getRevertidaEm() != null) {
+            throw new ConflitoException("Uma nota revertida não pode ser excluída.");
         }
         Map<String, Object> anterior = snapshot(nota);
         repository.delete(nota);
@@ -338,58 +562,60 @@ public class NotaEntradaService {
     /** Distribui frete/seguro/outras despesas proporcionalmente ao valor de cada item. */
     private void ratearDespesas(List<ItemNotaEntrada> itens, BigDecimal base,
                                 BigDecimal frete, BigDecimal seguro, BigDecimal outras) {
-        for (ItemNotaEntrada item : itens) {
-            BigDecimal proporcao = base.signum() == 0
-                    ? BigDecimal.ZERO
-                    : item.getValorTotal().divide(base, 8, RoundingMode.HALF_UP);
-            BigDecimal rFrete = frete.multiply(proporcao).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal rSeguro = seguro.multiply(proporcao).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal rOutras = outras.multiply(proporcao).setScale(2, RoundingMode.HALF_UP);
-            item.setRateioFrete(rFrete);
-            item.setRateioSeguro(rSeguro);
-            item.setRateioOutras(rOutras);
-            BigDecimal custoTotal = item.getValorTotal().add(rFrete).add(rSeguro).add(rOutras);
-            BigDecimal custoUnitario = item.getQuantidade().signum() == 0
-                    ? BigDecimal.ZERO
-                    : custoTotal.divide(item.getQuantidade(), 2, RoundingMode.HALF_UP);
-            item.setCustoPrecoFinal(custoUnitario);
+        List<BigDecimal> pesos = itens.stream().map(i -> base.signum() > 0 ? i.getValorTotal() : i.getQuantidade()).toList();
+        var fretes = RateioMonetario.distribuirEmMilionesimos(frete, pesos);
+        var seguros = RateioMonetario.distribuirEmMilionesimos(seguro, pesos);
+        var despesas = RateioMonetario.distribuirEmMilionesimos(outras, pesos);
+        for (int i = 0; i < itens.size(); i++) {
+            ItemNotaEntrada item = itens.get(i);
+            item.setRateioFrete(fretes.get(i)); item.setRateioSeguro(seguros.get(i)); item.setRateioOutras(despesas.get(i));
+            BigDecimal custo = item.getValorTotal().add(fretes.get(i)).add(seguros.get(i)).add(despesas.get(i));
+            item.setCustoTotal(exato(custo, 19));
+            item.setCustoPrecoFinal(exato(custo.divide(item.getQuantidade(), 6, RoundingMode.HALF_UP), 19));
         }
     }
 
-    /** Gera os titulos a pagar conforme as parcelas da condicao (ou um titulo a vista). */
+    private List<ParcelaNotaEntrada> cronograma(NotaEntrada nota) {
+        if (!nota.isCronogramaDefinido() && nota.getSituacao() == SituacaoNota.CONFIRMADA) {
+            return contaPagarRepository.findByNotaEntradaIdAndOrganizacaoIdOrderByNumeroParcelaAsc(nota.getId(), nota.getOrganizacaoId())
+                    .stream().filter(c -> c.getValorOriginal().signum()>0).map(c -> {
+                        var p = new ParcelaNotaEntrada(); p.setNumeroParcela(c.getNumeroParcela());
+                        p.setValor(c.getValorOriginal()); p.setDataVencimento(c.getDataVencimento());
+                        p.setFormaPagamento(c.getFormaPagamento());
+                        p.setFormaPagamentoNome(c.getFormaPagamento() == null ? null : c.getFormaPagamento().getNome());
+                        return p;
+                    }).toList();
+        }
+        return nota.isCronogramaDefinido() ? nota.getParcelas() : calcularParcelas(nota);
+    }
+
+    private List<ParcelaNotaEntrada> calcularParcelas(NotaEntrada nota) {
+        if (nota.getValorTotal().signum() == 0) return List.of();
+        List<ParcelaCondicaoPagamento> condicoes = nota.getCondicaoPagamento() == null ? List.of()
+                : nota.getCondicaoPagamento().getParcelas().stream()
+                    .sorted(Comparator.comparing(ParcelaCondicaoPagamento::getNumero)).toList();
+        if (!condicoes.isEmpty() && condicoes.stream().map(ParcelaCondicaoPagamento::getPercentual)
+                .reduce(BigDecimal.ZERO, BigDecimal::add).compareTo(CEM) != 0)
+            throw new ConflitoException("A soma das parcelas da condicao deve ser 100%.");
+        List<BigDecimal> valores = RateioMonetario.distribuirEmMilionesimos(nota.getValorTotal(), condicoes.isEmpty()
+                ? List.of(BigDecimal.ONE) : condicoes.stream().map(ParcelaCondicaoPagamento::getPercentual).toList());
+        var resultado = new ArrayList<ParcelaNotaEntrada>();
+        for (int i = 0; i < valores.size(); i++) {
+            if (valores.get(i).signum() == 0) continue;
+            var origem = condicoes.isEmpty() ? null : condicoes.get(i);
+            var parcela = new ParcelaNotaEntrada(); parcela.setNumeroParcela(resultado.size() + 1);
+            parcela.setValor(valores.get(i)); parcela.setDataVencimento(nota.getDataEmissao().plusDays(origem == null ? 0 : origem.getDias()));
+            parcela.setFormaPagamento(origem == null ? null : origem.getFormaPagamento());
+            parcela.setFormaPagamentoNome(parcela.getFormaPagamento() == null ? null : parcela.getFormaPagamento().getNome());
+            resultado.add(parcela);
+        }
+        return resultado;
+    }
+
     private void gerarTitulos(NotaEntrada nota) {
-        List<ParcelaCondicaoPagamento> parcelas = List.of();
-        if (nota.getCondicaoPagamento() != null) {
-            CondicaoPagamento condicao = condicaoPagamentoRepository
-                    .findByIdAndOrganizacaoId(nota.getCondicaoPagamento().getId(), nota.getOrganizacaoId())
-                    .orElseThrow(() -> new RecursoNaoEncontradoException(
-                            "CondicaoPagamento", nota.getCondicaoPagamento().getId()));
-            parcelas = condicao.getParcelas().stream()
-                    .sorted(Comparator.comparing(ParcelaCondicaoPagamento::getNumero))
-                    .toList();
-        }
-
-        BigDecimal total = nota.getValorTotal();
-        if (parcelas.isEmpty()) {
-            salvarTitulo(nota, 1, 1, total, nota.getDataEmissao(), null);
-            return;
-        }
-
-        int n = parcelas.size();
-        BigDecimal acumulado = BigDecimal.ZERO;
-        for (int i = 0; i < n; i++) {
-            ParcelaCondicaoPagamento parcela = parcelas.get(i);
-            BigDecimal valorParcela;
-            if (i == n - 1) {
-                valorParcela = total.subtract(acumulado);
-            } else {
-                valorParcela = total.multiply(parcela.getPercentual())
-                        .divide(CEM, 2, RoundingMode.HALF_UP);
-                acumulado = acumulado.add(valorParcela);
-            }
-            LocalDate vencimento = nota.getDataEmissao().plusDays(parcela.getDias());
-            ContaPagar titulo = salvarTitulo(nota, i + 1, n, valorParcela, vencimento,
-                    parcela.getFormaPagamento());
+        var parcelas = cronograma(nota);
+        for (var p : parcelas) {
+            var titulo = salvarTitulo(nota, p.getNumeroParcela(), parcelas.size(), p.getValor(), p.getDataVencimento(), p.getFormaPagamento());
             titulo.setCondicaoPagamento(nota.getCondicaoPagamento());
         }
     }
@@ -407,6 +633,9 @@ public class NotaEntradaService {
         titulo.setValorOriginal(valor);
         titulo.setValorTotal(valor);
         titulo.setValorPago(BigDecimal.ZERO);
+        titulo.setValorDesconto(BigDecimal.ZERO);
+        titulo.setValorJuros(BigDecimal.ZERO);
+        titulo.setValorMulta(BigDecimal.ZERO);
         titulo.setDataEmissao(nota.getDataEmissao());
         titulo.setDataVencimento(vencimento);
         titulo.setSituacao(SituacaoContaPagar.PENDENTE);
@@ -420,29 +649,13 @@ public class NotaEntradaService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("CondicaoPagamento", id));
     }
 
-    private static void validarItensRecebimento(
-            NotaEntrada nota, RecebimentoCompra recebimento) {
-        Map<Long, BigDecimal> quantidadesRecebidas = new HashMap<>();
-        for (ItemRecebimentoCompra item : recebimento.getItens()) {
-            quantidadesRecebidas.merge(item.getProduto().getId(), item.getQuantidade(),
-                    BigDecimal::add);
-        }
-        Map<Long, BigDecimal> quantidadesNota = new HashMap<>();
-        for (ItemNotaEntrada item : nota.getItens()) {
-            quantidadesNota.merge(item.getProduto().getId(), item.getQuantidade(),
-                    BigDecimal::add);
-        }
-        if (quantidadesRecebidas.size() != quantidadesNota.size()) {
-            throw new ConflitoException(
-                    "Os itens da nota devem corresponder integralmente ao recebimento.");
-        }
-        for (Map.Entry<Long, BigDecimal> item : quantidadesRecebidas.entrySet()) {
-            BigDecimal quantidadeNota = quantidadesNota.get(item.getKey());
-            if (quantidadeNota == null || quantidadeNota.compareTo(item.getValue()) != 0) {
-                throw new ConflitoException(
-                        "Os itens da nota devem corresponder integralmente ao recebimento.");
-            }
-        }
+    @Transactional(readOnly = true)
+    public List<Long> incluirCompensacoes(Long org, List<Long> ids) {
+        if (ids.isEmpty()) return List.of();
+        String marcadores = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
+        var args = new ArrayList<Object>(); args.add(org); args.addAll(ids); args.addAll(ids);
+        return jdbc.queryForList("select id from movimento_estoque where organizacao_id=? and (id in ("
+                + marcadores + ") or compensado_id in (" + marcadores + ")) order by id", Long.class, args.toArray());
     }
 
     private static BigDecimal nz(BigDecimal v) {
@@ -464,8 +677,6 @@ public class NotaEntradaService {
                 "fornecedorId", nota.getFornecedor().getId(),
                 "valorTotal", nota.getValorTotal(),
                 "localEstoqueId", nota.getLocalEstoque() == null
-                        ? 0L : nota.getLocalEstoque().getId(),
-                "recebimentoCompraId", nota.getRecebimentoCompra() == null
-                        ? 0L : nota.getRecebimentoCompra().getId());
+                        ? 0L : nota.getLocalEstoque().getId());
     }
 }

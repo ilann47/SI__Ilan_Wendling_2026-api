@@ -2,6 +2,8 @@
 
 # Pedidos
 
+V87: snapshots de lote, reserva, item e total do pedido usam milionésimos; a API permanece em unidades de negócio. Quotas e quantidade de vagas continuam contagens inteiras.
+
 ## Objetivo
 
 Materializar a intenção comercial do comprador com snapshots e total
@@ -147,6 +149,7 @@ validação de limite e isolamento do ator.
 
 | Data | Ação |
 |---|---|
+| 2026-11-08 | V100 migra os preços e totais registrados de pedidos de eventos para milionésimos no banco de teste, sem recalcular pedidos existentes. |
 | 2026-07-30 | Implementa UC710 até pedido aguardando pagamento e expiração automática. |
 | 2026-07-30 | Implementa confirmação manual versionada, idempotente e pendente de conciliação. |
 | 2026-07-30 | Snapshot do item inclui pátio e pedido atendido depende de todas as credenciais. |

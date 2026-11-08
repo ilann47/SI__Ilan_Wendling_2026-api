@@ -2,6 +2,8 @@
 
 # Conveniência
 
+V86: preço de venda e estoque mínimo usam inteiros em milionésimos para novas gravações; os demais valores do catálogo ainda não foram migrados.
+
 ## Objetivo
 
 Administrar categorias, marcas, unidades de medida, produtos e serviços com
@@ -106,6 +108,9 @@ cobrem a V53, inclusive reativação da mesma linha e concorrência 201/409.
 
 | Data | Ação |
 |---|---|
+| 2026-11-08 | V96 deixa quantidade, mínimo, último preço de compra e custo do estoque somente em milionésimos; preço de venda e margem não entram neste corte. |
+| 2026-11-08 | V98 migra o preço padrão de serviço; V100 conclui preço de venda, margem e custo por fornecedor em milionésimos. |
+| 2026-11-08 | Custo e último preço de compra passam a gravar inteiro escalado; quantidade legada canônica em milionésimos sem liberar saldo no cadastro contextual. |
 | 2026-08-03 | V50 migra Categoria, Marca e Unidade de Medida para tenancy contextual. |
 | 2026-08-03 | V51 adiciona concorrência HTTP/JPA, unique de nome da Unidade e reverse guards. |
 | 2026-08-03 | V52 migra Produto e Serviço, protege parents same-owner e consumers globais. |

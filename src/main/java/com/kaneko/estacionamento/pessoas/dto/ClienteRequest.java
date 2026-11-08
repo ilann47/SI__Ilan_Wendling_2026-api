@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -46,6 +47,7 @@ public record ClienteRequest(
         Long condicaoPagamentoId,
 
         @PositiveOrZero(message = "O limite de crédito não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal limiteCredito,
 
         @Size(max = 255) String observacao,

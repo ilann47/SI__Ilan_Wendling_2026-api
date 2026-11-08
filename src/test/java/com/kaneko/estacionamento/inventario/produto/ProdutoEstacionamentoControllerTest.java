@@ -82,6 +82,7 @@ class ProdutoEstacionamentoControllerTest {
     private Long alocacaoId;
     private String tokenGlobal;
     private String tokenContextual;
+    private final OffsetDateTime inicioJanela = OffsetDateTime.now().withNano(0).minusHours(2);
 
     @BeforeEach
     void setup() throws Exception {
@@ -107,7 +108,7 @@ class ProdutoEstacionamentoControllerTest {
     void criaProdutoRascunhoComAuditoria() throws Exception {
         String body = criarProduto(tokenContextual, eventoId, "produto-1",
                         payload("Estacionamento VIP", alocacaoId, "VIP", 30,
-                                "2026-10-10T17:30:00-03:00", "2026-10-11T00:30:00-03:00"),
+                                inicioJanela.plusMinutes(30).toString(), inicioJanela.plusHours(7).plusMinutes(30).toString()),
                         status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andExpect(header().string("ETag", "\"0\""))
@@ -161,7 +162,7 @@ class ProdutoEstacionamentoControllerTest {
     @Test
     void criacaoEhIdempotenteEChaveNaoAceitaOutroPayload() throws Exception {
         String payload = payload("Produto Comum", alocacaoId, "COMUM", 20,
-                "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00");
+                inicioJanela.toString(), inicioJanela.plusHours(8).toString());
         String primeiro = criarProduto(tokenContextual, eventoId, "produto-idempotente",
                 payload, status().isCreated()).andReturn().getResponse().getContentAsString();
         String repetido = criarProduto(tokenContextual, eventoId, "produto-idempotente",
@@ -171,7 +172,7 @@ class ProdutoEstacionamentoControllerTest {
                 .isEqualTo(JsonPath.<Number>read(primeiro, "$.id").longValue());
         criarProduto(tokenContextual, eventoId, "produto-idempotente",
                 payload("Produto Alterado", alocacaoId, "COMUM", 20,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isConflict());
     }
 
@@ -179,15 +180,15 @@ class ProdutoEstacionamentoControllerTest {
     void impedeQueSomaDasQuotasExcedaCapacidadeVendavel() throws Exception {
         criarProduto(tokenContextual, eventoId, "produto-quota-60",
                 payload("Produto Sessenta", alocacaoId, "COMUM", 60,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isCreated());
         criarProduto(tokenContextual, eventoId, "produto-quota-20",
                 payload("Produto Vinte", alocacaoId, "VIP", 20,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isCreated());
         criarProduto(tokenContextual, eventoId, "produto-quota-excedente",
                 payload("Produto Excedente", alocacaoId, "PCD", 1,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isConflict());
     }
 
@@ -195,13 +196,13 @@ class ProdutoEstacionamentoControllerTest {
     void exigeJanelaContidaNaAlocacaoEVinculoComEvento() throws Exception {
         criarProduto(tokenContextual, eventoId, "produto-janela-invalida",
                 payload("Janela Invalida", alocacaoId, "COMUM", 10,
-                        "2026-10-10T16:59:59-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.minusSeconds(1).toString(), inicioJanela.plusHours(8).toString()),
                 status().isBadRequest());
 
         Long outroEvento = criarEvento("Outro Evento Produtos", "evento-produtos-outro");
         criarProduto(tokenContextual, outroEvento, "produto-alocacao-outro-evento",
                 payload("Produto Cruzado", alocacaoId, "COMUM", 10,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isNotFound());
     }
 
@@ -214,7 +215,7 @@ class ProdutoEstacionamentoControllerTest {
                 bearer(jwt.gerarToken(gestor.getLogin(), "OPERADOR")));
         criarProduto(tokenGestor, eventoId, "produto-gestor",
                 payload("Produto Gestor", alocacaoId, "STAFF", 5,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isCreated());
 
         Usuario organizador = usuario("produto_organizador", PerfilUsuario.OPERADOR);
@@ -224,7 +225,7 @@ class ProdutoEstacionamentoControllerTest {
                 bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
         criarProduto(tokenOrganizador, eventoId, "produto-organizador",
                 payload("Produto Organizador", alocacaoId, "CORTESIA", 5,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isCreated());
 
         Usuario membro = usuario("produto_membro", PerfilUsuario.OPERADOR);
@@ -233,7 +234,7 @@ class ProdutoEstacionamentoControllerTest {
                 bearer(jwt.gerarToken(membro.getLogin(), "OPERADOR")));
         criarProduto(tokenMembro, eventoId, "produto-sem-papel",
                 payload("Produto Negado", alocacaoId, "COMUM", 5,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isForbidden());
     }
 
@@ -251,19 +252,19 @@ class ProdutoEstacionamentoControllerTest {
                 cidadeExterna, 50, 50, null, true)).id();
         Long eventoExterno = eventos.criar(outraOrganizacao, admin.getId(), "evento-externo-produto",
                 new CriarEventoRequest("Evento Externo", venueExterno,
-                        OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
-                        OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
+                        inicioJanela.plusHours(2),
+                        inicioJanela.plusHours(6).plusMinutes(30),
                         "America/Sao_Paulo", null)).id();
         Long alocacaoExterna = criarAlocacao(
                 outraOrganizacao, eventoExterno, patioExterno, 50, 50, 0, "alloc-externa-produto");
 
         criarProduto(tokenContextual, eventoId, "produto-tenant-externo",
                 payload("Produto Externo", alocacaoExterna, "COMUM", 10,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isNotFound());
         criarProduto(tokenContextual, eventoId, "produto-campo-controlado",
                 payload("Produto Campo", alocacaoId, "COMUM", 10,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00")
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString())
                         .replace("{", "{\"organizationId\":999,"),
                 status().isBadRequest());
     }
@@ -624,7 +625,7 @@ class ProdutoEstacionamentoControllerTest {
 
     @Test
     void criaPedidoComSnapshotTotalIdempotenciaAuditoriaEOutbox() throws Exception {
-        Long produtoId = prepararVendaAberta(4, 4);
+        Long produtoId = prepararProdutoPublicado(4, 4, true, "45.000001");
         String holdBody = criarHold(tokenContextual, "hold-order-1",
                         payloadHold(produtoId, 2, "checkout-1"), status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -647,12 +648,18 @@ class ProdutoEstacionamentoControllerTest {
                 .andExpect(jsonPath("$.items[0].parkingAllocationId").value(alocacaoId))
                 .andExpect(jsonPath("$.items[0].parkingFacilityId").value(patioId))
                 .andExpect(jsonPath("$.items[0].quantity").value(2))
-                .andExpect(jsonPath("$.items[0].unitPrice").value(45.00))
-                .andExpect(jsonPath("$.subtotal").value(90.00))
-                .andExpect(jsonPath("$.total").value(90.00))
+                .andExpect(jsonPath("$.items[0].unitPrice").value(45.000001))
+                .andExpect(jsonPath("$.subtotal").value(90.000002))
+                .andExpect(jsonPath("$.total").value(90.000002))
                 .andExpect(jsonPath("$.currency").value("BRL"))
                 .andReturn().getResponse().getContentAsString();
         long pedidoId = JsonPath.<Number>read(primeiro, "$.id").longValue();
+        assertThat(jdbc.queryForObject("select preco_unitario_micros from reserva_inventario where id=?",
+                Long.class, holdId)).isEqualTo(45000001L);
+        assertThat(jdbc.queryForObject("select total_micros from pedido where id=?",
+                Long.class, pedidoId)).isEqualTo(90000002L);
+        assertThat(jdbc.queryForObject("select total_micros from item_pedido where pedido_id=?",
+                Long.class, pedidoId)).isEqualTo(90000002L);
 
         String repetido = criarPedido(tokenContextual, "order-1", payload,
                         status().isCreated())
@@ -846,11 +853,11 @@ class ProdutoEstacionamentoControllerTest {
         assertThatThrownBy(() -> jdbc.update("""
                 insert into pedido (
                     organizacao_id, evento_id, reserva_inventario_id, ator_id,
-                    numero, canal, placa_veiculo, status, subtotal, desconto,
-                    taxa, total, moeda, expira_em, finalizado_em, version)
+                    numero, canal, placa_veiculo, status, subtotal_micros, desconto_micros,
+                    taxa_micros, total_micros, moeda, expira_em, finalizado_em, version)
                 select organizacao_id, evento_id, reserva_inventario_id, ator_id,
                     'PED-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', canal, placa_veiculo,
-                    status, subtotal, desconto, taxa, total, moeda, expira_em,
+                    status, subtotal_micros, desconto_micros, taxa_micros, total_micros, moeda, expira_em,
                     finalizado_em, 0
                 from pedido where id = ?
                 """, pedidoId)).isInstanceOf(DataIntegrityViolationException.class);
@@ -861,7 +868,7 @@ class ProdutoEstacionamentoControllerTest {
         long pedidoId = criarPedidoPersistido("constraint-total");
 
         assertThatThrownBy(() -> jdbc.update("""
-                update pedido set total = total + 1 where id = ?
+                update pedido set total_micros = total_micros + 1 where id = ?
                 """, pedidoId)).isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -1153,7 +1160,7 @@ class ProdutoEstacionamentoControllerTest {
                         org.hamcrest.Matchers.matchesPattern("KQ1-[A-Za-z0-9_-]{43}")))
                 .andExpect(jsonPath("$.issuedAt").exists())
                 .andExpect(jsonPath("$.expiresAt")
-                        .value("2026-10-11T04:00:00Z"))
+                        .value(inicioJanela.plusHours(8).toInstant().toString()))
                 .andReturn().getResponse().getContentAsString();
         String tokenQr = JsonPath.read(qrBody, "$.token");
 
@@ -1813,12 +1820,17 @@ class ProdutoEstacionamentoControllerTest {
 
     private Long prepararProdutoPublicado(
             int quota, int quantidadeLote, boolean abrirVendas) throws Exception {
+        return prepararProdutoPublicado(quota, quantidadeLote, abrirVendas, "45");
+    }
+
+    private Long prepararProdutoPublicado(
+            int quota, int quantidadeLote, boolean abrirVendas, String preco) throws Exception {
         Long produtoId = criarProdutoBase(
                 "Produto Hold " + quota + " " + quantidadeLote,
                 "produto-hold-" + quota + "-" + quantidadeLote, quota);
         OffsetDateTime agora = OffsetDateTime.now().withNano(0);
         criarLote(tokenContextual, produtoId, "lote-hold-" + produtoId,
-                payloadLote("Lote Hold", "45", "BRL", quantidadeLote, 1,
+                payloadLote("Lote Hold", preco, "BRL", quantidadeLote, 1,
                         agora.minusDays(1).toString(), agora.plusDays(1).toString()),
                 status().isCreated());
         publicarProduto(tokenContextual, produtoId, "\"0\"", status().isOk());
@@ -2065,7 +2077,7 @@ class ProdutoEstacionamentoControllerTest {
             String nome, String chave, int quota, String categoria) throws Exception {
         String body = criarProduto(tokenContextual, eventoId, chave,
                 payload(nome, alocacaoId, categoria, quota,
-                        "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00"),
+                        inicioJanela.toString(), inicioJanela.plusHours(8).toString()),
                 status().isCreated()).andReturn().getResponse().getContentAsString();
         return JsonPath.<Number>read(body, "$.id").longValue();
     }
@@ -2112,8 +2124,8 @@ class ProdutoEstacionamentoControllerTest {
 
     private Long criarEvento(String nome, String chave) {
         return eventos.criar(organizacaoId, admin.getId(), chave, new CriarEventoRequest(
-                nome, venueId, OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
-                OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
+                nome, venueId, inicioJanela.plusHours(2),
+                inicioJanela.plusHours(6).plusMinutes(30),
                 "America/Sao_Paulo", null)).id();
     }
 
@@ -2129,8 +2141,8 @@ class ProdutoEstacionamentoControllerTest {
             int reservada, String chave) {
         return alocacoes.criar(orgId, admin.getId(), eventId, chave,
                 new CriarAlocacaoPatioEventoRequest(
-                        parkingId, OffsetDateTime.parse("2026-10-10T17:00:00-03:00"),
-                        OffsetDateTime.parse("2026-10-11T01:00:00-03:00"),
+                        parkingId, inicioJanela,
+                        inicioJanela.plusHours(8),
                         operacional, vendavel, reservada)).id();
     }
 

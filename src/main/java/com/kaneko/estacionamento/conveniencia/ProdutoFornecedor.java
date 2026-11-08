@@ -1,8 +1,10 @@
 package com.kaneko.estacionamento.conveniencia;
 
 import com.kaneko.estacionamento.common.BaseEntity;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import com.kaneko.estacionamento.fornecedor.Fornecedor;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -43,6 +45,7 @@ public class ProdutoFornecedor extends BaseEntity {
     @Column(name = "codigo_prod", length = 50)
     private String codigoProd;
 
-    @Column(name = "custo", precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_micros", precision = 19, scale = 0)
     private BigDecimal custo;
 }

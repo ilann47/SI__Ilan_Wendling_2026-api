@@ -5,6 +5,7 @@ import com.kaneko.estacionamento.fiscal.SituacaoNotaServico;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * Representacao de saida de uma nota de servico.
@@ -33,7 +34,12 @@ public record NotaServicoResponse(
         SituacaoNotaServico situacao,
         String observacao,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        List<ItemNotaServicoResponse> itens,
+        List<ParcelaNotaEntradaResponse> parcelas,
+        boolean cronogramaDefinido,
+        String motivoCancelamento,
+        OffsetDateTime canceladaEm
 ) {
 
     public static NotaServicoResponse from(NotaServico n) {
@@ -61,6 +67,11 @@ public record NotaServicoResponse(
                 n.getSituacao(),
                 n.getObservacao(),
                 n.getCreatedAt(),
-                n.getUpdatedAt());
+                n.getUpdatedAt(),
+                n.getItens(),
+                n.getParcelas(),
+                n.isCronogramaDefinido(),
+                n.getMotivoCancelamento(),
+                n.getCanceladaEm());
     }
 }

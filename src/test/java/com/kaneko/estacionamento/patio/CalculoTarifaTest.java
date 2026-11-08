@@ -22,32 +22,42 @@ class CalculoTarifaTest {
     }
 
     @Test
+    void preservaSextaCasaNoValorPorHoraETetoDaDiaria() {
+        assertEquals(new BigDecimal("10.000002"), CalculoTarifa.calcular(
+                new BigDecimal("5.000001"), new BigDecimal("30.000001"), TOLERANCIA,
+                ENTRADA, ENTRADA.plusMinutes(61)));
+        assertEquals(new BigDecimal("30.000001"), CalculoTarifa.calcular(
+                new BigDecimal("5.000001"), new BigDecimal("30.000001"), TOLERANCIA,
+                ENTRADA, ENTRADA.plusMinutes(600)));
+    }
+
+    @Test
     void cortesiaDentroDaTolerancia() {
-        assertEquals(new BigDecimal("0.00"), cobrar(10));
-        assertEquals(new BigDecimal("0.00"), cobrar(15)); // limite exato ainda e cortesia
+        assertEquals(new BigDecimal("0.000000"), cobrar(10));
+        assertEquals(new BigDecimal("0.000000"), cobrar(15)); // limite exato ainda e cortesia
     }
 
     @Test
     void primeiraHoraAoUltrapassarTolerancia() {
-        assertEquals(new BigDecimal("5.00"), cobrar(16)); // 16 min -> 1 hora cheia
-        assertEquals(new BigDecimal("5.00"), cobrar(60)); // 60 min -> 1 hora
+        assertEquals(new BigDecimal("5.000000"), cobrar(16)); // 16 min -> 1 hora cheia
+        assertEquals(new BigDecimal("5.000000"), cobrar(60)); // 60 min -> 1 hora
     }
 
     @Test
     void fracaoDeHoraArredondaParaCima() {
-        assertEquals(new BigDecimal("10.00"), cobrar(61)); // 61 min -> 2 horas
-        assertEquals(new BigDecimal("10.00"), cobrar(90)); // 90 min -> 2 horas
+        assertEquals(new BigDecimal("10.000000"), cobrar(61)); // 61 min -> 2 horas
+        assertEquals(new BigDecimal("10.000000"), cobrar(90)); // 90 min -> 2 horas
     }
 
     @Test
     void tetoDaDiariaLimitaOValor() {
         // 10 horas = 600 min -> 10*5 = 50, mas teto de 1 diaria = 30
-        assertEquals(new BigDecimal("30.00"), cobrar(600));
+        assertEquals(new BigDecimal("30.000000"), cobrar(600));
     }
 
     @Test
     void multiplasDiariasSomamOTeto() {
         // 30 horas = 1800 min -> 30*5 = 150, mas teto de 2 diarias = 60
-        assertEquals(new BigDecimal("60.00"), cobrar(30 * 60));
+        assertEquals(new BigDecimal("60.000000"), cobrar(30 * 60));
     }
 }

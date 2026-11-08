@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.pagamento;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -13,6 +14,7 @@ import com.kaneko.estacionamento.support.tenant.TenantFixture;
 import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
 import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,37 @@ class PagamentoTenantApiTest {
     void setup() throws Exception {
         tenantA = tenant.criarTenantAdmin();
         tenantB = tenant.criarTenantAdmin();
+    }
+
+    @Test
+    void gravaPercentuaisEmMilionesimosELeNasUnidadesDoContrato() throws Exception {
+        String payload = """
+                {"nome":"Precisão seis", "numeroParcelas":2, "percentualJuros":5.250001,
+                 "percentualMulta":0.000001, "percentualDesconto":7.000002,
+                 "parcelas":[{"numero":1,"dias":0,"percentual":33.333333},
+                             {"numero":2,"dias":30,"percentual":66.666667}]}
+                """;
+        String criado = mvc.perform(post("/api/condicoes-pagamento")
+                        .header("Authorization", tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Number id = JsonPath.read(criado, "$.id");
+        assertThat(jdbc.queryForObject("select percentual_juros_micros from condicao_pagamento where id=?",
+                BigDecimal.class, id.longValue())).isEqualTo(new BigDecimal("5250001"));
+        assertThat(jdbc.queryForList("""
+                select percentual_micros from parcela_condicao_pagamento where condicao_pagamento_id=? order by numero
+                """, BigDecimal.class, id.longValue())).containsExactly(new BigDecimal("33333333"), new BigDecimal("66666667"));
+        mvc.perform(get("/api/condicoes-pagamento/{id}", id)
+                        .header("Authorization", tenantA.tokenContextual()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.percentualJuros").value(5.250001))
+                .andExpect(jsonPath("$.parcelas[0].percentual").value(33.333333));
+        mvc.perform(post("/api/condicoes-pagamento")
+                        .header("Authorization", tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload.replace("5.250001", "5.2500001")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -196,16 +229,16 @@ class PagamentoTenantApiTest {
                 """, Long.class);
         Long condicaoId = jdbc.queryForObject("""
                 INSERT INTO condicao_pagamento
-                    (nome, numero_parcelas, percentual_juros, percentual_multa,
-                     percentual_desconto, ativo, created_at, updated_at)
+                    (nome, numero_parcelas, percentual_juros_micros, percentual_multa_micros,
+                     percentual_desconto_micros, ativo, created_at, updated_at)
                 VALUES ('Condicao historica', 1, 0, 0, 0, true, now(), now())
                 RETURNING id
                 """, Long.class);
         jdbc.update("""
                 INSERT INTO parcela_condicao_pagamento
-                    (condicao_pagamento_id, numero, dias, percentual,
+                    (condicao_pagamento_id, numero, dias, percentual_micros,
                      forma_pagamento_id, created_at, updated_at)
-                VALUES (?, 1, 0, 100, ?, now(), now())
+                VALUES (?, 1, 0, 100000000, ?, now(), now())
                 """, condicaoId, formaId);
 
         mvc.perform(get("/api/formas-pagamento")

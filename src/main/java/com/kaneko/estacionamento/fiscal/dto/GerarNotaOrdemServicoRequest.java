@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.fiscal.dto;
 
 import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -15,5 +16,5 @@ public record GerarNotaOrdemServicoRequest(
         LocalDate dataEmissao,
         Long condicaoPagamentoId,
         Long formaPagamentoId,
-        @PositiveOrZero @DecimalMax("100.00") BigDecimal aliquotaIss) {
+        @PositiveOrZero @DecimalMax("100.00") @Digits(integer = 3, fraction = 6) BigDecimal aliquotaIss) {
 }

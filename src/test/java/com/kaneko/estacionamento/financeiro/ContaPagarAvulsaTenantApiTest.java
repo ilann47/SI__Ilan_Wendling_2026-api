@@ -46,6 +46,39 @@ class ContaPagarAvulsaTenantApiTest {
         assertThat(auditorias).isEqualTo(2);
     }
 
+    @Test
+    void preservaMilionesimosDaDespesaAteQuitacao() throws Exception {
+        String body = mvc.perform(post("/api/contas-pagar-avulsas")
+                .header("Authorization", tenantA.tokenContextual())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"descricao":"Despesa exata","valorOriginal":12.000001,"valorJuros":0.000001,
+                         "dataVencimento":"%s","numeroNota":"000120","modelo":"055","serie":"00A"}
+                        """.formatted(LocalDate.now().plusDays(10))))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.valorTotal").value(12.000002))
+                .andReturn().getResponse().getContentAsString();
+        long id = ((Number) JsonPath.read(body, "$.id")).longValue();
+        baixar(id, "0.0000001").andExpect(status().isConflict());
+        baixar(id, "0.000001").andExpect(status().isOk())
+                .andExpect(jsonPath("$.valorPago").value(0.000001))
+                .andExpect(jsonPath("$.situacao").value("PARCIAL"));
+        baixar(id, "12.000001").andExpect(status().isOk())
+                .andExpect(jsonPath("$.valorPago").value(12.000002))
+                .andExpect(jsonPath("$.situacao").value("PAGA"))
+                .andExpect(jsonPath("$.numeroNota").value("000120"))
+                .andExpect(jsonPath("$.modelo").value("055"))
+                .andExpect(jsonPath("$.serie").value("00A"));
+        assertThat(jdbc.queryForObject(
+                "select valor_pago_micros from contas_pagar_avulsa where id=?", Long.class, id))
+                .isEqualTo(12000002L);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions baixar(long id, String valor) throws Exception {
+        return mvc.perform(post("/api/contas-pagar-avulsas/{id}/baixa", id)
+                .header("Authorization", tenantA.tokenContextual())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"valor\":" + valor + "}"));
+    }
+
     private long criar(TenantFixture f,String descricao)throws Exception{
         String vencimento=LocalDate.now().plusDays(10).toString();
         String body=mvc.perform(post("/api/contas-pagar-avulsas")

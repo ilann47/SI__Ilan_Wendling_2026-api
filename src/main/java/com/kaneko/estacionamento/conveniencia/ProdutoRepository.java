@@ -1,6 +1,5 @@
 package com.kaneko.estacionamento.conveniencia;
 
-import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,11 +26,6 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long>,
 
     @EntityGraph(attributePaths = {"marca", "unidadeMedida", "categoria"})
     Optional<Produto> findByIdAndOrganizacaoIdIsNull(Long id);
-
-    /** Produtos ativos com estoque igual ou abaixo do minimo (relatorio 4.29). */
-    @EntityGraph(attributePaths = {"marca", "categoria"})
-    @Query("SELECT p FROM Produto p WHERE p.organizacaoId is null AND p.ativo = true AND p.quantidade <= p.quantidadeMinima ORDER BY p.nome")
-    List<Produto> findComEstoqueAbaixoDoMinimo();
 
     @Override
     @EntityGraph(attributePaths = {"marca", "unidadeMedida", "categoria"})

@@ -1,7 +1,9 @@
 package com.kaneko.estacionamento.conveniencia;
 
 import com.kaneko.estacionamento.common.BaseEntity;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -52,22 +54,30 @@ public class Produto extends BaseEntity {
     @JoinColumn(name = "categoria_id")
     private Categoria categoria;
 
-    @Column(name = "valor_compra", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_compra_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorCompra = BigDecimal.ZERO;
 
-    @Column(name = "custo", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "custo_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal custo = BigDecimal.ZERO;
 
-    @Column(name = "valor_venda", nullable = false, precision = 15, scale = 2)
+    @Column(name = "valor_venda_micros", nullable = false, precision = 19, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal valorVenda = BigDecimal.ZERO;
 
-    @Column(name = "percentual_lucro", nullable = false, precision = 10, scale = 2)
+
+    // Preço pode chegar a 13 dígitos inteiros; custo pode ser 0,000001.
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "percentual_lucro_micros", nullable = false, precision = 27, scale = 0)
     private BigDecimal percentualLucro = BigDecimal.ZERO;
 
-    @Column(name = "quantidade", nullable = false, precision = 15, scale = 3)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "quantidade_micros", nullable = false, precision = 18, scale = 0)
     private BigDecimal quantidade = BigDecimal.ZERO;
 
-    @Column(name = "quantidade_minima", nullable = false, precision = 15, scale = 3)
+    @Column(name = "quantidade_minima_micros", nullable = false, precision = 18, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal quantidadeMinima = BigDecimal.ONE;
 
     @Column(name = "descricao", length = 255)
@@ -82,11 +92,11 @@ public class Produto extends BaseEntity {
      * houver custo (produto ainda sem entrada).
      */
     public void recalcularLucro() {
-        if (custo != null && custo.signum() > 0 && valorVenda != null) {
-            this.percentualLucro = valorVenda.subtract(custo)
-                    .divide(custo, 6, RoundingMode.HALF_UP)
+        BigDecimal venda = getValorVenda();
+        if (custo != null && custo.signum() > 0 && venda != null) {
+            this.percentualLucro = venda.subtract(custo)
                     .multiply(new BigDecimal("100"))
-                    .setScale(2, RoundingMode.HALF_UP);
+                    .divide(custo, MilionesimosConverter.ESCALA, RoundingMode.HALF_UP);
         } else {
             this.percentualLucro = BigDecimal.ZERO;
         }

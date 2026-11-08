@@ -4,9 +4,12 @@ import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.estoque.LocalEstoque;
 import com.kaneko.estacionamento.pessoas.Cliente;
-import com.kaneko.estacionamento.vendas.VendaAdministrativa;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,6 +17,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
@@ -62,10 +66,6 @@ public class NotaSaida extends AuditableEntity {
     @JoinColumn(name = "local_estoque_id")
     private LocalEstoque localEstoque;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "venda_administrativa_id")
-    private VendaAdministrativa vendaAdministrativa;
-
     @Column(name = "data_emissao", nullable = false)
     private LocalDate dataEmissao;
 
@@ -76,22 +76,28 @@ public class NotaSaida extends AuditableEntity {
     @Column(name = "tipo_frete", nullable = false, length = 3)
     private TipoFrete tipoFrete = TipoFrete.CIF;
 
-    @Column(name = "valor_produtos", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_produtos_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorProdutos = BigDecimal.ZERO;
 
-    @Column(name = "valor_frete", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_frete_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorFrete = BigDecimal.ZERO;
 
-    @Column(name = "valor_seguro", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_seguro_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorSeguro = BigDecimal.ZERO;
 
-    @Column(name = "outras_despesas", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "outras_despesas_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal outrasDespesas = BigDecimal.ZERO;
 
-    @Column(name = "valor_desconto", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_desconto_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorDesconto = BigDecimal.ZERO;
 
-    @Column(name = "valor_total", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_total_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorTotal = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
@@ -101,8 +107,23 @@ public class NotaSaida extends AuditableEntity {
     @Column(name = "observacao", length = 255)
     private String observacao;
 
+    @Column(name = "revertida_em")
+    private java.time.OffsetDateTime revertidaEm;
+
+    @Column(name = "motivo_reversao", length = 500)
+    private String motivoReversao;
+
     @OneToMany(mappedBy = "notaSaida", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sequencia ASC")
     private List<ItemNotaSaida> itens = new ArrayList<>();
+
+    @Column(name = "cronograma_definido", nullable = false)
+    private boolean cronogramaDefinido;
+
+    @ElementCollection
+    @CollectionTable(name = "parcela_nota_saida", joinColumns = @JoinColumn(name = "nota_saida_id"))
+    @OrderBy("numeroParcela ASC")
+    private List<ParcelaNotaSaida> parcelas = new ArrayList<>();
 
     /** Adiciona um item mantendo a relacao bidirecional. */
     public void addItem(ItemNotaSaida item) {

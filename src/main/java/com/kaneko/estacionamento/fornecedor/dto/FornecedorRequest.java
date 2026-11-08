@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -39,6 +40,7 @@ public record FornecedorRequest(
         Long transportadoraId,
 
         @PositiveOrZero(message = "O limite de crédito não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal limiteCredito,
 
         @Size(max = 255) String observacao,

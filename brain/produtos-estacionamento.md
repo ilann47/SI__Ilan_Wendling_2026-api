@@ -127,6 +127,7 @@ auditoria, outbox, OpenAPI e constraints PostgreSQL.
 
 | Data | Ação |
 |---|---|
+| 2026-11-08 | V100 remove o preço decimal de compatibilidade dos lotes; o preço canônico permanece em milionésimos, sem alterar a contagem de vagas. |
 | 2026-07-30 | Implementa UC707 com criação idempotente de produto em rascunho. |
 | 2026-07-30 | Implementa UC708 com lote de preço temporal e quantitativo. |
 | 2026-07-30 | Implementa publicação versionada do produto com auditoria e outbox. |

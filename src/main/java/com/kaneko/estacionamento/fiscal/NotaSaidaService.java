@@ -5,6 +5,7 @@ import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
 import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.conveniencia.Produto;
 import com.kaneko.estacionamento.conveniencia.ProdutoRepository;
 import com.kaneko.estacionamento.financeiro.ContaReceber;
@@ -15,25 +16,30 @@ import com.kaneko.estacionamento.estoque.LocalEstoque;
 import com.kaneko.estacionamento.estoque.LocalEstoqueRepository;
 import com.kaneko.estacionamento.fiscal.dto.ItemNotaSaidaRequest;
 import com.kaneko.estacionamento.fiscal.dto.NotaSaidaRequest;
+import com.kaneko.estacionamento.fiscal.dto.NotaSaidaResponse;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
 import com.kaneko.estacionamento.pagamento.ParcelaCondicaoPagamento;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pessoas.ClienteRepository;
-import com.kaneko.estacionamento.vendas.StatusVendaAdministrativa;
-import com.kaneko.estacionamento.vendas.VendaAdministrativa;
-import com.kaneko.estacionamento.vendas.VendaAdministrativaRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.HexFormat;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Regras de negocio da nota fiscal de saida (venda). Na confirmacao, valida que
@@ -44,6 +50,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotaSaidaService {
 
     private static final BigDecimal CEM = new BigDecimal("100");
+    private static final int ESCALA = 6;
+    private static final int PRECISAO_VALOR = 19;
+    private static final int PRECISAO_QUANTIDADE = 18;
+    private static final int PRECISAO_PERCENTUAL = 9;
 
     private final NotaSaidaRepository repository;
     private final ClienteRepository clienteRepository;
@@ -53,7 +63,7 @@ public class NotaSaidaService {
     private final LocalEstoqueRepository localEstoqueRepository;
     private final EstoqueService estoqueService;
     private final AuditoriaService auditoria;
-    private final VendaAdministrativaRepository vendaAdministrativaRepository;
+    private final IdempotenciaRepository idempotencia;
 
     public NotaSaidaService(NotaSaidaRepository repository,
                             ClienteRepository clienteRepository,
@@ -63,7 +73,7 @@ public class NotaSaidaService {
                             LocalEstoqueRepository localEstoqueRepository,
                             EstoqueService estoqueService,
                             AuditoriaService auditoria,
-                            VendaAdministrativaRepository vendaAdministrativaRepository) {
+                            IdempotenciaRepository idempotencia) {
         this.repository = repository;
         this.clienteRepository = clienteRepository;
         this.condicaoPagamentoRepository = condicaoPagamentoRepository;
@@ -72,14 +82,21 @@ public class NotaSaidaService {
         this.localEstoqueRepository = localEstoqueRepository;
         this.estoqueService = estoqueService;
         this.auditoria = auditoria;
-        this.vendaAdministrativaRepository = vendaAdministrativaRepository;
+        this.idempotencia = idempotencia;
     }
 
     @Transactional(readOnly = true)
     public Page<NotaSaida> listar(Long organizacaoId, Pageable pageable) {
-        Page<Long> ids = organizacaoId == null
+        return listar(organizacaoId, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<NotaSaida> listar(Long organizacaoId, String numero, SituacaoNota situacao, Pageable pageable) {
+        String filtro = numero == null ? "" : numero.strip();
+        Page<Long> ids = filtro.isEmpty() && situacao == null ? (organizacaoId == null
                 ? repository.findIdsByOrganizacaoIdIsNull(pageable)
-                : repository.findIdsByOrganizacaoId(organizacaoId, pageable);
+                : repository.findIdsByOrganizacaoId(organizacaoId, pageable))
+                : repository.filtrarIds(organizacaoId, filtro, situacao, pageable);
         if (ids.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, ids.getTotalElements());
         }
@@ -100,6 +117,78 @@ public class NotaSaidaService {
 
     @Transactional
     public NotaSaida criar(Long organizacaoId, NotaSaidaRequest req) {
+        NotaSaida nota = repository.saveAndFlush(preparar(organizacaoId, req, null));
+        auditar(nota, "NOTA_SAIDA_CRIADA", null, snapshot(nota));
+        return nota;
+    }
+
+    @Transactional
+    public NotaSaida criarIdempotente(Long org, Long ator, String chave, NotaSaidaRequest req) {
+        if (org == null || ator == null || chave.isBlank() || chave.length() > 128) {
+            throw new IllegalArgumentException("A chave de registro exige organização ativa e entre 1 e 128 caracteres.");
+        }
+        String operacao = "CRIAR_NOTA_SAIDA";
+        String hash;
+        try {
+            // Mantém as chaves já gravadas para notas diretas antes da mudança do DTO.
+            String corpo = req.toString().replaceFirst("(, localEstoqueId=[^,]+), dataEmissao=",
+                    "$1, vendaAdministrativaId=null, dataEmissao=");
+            hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(corpo.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 indisponível", ex);
+        }
+        idempotencia.bloquear(org, ator, operacao, chave);
+        var anterior = idempotencia.buscar(org, ator, operacao, chave);
+        if (anterior.isPresent()) {
+            if (!hash.equals(anterior.get().requestHash())) {
+                throw new ConflitoException("A chave de registro já foi usada com outros dados.");
+            }
+            return buscar(org, anterior.get().recursoId());
+        }
+        NotaSaida nota = criar(org, req);
+        idempotencia.registrar(org, ator, operacao, chave, hash, "NOTA_SAIDA", nota.getId());
+        return nota;
+    }
+
+    @Transactional
+    public NotaSaida atualizar(Long org, Long id, long versao, NotaSaidaRequest req) {
+        NotaSaida atual = bloquear(org, id);
+        exigirVersao(atual, versao);
+        if (atual.getSituacao() != SituacaoNota.PENDENTE) {
+            throw new ConflitoException("Somente notas pendentes podem ser alteradas.");
+        }
+        NotaSaida nova = preparar(org, req, id);
+        Map<String, Object> anterior = snapshot(atual);
+        atual.setNumero(nova.getNumero());
+        atual.setModelo(nova.getModelo());
+        atual.setSerie(nova.getSerie());
+        atual.setCliente(nova.getCliente());
+        atual.setCondicaoPagamento(nova.getCondicaoPagamento());
+        atual.setLocalEstoque(nova.getLocalEstoque());
+        atual.setDataEmissao(nova.getDataEmissao());
+        atual.setDataSaida(nova.getDataSaida());
+        atual.setTipoFrete(nova.getTipoFrete());
+        atual.setValorProdutos(nova.getValorProdutos());
+        atual.setValorFrete(nova.getValorFrete());
+        atual.setValorSeguro(nova.getValorSeguro());
+        atual.setOutrasDespesas(nova.getOutrasDespesas());
+        atual.setValorDesconto(nova.getValorDesconto());
+        atual.setValorTotal(nova.getValorTotal());
+        atual.setObservacao(nova.getObservacao());
+        atual.getItens().clear();
+        repository.flush();
+        nova.getItens().forEach(atual::addItem);
+        atual.getParcelas().clear();
+        atual.getParcelas().addAll(nova.getParcelas());
+        atual.setCronogramaDefinido(true);
+        atual.setUpdatedAt(OffsetDateTime.now());
+        atual = repository.saveAndFlush(atual);
+        auditar(atual, "NOTA_SAIDA_ATUALIZADA", anterior, snapshot(atual));
+        return atual;
+    }
+
+    private NotaSaida preparar(Long organizacaoId, NotaSaidaRequest req, Long ignorarId) {
         Cliente cliente = (organizacaoId == null
                 ? clienteRepository.findByIdAndOrganizacaoIdIsNull(req.clienteId())
                 : clienteRepository.findByIdAndOrganizacaoId(req.clienteId(), organizacaoId))
@@ -111,8 +200,8 @@ public class NotaSaidaService {
         NotaSaida nota = new NotaSaida();
         nota.setOrganizacaoId(organizacaoId);
         nota.setNumero(req.numero().trim());
-        nota.setModelo(req.modelo() != null && !req.modelo().isBlank() ? req.modelo() : "55");
-        nota.setSerie(req.serie() != null && !req.serie().isBlank() ? req.serie() : "1");
+        nota.setModelo(req.modelo() != null && !req.modelo().isBlank() ? req.modelo().trim() : "55");
+        nota.setSerie(req.serie() != null && !req.serie().isBlank() ? req.serie().trim() : "1");
         nota.setCliente(cliente);
         nota.setCondicaoPagamento(req.condicaoPagamentoId() != null
                 ? buscarCondicao(organizacaoId, req.condicaoPagamentoId()) : null);
@@ -127,37 +216,11 @@ public class NotaSaidaService {
                             "LocalEstoque", req.localEstoqueId()));
             nota.setLocalEstoque(local);
         }
-        if (req.vendaAdministrativaId() != null) {
-            if (organizacaoId == null) {
-                throw new IllegalArgumentException(
-                        "Venda administrativa exige contexto de organizacao.");
-            }
-            VendaAdministrativa venda = vendaAdministrativaRepository
-                    .findParaAtualizar(req.vendaAdministrativaId(), organizacaoId)
-                    .orElseThrow(() -> new RecursoNaoEncontradoException(
-                            "VendaAdministrativa", req.vendaAdministrativaId()));
-            if (venda.getStatus() != StatusVendaAdministrativa.CONFIRMADA) {
-                throw new ConflitoException("A venda administrativa precisa estar confirmada.");
-            }
-            if (!venda.getCliente().getId().equals(cliente.getId())
-                    || !venda.getLocalEstoque().getId().equals(req.localEstoqueId())) {
-                throw new ConflitoException(
-                        "Cliente e local da nota devem coincidir com a venda administrativa.");
-            }
-            if (repository.existsByOrganizacaoIdAndVendaAdministrativaId(
-                    organizacaoId, venda.getId())) {
-                throw new ConflitoException("A venda administrativa ja possui Nota de Saida.");
-            }
-            nota.setVendaAdministrativa(venda);
-        }
-
         boolean duplicada = organizacaoId == null
-                ? repository.existsByOrganizacaoIdIsNullAndNumeroAndSerieAndClienteId(
-                        nota.getNumero(), nota.getSerie(), cliente.getId())
-                : repository.existsByOrganizacaoIdAndNumeroAndSerieAndClienteId(
-                        organizacaoId, nota.getNumero(), nota.getSerie(), cliente.getId());
+                ? repository.existeIdentidadeLegada(nota.getNumero(), nota.getSerie(), cliente.getId(), ignorarId)
+                : repository.existeIdentidade(organizacaoId, nota.getNumero(), nota.getSerie(), nota.getModelo(), ignorarId);
         if (duplicada) {
-            throw new ConflitoException("Já existe uma nota com este número/série para este cliente.");
+            throw new ConflitoException("Já existe uma nota de saída com esta identificação.");
         }
 
         LocalDate emissao = req.dataEmissao() != null ? req.dataEmissao() : LocalDate.now();
@@ -168,10 +231,10 @@ public class NotaSaidaService {
         nota.setDataSaida(req.dataSaida());
         nota.setTipoFrete(req.tipoFrete() != null ? req.tipoFrete() : TipoFrete.CIF);
 
-        BigDecimal frete = nz(req.valorFrete());
-        BigDecimal seguro = nz(req.valorSeguro());
-        BigDecimal outras = nz(req.outrasDespesas());
-        BigDecimal descontoNota = nz(req.valorDesconto());
+        BigDecimal frete = valorExato(nz(req.valorFrete()), PRECISAO_VALOR);
+        BigDecimal seguro = valorExato(nz(req.valorSeguro()), PRECISAO_VALOR);
+        BigDecimal outras = valorExato(nz(req.outrasDespesas()), PRECISAO_VALOR);
+        BigDecimal descontoNota = valorExato(nz(req.valorDesconto()), PRECISAO_VALOR);
         nota.setValorFrete(frete);
         nota.setValorSeguro(seguro);
         nota.setOutrasDespesas(outras);
@@ -185,41 +248,51 @@ public class NotaSaidaService {
             Produto produto = (organizacaoId == null
                     ? produtoRepository.findByIdAndOrganizacaoIdIsNull(ir.produtoId())
                     : produtoRepository.findByIdAndOrganizacaoId(ir.produtoId(), organizacaoId))
-                    .orElseThrow(() -> new RecursoNaoEncontradoException("Produto", ir.produtoId()));
+                    .filter(p -> !Boolean.FALSE.equals(p.getAtivo()))
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Produto ativo", ir.produtoId()));
             ItemNotaSaida item = new ItemNotaSaida();
             item.setOrganizacaoId(organizacaoId);
             item.setProduto(produto);
             item.setSequencia(seq++);
-            item.setQuantidade(ir.quantidade());
-            item.setValorUnitario(ir.valorUnitario());
-            BigDecimal descItem = nz(ir.valorDesconto());
+            item.setQuantidade(valorExato(ir.quantidade(), PRECISAO_QUANTIDADE));
+            if (item.getQuantidade().signum() == 0) {
+                throw new ConflitoException("A quantidade deve ser positiva.");
+            }
+            item.setValorUnitario(valorExato(ir.valorUnitario(), PRECISAO_VALOR));
+            BigDecimal bruto = item.getQuantidade().multiply(item.getValorUnitario()).setScale(ESCALA, RoundingMode.HALF_UP);
+            BigDecimal percentual = valorExato(nz(ir.percentualDesconto()), PRECISAO_PERCENTUAL);
+            if (percentual.compareTo(CEM) > 0) {
+                throw new ConflitoException("O percentual de desconto não pode exceder 100%.");
+            }
+            BigDecimal porPercentual = bruto.multiply(percentual).divide(CEM, ESCALA, RoundingMode.HALF_UP);
+            BigDecimal descItem = ir.valorDesconto() == null ? porPercentual : valorExato(ir.valorDesconto(), PRECISAO_VALOR);
+            if (ir.percentualDesconto() != null && ir.valorDesconto() != null && descItem.compareTo(porPercentual) != 0) {
+                throw new ConflitoException("O valor e o percentual de desconto do item são contraditórios.");
+            }
             item.setValorDesconto(descItem);
-            item.setPercentualDesconto(nz(ir.percentualDesconto()));
-            BigDecimal totalItem = ir.quantidade().multiply(ir.valorUnitario())
-                    .subtract(descItem).setScale(2, RoundingMode.HALF_UP);
+            item.setPercentualDesconto(ir.percentualDesconto() != null ? percentual : bruto.signum() == 0
+                    ? BigDecimal.ZERO : descItem.multiply(CEM).divide(bruto, ESCALA, RoundingMode.HALF_UP));
+            BigDecimal totalItem = bruto.subtract(descItem);
             if (totalItem.signum() < 0) {
                 throw new ConflitoException("O desconto do item não pode exceder o seu valor.");
             }
-            item.setValorTotal(totalItem);
-            item.setCustoPrecoFinal(produto.getCusto());
+            item.setValorTotal(valorExato(totalItem, PRECISAO_VALOR));
+            item.setCustoPrecoFinal(nz(produto.getCusto()));
             nota.addItem(item);
             valorProdutos = valorProdutos.add(totalItem);
         }
-        nota.setValorProdutos(valorProdutos);
+        nota.setValorProdutos(valorExato(valorProdutos, PRECISAO_VALOR));
 
         BigDecimal total = valorProdutos.add(frete).add(seguro).add(outras)
-                .subtract(descontoNota).setScale(2, RoundingMode.HALF_UP);
+                .subtract(descontoNota).setScale(ESCALA, RoundingMode.HALF_UP);
         if (total.signum() < 0) {
             throw new ConflitoException("O desconto da nota não pode exceder o seu valor.");
         }
-        nota.setValorTotal(total);
+        nota.setValorTotal(valorExato(total, PRECISAO_VALOR));
 
         ratearDespesas(nota.getItens(), valorProdutos, frete, seguro, outras);
-        if (nota.getVendaAdministrativa() != null) {
-            validarItensVenda(nota, nota.getVendaAdministrativa());
-        }
-        nota = repository.saveAndFlush(nota);
-        auditar(nota, "NOTA_SAIDA_CRIADA", null, snapshot(nota));
+        nota.getParcelas().addAll(calcularParcelas(nota, true));
+        nota.setCronogramaDefinido(true);
         return nota;
     }
 
@@ -229,39 +302,43 @@ public class NotaSaidaService {
      */
     @Transactional
     public NotaSaida confirmar(Long organizacaoId, Long atorId, Long id) {
-        NotaSaida nota = organizacaoId == null ? buscar(null, id)
-                : repository.findParaAtualizar(id, organizacaoId)
-                    .orElseThrow(() -> new RecursoNaoEncontradoException("NotaSaida", id));
+        return confirmar(organizacaoId, atorId, id, null);
+    }
+
+    @Transactional
+    public NotaSaida confirmar(Long organizacaoId, Long atorId, Long id, Long versao) {
+        NotaSaida nota = bloquear(organizacaoId, id);
         if (nota.getSituacao() != SituacaoNota.PENDENTE) {
             throw new ConflitoException("Apenas notas pendentes podem ser confirmadas.");
         }
-        if (organizacaoId == null) {
-            for (ItemNotaSaida item : nota.getItens()) {
-                Produto produto = item.getProduto();
+        if (versao != null) exigirVersao(nota, versao);
+        if (organizacaoId != null && !nota.isCronogramaDefinido()) {
+            throw new ConflitoException("Salve o rascunho novamente para conferir as parcelas antes de confirmar.");
+        }
+        if (organizacaoId != null) {
+            estoqueService.bloquearProdutos(organizacaoId,
+                    nota.getItens().stream().map(item -> item.getProduto().getId()).toList());
+        }
+        for (ItemNotaSaida item : nota.getItens()) {
+            Produto produto = item.getProduto();
+            if (organizacaoId == null) {
                 if (produto.getQuantidade().compareTo(item.getQuantidade()) < 0) {
                     throw new ConflitoException("Estoque insuficiente para o produto '" + produto.getNome()
                             + "' (disponível: " + produto.getQuantidade().stripTrailingZeros().toPlainString() + ").");
                 }
-            }
-        }
-        for (ItemNotaSaida item : nota.getItens()) {
-            Produto produto = item.getProduto();
-            if (nota.getVendaAdministrativa() != null) {
-                continue;
-            } else if (organizacaoId == null) {
+                item.setCustoPrecoFinal(nz(produto.getCusto()));
                 produto.setQuantidade(produto.getQuantidade().subtract(item.getQuantidade()));
                 produtoRepository.saveAndFlush(produto);
             } else {
-                estoqueService.registrarBaixa(organizacaoId, atorId, produto.getId(),
+                BigDecimal custo = estoqueService.registrarBaixa(organizacaoId, atorId, produto.getId(),
                         nota.getLocalEstoque().getId(), item.getQuantidade(),
-                        item.getCustoPrecoFinal(), "NOTA_SAIDA",
+                        "NOTA_SAIDA",
                         nota.getId() + ":" + item.getSequencia(),
                         "Confirmacao da nota de saida " + nota.getNumero());
+                item.setCustoPrecoFinal(custo);
             }
         }
-        if (nota.getVendaAdministrativa() == null) {
-            gerarTitulos(nota);
-        }
+        gerarTitulos(nota);
         Map<String, Object> anterior = snapshot(nota);
         nota.setSituacao(SituacaoNota.CONFIRMADA);
         nota = repository.saveAndFlush(nota);
@@ -270,10 +347,24 @@ public class NotaSaidaService {
     }
 
     @Transactional
-    public NotaSaida cancelar(Long organizacaoId, Long id) {
-        NotaSaida nota = buscar(organizacaoId, id);
+    public NotaSaidaResponse confirmarComResposta(Long organizacaoId, Long atorId, Long id, Long versao) {
+        return NotaSaidaResponse.from(confirmar(organizacaoId, atorId, id, versao));
+    }
+
+    @Transactional
+    public NotaSaidaResponse cancelarComResposta(Long organizacaoId, Long id, Long versao) {
+        return NotaSaidaResponse.from(cancelar(organizacaoId, id, versao));
+    }
+
+    @Transactional
+    public NotaSaida cancelar(Long organizacaoId, Long id, Long versao) {
+        NotaSaida nota = bloquear(organizacaoId, id);
+        if (versao != null) exigirVersao(nota, versao);
         if (nota.getSituacao() == SituacaoNota.CONFIRMADA) {
             throw new ConflitoException("Uma nota confirmada não pode ser cancelada.");
+        }
+        if (nota.getRevertidaEm() != null) {
+            throw new ConflitoException("Uma nota revertida deve permanecer no histórico.");
         }
         Map<String, Object> anterior = snapshot(nota);
         nota.setSituacao(SituacaoNota.CANCELADA);
@@ -283,10 +374,14 @@ public class NotaSaidaService {
     }
 
     @Transactional
-    public void excluir(Long organizacaoId, Long id) {
-        NotaSaida nota = buscar(organizacaoId, id);
+    public void excluir(Long organizacaoId, Long id, Long versao) {
+        NotaSaida nota = bloquear(organizacaoId, id);
+        if (versao != null) exigirVersao(nota, versao);
         if (nota.getSituacao() == SituacaoNota.CONFIRMADA) {
             throw new ConflitoException("Uma nota confirmada não pode ser excluída.");
+        }
+        if (nota.getRevertidaEm() != null) {
+            throw new ConflitoException("Uma nota revertida não pode ser excluída.");
         }
         Map<String, Object> anterior = snapshot(nota);
         repository.delete(nota);
@@ -297,71 +392,50 @@ public class NotaSaidaService {
     /** Distribui frete/seguro/outras despesas proporcionalmente ao valor de cada item. */
     private void ratearDespesas(List<ItemNotaSaida> itens, BigDecimal base,
                                 BigDecimal frete, BigDecimal seguro, BigDecimal outras) {
-        for (ItemNotaSaida item : itens) {
-            BigDecimal proporcao = base.signum() == 0
-                    ? BigDecimal.ZERO
-                    : item.getValorTotal().divide(base, 8, RoundingMode.HALF_UP);
-            item.setRateioFrete(frete.multiply(proporcao).setScale(2, RoundingMode.HALF_UP));
-            item.setRateioSeguro(seguro.multiply(proporcao).setScale(2, RoundingMode.HALF_UP));
-            item.setRateioOutras(outras.multiply(proporcao).setScale(2, RoundingMode.HALF_UP));
+        var pesos = itens.stream().map(i -> base.signum() > 0 ? i.getValorTotal() : i.getQuantidade()).toList();
+        var fretes = RateioMonetario.distribuirEmMilionesimos(frete, pesos);
+        var seguros = RateioMonetario.distribuirEmMilionesimos(seguro, pesos);
+        var despesas = RateioMonetario.distribuirEmMilionesimos(outras, pesos);
+        for (int i = 0; i < itens.size(); i++) {
+            itens.get(i).setRateioFrete(fretes.get(i));
+            itens.get(i).setRateioSeguro(seguros.get(i));
+            itens.get(i).setRateioOutras(despesas.get(i));
         }
     }
 
-    /** Gera os titulos a receber conforme as parcelas da condicao (ou um titulo a vista). */
+    private List<ParcelaNotaSaida> calcularParcelas(NotaSaida nota, boolean emMilionesimos) {
+        if (nota.getValorTotal().signum() == 0) return List.of();
+        List<ParcelaCondicaoPagamento> condicoes = nota.getCondicaoPagamento() == null ? List.of()
+                : nota.getCondicaoPagamento().getParcelas().stream()
+                    .sorted(Comparator.comparing(ParcelaCondicaoPagamento::getNumero)).toList();
+        if (!condicoes.isEmpty() && condicoes.stream().map(ParcelaCondicaoPagamento::getPercentual)
+                .reduce(BigDecimal.ZERO, BigDecimal::add).compareTo(CEM) != 0) {
+            throw new ConflitoException("A soma das parcelas da condição deve ser 100%.");
+        }
+        var pesos = condicoes.isEmpty() ? List.of(BigDecimal.ONE)
+                : condicoes.stream().map(ParcelaCondicaoPagamento::getPercentual).toList();
+        var valores = emMilionesimos ? RateioMonetario.distribuirEmMilionesimos(nota.getValorTotal(), pesos)
+                : RateioMonetario.distribuir(nota.getValorTotal(), pesos);
+        var resultado = new java.util.ArrayList<ParcelaNotaSaida>();
+        for (int i = 0; i < valores.size(); i++) {
+            if (valores.get(i).signum() == 0) continue;
+            var origem = condicoes.isEmpty() ? null : condicoes.get(i);
+            var parcela = new ParcelaNotaSaida();
+            parcela.setNumeroParcela(resultado.size() + 1);
+            parcela.setValor(valores.get(i));
+            parcela.setDataVencimento(nota.getDataEmissao().plusDays(origem == null ? 0 : origem.getDias()));
+            parcela.setFormaPagamento(origem == null ? null : origem.getFormaPagamento());
+            parcela.setFormaPagamentoNome(parcela.getFormaPagamento() == null ? null : parcela.getFormaPagamento().getNome());
+            resultado.add(parcela);
+        }
+        return resultado;
+    }
+
     private void gerarTitulos(NotaSaida nota) {
-        List<ParcelaCondicaoPagamento> parcelas = List.of();
-        if (nota.getCondicaoPagamento() != null) {
-            CondicaoPagamento condicao = buscarCondicao(
-                    nota.getOrganizacaoId(), nota.getCondicaoPagamento().getId());
-            parcelas = condicao.getParcelas().stream()
-                    .sorted(Comparator.comparing(ParcelaCondicaoPagamento::getNumero))
-                    .toList();
-        }
-
-        BigDecimal total = nota.getValorTotal();
-        if (parcelas.isEmpty()) {
-            salvarTitulo(nota, 1, 1, total, nota.getDataEmissao(), null);
-            return;
-        }
-
-        int n = parcelas.size();
-        BigDecimal acumulado = BigDecimal.ZERO;
-        for (int i = 0; i < n; i++) {
-            ParcelaCondicaoPagamento parcela = parcelas.get(i);
-            BigDecimal valorParcela;
-            if (i == n - 1) {
-                valorParcela = total.subtract(acumulado);
-            } else {
-                valorParcela = total.multiply(parcela.getPercentual())
-                        .divide(CEM, 2, RoundingMode.HALF_UP);
-                acumulado = acumulado.add(valorParcela);
-            }
-            LocalDate vencimento = nota.getDataEmissao().plusDays(parcela.getDias());
-            ContaReceber titulo = salvarTitulo(nota, i + 1, n, valorParcela, vencimento,
-                    parcela.getFormaPagamento());
-            titulo.setCondicaoPagamento(nota.getCondicaoPagamento());
-        }
-    }
-
-    private static void validarItensVenda(NotaSaida nota, VendaAdministrativa venda) {
-        Map<Long, com.kaneko.estacionamento.vendas.ItemVendaAdministrativa> esperados
-                = new java.util.LinkedHashMap<>();
-        venda.getItens().forEach(item -> esperados.put(item.getProduto().getId(), item));
-        if (nota.getItens().size() != esperados.size()) {
-            throw new ConflitoException(
-                    "Os itens da nota devem coincidir com a venda administrativa.");
-        }
-        for (ItemNotaSaida item : nota.getItens()) {
-            var esperado = esperados.get(item.getProduto().getId());
-            if (esperado == null
-                    || esperado.getQuantidade().compareTo(item.getQuantidade()) != 0
-                    || esperado.getValorUnitario().compareTo(item.getValorUnitario()) != 0) {
-                throw new ConflitoException(
-                        "Produtos, quantidades e valores da nota devem coincidir com a venda.");
-            }
-        }
-        if (venda.getValorTotal().compareTo(nota.getValorTotal()) != 0) {
-            throw new ConflitoException("O total da nota deve coincidir com o total da venda.");
+        List<ParcelaNotaSaida> parcelas = nota.isCronogramaDefinido() ? nota.getParcelas() : calcularParcelas(nota, false);
+        for (var parcela : parcelas) {
+            salvarTitulo(nota, parcela.getNumeroParcela(), parcelas.size(), parcela.getValor(),
+                    parcela.getDataVencimento(), parcela.getFormaPagamento());
         }
     }
 
@@ -372,6 +446,7 @@ public class NotaSaidaService {
         titulo.setOrganizacaoId(nota.getOrganizacaoId());
         titulo.setCliente(nota.getCliente());
         titulo.setNotaSaida(nota);
+        titulo.setCondicaoPagamento(nota.getCondicaoPagamento());
         titulo.setFormaPagamento(forma);
         titulo.setNumeroParcela(numeroParcela);
         titulo.setTotalParcelas(totalParcelas);
@@ -393,6 +468,28 @@ public class NotaSaidaService {
 
     private static BigDecimal nz(BigDecimal v) {
         return v != null ? v : BigDecimal.ZERO;
+    }
+
+    private static BigDecimal valorExato(BigDecimal valor, int precisao) {
+        try {
+            BigDecimal exato = valor.setScale(ESCALA, RoundingMode.UNNECESSARY);
+            if (exato.signum() < 0 || exato.precision() > precisao) throw new ArithmeticException();
+            return exato;
+        } catch (ArithmeticException | NullPointerException ex) {
+            throw new ConflitoException("Valor inválido: informe até 6 casas decimais, dentro do limite do campo.");
+        }
+    }
+
+    private NotaSaida bloquear(Long org, Long id) {
+        return org == null ? buscar(null, id) : repository.findParaAtualizar(id, org)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("NotaSaida", id));
+    }
+
+    private static void exigirVersao(NotaSaida nota, long versao) {
+        if (nota.getVersion() == null || nota.getVersion() != versao) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
+                    "A nota foi alterada. Recarregue e revise a versão atual.");
+        }
     }
 
     private void auditar(NotaSaida nota, String acao,

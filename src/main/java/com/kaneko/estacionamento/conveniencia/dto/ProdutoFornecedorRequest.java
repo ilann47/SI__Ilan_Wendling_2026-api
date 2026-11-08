@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.conveniencia.dto;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -20,6 +21,7 @@ public record ProdutoFornecedorRequest(
         @Size(max = 50) String codigoProd,
 
         @PositiveOrZero(message = "O custo não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6, message = "O custo deve ter até seis casas decimais.")
         BigDecimal custo,
 
         Boolean ativo

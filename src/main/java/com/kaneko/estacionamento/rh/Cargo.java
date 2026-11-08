@@ -2,6 +2,8 @@ package com.kaneko.estacionamento.rh;
 
 import com.kaneko.estacionamento.common.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -29,10 +31,12 @@ public class Cargo extends BaseEntity {
     @Column(name = "descricao", length = 255)
     private String descricao;
 
-    @Column(name = "salario_base", nullable = false, precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "salario_base_micros", nullable = false, precision = 14, scale = 0)
     private BigDecimal salarioBase = BigDecimal.ZERO;
 
-    @Column(name = "carga_horaria", precision = 6, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "carga_horaria_micros", precision = 10, scale = 0)
     private BigDecimal cargaHoraria;
 
     @Column(name = "requer_cnh", nullable = false)

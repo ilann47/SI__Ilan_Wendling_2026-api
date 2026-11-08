@@ -12,6 +12,8 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+import jakarta.persistence.Convert;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,14 +45,22 @@ public class Pedido extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private StatusPedido status;
-    @Column(nullable = false, precision = 19, scale = 2)
+    @Column(name = "subtotal_micros", nullable = false, precision = 23, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal subtotal;
-    @Column(nullable = false, precision = 19, scale = 2)
+
+    @Column(name = "desconto_micros", nullable = false, precision = 23, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal desconto;
-    @Column(nullable = false, precision = 19, scale = 2)
+
+    @Column(name = "taxa_micros", nullable = false, precision = 23, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal taxa;
-    @Column(nullable = false, precision = 19, scale = 2)
+
+    @Column(name = "total_micros", nullable = false, precision = 23, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal total;
+
     @Column(nullable = false, length = 3)
     private String moeda;
     @Column(name = "expira_em", nullable = false, updatable = false)
@@ -91,10 +101,10 @@ public class Pedido extends AuditableEntity {
         pedido.canal = codigo(canal, "canal", 30);
         pedido.placaVeiculo = placa(placaVeiculo);
         pedido.status = StatusPedido.CRIADO;
-        pedido.subtotal = BigDecimal.ZERO.setScale(2);
-        pedido.desconto = BigDecimal.ZERO.setScale(2);
-        pedido.taxa = BigDecimal.ZERO.setScale(2);
-        pedido.total = BigDecimal.ZERO.setScale(2);
+        pedido.subtotal = BigDecimal.ZERO.setScale(MilionesimosConverter.ESCALA);
+        pedido.desconto = BigDecimal.ZERO.setScale(MilionesimosConverter.ESCALA);
+        pedido.taxa = BigDecimal.ZERO.setScale(MilionesimosConverter.ESCALA);
+        pedido.total = BigDecimal.ZERO.setScale(MilionesimosConverter.ESCALA);
         pedido.expiraEm = expiraEm;
         pedido.comprador = CompradorPedido.criar(
                 pedido, nomeComprador, emailComprador, documentoComprador);
@@ -108,10 +118,12 @@ public class Pedido extends AuditableEntity {
         if (moeda != null && !moeda.equals(item.getMoeda())) {
             throw new IllegalArgumentException("Todos os itens devem usar a mesma moeda.");
         }
+        BigDecimal novoSubtotal = ItemPedido.validarCapacidade(subtotal.add(item.getTotal()));
+        BigDecimal novoTotal = ItemPedido.validarCapacidade(novoSubtotal.subtract(desconto).add(taxa));
         itens.add(item);
         moeda = item.getMoeda();
-        subtotal = subtotal.add(item.getTotal());
-        total = subtotal.subtract(desconto).add(taxa);
+        subtotal = novoSubtotal;
+        total = novoTotal;
     }
 
     public void aguardarPagamento() {

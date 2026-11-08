@@ -145,145 +145,88 @@ sequenceDiagram
 
 ---
 
-## 9.4. Fluxo 3 — Registrar Compra / Nota de Entrada (confirmação)
-
-A `nota_entrada` é cadastrada em situação `'PENDENTE'`. Ao **confirmar**, o sistema soma as quantidades dos itens ao estoque do `produto` e gera as parcelas de `conta_pagar` conforme a `condicao_pagamento`. A operação é transacional: ou tudo é persistido, ou nada.
+## 9.4. UC401 — Compra pela Nota de Entrada
 
 ```mermaid
 sequenceDiagram
-    autonumber
     actor Op as Operador
-    participant Ctrl as NotaEntradaController
-    participant Svc as NotaEntradaService
-    participant Repo as NotaEntradaRepository
-    participant ProdRepo as ProdutoRepository
-    participant CPRepo as ContaPagarRepository
-    participant DB as Banco
-
-    Op->>Ctrl: POST /api/notas-entrada/{id}/confirmar
-    Ctrl->>Svc: confirmar(id)
-    Svc->>Repo: findByIdComItens(id)
-    Repo->>DB: SELECT nota_entrada + item_nota_entrada WHERE nota_entrada_id = ?
-    DB-->>Repo: nota + itens
-    Repo-->>Svc: notaEntrada
-
-    alt situacao != 'PENDENTE'
-        Svc-->>Ctrl: throw RegraNegocioException("Nota não está pendente")
-        Ctrl-->>Op: 409 Conflict
-    else situacao = 'PENDENTE'
-        Note over Svc,DB: Início da transação (@Transactional)
-
-        loop Para cada item_nota_entrada
-            Svc->>ProdRepo: findById(produtoId)
-            ProdRepo->>DB: SELECT quantidade FROM produto WHERE id = ?
-            DB-->>ProdRepo: produto
-            ProdRepo-->>Svc: produto
-            Svc->>ProdRepo: save(quantidade += item.quantidade)
-            ProdRepo->>DB: UPDATE produto SET quantidade = quantidade + ? WHERE id = ?
-            DB-->>ProdRepo: ok
-            ProdRepo-->>Svc: produto atualizado
-        end
-
-        Svc->>Repo: findCondicao(condicaoPagamentoId)
-        Repo->>DB: SELECT * FROM condicao_pagamento + parcela_condicao_pagamento
-        DB-->>Repo: condicao + parcelas
-        Repo-->>Svc: condicao
-
-        loop Para cada parcela da condição
-            Note over Svc: valor_total da parcela = valor_total da nota * percentual; data_vencimento = data_emissao + dias (ck_conta_pagar_vencimento)
-            Svc->>CPRepo: save(conta_pagar PENDENTE, numero_parcela, total_parcelas)
-            CPRepo->>DB: INSERT INTO conta_pagar (... uq_conta_pagar_parcela)
-            DB-->>CPRepo: id gerado
-            CPRepo-->>Svc: parcela gerada
-        end
-
-        Svc->>Repo: save(situacao='CONFIRMADA')
-        Repo->>DB: UPDATE nota_entrada SET situacao='CONFIRMADA' WHERE id=?
-        DB-->>Repo: ok
-        Repo-->>Svc: nota confirmada
-        Note over Svc,DB: Commit da transação
-        Svc-->>Ctrl: NotaEntradaResponse
-        Ctrl-->>Op: 200 OK (estoque somado + contas a pagar geradas)
+    participant UI as Editor da Nota de Entrada
+    participant API as NotaEntradaController
+    participant Serv as NotaEntradaService
+    participant DB as PostgreSQL
+    participant Est as EstoqueService
+    Op->>UI: Preencher dados, local e itens
+    UI->>API: POST /api/notas-entrada
+    API->>Serv: Validar identidade, datas e itens
+    alt Emissão futura ou regra inválida
+        Serv-->>UI: Rejeição sem salvar nota ou efeitos
+    else Composição válida
+        Serv->>DB: Salvar rascunho e parcelas
+        API-->>UI: Identificador e ETag
+        Op->>UI: Conferir valores e parcelas
+        UI->>API: POST /api/notas-entrada/{id}/previa com If-Match
+        API-->>UI: Itens, custo médio estimado e cronograma salvo
+        Op->>UI: Confirmar entrada integral
+        UI->>API: POST /api/notas-entrada/{id}/confirmacao com If-Match
+        API->>Serv: Bloquear nota e validar revisão
+        Serv->>Est: Registrar recebimento e custo médio por item
+        Est->>DB: Atualizar saldo por local e gravar movimentos
+        Serv->>DB: Gravar contas, situação e auditoria na mesma transação
+        API-->>UI: Nota confirmada e nova versão
     end
 ```
 
----
+Para importação, `ImportacaoNotaController` recebe o XML, valida data antes da persistência, e exige conciliação e conferência integral. O cronograma é congelado após a conferência; `POST /api/notas-entrada/importacoes/{id}/confirmacao` cria e efetiva a única Nota de Entrada na mesma transação. Nenhuma divergência física permite confirmação parcial.
 
-## 9.5. Fluxo 4 — Registrar Venda / Nota de Saída (confirmação)
-
-A `nota_saida` é cadastrada em `'PENDENTE'`. Ao **confirmar**, o sistema valida saldo de estoque de cada `produto`, baixa as quantidades vendidas e gera as parcelas de `conta_receber` conforme a `condicao_pagamento`. Estoque insuficiente aborta toda a transação.
+## 9.5. UC402 e UC404 — Venda direta e reversão interna
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor Cx as Caixa
-    participant Ctrl as NotaSaidaController
-    participant Svc as NotaSaidaService
-    participant Repo as NotaSaidaRepository
-    participant ProdRepo as ProdutoRepository
-    participant CRRepo as ContaReceberRepository
-    participant DB as Banco
-
-    Cx->>Ctrl: POST /api/notas-saida/{id}/confirmar
-    Ctrl->>Svc: confirmar(id)
-    Svc->>Repo: findByIdComItens(id)
-    Repo->>DB: SELECT nota_saida + item_nota_saida WHERE nota_saida_id = ?
-    DB-->>Repo: nota + itens
-    Repo-->>Svc: notaSaida
-
-    alt situacao != 'PENDENTE'
-        Svc-->>Ctrl: throw RegraNegocioException("Nota não está pendente")
-        Ctrl-->>Cx: 409 Conflict
-    else situacao = 'PENDENTE'
-        Note over Svc,DB: Início da transação (@Transactional)
-
-        loop Para cada item_nota_saida (validação de estoque)
-            Svc->>ProdRepo: findById(produtoId)
-            ProdRepo->>DB: SELECT quantidade FROM produto WHERE id = ?
-            DB-->>ProdRepo: produto
-            ProdRepo-->>Svc: produto
-            alt produto.quantidade < item.quantidade
-                Note over Svc: ck_produto_valores impede quantidade negativa
-                Svc-->>Ctrl: throw RegraNegocioException("Estoque insuficiente: " + produto.nome)
-                Ctrl-->>Cx: 422 Unprocessable Entity
-            else estoque suficiente
-                Note over Svc: validação aprovada para o item
-            end
-        end
-
-        loop Para cada item_nota_saida (baixa de estoque)
-            Svc->>ProdRepo: save(quantidade -= item.quantidade)
-            ProdRepo->>DB: UPDATE produto SET quantidade = quantidade - ? WHERE id = ?
-            DB-->>ProdRepo: ok
-            ProdRepo-->>Svc: produto atualizado
-        end
-
-        Svc->>Repo: findCondicao(condicaoPagamentoId)
-        Repo->>DB: SELECT * FROM condicao_pagamento + parcela_condicao_pagamento
-        DB-->>Repo: condicao + parcelas
-        Repo-->>Svc: condicao
-
-        loop Para cada parcela da condição
-            Note over Svc: conta_receber PENDENTE; valor_total da parcela; uq_conta_receber_parcela (nota_saida_id, numero_parcela)
-            Svc->>CRRepo: save(conta_receber PENDENTE)
-            CRRepo->>DB: INSERT INTO conta_receber (...)
-            DB-->>CRRepo: id gerado
-            CRRepo-->>Svc: parcela gerada
-        end
-
-        Svc->>Repo: save(situacao='CONFIRMADA')
-        Repo->>DB: UPDATE nota_saida SET situacao='CONFIRMADA' WHERE id=?
-        DB-->>Repo: ok
-        Repo-->>Svc: nota confirmada
-        Note over Svc,DB: Commit da transação
-        Svc-->>Ctrl: NotaSaidaResponse
-        Ctrl-->>Cx: 200 OK (estoque baixado + contas a receber geradas)
+    actor Op as Operador
+    participant UI as Editor ou detalhe da nota
+    participant API as NotaSaidaController
+    participant Serv as NotaSaidaService
+    participant Est as EstoqueService
+    participant DB as PostgreSQL
+    Op->>UI: Registrar venda sem pedido
+    UI->>API: POST /api/notas-saida
+    API->>Serv: Validar chave do emitente e composição
+    Serv->>DB: Salvar rascunho e parcelas
+    API-->>UI: Nota pendente e ETag
+    Op->>UI: Conferir dados e confirmar revisão salva
+    UI->>API: POST /api/notas-saida/{id}/confirmacao com If-Match
+    API->>Serv: Bloquear e validar nota
+    Serv->>Est: Baixar saldo do local e registrar custo vigente
+    alt Saldo insuficiente
+        Serv-->>UI: Rejeitar confirmação e reverter a transação
+    else Estoque disponível
+        Est->>DB: Saldo e movimento por item
+        Serv->>DB: Gravar recebíveis, situação e auditoria
+        Serv-->>API: Resposta montada dentro da transação
+        API-->>UI: Nota confirmada e nova versão
     end
 ```
 
----
+```mermaid
+sequenceDiagram
+    actor Op as Operador autorizado
+    participant UI as Detalhe
+    participant API as ReversaoNotaController
+    participant Serv as ReversaoNotaService
+    participant DB as PostgreSQL
+    Op->>UI: Informar motivo da reversão
+    UI->>API: POST /api/notas-entrada/{id}/reversao ou /api/notas-saida/{id}/reversao
+    API->>Serv: Validar permissões, If-Match e motivo
+    Serv->>DB: Bloquear nota e títulos; conferir histórico
+    alt Título com baixa ou razão incompatível
+        Serv-->>UI: Rejeição sem efeitos
+    else Reversão elegível
+        Serv->>DB: Compensar razão, cancelar títulos e registrar auditoria
+        API-->>UI: Nota cancelada com data e motivo da reversão
+    end
+```
 
-## 9.6. Fluxo 5 — Emitir Nota de Serviço (cálculo de ISS)
+## 9.6. Fluxo 5 — Emitir Nota de Serviço interna (cálculo de ISS)
 
 A `nota_servico` documenta o serviço prestado (estacionamento avulso, mensalidade ou lavagem), com origem opcional em `movimentacao` **ou** `mensalista` (nunca ambas — `ck_nota_servico_origem`). Na emissão, calcula-se o `valor_iss` a partir da `aliquota_iss` sobre o `valor_servico` e a situação passa de `'PENDENTE'` para `'EMITIDA'`.
 
@@ -296,7 +239,7 @@ sequenceDiagram
     participant Repo as NotaServicoRepository
     participant DB as Banco
 
-    Cx->>Ctrl: POST /api/notas-servico/{id}/emitir
+    Cx->>Ctrl: POST /api/notas-servico/{id}/emissao
     Ctrl->>Svc: emitir(id)
     Svc->>Repo: findById(id)
     Repo->>DB: SELECT * FROM nota_servico WHERE id = ?
@@ -331,62 +274,40 @@ sequenceDiagram
             DB-->>Repo: ok
             Repo-->>Svc: nota emitida
             Svc-->>Ctrl: NotaServicoResponse (valorIss, valorTotal)
-            Ctrl-->>Cx: 200 OK (NFS-e emitida)
+            Ctrl-->>Cx: 200 OK (nota interna emitida)
         end
     end
 ```
 
 ---
 
-## 9.7. Fluxo 6 — Baixar Conta a Receber (PENDENTE → PARCIAL → RECEBIDA)
-
-Registra o recebimento (total ou parcial) de uma parcela de `conta_receber`. O `valor_recebido` é acumulado e a `situacao` evolui de `'PENDENTE'` para `'PARCIAL'` (quando ainda há saldo) ou para `'RECEBIDA'` (quando quitada), respeitando `ck_conta_receber_recebido_teto` e `ck_conta_receber_baixa`.
+## 9.7. UC501 e UC502 — Registrar baixa financeira
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor Cx as Caixa
-    participant Ctrl as ContaReceberController
-    participant Svc as ContaReceberService
-    participant Repo as ContaReceberRepository
-    participant DB as Banco
-
-    Cx->>Ctrl: POST /api/contas-receber/{id}/baixar (valorRecebido, dataRecebimento)
-    Ctrl->>Svc: baixar(id, valorRecebido, dataRecebimento)
-    Svc->>Repo: findById(id)
-    Repo->>DB: SELECT valor_total, valor_recebido, situacao FROM conta_receber WHERE id = ?
-    DB-->>Repo: contaReceber
-    Repo-->>Svc: contaReceber
-
-    alt situacao IN ('RECEBIDA','CANCELADA')
-        Svc-->>Ctrl: throw RegraNegocioException("Conta já liquidada ou cancelada")
-        Ctrl-->>Cx: 409 Conflict
-    else situacao IN ('PENDENTE','PARCIAL')
-        Note over Svc: novoRecebido = valor_recebido + valorRecebido
-        alt novoRecebido > valor_total
-            Note over Svc: ck_conta_receber_recebido_teto: valor_recebido <= valor_total
-            Svc-->>Ctrl: throw RegraNegocioException("Valor excede o saldo da parcela")
-            Ctrl-->>Cx: 422 Unprocessable Entity
-        else novoRecebido <= valor_total
-            alt novoRecebido = valor_total (quitação total)
-                Note over Svc: situacao='RECEBIDA' exige data_recebimento (ck_conta_receber_baixa)
-                Svc->>Svc: situacao = 'RECEBIDA'; dataRecebimento preenchida
-            else novoRecebido < valor_total (recebimento parcial)
-                Note over Svc: situacao='PARCIAL'; data_recebimento permanece nula
-                Svc->>Svc: situacao = 'PARCIAL'
-            end
-
-            Svc->>Repo: save(valor_recebido, situacao, data_recebimento)
-            Repo->>DB: UPDATE conta_receber SET valor_recebido=?, situacao=?, data_recebimento=? WHERE id=?
-            DB-->>Repo: ok
-            Repo-->>Svc: contaReceber atualizada
-            Svc-->>Ctrl: ContaReceberResponse (situacao, saldo)
-            Ctrl-->>Cx: 200 OK (baixa registrada)
-        end
+    actor Op as Operador financeiro
+    participant UI as Detalhe do título
+    participant API as Controller de contas
+    participant Serv as Serviço de contas
+    participant DB as PostgreSQL
+    Op->>UI: Informar valor e data
+    UI->>API: POST /{id}/baixa com valor, data e Idempotency-Key
+    API->>Serv: Autorizar e bloquear título da organização
+    Serv->>DB: Verificar chave e histórico
+    alt Mesma chave e mesmos dados
+        Serv-->>API: Estado atual sem novo lançamento
+    else Saldo insuficiente ou mesma chave com dados diferentes
+        Serv-->>API: Conflito sem efeitos
+    else Baixa inédita válida
+        Serv->>DB: Salvar baixa, saldo, situação e auditoria
+        Serv-->>API: Resposta com origem e contraparte ainda na transação
     end
+    API-->>UI: Resultado
+    UI->>API: GET /{id}/baixas
+    API-->>UI: Histórico do título
 ```
 
----
+As bases são `/api/contas-pagar` e `/api/contas-receber`. A chave é opcional por compatibilidade no backend e utilizada pelo frontend. A baixa não movimenta conta bancária.
 
 ## 9.8. Fluxo 7 — Cadastro Genérico com Exclusão Lógica
 

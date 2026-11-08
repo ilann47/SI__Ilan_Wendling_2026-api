@@ -1,7 +1,6 @@
 package com.kaneko.estacionamento.fiscal.importacao;
 
 import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
-import com.kaneko.estacionamento.rbac.RbacGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -13,8 +12,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.authorization.AuthorizationDeniedException;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,9 +19,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/notas-entrada/importacoes")
 public class ImportacaoNotaController {
     private final ImportacaoNotaService service;
-    private final RbacGuard guard;
-    public ImportacaoNotaController(ImportacaoNotaService service,RbacGuard guard) {
-        this.service=service; this.guard=guard;
+    public ImportacaoNotaController(ImportacaoNotaService service) {
+        this.service=service;
     }
     @GetMapping
     @Operation(summary="Lista importações sem carregar XML original; paginação limitada a 50 registros")
@@ -38,6 +34,13 @@ public class ImportacaoNotaController {
     @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:read', authentication)")
     public ResponseEntity<ImportacaoNotaResponse> buscar(@AuthenticationPrincipal UsuarioAutenticado principal,@PathVariable Long id) {
         return resposta(service.buscar(principal.organizacaoId(),id));
+    }
+    @GetMapping("/{id}/previa")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:manage', authentication)")
+    @Operation(summary="Previa autoritativa da nota apos conferencia, sem lancamentos")
+    public com.kaneko.estacionamento.fiscal.dto.PreviaNotaEntradaResponse previa(
+            @AuthenticationPrincipal UsuarioAutenticado principal, @PathVariable Long id) {
+        return service.previa(principal.organizacaoId(), id);
     }
     @PostMapping(consumes={"application/xml","text/xml","application/octet-stream"})
     @Operation(summary="Importa uma NF-e 4.00 de até 2 MB, sem movimentar estoque ou financeiro",
@@ -56,14 +59,11 @@ public class ImportacaoNotaController {
                 .eTag(etag(response.version())).body(response);
     }
     @PutMapping("/{id}/conciliacao")
-    @Operation(summary="Concilia fornecedor, produtos, unidades e pedido/recebimento opcional sem lançamentos")
+    @Operation(summary="Concilia fornecedor, produtos e unidades sem lançamentos")
     @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:manage', authentication)")
     public ResponseEntity<ImportacaoNotaResponse> conciliar(@AuthenticationPrincipal UsuarioAutenticado principal,
             @PathVariable Long id,@RequestHeader("If-Match") String ifMatch,
-            @Valid @RequestBody ConciliarImportacaoRequest request,Authentication authentication) {
-        if ((request.ordemCompraId()!=null || request.recebimentoCompraId()!=null)
-                && !guard.hasPermissionInActiveContext("purchases:read",authentication))
-            throw new AuthorizationDeniedException("Sem permissão para consultar o pedido de compra.");
+            @Valid @RequestBody ConciliarImportacaoRequest request) {
         return resposta(service.conciliar(principal.organizacaoId(),id,versao(ifMatch),request));
     }
     @PostMapping("/{id}/conferencia")
@@ -75,12 +75,11 @@ public class ImportacaoNotaController {
     }
     @PostMapping("/{id}/confirmacao")
     @Operation(summary="Confirma nota, estoque e financeiro atomicamente após conferência",
-            description="Repetição sobre importação confirmada retorna a mesma nota. Com recebimento existente não repete estoque. Com pedido sem recebimento exige purchases:manage e registra recebimento na mesma transação.")
+            description="Repetição sobre importação confirmada retorna a mesma nota.")
     @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('fiscal:manage', authentication)")
     public ResponseEntity<ImportacaoNotaResponse> confirmar(@AuthenticationPrincipal UsuarioAutenticado principal,
-            @PathVariable Long id,@RequestHeader("If-Match") String ifMatch,Authentication authentication) {
-        return resposta(service.confirmar(principal.organizacaoId(),principal.userId(),id,versao(ifMatch),
-                guard.hasPermissionInActiveContext("purchases:manage",authentication)));
+            @PathVariable Long id,@RequestHeader("If-Match") String ifMatch) {
+        return resposta(service.confirmar(principal.organizacaoId(),principal.userId(),id,versao(ifMatch)));
     }
     private static ResponseEntity<ImportacaoNotaResponse> resposta(ImportacaoNotaResponse response) {
         return ResponseEntity.ok().eTag(etag(response.version())).body(response);

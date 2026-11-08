@@ -7,6 +7,8 @@ import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -84,7 +86,8 @@ public class Fornecedor extends BaseEntity {
     @JoinColumn(name = "transportadora_id")
     private Transportadora transportadora;
 
-    @Column(name = "limite_credito", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "limite_credito_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal limiteCredito = BigDecimal.ZERO;
 
     @Column(name = "observacao", length = 255)

@@ -49,7 +49,7 @@ O teste de integração prova autenticação contextual, validação do termo e 
 - Consultas usam projeções diretas para evitar carregar agregados completos.
 - Pendências usam snapshot PostgreSQL `REPEATABLE_READ` e `count(*) OVER()` antes do limite: contagem e itens permanecem coerentes, sem deduzir o total pela primeira página. SQL é parametrizado e cada categoria exige sua permissão no tenant.
 - Despesas avulsas vencidas são preservadas como categoria própria, inclusive sem fornecedor associado, e não se confundem com títulos de compra.
-- Compras aprovadas/parcialmente recebidas aguardam recebimento. Vendas confirmadas e OS concluídas só aparecem sem qualquer nota vinculada; uma nota já criada, inclusive cancelada, não se confunde com ausência de documento. Contas vencidas pendentes/parciais consideram saldo positivo e todo o histórico, não o período do resumo financeiro.
+- A revisão de compras parte da Nota de Entrada pendente. Pedidos de venda históricos não são pendências acionáveis. OS concluídas só aparecem sem nota vinculada; contas vencidas pendentes/parciais consideram saldo positivo e todo o histórico, não o período do resumo financeiro.
 - Um índice de busca dedicado não foi introduzido nesta versão; poderá ser avaliado com métricas reais.
 
 ## Módulos relacionados
@@ -60,6 +60,8 @@ O teste de integração prova autenticação contextual, validação do termo e 
 
 | Data | Ação |
 |---|---|
+| 2026-11-08 | Pendências convertem o total inteiro da OS e o saldo inteiro da despesa avulsa para as unidades usuais da API. |
+| 2026-11-05 | Retira a categoria de Pedido de Venda sem nota; os pedidos de eventos e as pendências de serviço são preservados. |
 | 2026-08-17 | Implementa busca global tenant-aware e entrada permanente no cabeçalho. |
 | 2026-09-12 | Acrescenta consulta operacional com totais completos, RBAC por categoria e destinos exatos; sem novo agregado ou tabela. |
 | 2026-09-28 | Corrige destinos da busca global para abrir diretamente clientes, veículos, documentos, contas e movimentações encontrados. |

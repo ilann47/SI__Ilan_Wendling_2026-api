@@ -31,8 +31,6 @@ public record NotaEntradaRequest(
 
         Long localEstoqueId,
 
-        Long recebimentoCompraId,
-
         LocalDate dataEmissao,
         LocalDate dataChegada,
 
@@ -46,6 +44,18 @@ public record NotaEntradaRequest(
         @Size(max = 255) String observacao,
 
         @NotEmpty(message = "A nota deve conter ao menos um item.")
-        @Valid List<ItemNotaEntradaRequest> itens
+        @Valid List<ItemNotaEntradaRequest> itens,
+        Long transportadoraId,
+        @Size(max = 1000) String observacaoInterna
 ) {
+    /** Compatibilidade dos chamadores internos e clientes anteriores. */
+    public NotaEntradaRequest(String numero, String modelo, String serie, Long fornecedorId,
+            Long condicaoPagamentoId, Long localEstoqueId,
+            LocalDate dataEmissao, LocalDate dataChegada, TipoFrete tipoFrete,
+            BigDecimal valorFrete, BigDecimal valorSeguro, BigDecimal outrasDespesas,
+            BigDecimal valorDesconto, String observacao, List<ItemNotaEntradaRequest> itens) {
+        this(numero, modelo, serie, fornecedorId, condicaoPagamentoId, localEstoqueId,
+                dataEmissao, dataChegada, tipoFrete, valorFrete,
+                valorSeguro, outrasDespesas, valorDesconto, observacao, itens, null, null);
+    }
 }

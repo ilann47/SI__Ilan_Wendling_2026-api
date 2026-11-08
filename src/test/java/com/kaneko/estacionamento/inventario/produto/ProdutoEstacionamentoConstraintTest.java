@@ -177,9 +177,9 @@ class ProdutoEstacionamentoConstraintTest {
             String inicio, String fim, int quantidade, int prioridade) {
         jdbc.update("""
                 INSERT INTO lote_preco (
-                    organizacao_id, produto_id, nome, preco, moeda,
+                    organizacao_id, produto_id, nome, preco_micros, moeda,
                     inicio_venda, fim_venda, quantidade, prioridade)
-                VALUES (?, ?, ?, CAST(? AS NUMERIC), ?, CAST(? AS TIMESTAMPTZ),
+                VALUES (?, ?, ?, kaneko_micros(CAST(? AS NUMERIC)), ?, CAST(? AS TIMESTAMPTZ),
                     CAST(? AS TIMESTAMPTZ), ?, ?)
                 """, orgId, produtoId, nome, preco, moeda,
                 inicio, fim, quantidade, prioridade);

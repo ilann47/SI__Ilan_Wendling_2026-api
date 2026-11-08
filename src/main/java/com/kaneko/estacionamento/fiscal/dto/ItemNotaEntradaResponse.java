@@ -19,7 +19,10 @@ public record ItemNotaEntradaResponse(
         BigDecimal rateioFrete,
         BigDecimal rateioSeguro,
         BigDecimal rateioOutras,
-        BigDecimal custoPrecoFinal
+        BigDecimal custoPrecoFinal,
+        String unidadeMedida,
+        String codigoProdutoFornecedor,
+        BigDecimal custoTotal
 ) {
 
     public static ItemNotaEntradaResponse from(ItemNotaEntrada item) {
@@ -36,6 +39,9 @@ public record ItemNotaEntradaResponse(
                 item.getRateioFrete(),
                 item.getRateioSeguro(),
                 item.getRateioOutras(),
-                item.getCustoPrecoFinal());
+                item.getCustoPrecoFinal(),
+                item.getUnidadeMedida(), item.getCodigoProdutoFornecedor(),
+                item.getCustoTotal() != null ? item.getCustoTotal() : item.getValorTotal()
+                        .add(item.getRateioFrete()).add(item.getRateioSeguro()).add(item.getRateioOutras()));
     }
 }

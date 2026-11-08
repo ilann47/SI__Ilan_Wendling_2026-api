@@ -95,9 +95,11 @@ class NotaServicoControllerTest {
     @Test
     void cancelaNota() throws Exception {
         Number id = criar("NS5");
-        mvc.perform(post("/api/notas-servico/" + id + "/cancelamento"))
+        mvc.perform(post("/api/notas-servico/" + id + "/cancelamento")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\":\"Cadastro duplicado\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.situacao").value("CANCELADA"));
+                .andExpect(jsonPath("$.situacao").value("CANCELADA"))
+                .andExpect(jsonPath("$.motivoCancelamento").value("Cadastro duplicado"));
     }
 
     @Test

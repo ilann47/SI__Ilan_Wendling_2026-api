@@ -50,10 +50,10 @@ class PendenciasOperacionaisControllerTest {
         Long cliente = jdbc.queryForObject("SELECT cliente_id FROM ordem_servico WHERE id=?", Long.class, os);
         jdbc.update("INSERT INTO nota_servico(organizacao_id,cliente_id,numero,ordem_servico_id) VALUES (?,?,'NS-pendencias',?)", a.organizacaoId(), cliente, os);
         jdbc.update("""
-            INSERT INTO conta_receber(organizacao_id,cliente_id,valor_original,valor_total,data_emissao,data_vencimento,situacao)
-            VALUES (?,?,100,100,current_date-90,current_date-30,'PENDENTE'),
-                   (?,?,100,100,current_date,current_date+1,'PENDENTE'),
-                   (?,?,100,100,current_date-90,current_date-30,'CANCELADA')
+            INSERT INTO conta_receber(organizacao_id,cliente_id,valor_original_micros,valor_total_micros,data_emissao,data_vencimento,situacao)
+            VALUES (?,?,100000000,100000000,current_date-90,current_date-30,'PENDENTE'),
+                   (?,?,100000000,100000000,current_date,current_date+1,'PENDENTE'),
+                   (?,?,100000000,100000000,current_date-90,current_date-30,'CANCELADA')
             """, a.organizacaoId(), cliente, a.organizacaoId(), cliente, a.organizacaoId(), cliente);
         mvc.perform(get("/api/v1/operational-pendencies").header("Authorization", a.tokenContextual()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
@@ -64,17 +64,19 @@ class PendenciasOperacionaisControllerTest {
     @Test void preservaDespesaAvulsaVencidaSemFornecedor() throws Exception {
         var a = tenant.criarTenantAdmin();
         jdbc.update("""
-            INSERT INTO contas_pagar_avulsa(organizacao_id,descricao,valor_original,valor_total,data_emissao,data_vencimento)
-            VALUES (?,'Aluguel',50,50,current_date-40,current_date-10)
+            INSERT INTO contas_pagar_avulsa(organizacao_id,descricao,valor_original_micros,valor_total_micros,data_emissao,data_vencimento)
+            VALUES (?,'Aluguel',50000001,50000001,current_date-40,current_date-10)
             """, a.organizacaoId());
         mvc.perform(get("/api/v1/operational-pendencies").header("Authorization", a.tokenContextual()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
-                .andExpect(jsonPath("$.grupos[?(@.tipo == 'DESPESA_AVULSA_VENCIDA')].total").value(org.hamcrest.Matchers.contains(1)));
+                .andExpect(jsonPath("$.grupos[?(@.tipo == 'DESPESA_AVULSA_VENCIDA')].total").value(org.hamcrest.Matchers.contains(1)))
+                .andExpect(jsonPath("$.grupos[?(@.tipo == 'DESPESA_AVULSA_VENCIDA')].itens[0].valor")
+                        .value(org.hamcrest.Matchers.contains(50.000001)));
     }
 
     private long criarServico(Long org, String numero, String estado) {
         Long cliente = jdbc.queryForObject("""
-            INSERT INTO cliente (organizacao_id,nome,tipo,documento,limite_credito,ativo,created_at,updated_at)
+            INSERT INTO cliente (organizacao_id,nome,tipo,documento,limite_credito_micros,ativo,created_at,updated_at)
             VALUES (?,'Cliente de serviços','FISICA',?,0,true,now(),now()) RETURNING id
             """, Long.class, org, UUID.randomUUID().toString().substring(0, 14));
         return jdbc.queryForObject("""

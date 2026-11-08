@@ -2,6 +2,7 @@ package com.kaneko.estacionamento.conveniencia.dto;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ public record ServicoRequest(
         String descricao,
 
         @PositiveOrZero(message = "O valor padrão não pode ser negativo.")
+        @Digits(integer = 8, fraction = 6)
         BigDecimal valorPadrao,
 
         Boolean ativo

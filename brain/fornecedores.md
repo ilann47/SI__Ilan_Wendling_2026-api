@@ -15,6 +15,8 @@ A V42 migra `fornecedor` como raiz tenant direta. `fornecedor_email` e
 raiz, sem duplicar `organizacao_id`. A V44 fecha consumers globais e normaliza a
 unicidade documental; a V47 valida o legado retroativamente e torna o owner
 fisicamente imutável até a implementação de UC732.
+No esquema local de teste V99, o limite de crédito é gravado em milionésimos,
+sem alterar a unidade do contrato HTTP.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -97,3 +99,4 @@ consumers, condição de pagamento e transportadora.
 | 2026-08-03 | V42 migra Fornecedor e preserva o grafo histórico de contatos e referências. |
 | 2026-08-03 | V44 endurece consumers globais, unicidade normalizada, backfill e redação da auditoria. |
 | 2026-08-03 | V47 valida relações preexistentes e bloqueia troca ou backfill direto do owner até UC732. |
+| 2026-11-08 | V99 converte o limite de crédito histórico sem recalcular seu valor. |

@@ -2,6 +2,8 @@ package com.kaneko.estacionamento.logistica;
 
 import com.kaneko.estacionamento.common.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -37,7 +39,8 @@ public class VeiculoFrota extends BaseEntity {
     @Column(name = "ano")
     private Integer ano;
 
-    @Column(name = "capacidade", precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "capacidade_micros", precision = 14, scale = 0)
     private BigDecimal capacidade;
 
     @Column(name = "observacao", length = 255)

@@ -5,6 +5,8 @@ import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
 import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+import com.kaneko.estacionamento.ordensservico.dto.OrdemServicoResponse;
 import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
@@ -134,7 +136,7 @@ public class OrdemServicoService {
     }
 
     @Transactional
-    public OrdemServico iniciar(Long organizacaoId, Long id, long versao) {
+    public OrdemServicoResponse iniciar(Long organizacaoId, Long id, long versao) {
         OrdemServico ordem = bloquear(organizacaoId, id);
         exigirVersao(ordem, versao);
         Map<String, Object> anterior = snapshot(ordem);
@@ -142,11 +144,11 @@ public class OrdemServicoService {
         ordem = ordens.saveAndFlush(ordem);
         registrar(ordem, "ORDEM_SERVICO_INICIADA", anterior, snapshot(ordem), null);
         publicar(ordem, "OrdemServicoIniciada");
-        return ordem;
+        return OrdemServicoResponse.from(ordem);
     }
 
     @Transactional
-    public OrdemServico concluir(Long organizacaoId, Long id, long versao) {
+    public OrdemServicoResponse concluir(Long organizacaoId, Long id, long versao) {
         OrdemServico ordem = bloquear(organizacaoId, id);
         exigirVersao(ordem, versao);
         Map<String, Object> anterior = snapshot(ordem);
@@ -154,11 +156,11 @@ public class OrdemServicoService {
         ordem = ordens.saveAndFlush(ordem);
         registrar(ordem, "ORDEM_SERVICO_CONCLUIDA", anterior, snapshot(ordem), null);
         publicar(ordem, "OrdemServicoConcluida");
-        return ordem;
+        return OrdemServicoResponse.from(ordem);
     }
 
     @Transactional
-    public OrdemServico cancelar(Long organizacaoId, Long id, long versao, String motivo) {
+    public OrdemServicoResponse cancelar(Long organizacaoId, Long id, long versao, String motivo) {
         OrdemServico ordem = bloquear(organizacaoId, id);
         exigirVersao(ordem, versao);
         Map<String, Object> anterior = snapshot(ordem);
@@ -166,7 +168,7 @@ public class OrdemServicoService {
         ordem = ordens.saveAndFlush(ordem);
         registrar(ordem, "ORDEM_SERVICO_CANCELADA", anterior, snapshot(ordem), motivo);
         publicar(ordem, "OrdemServicoCancelada");
-        return ordem;
+        return OrdemServicoResponse.from(ordem);
     }
 
     private void preencher(OrdemServico ordem, OrdemServicoRequest req, String numero) {
@@ -205,9 +207,12 @@ public class OrdemServicoService {
             BigDecimal desconto = ir.valorDesconto() == null
                     ? BigDecimal.ZERO : ir.valorDesconto();
             BigDecimal total = ir.quantidade().multiply(ir.valorUnitario())
-                    .subtract(desconto).setScale(2, RoundingMode.HALF_UP);
+                    .setScale(MilionesimosConverter.ESCALA, RoundingMode.HALF_UP).subtract(desconto);
             if (total.signum() < 0) {
                 throw new ConflitoException("O desconto do item nao pode exceder seu valor.");
+            }
+            if (total.compareTo(new BigDecimal("9999999999999.999999")) > 0) {
+                throw new ConflitoException("O valor do item excede o limite da ordem.");
             }
             ItemOrdemServico item = existentes.get(servico.getId());
             boolean novo = item == null;
@@ -223,11 +228,13 @@ public class OrdemServicoService {
             subtotal = subtotal.add(total);
         }
         ordem.getItens().removeIf(i -> !informados.contains(i.getServico().getId()));
-        ordem.setSubtotal(subtotal.setScale(2, RoundingMode.HALF_UP));
+        if (subtotal.compareTo(new BigDecimal("9999999999999.999999")) > 0) {
+            throw new ConflitoException("O subtotal excede o limite da ordem.");
+        }
+        ordem.setSubtotal(subtotal);
         BigDecimal desconto = req.valorDesconto() == null
                 ? BigDecimal.ZERO : req.valorDesconto();
-        BigDecimal total = ordem.getSubtotal().subtract(desconto)
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = ordem.getSubtotal().subtract(desconto);
         if (total.signum() < 0) {
             throw new ConflitoException("O desconto da ordem nao pode exceder seu valor.");
         }

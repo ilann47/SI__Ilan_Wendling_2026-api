@@ -1,6 +1,5 @@
 package com.kaneko.estacionamento.fiscal.dto;
 
-import com.kaneko.estacionamento.compras.dto.RecebimentoCompraResponse;
 import com.kaneko.estacionamento.estoque.dto.MovimentoEstoqueResponse;
 import com.kaneko.estacionamento.financeiro.dto.ContaPagarResponse;
 import java.util.List;
@@ -11,9 +10,8 @@ import java.util.List;
  */
 public record NotaEntradaDetalheResponse(
         NotaEntradaResponse nota,
-        OrdemCompraVinculadaResponse ordemCompra,
-        RecebimentoCompraResponse recebimento,
         List<ContaPagarResponse> contasPagar,
-        List<MovimentoEstoqueResponse> movimentosEstoque
+        List<MovimentoEstoqueResponse> movimentosEstoque,
+        PreviaNotaEntradaResponse previa
 ) {
 }

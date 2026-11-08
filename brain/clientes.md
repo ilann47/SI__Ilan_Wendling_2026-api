@@ -12,6 +12,8 @@ preservando dados históricos e impedindo referências entre tenants.
 Cliente era uma raiz global usada por veículos, mensalistas, fiscal e contas a
 receber. A V40 adiciona ownership sem backfill automático. Consumers ainda
 globais enxergam somente clientes históricos sem owner até suas próprias ondas.
+No esquema local de teste V99, o limite de crédito é gravado em milionésimos,
+sem alterar a unidade do contrato HTTP.
 
 ## Fluxo (camadas da arquitetura)
 
@@ -83,3 +85,4 @@ auditoria. `ClienteTenantConstraintTest` valida unicidade e FK composta.
 | Data | Ação |
 |---|---|
 | 2026-08-03 | Migra Cliente para tenancy real na V40. |
+| 2026-11-08 | V99 converte o limite de crédito histórico sem recalcular seu valor. |

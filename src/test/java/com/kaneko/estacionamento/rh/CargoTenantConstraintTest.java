@@ -65,7 +65,7 @@ class CargoTenantConstraintTest {
     private Long inserir(Long organizacaoId, String nome) {
         return jdbc.queryForObject("""
                 INSERT INTO cargo
-                    (organizacao_id, nome, salario_base, requer_cnh, ativo, created_at, updated_at)
+                    (organizacao_id, nome, salario_base_micros, requer_cnh, ativo, created_at, updated_at)
                 VALUES (?, ?, 0, false, true, now(), now()) RETURNING id
                 """, Long.class, organizacaoId, nome);
     }

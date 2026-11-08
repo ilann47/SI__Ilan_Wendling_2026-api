@@ -52,7 +52,7 @@ class BuscaGlobalControllerTest {
 
     private Long inserirCliente(Long organizacaoId, String nome, String documento) {
         return jdbc.queryForObject("""
-                INSERT INTO cliente (organizacao_id,nome,tipo,documento,limite_credito,ativo,created_at,updated_at)
+                INSERT INTO cliente (organizacao_id,nome,tipo,documento,limite_credito_micros,ativo,created_at,updated_at)
                 VALUES (?,?,'FISICA',?,0,true,now(),now())
                 RETURNING id
                 """, Long.class, organizacaoId, nome, documento);

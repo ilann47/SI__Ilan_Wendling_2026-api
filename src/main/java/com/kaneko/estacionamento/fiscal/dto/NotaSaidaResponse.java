@@ -24,7 +24,6 @@ public record NotaSaidaResponse(
         String condicaoPagamentoNome,
         Long localEstoqueId,
         String localEstoqueNome,
-        Long vendaAdministrativaId,
         LocalDate dataEmissao,
         LocalDate dataSaida,
         TipoFrete tipoFrete,
@@ -37,8 +36,11 @@ public record NotaSaidaResponse(
         SituacaoNota situacao,
         String observacao,
         List<ItemNotaSaidaResponse> itens,
+        boolean cronogramaDefinido,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        OffsetDateTime revertidaEm,
+        String motivoReversao
 ) {
 
     public static NotaSaidaResponse from(NotaSaida nota) {
@@ -55,8 +57,6 @@ public record NotaSaidaResponse(
                 nota.getCondicaoPagamento() != null ? nota.getCondicaoPagamento().getNome() : null,
                 nota.getLocalEstoque() != null ? nota.getLocalEstoque().getId() : null,
                 nota.getLocalEstoque() != null ? nota.getLocalEstoque().getNome() : null,
-                nota.getVendaAdministrativa() != null
-                        ? nota.getVendaAdministrativa().getId() : null,
                 nota.getDataEmissao(),
                 nota.getDataSaida(),
                 nota.getTipoFrete(),
@@ -69,7 +69,10 @@ public record NotaSaidaResponse(
                 nota.getSituacao(),
                 nota.getObservacao(),
                 nota.getItens().stream().map(ItemNotaSaidaResponse::from).toList(),
+                nota.isCronogramaDefinido(),
                 nota.getCreatedAt(),
-                nota.getUpdatedAt());
+                nota.getUpdatedAt(),
+                nota.getRevertidaEm(),
+                nota.getMotivoReversao());
     }
 }

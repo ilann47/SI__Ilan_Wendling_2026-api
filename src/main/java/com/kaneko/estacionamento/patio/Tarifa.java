@@ -2,6 +2,8 @@ package com.kaneko.estacionamento.patio;
 
 import com.kaneko.estacionamento.common.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -33,15 +35,18 @@ public class Tarifa extends BaseEntity {
     @Column(name = "descricao", nullable = false, length = 80)
     private String descricao;
 
-    @Column(name = "valor_hora", nullable = false, precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_hora_micros", nullable = false, precision = 14, scale = 0)
     private BigDecimal valorHora;
 
-    @Column(name = "valor_diaria", nullable = false, precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_diaria_micros", nullable = false, precision = 14, scale = 0)
     private BigDecimal valorDiaria;
 
     @Column(name = "tolerancia_min", nullable = false)
     private Integer toleranciaMin = 15;
 
-    @Column(name = "valor_mensalidade", nullable = false, precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_mensalidade_micros", nullable = false, precision = 14, scale = 0)
     private BigDecimal valorMensalidade;
 }

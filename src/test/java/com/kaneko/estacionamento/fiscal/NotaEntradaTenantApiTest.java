@@ -27,6 +27,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @TenantApiIntegrationTest
 class NotaEntradaTenantApiTest {
@@ -38,6 +43,8 @@ class NotaEntradaTenantApiTest {
     @Autowired UnidadeMedidaRepository unidades;
     @Autowired ProdutoRepository produtos;
     @Autowired JdbcTemplate jdbc;
+    @Autowired PlatformTransactionManager transactionManager;
+    @Autowired NotaEntradaService notas;
 
     private TenantFixture tenantA;
     private TenantFixture tenantB;
@@ -77,7 +84,7 @@ class NotaEntradaTenantApiTest {
             var confirming = new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.Callable<Integer> confirm = () -> {
                 confirming.await();
-                return mvc.perform(post("/api/notas-entrada/{id}/confirmacao", id)
+                return mvc.perform(post("/api/notas-entrada/{id}/confirmacao", id).header("If-Match", "\"0\"")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
                         .andReturn().getResponse().getStatus();
             };
@@ -88,6 +95,37 @@ class NotaEntradaTenantApiTest {
             assertThat(jdbc.queryForObject("select count(*) from movimento_estoque where organizacao_id=?", Integer.class,
                     tenantA.organizacaoId())).isEqualTo(1);
         }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void confirmacaoLeOCustoAtualMesmoComProdutoPreCarregado() throws Exception {
+        long primeira = criarNotaComPreco("NF-CUSTO-1", 4);
+        long segunda = criarNotaComPreco("NF-CUSTO-2", 6);
+        var inner = new TransactionTemplate(transactionManager);
+        inner.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        Long org = tenantA.organizacaoId();
+        new TransactionTemplate(transactionManager).executeWithoutResult(outer -> {
+            produtos.findById(produtoA).orElseThrow();
+            inner.executeWithoutResult(status -> notas.confirmar(org, tenantA.usuarioId(), primeira, 0L));
+            var item = notas.confirmar(org, tenantA.usuarioId(), segunda, 0L).getItens().getFirst();
+            assertThat(item.getSaldoEstoqueAnterior()).isEqualByComparingTo("10");
+            assertThat(item.getCustoMedioAnterior()).isEqualByComparingTo("4");
+            assertThat(item.getCustoMedioPosterior()).isEqualByComparingTo("5");
+        });
+        Produto produto = produtos.findById(produtoA).orElseThrow();
+        assertThat(produto.getCusto()).isEqualByComparingTo("5");
+        assertThat(produto.getValorCompra()).isEqualByComparingTo("6");
+    }
+
+    private long criarNotaComPreco(String numero, int preco) throws Exception {
+        String body = payload(numero, fornecedorA, produtoA, localA)
+                .replace("\"valorUnitario\":5", "\"valorUnitario\":" + preco);
+        String result = mvc.perform(post("/api/notas-entrada")
+                        .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return JsonPath.<Number>read(result, "$.id").longValue();
     }
 
     @Test
@@ -145,7 +183,7 @@ class NotaEntradaTenantApiTest {
                 .andReturn().getResponse().getContentAsString();
         long notaId = JsonPath.<Number>read(resposta, "$.id").longValue();
 
-        mvc.perform(post("/api/notas-entrada/{id}/confirmacao", notaId)
+        mvc.perform(post("/api/notas-entrada/{id}/confirmacao", notaId).header("If-Match", "\"0\"")
                         .header(HttpHeaders.AUTHORIZATION, tenantA.tokenContextual()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.situacao").value("CONFIRMADA"));

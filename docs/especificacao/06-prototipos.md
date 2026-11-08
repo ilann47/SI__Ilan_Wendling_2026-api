@@ -323,103 +323,68 @@ Cadastros de apoio da loja de conveniência — **Categoria**, **Marca**, **Unid
 
 ---
 
-## 6.9 Módulo Fiscal
+## 6.9 Módulo Fiscal — Interface vigente
 
-Documentos fiscais: **Nota de Entrada** (compra → soma estoque), **Nota de Saída** (venda → subtrai estoque) e **Nota de Serviço** (NFS-e do estacionamento, com ISS). Todas têm cabeçalho + itens (exceto a de serviço, com valor único de serviço) e um ciclo de vida por `situacao`.
+As seções 6.9 e 6.10 descrevem os componentes reais do frontend. As
+capturas históricas de 6.1.3 não devem ser usadas como evidência fiscal ou
+financeira. Para a demonstração, a ordem recomendada é editor, conferência,
+detalhe confirmado e, por último, detalhe e baixa do título.
 
-### 6.9.1 Tela Conceitual — Nota de Entrada
+### 6.9.1 Nota de Entrada: consultar, lançar e conferir
 
-**Propósito.** Registrar a compra de mercadorias do fornecedor e, ao **confirmar**, dar entrada no estoque dos produtos.
+**Lista.** Em Estoque → Notas de Entrada, consultar número, série/modelo, fornecedor, emissão, situação e total. O operador pode filtrar e abrir o detalhe; com gestão fiscal, pode iniciar **Nova nota** ou **Importar XML**.
 
-*Listagem*: número/série, fornecedor, data de emissão, valor total, `situacao` (PENDENTE/CONFIRMADA/CANCELADA). *Cadastro/Edição* (cabeçalho): `numero`, `modelo` (default 55), `serie`, `fornecedor_id` (obrigatório), `condicao_pagamento_id`, `data_emissao`, `data_chegada`, `tipo_frete` (CIF/FOB/SEM), valores (`valor_produtos`, `valor_frete`, `valor_seguro`, `outras_despesas`, `valor_desconto`, `valor_total`), `observacao`. Trio (`numero`, `serie`, `fornecedor_id`) único (`uq_nota_entrada`). **Grid de itens** (`item_nota_entrada`): `produto_id`, `sequencia`, `quantidade` (> 0), `valor_unitario`, descontos, rateios (frete/seguro/outras) e `custo_preco_final`. *Ações de fluxo*: **Confirmar** (situação → CONFIRMADA, soma estoque, pode gerar Contas a Pagar) e **Cancelar**.
+**Editor.** A seção inicial identifica fornecedor, número, série, modelo, emissão e chegada. O calendário de emissão bloqueia datas posteriores ao dia corrente; a digitação é validada ao salvar ou conferir. Entrega e pagamento usam seletores pesquisáveis. Produtos apresentam quantidade, valor e descontos; custos e despesas ficam separados. **Salvar rascunho** persiste sem efeitos; **Conferir valores e parcelas** mostra itens, custo médio estimado, total e vencimentos.
 
-### 6.9.2 Tela Conceitual — Nota de Saída
+**Confirmação e detalhe.** A confirmação integral exige a revisão salva e a marcação de conferência. O detalhe mostra situação e composição e, quando autorizados, os títulos e movimentos do estoque. O menu de rascunho oferece cancelar/excluir; o detalhe de nota confirmada elegível oferece reversão interna com motivo.
 
-**Propósito.** Registrar a venda de produtos da conveniência e, ao **confirmar**, baixar o estoque.
+**Importação XML.** O operador seleciona o arquivo, concilia fornecedor/local/produtos e informa a contagem. Emissão futura é rejeitada no upload novo; divergência física não libera confirmação. A prévia antecede a geração do documento e dos lançamentos.
 
-*Listagem*: número/série, cliente, emissão, total, `situacao`. *Cadastro/Edição* (cabeçalho): `numero`, `modelo`, `serie`, `cliente_id` (obrigatório), `condicao_pagamento_id`, `data_emissao`, `data_saida`, `tipo_frete`, valores e `observacao`. Trio (`numero`, `serie`, `cliente_id`) único (`uq_nota_saida`). **Grid de itens** (`item_nota_saida`) análogo ao da entrada. *Ações*: **Confirmar** (baixa estoque — bloqueia se faltar saldo — e pode gerar Contas a Receber) e **Cancelar**.
+### 6.9.2 Nota de Saída: registrar venda de mercadoria
 
-### 6.9.3 Tela Conceitual — Nota de Serviço (NFS-e)
+Em Vendas → Notas de Saída, filtrar por número ou situação. **Nova nota** abre o editor com cliente, local, identificação, itens, custos e condições. Depois de salvar, conferir produtos, valores e parcelas; a confirmação baixa estoque e gera recebíveis. O detalhe separa composição, contas e movimentos. Cancelar/excluir se aplica ao rascunho; reverter uma confirmada é ação distinta, sem transmissão externa.
 
-**Propósito.** Documentar o serviço de estacionamento prestado, com **ISS**. A origem pode ser uma **movimentação avulsa** *ou* uma **mensalidade** (nunca ambas — `ck_nota_servico_origem`).
+### 6.9.3 Nota de Serviço
 
-*Listagem*: número/série, cliente, serviço, valor total, ISS, `situacao` (PENDENTE/EMITIDA/CANCELADA). *Cadastro/Edição*: `numero`, `serie` (par único — `uq_nota_servico`), `cliente_id` (obrigatório), `servico_id`, origem (`movimentacao_id` **ou** `mensalista_id`), `condicao_pagamento_id`, `forma_pagamento_id`, `data_emissao`, `valor_servico`, `aliquota_iss` (0–100), `valor_iss` (≤ valor do serviço — `ck_nota_servico_iss_base`; coerência alíquota/valor por `ck_nota_servico_iss_coerencia`), `valor_desconto` (≤ serviço), `valor_total`, `observacao`. *Ações*: **Emitir** (situação → EMITIDA) e **Cancelar**.
+O fluxo de serviços é separado da venda de mercadoria. Consulte [UC403](05-casos-de-uso/processos-fiscais.md) e [ADR de Ordem de Serviço](25-adr-ordem-servico.md) para origens e faturamento interno. A interface não transmite NFS-e a um provedor externo.
 
-### 6.9.4 Mapeamento REST — Fiscal
+### 6.9.4 Correspondência com a API
 
-| Recurso | Listar | Detalhe | Inserir | Alterar | Excluir/Cancelar |
-|---|---|---|---|---|---|
-| Nota de Entrada | `GET /api/notas-entrada` | `GET /api/notas-entrada/{id}` | `POST /api/notas-entrada` | `PUT /api/notas-entrada/{id}` | `DELETE /api/notas-entrada/{id}` |
-| Nota de Saída | `GET /api/notas-saida` | `GET /api/notas-saida/{id}` | `POST /api/notas-saida` | `PUT /api/notas-saida/{id}` | `DELETE /api/notas-saida/{id}` |
-| Nota de Serviço | `GET /api/notas-servico` | `GET /api/notas-servico/{id}` | `POST /api/notas-servico` | `PUT /api/notas-servico/{id}` | `DELETE /api/notas-servico/{id}` |
+| Operação | Caminho vigente |
+|---|---|
+| Listagem e detalhe | `GET /api/notas-entrada` ou `/api/notas-saida`; detalhe operacional em `GET /{id}/detalhes` |
+| Criar/editar rascunho | `POST` na base e `PUT /{id}` com `If-Match` |
+| Conferência da entrada | `POST /api/notas-entrada/{id}/previa` com `If-Match` |
+| Confirmar | `POST /{id}/confirmacao` com `If-Match` |
+| Cancelar/excluir | `POST /{id}/cancelamento` ou `DELETE /{id}` |
+| Reverter confirmada | `POST /{id}/reversao`, com `If-Match`, motivo e permissões adicionais |
 
-*Endpoints de fluxo:*
+## 6.10 Módulo Financeiro — Interface vigente
 
-| Ação | Verbo + Caminho | Efeito |
-|---|---|---|
-| Confirmar entrada | `PUT /api/notas-entrada/{id}/confirmar` | situação → CONFIRMADA; **soma** estoque; gera contas a pagar |
-| Confirmar saída | `PUT /api/notas-saida/{id}/confirmar` | situação → CONFIRMADA; **baixa** estoque; gera contas a receber |
-| Emitir nota de serviço | `PUT /api/notas-servico/{id}/emitir` | situação → EMITIDA |
-| Cancelar (qualquer nota) | `PUT /api/notas-{tipo}/{id}/cancelar` | situação → CANCELADA |
+### 6.10.1 Formas e condições
 
-*Payload (cabeçalho + itens):* `{ numero, serie, fornecedorId|clienteId, dataEmissao, condicaoPagamentoId?, itens:[{ produtoId, quantidade, valorUnitario, valorDesconto? }] }`. A Nota de Serviço usa `{ clienteId, servicoId?, movimentacaoId?|mensalistaId?, valorServico, aliquotaIss }`.
+Forma identifica o meio de pagamento cadastrado. Condição descreve parcelas e vencimentos; a nota conserva uma cópia da previsão salva. Alterar o cadastro depois não reescreve automaticamente a revisão da nota.
 
-### 6.9.5 Relatórios — Fiscal
+### 6.10.2 Contas a Pagar e a Receber
 
-- **Notas por período e situação** — `GET /api/relatorios/notas?tipo=entrada|saida|servico&de=&ate=&situacao=`.
-- **ISS apurado no período** (notas de serviço EMITIDAS) — `GET /api/relatorios/fiscal/iss?de=&ate=`.
+**Lista.** Mostrar contraparte, parcela, vencimento, saldo e situação. Usar busca, vencimento, origem e situação para localizar o título. O resumo considera os filtros; não representa integração bancária.
 
----
+**Detalhe.** Abrir pelo registro da lista. Conferir contraparte, saldo, origem navegável quando disponível, datas e histórico de baixas. Títulos fiscais não têm edição direta.
 
-## 6.10 Módulo Financeiro
+**Baixa e cancelamento.** Em **Registrar pagamento** ou **Registrar recebimento**, informar **Valor da baixa** e **Data da baixa**. Conferir a situação e o histórico depois da ação. O sistema protege tentativas repetidas contra duplicação. **Cancelar título** é ação separada e não está disponível quando existe baixa. O lançamento manual abre **Novo lançamento**, sem alterar uma nota existente.
 
-Contas a pagar e a receber, formas e condições de pagamento, e despesas avulsas (sem nota). As contas-título são geradas a partir das notas/contratos e **baixadas** (quitadas) na rotina financeira.
+### 6.10.3 Despesa avulsa
 
-### 6.10.1 Telas Conceituais — Pagamento (apoio)
+Cadastro separado, em Contas a Pagar Avulsas. Permite registrar despesa sem vínculo fiscal obrigatório, editar enquanto pendente e registrar baixa ou cancelamento pelos comandos próprios do recurso.
 
-**Forma de Pagamento** (`forma_pagamento`): `nome` (único), `descricao` (obrigatória), `ativo` — ex.: Dinheiro, Cartão, Pix, Boleto.
+### 6.10.4 Correspondência com a API
 
-**Condição de Pagamento** (`condicao_pagamento`): `nome` (único), `numero_parcelas` (≥ 1), percentuais de `juros`/`multa`/`desconto`, `ativo`. Os dias de vencimento ficam por parcela (sub-grid). *Sub-grid* de parcelas (`parcela_condicao_pagamento`): `numero`, `dias`, `percentual` (0–100), `forma_pagamento_id` (opcional por parcela); a soma dos percentuais das parcelas compõe 100% do título.
+| Recurso | Operações implementadas |
+|---|---|
+| Contas a Pagar e a Receber | Bases `/api/contas-pagar` e `/api/contas-receber`: listagem, detalhe, resumo, lançamento, histórico `GET /{id}/baixas`, `POST /{id}/baixa` e `POST /{id}/cancelamento`. Não há `PUT` nem `DELETE` nesses títulos. |
+| Despesa avulsa | Base `/api/contas-pagar-avulsas`: listagem, detalhe, criação, edição de pendente, baixa, cancelamento e exclusão. |
 
-### 6.10.2 Tela Conceitual — Contas a Pagar
-
-**Propósito.** Controlar os títulos a pagar (de notas de entrada ou avulsos), por parcela, e registrar a **baixa**.
-
-*Listagem*: fornecedor, número/total de parcela, valor total, vencimento, `situacao` (PENDENTE/PARCIAL/PAGA/CANCELADA); filtros por situação, fornecedor e período de vencimento; destaque para **vencidas**. *Detalhe/Edição*: `fornecedor_id`, `nota_entrada_id` (origem), `condicao_pagamento_id`, `forma_pagamento_id`, `numero_parcela`/`total_parcelas`, `valor_original`, `valor_desconto`, `valor_juros`, `valor_multa`, `valor_total`, `valor_pago` (≤ total), `data_emissao`, `data_vencimento` (≥ emissão), `data_pagamento`, `observacao`. *Ação de fluxo*: **Baixar** (registrar pagamento) — informa `valor_pago`, `data_pagamento` e `forma_pagamento`; situação passa a PARCIAL ou PAGA conforme `ck_conta_pagar_baixa`.
-
-### 6.10.3 Tela Conceitual — Contas a Receber
-
-Análoga à de pagar, voltada ao **cliente**. *Detalhe/Edição*: `cliente_id`, origem `nota_saida_id` **ou** `mensalista_id` (nunca ambas — `ck_conta_receber_origem`), `condicao_pagamento_id`, `forma_pagamento_id`, parcelas, valores (`valor_original`, `valor_recebido` ≤ total, descontos/juros/multa, `valor_total`), `data_emissao`, `data_vencimento`, `data_recebimento`, `situacao` (PENDENTE/PARCIAL/RECEBIDA/CANCELADA). *Ação de fluxo*: **Baixar** (registrar recebimento).
-
-### 6.10.4 Tela Conceitual — Contas a Pagar Avulsa
-
-**Propósito.** Lançar despesas sem nota fiscal (aluguel, luz, água, salários). *Campos*: `descricao` (obrigatória), `fornecedor_id` (opcional), `forma_pagamento_id`, dados de nota opcionais (`numero_nota`, `modelo`, `serie`), parcelas, valores e datas, `situacao`. Mesmo fluxo de **baixa** das contas a pagar.
-
-### 6.10.5 Mapeamento REST — Financeiro
-
-| Recurso | Listar | Detalhe | Inserir | Alterar | Excluir |
-|---|---|---|---|---|---|
-| Forma de Pagamento | `GET /api/formas-pagamento` | `GET /api/formas-pagamento/{id}` | `POST /api/formas-pagamento` | `PUT /api/formas-pagamento/{id}` | `DELETE /api/formas-pagamento/{id}` |
-| Condição de Pagamento | `GET /api/condicoes-pagamento` | `GET /api/condicoes-pagamento/{id}` | `POST /api/condicoes-pagamento` | `PUT /api/condicoes-pagamento/{id}` | `DELETE /api/condicoes-pagamento/{id}` |
-| Contas a Pagar | `GET /api/contas-pagar` | `GET /api/contas-pagar/{id}` | `POST /api/contas-pagar` | `PUT /api/contas-pagar/{id}` | `DELETE /api/contas-pagar/{id}` |
-| Contas a Receber | `GET /api/contas-receber` | `GET /api/contas-receber/{id}` | `POST /api/contas-receber` | `PUT /api/contas-receber/{id}` | `DELETE /api/contas-receber/{id}` |
-| Contas a Pagar Avulsa | `GET /api/contas-pagar-avulsa` | `GET /api/contas-pagar-avulsa/{id}` | `POST /api/contas-pagar-avulsa` | `PUT /api/contas-pagar-avulsa/{id}` | `DELETE /api/contas-pagar-avulsa/{id}` |
-
-*Endpoints de fluxo (baixa de título):*
-
-| Ação | Verbo + Caminho | *Payload* resumido |
-|---|---|---|
-| Baixar conta a pagar | `PUT /api/contas-pagar/{id}/baixar` | `{ valorPago, dataPagamento, formaPagamentoId, valorDesconto?, valorJuros?, valorMulta? }` |
-| Baixar conta a receber | `PUT /api/contas-receber/{id}/baixar` | `{ valorRecebido, dataRecebimento, formaPagamentoId, ... }` |
-| Baixar despesa avulsa | `PUT /api/contas-pagar-avulsa/{id}/baixar` | `{ valorPago, dataPagamento, formaPagamentoId, ... }` |
-
-### 6.10.6 Relatórios — Financeiro
-
-- **Fluxo de caixa / contas por vencimento** — `GET /api/relatorios/financeiro/fluxo?de=&ate=`.
-- **Contas a receber em atraso** (inadimplência) — `GET /api/relatorios/contas-receber?situacao=PENDENTE&vencidasAte=`.
-- **Contas a pagar em aberto** — `GET /api/relatorios/contas-pagar?situacao=PENDENTE,PARCIAL`.
-
----
+A baixa dos títulos regulares usa `{ valor, data? }`; o frontend envia `Idempotency-Key`. [Casos de uso financeiros](05-casos-de-uso/processos-financeiros.md).
 
 ## 6.11 Encerramento
 

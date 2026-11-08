@@ -8,6 +8,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+import jakarta.persistence.Convert;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.Currency;
@@ -39,9 +41,10 @@ public class ReservaInventario extends AuditableEntity {
     private String chaveIdempotencia;
     @Column(name = "lote_preco_id", nullable = false, updatable = false)
     private Long lotePrecoId;
-    @Column(name = "preco_unitario", nullable = false, updatable = false,
-            precision = 19, scale = 2)
+    @Column(name = "preco_unitario_micros", nullable = false, updatable = false, precision = 23, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal precoUnitario;
+
     @Column(nullable = false, updatable = false, length = 3)
     private String moeda;
     @Enumerated(EnumType.STRING)
@@ -176,10 +179,10 @@ public class ReservaInventario extends AuditableEntity {
     }
 
     private static BigDecimal preco(BigDecimal valor) {
-        if (valor == null || valor.signum() < 0 || valor.stripTrailingZeros().scale() > 2) {
+        if (valor == null || valor.signum() < 0 || valor.stripTrailingZeros().scale() > MilionesimosConverter.ESCALA) {
             throw new IllegalArgumentException("O preco unitario e invalido.");
         }
-        return valor.setScale(2, RoundingMode.UNNECESSARY);
+        return valor.setScale(MilionesimosConverter.ESCALA, RoundingMode.UNNECESSARY);
     }
 
     private static String moeda(String valor) {

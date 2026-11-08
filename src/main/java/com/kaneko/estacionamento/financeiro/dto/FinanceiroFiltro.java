@@ -15,14 +15,14 @@ public record FinanceiroFiltro(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataVencimentoAte,
         Origem origem,
         @Positive Long notaEntradaId, @Positive Long notaSaidaId,
-        @Positive Long notaServicoId, @Positive Long vendaAdministrativaId) {
-    public enum Origem { MANUAL, NOTA_ENTRADA, NOTA_SAIDA, NOTA_SERVICO, VENDA, MENSALIDADE }
+        @Positive Long notaServicoId) {
+    public enum Origem { MANUAL, NOTA_ENTRADA, NOTA_SAIDA, NOTA_SERVICO, MENSALIDADE }
     @AssertTrue(message = "O início do vencimento não pode ser posterior ao fim.")
     public boolean isPeriodoValido() {
         return dataVencimentoDe == null || dataVencimentoAte == null
                 || !dataVencimentoDe.isAfter(dataVencimentoAte);
     }
     public static FinanceiroFiltro vazio() {
-        return new FinanceiroFiltro(null, null, null, null, null, null, null, null, null, null, null);
+        return new FinanceiroFiltro(null, null, null, null, null, null, null, null, null, null);
     }
 }

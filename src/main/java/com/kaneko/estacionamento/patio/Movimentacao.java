@@ -2,6 +2,8 @@ package com.kaneko.estacionamento.patio;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -64,7 +66,8 @@ public class Movimentacao extends AuditableEntity {
     @Column(name = "data_saida")
     private OffsetDateTime dataSaida;
 
-    @Column(name = "valor_cobrado", precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_cobrado_micros", precision = 14, scale = 0)
     private BigDecimal valorCobrado;
 
     @Enumerated(EnumType.STRING)

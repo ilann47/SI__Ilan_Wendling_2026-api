@@ -8,13 +8,24 @@ final class FinanceiroRegras {
 
     static BigDecimal total(BigDecimal original, BigDecimal desconto, BigDecimal juros,
             BigDecimal multa, BigDecimal informado) {
+        return total(original, desconto, juros, multa, informado, 2);
+    }
+
+    static BigDecimal totalEmMilionesimos(BigDecimal original, BigDecimal desconto, BigDecimal juros,
+            BigDecimal multa, BigDecimal informado) {
+        return total(original, desconto, juros, multa, informado, 6);
+    }
+
+    private static BigDecimal total(BigDecimal original, BigDecimal desconto, BigDecimal juros,
+            BigDecimal multa, BigDecimal informado, int escala) {
         for (BigDecimal valor : new BigDecimal[]{original, desconto, juros, multa}) {
-            if (valor == null || valor.signum() < 0 || valor.stripTrailingZeros().scale() > 2) {
-                throw new ConflitoException("Valores monetários devem ser não negativos e ter até duas casas decimais.");
+            if (valor == null || valor.signum() < 0 || valor.stripTrailingZeros().scale() > escala
+                    || valor.precision() - valor.scale() > 13) {
+                throw new ConflitoException("Valores monetários devem ser não negativos e ter até " + escala + " casas decimais.");
             }
         }
         BigDecimal total = original.subtract(desconto).add(juros).add(multa);
-        if (desconto.compareTo(original) > 0 || total.signum() < 0
+        if (desconto.compareTo(original) > 0 || total.signum() < 0 || total.precision() - total.scale() > 13
                 || (informado != null && informado.compareTo(total) != 0)) {
             throw new ConflitoException("O total deve corresponder ao valor original menos desconto, mais juros e multa.");
         }
@@ -22,8 +33,16 @@ final class FinanceiroRegras {
     }
 
     static void validarBaixa(BigDecimal valor) {
-        if (valor == null || valor.signum() <= 0 || valor.stripTrailingZeros().scale() > 2) {
-            throw new ConflitoException("A baixa deve ser positiva e ter até duas casas decimais.");
+        validarBaixa(valor, 2, "duas");
+    }
+
+    static void validarBaixaEmMilionesimos(BigDecimal valor) {
+        validarBaixa(valor, 6, "seis");
+    }
+
+    private static void validarBaixa(BigDecimal valor, int escala, String limite) {
+        if (valor == null || valor.signum() <= 0 || valor.stripTrailingZeros().scale() > escala) {
+            throw new ConflitoException("A baixa deve ser positiva e ter até " + limite + " casas decimais.");
         }
     }
 }

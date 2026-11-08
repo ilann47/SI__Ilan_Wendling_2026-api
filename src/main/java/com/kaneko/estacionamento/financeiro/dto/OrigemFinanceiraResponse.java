@@ -10,10 +10,6 @@ public record OrigemFinanceiraResponse(String tipo, Long id, String numero, Stri
                 "/app/notas-entrada/" + nota.getId());
     }
     public static OrigemFinanceiraResponse from(ContaReceber conta) {
-        if (conta.getVendaAdministrativa() != null) {
-            Long id = conta.getVendaAdministrativa().getId();
-            return new OrigemFinanceiraResponse("VENDA", id, String.valueOf(id), "/app/vendas-administrativas?detail=" + id);
-        }
         if (conta.getNotaSaida() != null) {
             var nota = conta.getNotaSaida();
             return new OrigemFinanceiraResponse("NOTA_SAIDA", nota.getId(), nota.getNumero(), "/app/notas-saida?detail=" + nota.getId());

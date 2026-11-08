@@ -90,6 +90,7 @@ public class ContaPagarAvulsaService {
     /** Registra um pagamento (baixa). Acumula o valor pago e atualiza a situacao. */
     @Transactional
     public ContaPagarAvulsa baixar(Long organizacaoId, Long id, BaixaRequest req) {
+        FinanceiroRegras.validarBaixaEmMilionesimos(req.valor());
         ContaPagarAvulsa conta = buscar(organizacaoId, id);
         Map<String, Object> anterior = snapshot(conta);
         if (conta.getSituacao() == SituacaoContaPagar.PAGA
@@ -144,9 +145,14 @@ public class ContaPagarAvulsaService {
         conta.setValorDesconto(desconto);
         conta.setValorJuros(juros);
         conta.setValorMulta(multa);
-        conta.setValorTotal(req.valorTotal() != null
+        BigDecimal total = req.valorTotal() != null
                 ? req.valorTotal()
-                : original.subtract(desconto).add(juros).add(multa));
+                : original.subtract(desconto).add(juros).add(multa);
+        if (total.signum() < 0 || total.precision() - total.scale() > 13
+                || total.compareTo(original.subtract(desconto)) < 0) {
+            throw new ConflitoException("O valor total é inválido para esta despesa.");
+        }
+        conta.setValorTotal(total);
         LocalDate emissao = req.dataEmissao() != null ? req.dataEmissao() : LocalDate.now();
         conta.setDataEmissao(emissao);
         if (req.dataVencimento().isBefore(emissao)) {

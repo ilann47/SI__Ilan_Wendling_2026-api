@@ -84,14 +84,14 @@ public class ContaReceberController {
     public ContaReceberResponse baixar(@AuthenticationPrincipal UsuarioAutenticado principal,
             @PathVariable Long id, @Valid @RequestBody BaixaRequest req,
             @RequestHeader(value = "Idempotency-Key", required = false) String chave) {
-        return ContaReceberResponse.from(service.baixar(org(principal), id, req, chave));
+        return service.baixarComResposta(org(principal), id, req, chave);
     }
 
     @PostMapping("/{id}/cancelamento")
     @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('finance:manage', authentication)")
     public ContaReceberResponse cancelar(@AuthenticationPrincipal UsuarioAutenticado principal,
             @PathVariable Long id) {
-        return ContaReceberResponse.from(service.cancelar(org(principal), id));
+        return service.cancelarComResposta(org(principal), id);
     }
 
     private static Long org(UsuarioAutenticado principal) {
