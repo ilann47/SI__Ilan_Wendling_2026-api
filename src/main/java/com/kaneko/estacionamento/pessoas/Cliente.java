@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -35,8 +36,12 @@ public class Cliente extends BaseEntity {
     @Column(name = "organizacao_id", updatable = false)
     private Long organizacaoId;
 
-    @Column(name = "nome", nullable = false, length = 120)
+    @Column(name = "nome", nullable = false, length = 160)
     private String nome;
+
+    @Setter(AccessLevel.NONE)
+    @Column(name = "origem_cadastro_fiscal", nullable = false, updatable = false)
+    private boolean origemCadastroFiscal;
 
     @Column(name = "apelido", length = 60)
     private String apelido;
@@ -97,4 +102,18 @@ public class Cliente extends BaseEntity {
 
     @Column(name = "observacao", length = 255)
     private String observacao;
+
+    public boolean isCadastroFiscalBasico() {
+        return origemCadastroFiscal && !telefoneValido() && !emailValido();
+    }
+
+    private boolean telefoneValido() {
+        if (telefone == null || !telefone.strip().matches("\\+?[0-9(). -]+")) return false;
+        String semMascara = telefone.strip().replaceAll("[(). -]", "");
+        return semMascara.matches("(?:\\+55)?[1-9][0-9]{9,10}");
+    }
+
+    private boolean emailValido() {
+        return email != null && email.strip().matches("[^\\s@]+@[^\\s@.]+(?:\\.[^\\s@.]+)+");
+    }
 }

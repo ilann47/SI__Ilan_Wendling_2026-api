@@ -1,10 +1,13 @@
 package com.kaneko.estacionamento.patio;
 
 import java.util.Optional;
+import java.util.List;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 
 /**
@@ -22,4 +25,10 @@ public interface PatioRepository extends JpaRepository<Patio, Long>,
 
     @EntityGraph(attributePaths = {"cidade"})
     Optional<Patio> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    List<Patio> findByOrganizacaoIdAndAtivoTrueOrderByNomeAscIdAsc(Long organizacaoId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Patio p where p.id = :id and p.organizacaoId = :org and p.ativo = true")
+    Optional<Patio> bloquearAtivo(Long id, Long org);
 }

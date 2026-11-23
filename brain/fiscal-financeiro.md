@@ -1,8 +1,16 @@
-> Links: [[core]] · [[estoque]] · [[importacao-xml]] · [[pagamentos-cadastrais]] · [[vendas-administrativas]]
+> Links: [[core]] · [[estoque]] · [[importacao-xml]] · [[pagamentos-cadastrais]] · [[vendas-administrativas]] · [[operacao]]
 
 # Notas de Entrada, de Saída e financeiro
 
 Regressão corrigida: a Nota de Entrada usa os percentuais do pagamento através de um conversor JPA, sem SQL ambíguo no join.
+
+## Escopo financeiro atual
+
+Despesas Avulsas foram retiradas: não há rota, cadastro, baixa ou categoria
+separada em pendências e relatórios. Contas a pagar regulares e contas a receber
+mantêm seus contratos. A V105 remove a tabela dedicada e suas dependências
+exclusivas no schema público do PostgreSQL local de teste; não altera as notas,
+títulos regulares ou a tabela de histórico de baixas.
 
 ## Precisão decimal: plano de migração
 
@@ -107,6 +115,68 @@ casas nos formulários ou DTOs existentes.
   caracteres). Sem recebimento, cancela os títulos e preserva nota, motivo
   e data; com recebimento, recusa. Só rascunhos podem ser excluídos.
   Não há autorização de NFS-e, estorno externo ou transmissão fiscal.
+- O caixa de evento cria pendência fiscal ao encerrar a estadia, com vínculo
+  à movimentação, à OS automática e ao valor congelado. Não cria recebível e
+  não autoriza NFS-e. Consulte [[operacao]] e [[ordens-servico]].
+
+## Rascunho de NFS-e do estacionamento — V108
+
+A pendência original passa a ser consultável como rascunho fiscal da estadia.
+O valor e a OS já vinculados são apenas lidos. Não se cria registro em
+`nota_servico`, título, segunda cobrança ou protocolo fiscal. Os rascunhos
+anteriores aparecem na listagem sem nenhuma movimentação adicional.
+
+- `GET /api/v1/patio/rascunhos-nfse?busca=&page=0&size=20` — com
+  `fiscal:read`, retorna página de pendências, busca literal por placa, OS ou
+  evento, limite de 100 por página. A lista informa só se há tomador, sem seus
+  dados pessoais.
+- `GET /api/v1/patio/rascunhos-nfse/{movimentacaoId}` — devolve OS, evento,
+  pátio, placa, valor decimal em texto, situação, criação, versão e tomador
+  (CPF/CNPJ canônico e nome ou `null`). Não é um documento autorizado.
+- Desde a V110, `servicoId` e `servicoNome` leem o item congelado na OS
+  automática da [[operacao|estadia]]. Notas/rascunhos sem vínculo permanecem
+  intactos. Alterar o serviço no catálogo depois da entrada não altera a
+  descrição do rascunho; não há emissão, novo recebível ou novo cálculo.
+- `PUT /api/v1/patio/rascunhos-nfse/{movimentacaoId}/tomador` — com
+  `fiscal:read`, `fiscal:manage` e `If-Match` da versão. Corpo exemplo:
+  `{"tomador":{"documento":"12ABC34501DE35","nome":"Empresa Teste"}}`;
+  `{"tomador":null}` limpa a identificação. Campo omitido → 400; ausência
+  do cabeçalho → 428; versão divergente → 412; rascunho não pendente → 409.
+  Outro tenant não recebe os dados. Respostas usam `Cache-Control: no-store`.
+
+O rascunho sem dados significa **tomador não informado** no sistema interno,
+não aprovação para emissão sem identificação. As exigências do autorizador
+e a transmissão fiscal não são simuladas ou executadas.
+
+Desde a V109, o salvamento do tomador identificado (no pagamento ou neste
+rascunho) cadastra ou reaproveita um [[clientes|cliente]] pelo CPF/CNPJ na
+mesma organização e transação. A nota conserva seu snapshot próprio; editar
+ou limpar o tomador não atualiza nem apaga o cadastro anterior. Não há
+backfill dos rascunhos históricos, nova cobrança, recebível ou emissão.
+
+### Lista unificada das Notas de Serviço
+
+Registro de alteração (2026-11-22): a V110 identifica o serviço prestado no
+rascunho do estacionamento a partir da OS, sem mesclar os fluxos de emissão.
+
+`GET /api/notas-servico/listagem` exige `fiscal:read` no contexto da organização.
+Consulta as pendências de [[operacao|estacionamento]] e os documentos internos em uma
+mesma página, sem unir as tabelas, emitir nota, alterar registros ou gerar
+contas. As rotas de detalhe e os comandos de cada origem permanecem.
+
+- Parâmetros opcionais: `busca` (literal, até 100 caracteres, sem distinção de
+  maiúsculas; número da nota/OS, placa, evento, pátio ou cliente da nota interna),
+  `origem` (`ESTACIONAMENTO`, `MANUAL`, `ORDEM_SERVICO`), `situacao`
+  (`PENDENTE` inclui `PENDENTE_EMISSAO`; aceita também `EMITIDA` ou
+  `CANCELADA`) e `clienteId` (somente notas internas desse cliente).
+- Paginação de base zero (`page=0`, `size=10` por padrão, tamanho 1–50),
+  ordenada por criação decrescente e desempate estável por origem e ID.
+- A linha contém `id`, `origem`, `referencia`, `descricao`, `criadoEm`,
+  `valor` decimal em texto (por exemplo, `"25.120000"`) e `situacao`.
+  A identidade é a combinação `origem` + `id`: IDs podem coincidir entre as
+  fontes. Nome e documento do tomador do estacionamento não são projetados.
+  Parâmetro inválido dá 400; falta de acesso dá 401/403 conforme a sessão.
+  Respostas da lista usam `Cache-Control: no-store`.
 
 ## Fluxo PARK-0003
 
@@ -295,6 +365,12 @@ títulos fiscais, além de confirmação e cancelamento da Nota de Saída.
 
 | Data | Acao |
 |---|---|
+| 2026-11-22 | V109 registra o tomador identificado como cliente básico da organização sem ampliar permissões nem alterar o vínculo fiscal. |
+| 2026-11-22 | Expõe uma listagem paginada de notas internas e rascunhos do estacionamento, sem mudar schema ou operação fiscal. |
+| 2026-11-22 | V108 expõe e permite identificar o tomador dos rascunhos de NFS-e do pátio, sem emissão ou recebível. |
+| 2026-11-10 | Retira Despesas Avulsas da API, relatórios e pendências; V105 elimina a estrutura dedicada somente no banco de teste. |
+| 2026-11-09 | V104 vincula a pendência da estadia à OS, sem duplicar nota ou cobrança. |
+| 2026-11-09 | V103 cria pendência fiscal vinculada à estadia do evento, sem transmissão. |
 | 2026-11-08 | V96 remove os campos decimais duplicados; confirma entrada, consulta estoque e quita título com escala de milionésimos no banco de teste. |
 | 2026-11-08 | V97 testa Nota de Saída, estoque, resumo, baixa parcial idempotente e quitação; preserva notas, parcelas e recebimentos históricos. |
 | 2026-11-08 | V98 migra Ordem/Nota de Serviço, ISS e snapshots sem recálculo; V99–V100 removem colunas decimais de compatibilidade dos demais fluxos. |

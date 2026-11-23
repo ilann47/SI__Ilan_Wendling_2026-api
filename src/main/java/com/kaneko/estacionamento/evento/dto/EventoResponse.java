@@ -10,6 +10,8 @@ public record EventoResponse(
         Long id,
         Long organizationId,
         Long venueId,
+        Long serviceId,
+        String serviceName,
         String name,
         OffsetDateTime startsAt,
         OffsetDateTime endsAt,
@@ -36,7 +38,9 @@ public record EventoResponse(
             Evento evento, ChecklistConfiguracaoEventoResponse checklist) {
         ZoneId fuso = ZoneId.of(evento.getFusoHorario());
         return new EventoResponse(
-                evento.getId(), evento.getOrganizacaoId(), evento.getVenueId(), evento.getNome(),
+                evento.getId(), evento.getOrganizacaoId(), evento.getVenueId(),
+                evento.getServico() == null ? null : evento.getServico().getId(),
+                evento.getServico() == null ? null : evento.getServico().getNome(), evento.getNome(),
                 evento.getInicio().atZoneSameInstant(fuso).toOffsetDateTime(),
                 evento.getFim().atZoneSameInstant(fuso).toOffsetDateTime(),
                 evento.getFusoHorario(), evento.getStatus(), evento.getPoliticaReentrada(),

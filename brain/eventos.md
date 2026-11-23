@@ -1,6 +1,10 @@
-> Links: [[core]] · [[organizacoes]] · [[venues]] · [[inventario]] · [[produtos-estacionamento]] · [[acesso]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]]
+> Links: [[core]] · [[organizacoes]] · [[venues]] · [[inventario]] · [[produtos-estacionamento]] · [[acesso]] · [[rbac]] · [[auditoria]] · [[idempotencia]] · [[outbox]] · [[conveniencia]] · [[ordens-servico]]
 
 # Eventos
+
+A cobrança avulsa opcional no caixa usa `GET/PUT /api/v1/events/{id}/cobranca-patio`.
+O evento mantém seu ciclo de vendas e QR; entradas sem reserva usam vagas
+fora das cotas vendável e reservada da alocação. Veja [[operacao]].
 
 ## Objetivo
 
@@ -9,7 +13,12 @@ tenant, sem misturar inventário, pedidos, pagamentos ou acesso no agregado.
 
 ## Contexto
 
-UC701 cria o evento em `RASCUNHO`. [[inventario]] associa pátios sem transferir
+UC701 cria o evento em `RASCUNHO`. Desde a V110, a criação exige escolher
+explicitamente um serviço ativo já cadastrado no [[conveniencia|catálogo]].
+O evento usa o serviço, sem herança, cadastro automático ou escolha padrão.
+O vínculo identifica a prestação na [[ordens-servico|OS]] e no rascunho da
+estadia; não define preço. Eventos antigos mantêm o vínculo vazio e operam
+como antes. [[inventario]] associa pátios sem transferir
 essa responsabilidade ao agregado e [[produtos-estacionamento]] publica a oferta.
 UC702 publica o evento somente após validar capacidade vendável e produto
 publicado. Comandos explícitos abrem e encerram vendas; o Supervisor inicia a
@@ -22,8 +31,8 @@ reentrada é definida sem default comercial.
 POST /api/v1/events + Idempotency-Key
   -> JWT contextual + events:create
   -> EventoService
-  -> lock idempotente + organização/venue/período/fuso
-  -> EventoRepository -> PostgreSQL V15
+  -> lock idempotente + organização/venue/período/fuso/serviço ativo
+  -> EventoRepository -> V110 (FK de serviço na mesma organização)
   -> AuditoriaService + OutboxService + resultado idempotente
   -> 201 + Location + ETag + checklist
 
@@ -64,11 +73,26 @@ ausente.
 
 ## Endpoints (se houver)
 
+- `GET /api/v1/events/{id}/patio-operation-summary`: preparação, entradas,
+  saídas, cancelamentos e ocupação por credenciais do evento; exige
+  `events:read`. Financeiro só é calculado para `finance:read`;
+  fiscal só para `fiscal:read`. Blocos não permitidos retornam `null`.
+- `POST /api/v1/events/{id}/patio-operation-start`: início explícito da
+  portaria avulsa sem produto nem lote. Exige `access:operate` E
+  `events:publish`, `If-Match` e `confirmed: true`. Aceita apenas
+  rascunho/configurado com política explícita, local ativo, cobrança e alocação
+  ativa com capacidade avulsa, no período do evento. Produto comercial
+  existente exige o ciclo comercial original, que não foi flexibilizado.
 - `GET /api/v1/events`: lista paginada dos eventos do tenant ativo com
   `events:read`.
 - `GET /api/v1/events/{eventoId}`: consulta um evento do tenant e devolve seu
   `ETag` derivado da versão.
-- `POST /api/v1/events`: cria evento em `RASCUNHO` no tenant autenticado.
+- `GET /api/v1/events/service-options?q=&page=0&size=20`: pesquisa literal
+  por nome em serviços ativos da organização. Exige `events:create`,
+  retorna página de `{id,name}`, tamanho de 1 a 50, ordenada por nome e ID.
+  Não exige nem concede permissões de edição do catálogo.
+- `POST /api/v1/events`: cria evento em `RASCUNHO` no tenant autenticado;
+  `serviceId` é obrigatório, positivo e integra o payload idempotente.
 - `PATCH /api/v1/events/{eventoId}`: define `ENTRADA_UNICA` ou
   `REENTRADA_PERMITIDA` com `If-Match`.
 - `POST /api/v1/events/{eventoId}/publication`: publica evento pronto usando a
@@ -84,11 +108,12 @@ ausente.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
-`Evento` possui organização, venue, nome, início/fim, fuso IANA, estado,
+`Evento` possui organização, venue, serviço, nome, início/fim, fuso IANA, estado,
 política de reentrada,
 `externalId` opcional, versão e timestamps. O DTO de resposta inclui checklist;
 na criação apenas venue está pronto e, na publicação, todos os requisitos da
-primeira entrega ficam satisfeitos.
+primeira entrega ficam satisfeitos. `serviceId` e `serviceName` são nulos
+somente quando não há vínculo, como em evento anterior à migração.
 
 ## Integrações externas (se houver)
 
@@ -99,9 +124,9 @@ broker.
 
 ## Tratamento de Erros
 
-- `400`: chave ausente, payload, período, fuso ou campo controlado inválido.
+- `400`: chave ausente, serviço ausente/inativo, payload, período, fuso ou campo controlado inválido.
 - `403`: contexto ausente ou sem `events:create`.
-- `404`: venue/organização fora do tenant visível.
+- `404`: venue/organização/serviço fora do tenant visível.
 - `409`: chave reutilizada com payload diferente, externalId duplicado ou constraint.
 - `409`: publicação sem capacidade vendável ou produto publicado.
 - `409`: abertura fora de `PUBLICADO` ou solicitada para instante futuro.
@@ -116,6 +141,18 @@ PostgreSQL para período, estado e FK composta.
 
 ## Decisões Técnicas
 
+- Preparação avulsa não exige oferta fictícia nem abrir e fechar vendas.
+  `Evento.iniciarOperacaoAvulsa` é separado do comando comercial.
+  A transição registra auditoria e outbox.
+- O resumo financeiro é líquido: cobrança na entrada + pagamentos de saída +
+  ajustes assinados por estadia. Saída pré-paga de valor zero não soma de
+  novo a entrada. Valores HTTP continuam texto decimal de seis casas.
+- Diferenças de dinheiro são somadas uma vez por turno fechado envolvido.
+  Turnos que atendem outros eventos ou pátio comum são identificados;
+  a diferença não é atribuída somente ao evento consultado.
+- O resumo é da portaria avulsa, não de vendas antecipadas. Pendências fiscais
+  canceladas não entram na fila; listar não transmite NFS-e nem gera recebível.
+  A lista traz as 100 pendências mais antigas, total real e aviso de limite.
 - IDs permanecem `Long` para coerência com o monólito atual.
 - Instantes são persistidos em `TIMESTAMPTZ`; a resposta os interpreta no fuso do evento.
 - A chave é opaca, tem até 100 caracteres e escopo tenant + ator + operação.
@@ -153,6 +190,9 @@ PostgreSQL para período, estado e FK composta.
 
 | Data | Ação |
 |---|---|
+| 2026-11-22 | V110 exige escolha explícita de serviço ativo ao criar evento e leva o vínculo para a OS e o rascunho fiscal, preservando eventos anteriores. |
+| 2026-11-19 | Preparação avulsa sem produto/lote e resumo contextual com RBAC e ledger de correções. |
+| 2026-11-09 | Habilita configuração da cobrança fixa do evento na entrada ou saída do Pátio. |
 | 2026-07-30 | Implementa UC701 com criação tenant-aware, idempotência e EventoCriado. |
 | 2026-07-30 | Passa a fornecer evento configurável para a alocação temporal de pátios em [[inventario]]. |
 | 2026-07-30 | Implementa UC702 com checklist, versão, auditoria e outbox transacional. |

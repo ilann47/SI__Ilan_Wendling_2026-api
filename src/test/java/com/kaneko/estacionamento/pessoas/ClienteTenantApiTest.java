@@ -15,12 +15,19 @@ import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
 import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.Usuario;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @TenantApiIntegrationTest
 class ClienteTenantApiTest {
@@ -28,6 +35,8 @@ class ClienteTenantApiTest {
     @Autowired private MockMvc mvc;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private TenantTestSupport tenant;
+    @Autowired private ClienteTomadorService clientesTomadores;
+    @Autowired private PlatformTransactionManager transactionManager;
 
     private TenantFixture tenantA;
     private TenantFixture tenantB;
@@ -100,6 +109,71 @@ class ClienteTenantApiTest {
                                  "condicaoPagamentoId":%d}
                                 """.formatted(condicaoB)))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void preservaCnpjAlfanumericoAoCadastrarEEditarCliente() throws Exception {
+        long id = criarCliente(tenantA, "A".repeat(160), "12.ABC.345/01DE-35", null);
+        mvc.perform(put("/api/clientes/{id}", id).header("Authorization", tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Empresa\",\"documento\":\"12.abc.345/01de-35\",\"tipo\":\"JURIDICA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.documento").value("12ABC34501DE35"))
+                .andExpect(jsonPath("$.cadastroFiscalBasico").value(false));
+        mvc.perform(post("/api/clientes").header("Authorization", tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Duplicado\",\"documento\":\"12ABC34501DE35\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(put("/api/clientes/{id}", id).header("Authorization", tenantA.tokenContextual())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Empresa\",\"documento\":\"12ABC34501DE35\",\"cadastroFiscalBasico\":true}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    // As duas threads precisam ver a organização criada no setup já confirmada.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void registroFiscalConcorrenteCriaUmClienteEUmaAuditoria() throws Exception {
+        long org = tenantA.organizacaoId();
+        var inicio = new CyclicBarrier(2);
+        var transacao = new TransactionTemplate(transactionManager);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var primeiro = executor.submit(() -> {
+                inicio.await(5, TimeUnit.SECONDS);
+                transacao.executeWithoutResult(status ->
+                        clientesTomadores.cadastrarSeNovo(org, "52998224725", "Primeiro cadastro"));
+                return true;
+            });
+            var segundo = executor.submit(() -> {
+                inicio.await(5, TimeUnit.SECONDS);
+                transacao.executeWithoutResult(status ->
+                        clientesTomadores.cadastrarSeNovo(org, "52998224725", "Segundo cadastro"));
+                return true;
+            });
+            assertThat(primeiro.get(15, TimeUnit.SECONDS)).isTrue();
+            assertThat(segundo.get(15, TimeUnit.SECONDS)).isTrue();
+        }
+        assertThat(jdbc.queryForList("SELECT nome FROM cliente WHERE organizacao_id=? AND documento='52998224725'",
+                String.class, org)).singleElement().isIn("Primeiro cadastro", "Segundo cadastro");
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM registro_auditoria
+                WHERE organizacao_id=? AND acao='CLIENTE_CRIADO_PELO_TOMADOR_FISCAL'
+                """, Long.class, org)).isEqualTo(1);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void registroFiscalESeuLogNaoSobrevivemAoRollbackDaOperacao() {
+        long org = tenantA.organizacaoId();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            clientesTomadores.cadastrarSeNovo(org, "52998224725", "Não confirmado");
+            status.setRollbackOnly();
+        });
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cliente WHERE organizacao_id=?", Long.class, org)).isZero();
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM registro_auditoria
+                WHERE organizacao_id=? AND acao='CLIENTE_CRIADO_PELO_TOMADOR_FISCAL'
+                """, Long.class, org)).isZero();
     }
 
     @Test

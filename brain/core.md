@@ -2,6 +2,36 @@
 
 # Core do Estacionamento Kaneko
 
+[[opcoes-operacionais]] documenta a consulta de rótulos paginados para
+acesso, venda antecipada e atribuição de papéis, com o escopo da ação original.
+
+## Preparação operacional e implantação — 2026-11-22
+
+[[prontidao-producao]] registra o perfil restritivo de produção e o ensaio de
+backup/restore exclusivamente local. Sua existência não homologa TLS, equipamento,
+pagamento ou autorização fiscal. Os cutovers de seis casas continuam protegidos
+para teste; implantação real exige promoção de schema própria, revisada.
+
+Nova regra aprovada: cobranças novas do Pátio fecham em centavos HALF_UP com
+snapshot de base, devido e diferença em milionésimos; documentos e estadias
+anteriores permanecem congelados. [[operacao]] descreve a V107 e os movimentos
+auditáveis de dinheiro, que não são receita nem duplicam o financeiro/fiscal.
+
+## Operação diária — 2026-11-19
+
+A V106 acrescenta metadados de dinheiro e ledger compensatório de
+[[operacao]], sem apagar fontes, recalcular notas antigas ou gerar novo título.
+[[eventos]] tem preparo avulso sem venda antecipada e resumo com permissões
+financeiras/fiscais independentes. [[dados-demo]] documenta a organização
+demonstrativa opt-in exclusiva do banco local de teste.
+
+V101 fecha o fluxo do caixa operacional de [[operacao|Pátio]] sem acoplar Ordem
+de Serviço ou faturamento fiscal. Os valores novos usam somente inteiro escalado.
+V103 acrescenta a entrada por placa de evento e a pendência fiscal vinculada,
+sem transmissão ou autorização de NFS-e.
+V104 integra [[ordens-servico|OS]] automática na entrada e a conclui na saída,
+vinculando a pendência sem gerar uma segunda cobrança.
+
 ## PARK-0003: notas de mercadoria, estoque e contas
 
 Entradas manuais ou XML usam somente NotaEntrada. O módulo de Ordem de Compra e
@@ -118,6 +148,8 @@ mapeamentos, verificou OpenAPI e empacotou o JAR.
 
 | Data | Ação |
 |---|---|
+| 2026-11-22 | V108 separa identificação do pagamento e rascunho fiscal em [[operacao]] e [[fiscal-financeiro]], sem transmissão externa. |
+| 2026-11-22 | Registra fronteira de cobrança em centavos e prontidão local de configuração/recuperação, sem recalcular histórico nem autorizar produção. |
 | 2026-11-08 | V96 remove a gravação duplicada do fluxo de entrada e exige o banco de teste local explícito. |
 | 2026-11-08 | V97 grava Nota de Saída e Contas a Receber exclusivamente em milionésimos no banco fiscal de teste. |
 | 2026-11-08 | V98–V100 concluem a troca das colunas operacionais para escala zero no PostgreSQL fiscal de teste. |

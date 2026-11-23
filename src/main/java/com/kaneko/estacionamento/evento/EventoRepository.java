@@ -4,14 +4,17 @@ import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface EventoRepository extends JpaRepository<Evento, Long> {
+    @EntityGraph(attributePaths = "servico")
     Page<Evento> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
 
+    @EntityGraph(attributePaths = "servico")
     Optional<Evento> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
     @Query("""

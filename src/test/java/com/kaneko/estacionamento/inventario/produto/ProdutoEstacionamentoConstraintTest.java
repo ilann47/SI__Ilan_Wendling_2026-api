@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.inventario.produto;
 
+import static com.kaneko.estacionamento.support.EventoCatalogoFixture.servicoEvento;
+
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.kaneko.estacionamento.evento.EventoService;
@@ -65,7 +67,7 @@ class ProdutoEstacionamentoConstraintTest {
                 new CriarEventoRequest("Evento Product Constraint", venueId,
                         OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
                         OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
-                        "America/Sao_Paulo", null)).id();
+                        "America/Sao_Paulo", null, servicoEvento(jdbc, organizacaoId))).id();
         Long patioId = instalacoes.criar(organizacaoId, new CriarPatioInstalacaoRequest(
                 "Patio Product Constraint", "Rua Patio", null, null, "Centro", "80000-000",
                 cidadeId, 100, 100, null, true)).id();

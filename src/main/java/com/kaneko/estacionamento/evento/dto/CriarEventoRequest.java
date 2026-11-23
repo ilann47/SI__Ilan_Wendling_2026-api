@@ -3,6 +3,7 @@ package com.kaneko.estacionamento.evento.dto;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 
@@ -12,7 +13,9 @@ public record CriarEventoRequest(
         @NotNull OffsetDateTime startsAt,
         @NotNull OffsetDateTime endsAt,
         @NotBlank @Size(max = 60) String timeZone,
-        @Size(max = 160) String externalId) {
+        @Size(max = 160) String externalId,
+        @NotNull(message = "Selecione o tipo de serviço do evento.")
+        @Positive(message = "Selecione um tipo de serviço válido.") Long serviceId) {
 
     @JsonAnySetter
     public void rejeitarCampoDesconhecido(String campo, Object valor) {

@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.inventario.reserva;
 
+import static com.kaneko.estacionamento.support.EventoCatalogoFixture.servicoEvento;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.kaneko.estacionamento.acesso.AcessoService;
@@ -130,7 +132,7 @@ class ReservaInventarioConcorrenciaTest {
                         "Evento Concorrencia", venueId,
                         inicioJanela.plusHours(2),
                         inicioJanela.plusHours(6).plusMinutes(30),
-                        "America/Sao_Paulo", null)).id();
+                        "America/Sao_Paulo", null, servicoEvento(jdbc, organizacaoId))).id();
         alocacaoId = alocacoes.criar(
                 organizacaoId, usuarioId, eventoId, "alocacao-concorrencia",
                 new CriarAlocacaoPatioEventoRequest(
@@ -533,6 +535,7 @@ class ReservaInventarioConcorrenciaTest {
         jdbc.update("delete from produto_estacionamento where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from alocacao_patio_evento where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from evento where organizacao_id = ?", organizacaoId);
+        jdbc.update("delete from servico where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from unidade_operacional where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from patio where organizacao_id = ?", organizacaoId);
         jdbc.update("delete from organizacao where id = ?", organizacaoId);

@@ -24,8 +24,8 @@ public class ItemOrdemServico extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "ordem_servico_id", nullable = false)
     private OrdemServico ordemServico;
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "servico_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "servico_id")
     private Servico servico;
     @Column(nullable = false)
     private Integer sequencia;

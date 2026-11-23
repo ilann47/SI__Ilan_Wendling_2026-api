@@ -1,6 +1,8 @@
 package com.kaneko.estacionamento.conveniencia;
 
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +19,14 @@ public interface ServicoRepository extends JpaRepository<Servico, Long>,
     Optional<Servico> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
     Optional<Servico> findByIdAndOrganizacaoIdIsNull(Long id);
+
+    @Query("""
+            select s from Servico s
+            where s.organizacaoId=:org and s.ativo=true
+              and (:busca='' or locate(lower(:busca), lower(s.nome)) > 0)
+            order by lower(s.nome), s.id
+            """)
+    Page<Servico> procurarAtivos(Long org, String busca, Pageable pageable);
 
     /** Indica se existe OUTRO servico (id diferente) com o mesmo nome — usado em alteracoes. */
     @Query("""

@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.evento;
 
+import static com.kaneko.estacionamento.support.EventoCatalogoFixture.servicoEvento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -78,6 +79,7 @@ class EventoControllerTest {
     private Usuario gestor;
     private Long organizacaoId;
     private Long venueId;
+    private long serviceId;
     private Long patioId;
     private String tokenGlobal;
     private String tokenContextual;
@@ -94,6 +96,7 @@ class EventoControllerTest {
                 "BRL", "America/Sao_Paulo", "BR-PR", "ENTERPRISE")).id();
         criarMembership(admin.getId(), tokenGlobal);
         tokenContextual = selecionar(organizacaoId, tokenGlobal);
+        serviceId = servicoEvento(jdbc, organizacaoId, "Estacionamento selecionado", true);
         Long cidadeId = criarCidade("Curitiba Eventos");
         venueId = venues.criar(organizacaoId, new CriarVenueRequest(
                 "Arena de Eventos", "Avenida Principal", "500", null,
@@ -101,6 +104,42 @@ class EventoControllerTest {
         patioId = instalacoes.criar(organizacaoId, new CriarPatioInstalacaoRequest(
                 "Patio de Eventos", "Avenida Principal", "510", null,
                 "Centro", "80000-000", cidadeId, 100, 100, null, true)).id();
+    }
+
+    @Test
+    void rejeitaCriacaoSemServicoDaEscolhaMesmoQuandoExisteSomenteUm() throws Exception {
+        String semServico = """
+                {"name":"Sem serviço","venueId":%d,"startsAt":"2026-10-10T19:00:00-03:00",
+                 "endsAt":"2026-10-11T03:00:00-03:00","timeZone":"America/Sao_Paulo"}
+                """.formatted(venueId);
+        criarEvento(tokenContextual, "evento-sem-servico", semServico, status().isBadRequest());
+        assertThat(jdbc.queryForObject("select count(*) from evento where organizacao_id=?", Long.class, organizacaoId)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from servico where organizacao_id=?", Long.class, organizacaoId)).isEqualTo(1L);
+    }
+
+    @Test
+    void opcoesAtivasDaOrganizacaoEValidacaoNaCriacao() throws Exception {
+        Long orgExterna = organizacoes.criar(new CriarOrganizacaoRequest(
+                "12.345.678/0002-76", "Outra organização", null,
+                "BRL", "America/Sao_Paulo", "BR-PR", "STANDARD")).id();
+        long ativoExterno = servicoEvento(jdbc, orgExterna, "Estacionamento externo", true);
+        long inativo = servicoEvento(jdbc, organizacaoId, "Estacionamento inativo", false);
+        mvc.perform(get("/api/v1/events/service-options").header("Authorization", tokenGlobal))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/events/service-options").header("Authorization", tokenContextual).param("q", "estaciona"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(serviceId))
+                .andExpect(jsonPath("$.content[0].name").value("Estacionamento selecionado"))
+                .andExpect(jsonPath("$.content[0].valorPadrao").doesNotExist());
+        mvc.perform(get("/api/v1/events/service-options").header("Authorization", tokenContextual).param("size", "100"))
+                .andExpect(status().isBadRequest());
+        criarEvento(tokenContextual, "evento-servico-fora", payload("Serviço externo", venueId, ativoExterno),
+                status().isNotFound());
+        criarEvento(tokenContextual, "evento-servico-inativo", payload("Serviço inativo", venueId, inativo),
+                status().isBadRequest());
+        criarEvento(tokenContextual, "evento-servico-nulo", payload("Serviço inválido", venueId, 0),
+                status().isBadRequest());
     }
 
     @Test
@@ -113,6 +152,8 @@ class EventoControllerTest {
                 .andExpect(header().string("ETag", "\"0\""))
                 .andExpect(jsonPath("$.organizationId").value(organizacaoId))
                 .andExpect(jsonPath("$.venueId").value(venueId))
+                .andExpect(jsonPath("$.serviceId").value(serviceId))
+                .andExpect(jsonPath("$.serviceName").value("Estacionamento selecionado"))
                 .andExpect(jsonPath("$.status").value("RASCUNHO"))
                 .andExpect(jsonPath("$.timeZone").value("America/Sao_Paulo"))
                 .andExpect(jsonPath("$.externalId").value("partner-event-123"))
@@ -131,6 +172,7 @@ class EventoControllerTest {
         assertThat(auditoria.getOrganizacaoId()).isEqualTo(organizacaoId);
         assertThat(auditoria.getEventoId()).isEqualTo(eventoId);
         assertThat(auditoria.getEstadoPosterior()).containsEntry("status", "RASCUNHO");
+        assertThat(jdbc.queryForObject("select servico_id from evento where id=?", Long.class, eventoId)).isEqualTo(serviceId);
 
         assertThat(jdbc.queryForObject(
                 "select count(*) from evento_outbox where aggregate_id = ? and event_type = 'EventoCriado'",
@@ -164,7 +206,8 @@ class EventoControllerTest {
                         .header("Authorization", tokenContextual))
                 .andExpect(status().isOk())
                 .andExpect(header().string("ETag", "\"0\""))
-                .andExpect(jsonPath("$.id").value(eventoId));
+                .andExpect(jsonPath("$.id").value(eventoId))
+                .andExpect(jsonPath("$.serviceId").value(serviceId));
     }
 
     @Test
@@ -186,6 +229,9 @@ class EventoControllerTest {
                 Long.class, eventoId)).isEqualTo(1L);
 
         criarEvento(tokenContextual, "evento-idempotente", payload("Outro Evento", venueId),
+                status().isConflict());
+        long outroServico = servicoEvento(jdbc, organizacaoId);
+        criarEvento(tokenContextual, "evento-idempotente", payload("Evento Idempotente", venueId, outroServico),
                 status().isConflict());
     }
 
@@ -219,6 +265,9 @@ class EventoControllerTest {
         String tokenOrganizador = selecionar(organizacaoId,
                 bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
 
+        mvc.perform(get("/api/v1/events/service-options").header("Authorization", tokenOrganizador))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(serviceId));
         criarEvento(tokenOrganizador, "evento-organizador", payload("Evento do Organizador", venueId),
                 status().isCreated());
     }
@@ -417,19 +466,20 @@ class EventoControllerTest {
                 .andExpect(jsonPath("$.status").value("VENDAS_ENCERRADAS"));
 
         long membershipSupervisor = criarMembership(operador.getId(), tokenContextual);
-        concederPapel(membershipSupervisor, "SUPERVISOR");
         String tokenSupervisor = selecionar(organizacaoId,
                 bearer(jwt.gerarToken(operador.getLogin(), "OPERADOR")));
 
-        iniciarOperacao(tokenContextual, eventoId, "\"5\"", status().isForbidden());
-        iniciarOperacao(tokenSupervisor, eventoId, "\"5\"", status().isOk())
+        iniciarOperacao(tokenSupervisor, eventoId, "\"5\"", status().isForbidden());
+        iniciarOperacao(tokenContextual, eventoId, "\"5\"", status().isOk())
                 .andExpect(header().string("ETag", "\"6\""))
                 .andExpect(jsonPath("$.status").value("EM_OPERACAO"));
+        encerrarOperacao(tokenSupervisor, eventoId, "\"6\"", true,
+                status().isForbidden());
+
+        concederPapel(membershipSupervisor, "SUPERVISOR");
         iniciarOperacao(tokenSupervisor, eventoId, "\"5\"",
                 status().isPreconditionFailed());
 
-        encerrarOperacao(tokenContextual, eventoId, "\"6\"", true,
-                status().isForbidden());
         encerrarOperacao(tokenSupervisor, eventoId, "\"6\"", false,
                 status().isBadRequest());
         encerrarOperacao(tokenSupervisor, eventoId, "\"6\"", true,
@@ -551,13 +601,17 @@ class EventoControllerTest {
         return JsonPath.<Number>read(body, "$.id").longValue();
     }
 
-    private static String payload(String nome, Long venue) {
+    private String payload(String nome, Long venue) {
+        return payload(nome, venue, serviceId);
+    }
+
+    private static String payload(String nome, Long venue, long servico) {
         return """
-                {"name":"%s","venueId":%d,
+                {"name":"%s","venueId":%d,"serviceId":%d,
                  "startsAt":"2026-10-10T19:00:00-03:00",
                  "endsAt":"2026-10-10T23:30:00-03:00",
                  "timeZone":"America/Sao_Paulo"}
-                """.formatted(nome, venue);
+                """.formatted(nome, venue, servico);
     }
 
     private long criarMembership(Long usuarioId, String token) throws Exception {

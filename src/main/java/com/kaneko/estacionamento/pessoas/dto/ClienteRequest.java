@@ -19,7 +19,7 @@ import java.time.LocalDate;
 public record ClienteRequest(
 
         @NotBlank(message = "O nome é obrigatório.")
-        @Size(max = 120, message = "O nome deve ter no máximo 120 caracteres.")
+        @Size(max = 160, message = "O nome deve ter no máximo 160 caracteres.")
         String nome,
 
         @Size(max = 60, message = "O apelido deve ter no máximo 60 caracteres.")

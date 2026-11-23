@@ -30,16 +30,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrdemServicoService {
     private static final String RECURSO = "ORDEM_SERVICO";
     private static final String OPERACAO_CRIAR = "CRIAR_ORDEM_SERVICO";
+    private static final String PREFIXO_PATIO = "PATIO-";
 
     private final OrdemServicoRepository ordens;
     private final ClienteRepository clientes;
@@ -86,6 +89,63 @@ public class OrdemServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("OrdemServico", id));
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public long abrirParaEstadia(long org, long movimento, OffsetDateTime entrada, BigDecimal valor, Servico servico) {
+        var anterior = ordens.findByOrganizacaoIdAndMovimentacaoPatioId(org, movimento);
+        if (anterior.isPresent()) return anterior.get().getId();
+        String numero = PREFIXO_PATIO + movimento;
+        if (ordens.existsByOrganizacaoIdAndNumeroIgnoreCase(org, numero)) {
+            numero += "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+        }
+        var ordem = new OrdemServico();
+        ordem.setOrganizacaoId(org);
+        ordem.setMovimentacaoPatioId(movimento);
+        ordem.setNumero(numero);
+        ordem.setDataAbertura(entrada.toLocalDate());
+        ordem.setSubtotal(valor);
+        ordem.setValorTotal(valor);
+        var item = new ItemOrdemServico();
+        item.setSequencia(1);
+        item.setServico(servico);
+        item.setDescricaoSnapshot(servico == null ? "Estacionamento de evento" : servico.getNome());
+        item.setQuantidade(BigDecimal.ONE);
+        item.setValorUnitario(valor);
+        item.setValorTotal(valor);
+        ordem.adicionarItem(item);
+        ordem.iniciar(entrada);
+        ordem = ordens.saveAndFlush(ordem);
+        registrar(ordem, "ORDEM_SERVICO_PATIO_ABERTA", null, snapshot(ordem), null);
+        publicar(ordem, "OrdemServicoIniciada");
+        return ordem.getId();
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void concluirParaEstadia(long org, long movimento, long id, OffsetDateTime saida) {
+        var ordem = bloquear(org, id);
+        if (ordem.getMovimentacaoPatioId() == null || ordem.getMovimentacaoPatioId() != movimento) {
+            throw new ConflitoException("A ordem não pertence a esta estadia.");
+        }
+        var antes = snapshot(ordem);
+        ordem.concluir(saida);
+        ordem = ordens.saveAndFlush(ordem);
+        registrar(ordem, "ORDEM_SERVICO_CONCLUIDA", antes, snapshot(ordem), null);
+        publicar(ordem, "OrdemServicoConcluida");
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void cancelarParaEstadia(long org,long movimento,long id,String motivo) {
+        var ordem=bloquear(org,id);
+        if(ordem.getMovimentacaoPatioId()==null || ordem.getMovimentacaoPatioId()!=movimento)
+            throw new ConflitoException("A ordem não pertence a esta estadia.");
+        if(ordem.getStatus()==StatusOrdemServico.CANCELADA)return;
+        var antes=snapshot(ordem);
+        ordem.setStatus(StatusOrdemServico.CANCELADA);
+        ordem.setMotivoCancelamento(motivo);
+        ordem=ordens.saveAndFlush(ordem);
+        registrar(ordem,"ORDEM_SERVICO_PATIO_CANCELADA",antes,snapshot(ordem),motivo);
+        publicar(ordem,"OrdemServicoPatioCancelada");
+    }
+
     @Transactional
     public OrdemServico criar(Long organizacaoId, Long atorId, String chave,
             OrdemServicoRequest request) {
@@ -118,6 +178,7 @@ public class OrdemServicoService {
     public OrdemServico atualizar(Long organizacaoId, Long id, long versao,
             OrdemServicoRequest request) {
         OrdemServico ordem = bloquear(organizacaoId, id);
+        exigirOperacaoManual(ordem);
         exigirVersao(ordem, versao);
         if (ordem.getStatus() != StatusOrdemServico.RASCUNHO) {
             throw new ConflitoException("Somente uma ordem em rascunho pode ser alterada.");
@@ -138,6 +199,7 @@ public class OrdemServicoService {
     @Transactional
     public OrdemServicoResponse iniciar(Long organizacaoId, Long id, long versao) {
         OrdemServico ordem = bloquear(organizacaoId, id);
+        exigirOperacaoManual(ordem);
         exigirVersao(ordem, versao);
         Map<String, Object> anterior = snapshot(ordem);
         ordem.iniciar();
@@ -150,6 +212,7 @@ public class OrdemServicoService {
     @Transactional
     public OrdemServicoResponse concluir(Long organizacaoId, Long id, long versao) {
         OrdemServico ordem = bloquear(organizacaoId, id);
+        exigirOperacaoManual(ordem);
         exigirVersao(ordem, versao);
         Map<String, Object> anterior = snapshot(ordem);
         ordem.concluir();
@@ -162,6 +225,7 @@ public class OrdemServicoService {
     @Transactional
     public OrdemServicoResponse cancelar(Long organizacaoId, Long id, long versao, String motivo) {
         OrdemServico ordem = bloquear(organizacaoId, id);
+        exigirOperacaoManual(ordem);
         exigirVersao(ordem, versao);
         Map<String, Object> anterior = snapshot(ordem);
         ordem.cancelar(motivo);
@@ -251,6 +315,11 @@ public class OrdemServicoService {
             throw new VersaoOrdemServicoDivergenteException();
         }
     }
+    private static void exigirOperacaoManual(OrdemServico ordem) {
+        if (ordem.getMovimentacaoPatioId() != null) {
+            throw new ConflitoException("Esta ordem é controlada automaticamente pelo Pátio.");
+        }
+    }
     private void registrar(OrdemServico ordem, String acao, Map<String, Object> antes,
             Map<String, Object> depois, String motivo) {
         auditoria.registrar(new RegistrarAuditoriaCommand(ordem.getOrganizacaoId(), acao,
@@ -265,14 +334,19 @@ public class OrdemServicoService {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("ordemServicoId", ordem.getId());
         m.put("numero", ordem.getNumero());
-        m.put("clienteId", ordem.getCliente().getId());
+        if (ordem.getCliente() != null) m.put("clienteId", ordem.getCliente().getId());
+        if (ordem.getMovimentacaoPatioId() != null) m.put("movimentacaoPatioId", ordem.getMovimentacaoPatioId());
         m.put("status", ordem.getStatus().name());
         m.put("valorTotal", ordem.getValorTotal());
         m.put("quantidadeItens", ordem.getItens().size());
         return m;
     }
     private static String normalizarNumero(String numero) {
-        return numero.trim().toUpperCase(Locale.ROOT);
+        String normalizado = numero.trim().toUpperCase(Locale.ROOT);
+        if (normalizado.startsWith(PREFIXO_PATIO)) {
+            throw new ConflitoException("O prefixo PATIO- é reservado às ordens automáticas do pátio.");
+        }
+        return normalizado;
     }
     private static String validarChave(String value) {
         if (value == null || value.isBlank()) {

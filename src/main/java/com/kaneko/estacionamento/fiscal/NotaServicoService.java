@@ -260,6 +260,9 @@ public class NotaServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "OrdemServico", req.ordemServicoId()));
         if (ordemServico != null) {
+            if (ordemServico.getMovimentacaoPatioId() != null) {
+                throw new ConflitoException("A NFS-e desta ordem é preparada automaticamente pelo Pátio.");
+            }
             if (repository.existsByOrdemServicoId(ordemServico.getId())
                     && (nota.getOrdemServico() == null
                     || !nota.getOrdemServico().getId().equals(ordemServico.getId()))) {
@@ -277,6 +280,11 @@ public class NotaServicoService {
             }
         }
         nota.setOrdemServico(ordemServico);
+        if (organizacaoId != null && nota.getMovimentacao() != null
+                && ordemServicoRepository.existsByOrganizacaoIdAndMovimentacaoPatioId(
+                        organizacaoId, nota.getMovimentacao().getId())) {
+            throw new ConflitoException("A NFS-e desta estadia é preparada automaticamente pelo Pátio.");
+        }
         if (nota.getMovimentacao() != null && nota.getMensalista() != null) {
             throw new ConflitoException("A origem não pode ser movimentação e mensalista ao mesmo tempo.");
         }

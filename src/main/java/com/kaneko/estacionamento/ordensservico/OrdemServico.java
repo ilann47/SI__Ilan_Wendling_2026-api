@@ -32,9 +32,11 @@ import lombok.Setter;
 public class OrdemServico extends AuditableEntity {
     @Column(name = "organizacao_id", nullable = false, updatable = false)
     private Long organizacaoId;
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cliente_id")
     private Cliente cliente;
+    @Column(name = "movimentacao_patio_id", updatable = false)
+    private Long movimentacaoPatioId;
     @Column(nullable = false, length = 40)
     private String numero;
     @Enumerated(EnumType.STRING)
@@ -77,6 +79,10 @@ public class OrdemServico extends AuditableEntity {
     }
 
     public void iniciar() {
+        iniciar(OffsetDateTime.now());
+    }
+
+    void iniciar(OffsetDateTime instante) {
         if (status != StatusOrdemServico.RASCUNHO) {
             throw new ConflitoException("Somente uma ordem em rascunho pode ser iniciada.");
         }
@@ -84,15 +90,19 @@ public class OrdemServico extends AuditableEntity {
             throw new ConflitoException("A ordem deve possuir ao menos um item.");
         }
         status = StatusOrdemServico.EM_EXECUCAO;
-        iniciadaEm = OffsetDateTime.now();
+        iniciadaEm = instante;
     }
 
     public void concluir() {
+        concluir(OffsetDateTime.now());
+    }
+
+    void concluir(OffsetDateTime instante) {
         if (status != StatusOrdemServico.EM_EXECUCAO) {
             throw new ConflitoException("Somente uma ordem em execucao pode ser concluida.");
         }
         status = StatusOrdemServico.CONCLUIDA;
-        concluidaEm = OffsetDateTime.now();
+        concluidaEm = instante;
     }
 
     public void cancelar(String motivo) {

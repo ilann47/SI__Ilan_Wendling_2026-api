@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.inventario.produto;
 
+import static com.kaneko.estacionamento.support.EventoCatalogoFixture.servicoEvento;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -102,6 +104,60 @@ class ProdutoEstacionamentoControllerTest {
                 cidadeId, 100, 100, null, true)).id();
         eventoId = criarEvento("Evento Produtos", "evento-produtos-base");
         alocacaoId = criarAlocacao(eventoId, patioId, 100, 80, 20, "alloc-produtos-base");
+    }
+
+    @Test
+    void seletoresDeVendaMantemEscopoDoOperadorEUsamNomeENumeroPublico() throws Exception {
+        long produtoId = prepararVendaAberta(2, 2);
+        String holdBody = criarHold(tokenContextual, "hold-opcoes-web",
+                        payloadHold(produtoId, 1, "cliente-privado"), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long holdId = JsonPath.<Number>read(holdBody, "$.id").longValue();
+        Usuario organizador = usuario("opcoes_venda_outro_ator", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(organizador.getId(), tokenContextual);
+        concederPapel(membershipId, "ORGANIZADOR");
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+
+        String path = "/api/v1/operational-options/{kind}";
+        mvc.perform(get(path, "sales-products").header("Authorization", tokenOrganizador).param("q", "PRODUTO HOLD"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(produtoId));
+        mvc.perform(get(path, "ordering-holds").header("Authorization", tokenContextual).param("q", "evento produtos"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(holdId))
+                .andExpect(jsonPath("$.content[0].buyerReference").doesNotExist());
+        mvc.perform(get(path, "ordering-holds").header("Authorization", tokenOrganizador).param("id", "" + holdId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content").isEmpty());
+
+        String orderBody = criarPedido(tokenContextual, "order-opcoes-web",
+                        payloadPedido(holdId, "DIRECT_WEB"), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long orderId = JsonPath.<Number>read(orderBody, "$.id").longValue();
+        String orderNumber = jdbc.queryForObject("select numero from pedido where id = ?", String.class, orderId);
+        mvc.perform(get(path, "sales-orders").header("Authorization", tokenContextual).param("q", orderNumber))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(orderId))
+                .andExpect(jsonPath("$.content[0].label").value(orderNumber + " · Evento Produtos"));
+        mvc.perform(get(path, "sales-orders").header("Authorization", tokenOrganizador).param("id", "" + orderId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content").isEmpty());
+        mvc.perform(get(path, "issuing-orders").header("Authorization", tokenContextual).param("id", "" + orderId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content").isEmpty());
+
+        confirmarManualmente(tokenContextual, orderId, "\"1\"", "manual-opcoes-web",
+                payloadConfirmacaoManual("PIX", "EV-opcoes-web"), status().isAccepted());
+        mvc.perform(get(path, "issuing-orders").header("Authorization", tokenContextual).param("id", "" + orderId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(orderId));
+        String credentialBody = emitirCredencial(tokenContextual, orderId, "credential-opcoes-web",
+                        "{\"preferredMedium\":\"QR\"}", status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long credentialId = JsonPath.<Number>read(credentialBody, "$.id").longValue();
+        String credentialCode = jdbc.queryForObject(
+                "select codigo_publico from credencial_acesso where id = ?", String.class, credentialId);
+        mvc.perform(get(path, "sales-credentials").header("Authorization", tokenContextual).param("q", credentialCode))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(credentialId))
+                .andExpect(jsonPath("$.content[0].qr").doesNotExist());
+        mvc.perform(get(path, "sales-credentials").header("Authorization", tokenOrganizador).param("id", "" + credentialId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content").isEmpty());
+        mvc.perform(get(path, "blocking-credentials").header("Authorization", tokenOrganizador).param("id", "" + credentialId))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -254,7 +310,7 @@ class ProdutoEstacionamentoControllerTest {
                 new CriarEventoRequest("Evento Externo", venueExterno,
                         inicioJanela.plusHours(2),
                         inicioJanela.plusHours(6).plusMinutes(30),
-                        "America/Sao_Paulo", null)).id();
+                        "America/Sao_Paulo", null, servicoEvento(jdbc, outraOrganizacao))).id();
         Long alocacaoExterna = criarAlocacao(
                 outraOrganizacao, eventoExterno, patioExterno, 50, 50, 0, "alloc-externa-produto");
 
@@ -1062,7 +1118,7 @@ class ProdutoEstacionamentoControllerTest {
     }
 
     @Test
-    void bloqueioDeCredencialExigeSupervisorMotivoETenantCorreto() throws Exception {
+    void bloqueioDeCredencialExigePermissaoMotivoETenantCorreto() throws Exception {
         long pedidoId = criarPedidoConfirmado("credential-block-rules", 1);
         String credencialBody = emitirCredencial(
                         tokenContextual, pedidoId, "credential-block-rules",
@@ -1071,14 +1127,13 @@ class ProdutoEstacionamentoControllerTest {
         long credencialId = JsonPath.<Number>read(
                 credencialBody, "$.id").longValue();
 
-        bloquearCredencial(tokenContextual, credencialId,
-                "{\"reason\":\"OPERACAO\"}", status().isForbidden());
-
         Usuario supervisor = usuario("credential_supervisor_rules", PerfilUsuario.OPERADOR);
         long membershipId = criarMembership(supervisor.getId(), tokenContextual);
-        concederPapel(membershipId, "SUPERVISOR");
         String tokenSupervisor = selecionar(organizacaoId,
                 bearer(jwt.gerarToken(supervisor.getLogin(), "OPERADOR")));
+        bloquearCredencial(tokenSupervisor, credencialId,
+                "{\"reason\":\"OPERACAO\"}", status().isForbidden());
+        concederPapel(membershipId, "SUPERVISOR");
         bloquearCredencial(tokenSupervisor, credencialId,
                 "{\"reason\":\"\"}", status().isBadRequest());
         bloquearCredencial(tokenSupervisor, credencialId + 999999,
@@ -1230,6 +1285,25 @@ class ProdutoEstacionamentoControllerTest {
         String qrToken = JsonPath.read(qrBody, "$.token");
         prepararOperacaoEPermissaoCheckin();
 
+        Usuario fiscal = usuario("seletor_acesso_fiscal", PerfilUsuario.OPERADOR);
+        concederPapel(criarMembership(fiscal.getId(), tokenContextual), "FISCAL_ACESSO");
+        String tokenFiscal = selecionar(organizacaoId, bearer(jwt.gerarToken(fiscal.getLogin(), "OPERADOR")));
+        String options = "/api/v1/operational-options/{kind}";
+        mvc.perform(get(options, "access-events").header("Authorization", tokenFiscal).param("q", "evento produtos"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(eventoId));
+        mvc.perform(get(options, "access-facilities").header("Authorization", tokenFiscal)
+                        .param("q", "PATIO PRODUTOS").param("eventId", eventoId.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(patioId));
+        mvc.perform(get(options, "access-facilities").header("Authorization", tokenFiscal)
+                        .param("eventId", "" + (eventoId + 1)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content").isEmpty());
+        mvc.perform(get(options, "blocking-credentials").header("Authorization", tokenFiscal))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(options, "audit-events").header("Authorization", tokenFiscal))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(options, "audit-events").header("Authorization", tokenContextual).param("id", eventoId.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content").isEmpty());
+
         String payload = payloadCheckin(qrToken, eventoId, patioId, "PORTAO_NORTE");
         String primeiro = realizarCheckin(
                         tokenContextual, "checkin-online-1", payload, status().isOk())
@@ -1243,6 +1317,8 @@ class ProdutoEstacionamentoControllerTest {
                 .andReturn().getResponse().getContentAsString();
         long tentativaId = JsonPath.<Number>read(
                 primeiro, "$.accessAttemptId").longValue();
+        mvc.perform(get(options, "audit-events").header("Authorization", tokenContextual).param("id", eventoId.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(eventoId));
 
         String replay = realizarCheckin(
                         tokenContextual, "checkin-online-1", payload, status().isOk())
@@ -1541,9 +1617,13 @@ class ProdutoEstacionamentoControllerTest {
                 "KQ1-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
                 eventoId, patioId, "PORTAO_VALIDACAO");
 
+        Usuario fiscal = usuario("access_validation_fiscal", PerfilUsuario.OPERADOR);
+        long membershipId = criarMembership(fiscal.getId(), tokenContextual);
+        String tokenFiscal = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(fiscal.getLogin(), "OPERADOR")));
         mvc.perform(post("/api/v1/access-validations")
-                        .header("Authorization", tokenContextual)
-                        .header("Idempotency-Key", "validation-admin-denied")
+                        .header("Authorization", tokenFiscal)
+                        .header("Idempotency-Key", "validation-member-denied")
                         .contentType(MediaType.APPLICATION_JSON).content(payload))
                 .andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/access-validations")
@@ -1552,11 +1632,7 @@ class ProdutoEstacionamentoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content(payload))
                 .andExpect(status().isForbidden());
 
-        Usuario fiscal = usuario("access_validation_fiscal", PerfilUsuario.OPERADOR);
-        long membershipId = criarMembership(fiscal.getId(), tokenContextual);
         concederPapel(membershipId, "FISCAL_ACESSO");
-        String tokenFiscal = selecionar(organizacaoId,
-                bearer(jwt.gerarToken(fiscal.getLogin(), "OPERADOR")));
 
         mvc.perform(post("/api/v1/access-validations")
                         .header("Authorization", tokenFiscal)
@@ -2126,7 +2202,7 @@ class ProdutoEstacionamentoControllerTest {
         return eventos.criar(organizacaoId, admin.getId(), chave, new CriarEventoRequest(
                 nome, venueId, inicioJanela.plusHours(2),
                 inicioJanela.plusHours(6).plusMinutes(30),
-                "America/Sao_Paulo", null)).id();
+                "America/Sao_Paulo", null, servicoEvento(jdbc, organizacaoId))).id();
     }
 
     private Long criarAlocacao(

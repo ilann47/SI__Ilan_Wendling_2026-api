@@ -3,6 +3,7 @@ package com.kaneko.estacionamento.patio;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -62,6 +63,40 @@ class MensalistaTenantApiTest {
         Long owner = jdbc.queryForObject("SELECT organizacao_id FROM conta_receber WHERE mensalista_id=?",
                 Long.class, contrato);
         assertThat(owner).isEqualTo(tenantA.organizacaoId());
+    }
+
+    @Test
+    void exigeContatoValidoParaIniciarOuAtivarSomenteCadastroFiscalBasico() throws Exception {
+        long cliente = jdbc.queryForObject("""
+                INSERT INTO cliente (organizacao_id,nome,tipo,documento,telefone,limite_credito_micros,origem_cadastro_fiscal)
+                VALUES (?, 'Tomador do pátio', 'FISICA', '52998224725', 'entrada12345678901', 0, true)
+                RETURNING id
+                """, Long.class, tenantA.organizacaoId());
+        long veiculo = criarVeiculo(tenantA, "DDD-4D44", cliente);
+        String ativo = payload(cliente, veiculo);
+        String token = tenantA.tokenContextual();
+        mvc.perform(get("/api/clientes/{id}", cliente).header("Authorization", token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cadastroFiscalBasico").value(true));
+        mvc.perform(post("/api/mensalistas").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(ativo))
+                .andExpect(status().isConflict());
+        String inativo = ativo.replace("}", ",\"status\":\"SUSPENSO\"}");
+        String json = mvc.perform(post("/api/mensalistas").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(inativo))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long contrato = ((Number) JsonPath.read(json, "$.id")).longValue();
+        mvc.perform(put("/api/mensalistas/{id}", contrato).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(ativo))
+                .andExpect(status().isConflict());
+        mvc.perform(put("/api/clientes/{id}", cliente).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Tomador atualizado\",\"documento\":\"52998224725\",\"email\":\"contato@example.test\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cadastroFiscalBasico").value(false));
+        mvc.perform(put("/api/mensalistas/{id}", contrato).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(ativo))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ATIVO"));
+        assertThat(jdbc.queryForObject("SELECT origem_cadastro_fiscal FROM cliente WHERE id=?", Boolean.class, cliente))
+                .isTrue();
     }
 
     private long criarCliente(TenantFixture f, String nome, String documento) throws Exception {

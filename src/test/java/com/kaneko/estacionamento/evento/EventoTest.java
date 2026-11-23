@@ -15,7 +15,7 @@ class EventoTest {
                 1L, 2L, "  Final do Campeonato  ",
                 OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
                 OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
-                "America/Sao_Paulo", "  parceiro-123  ");
+                "America/Sao_Paulo", "  parceiro-123  ", null);
 
         assertThat(evento.getNome()).isEqualTo("Final do Campeonato");
         assertThat(evento.getStatus()).isEqualTo(StatusEvento.RASCUNHO);
@@ -28,11 +28,11 @@ class EventoTest {
         OffsetDateTime inicio = OffsetDateTime.parse("2026-10-10T19:00:00-03:00");
 
         assertThatThrownBy(() -> Evento.criar(
-                1L, 2L, "Evento", inicio, inicio, "America/Sao_Paulo", null))
+                1L, 2L, "Evento", inicio, inicio, "America/Sao_Paulo", null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("posterior");
         assertThatThrownBy(() -> Evento.criar(
-                1L, 2L, "Evento", inicio, inicio.plusHours(1), "Sao_Paulo", null))
+                1L, 2L, "Evento", inicio, inicio.plusHours(1), "Sao_Paulo", null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("IANA");
     }
@@ -102,6 +102,6 @@ class EventoTest {
                 1L, 2L, "Evento Publicavel",
                 OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
                 OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
-                "America/Sao_Paulo", null);
+                "America/Sao_Paulo", null, null);
     }
 }

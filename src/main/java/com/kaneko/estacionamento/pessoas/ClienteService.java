@@ -3,9 +3,11 @@ package com.kaneko.estacionamento.pessoas;
 import com.kaneko.estacionamento.auditoria.AuditoriaService;
 import com.kaneko.estacionamento.auditoria.ClasseRetencaoAuditoria;
 import com.kaneko.estacionamento.auditoria.RegistrarAuditoriaCommand;
+import com.kaneko.estacionamento.common.exception.CampoInvalidoException;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.util.Documentos;
+import com.kaneko.estacionamento.common.util.CnpjDigitosVerificadores;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.geografia.CidadeRepository;
 import com.kaneko.estacionamento.common.web.FiltroSpecs;
@@ -15,6 +17,7 @@ import com.kaneko.estacionamento.pessoas.dto.ClienteRequest;
 import com.kaneko.estacionamento.pessoas.dto.ClienteResponse;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -70,7 +73,7 @@ public class ClienteService {
 
     @Transactional
     public Cliente criar(Long organizacaoId, ClienteRequest req) {
-        String documento = Documentos.soDigitos(req.documento());
+        String documento = normalizarDocumento(req.documento());
         if (repository.existeDocumento(organizacaoId, documento, null)) {
             throw new ConflitoException("Ja existe um cliente cadastrado com este documento.");
         }
@@ -85,7 +88,7 @@ public class ClienteService {
     @Transactional
     public Cliente atualizar(Long organizacaoId, Long id, ClienteRequest req) {
         Cliente cliente = buscar(organizacaoId, id);
-        String documento = Documentos.soDigitos(req.documento());
+        String documento = normalizarDocumento(req.documento());
         if (repository.existeDocumento(organizacaoId, documento, id)) {
             throw new ConflitoException("Ja existe um cliente cadastrado com este documento.");
         }
@@ -103,6 +106,18 @@ public class ClienteService {
         cliente.setAtivo(false);
         repository.flush();
         registrar(cliente, "CLIENTE_DESATIVADO", anterior, snapshot(cliente));
+    }
+
+    private static String normalizarDocumento(String valor) {
+        String informado = valor.strip().toUpperCase(Locale.ROOT);
+        if (informado.matches(".*[A-Z].*")) {
+            if (informado.matches("[A-Z0-9]{12}[0-9]{2}|[A-Z0-9]{2}\\.[A-Z0-9]{3}\\.[A-Z0-9]{3}/[A-Z0-9]{4}-[0-9]{2}")) {
+                String documento = informado.replaceAll("[./-]", "");
+                if (CnpjDigitosVerificadores.validos(documento)) return documento;
+            }
+            throw new CampoInvalidoException("documento", "Informe um CNPJ válido.");
+        }
+        return Documentos.soDigitos(valor);
     }
 
     private void aplicar(

@@ -2,8 +2,263 @@
 
 # Estado do Projeto
 
-**Última atualização:** 2026-11-08
-**Fase atual:** estoque de mercadorias movimentado por documento fiscal.
+**Última atualização:** 2026-11-22
+**Fase atual:** evolução operacional e preparação local para produção; integrações externas ainda não homologadas.
+
+- [[brain/opcoes-operacionais]] expõe busca paginada por nome/número para
+  Acessos, Vendas e Administração, com o escopo efetivo da organização e
+  do operador. Não altera registros, operações, permissões ou schema.
+
+- V110 exige a escolha de um serviço ativo da organização ao criar um evento,
+  sem valor padrão ou cadastro implícito. A OS automática e o rascunho passam
+  a identificar o serviço escolhido, sem alterar preço, cobrança ou histórico.
+
+- A consulta unificada em `GET /api/notas-servico/listagem` reúne as notas
+  internas e as pendências fiscais do estacionamento para a mesma tela.
+  Busca, filtros e contagem são aplicados no servidor, sem mudar o schema,
+  as permissões ou os comandos de detalhe/emissão.
+
+- V108 torna a pendência fiscal da estadia de evento um rascunho editável,
+  com identificação opcional do tomador no pagamento. A V109 passa a
+  cadastrar o cliente básico em identificações novas, por CPF/CNPJ na
+  mesma organização, sem alterar cadastro existente ou preencher dados
+  históricos. Um contato válido é necessário para ativar contrato mensalista
+  desse cliente. Não cria nota interna legada, nova cobrança, recebível ou
+  autorização fiscal.
+  A implantação em produção ainda requer validação fiscal e integração
+  com o autorizador correspondente ao município.
+
+- Pátio aceita identificadores de veículo de 1 a 10 caracteres visíveis
+  sem máscara obrigatória. Saída e comprovantes usam busca literal, sem
+  mudar formato de armazenamento, permissões ou vínculos da estadia.
+
+- A projeção de organizações acessíveis inclui seu fuso para evitar repetir
+  o cadastro no frontend. Sem mudança de schema, autorização ou JWT.
+
+## Administração da organização
+
+- O papel de sistema Administrador concede todo o catálogo contextual na
+  organização ativa, inclusive o início da portaria; o perfil global, a
+  separação entre organizações e os demais papéis permanecem inalterados.
+- Menu, rotas e ações recebem as permissões pelo endpoint existente, sem
+  duplicar a política no frontend nem alterar o schema.
+
+## Sessão 2026-11-22
+
+- O calendário do pátio consulta faixas livres/lotadas e o menor saldo
+  disponível no período. A mesma regra temporal valida novas alocações sob
+  lock; não há alteração de permissões existentes, schema ou dados.
+
+- V107 aplicada só ao banco de teste 55474: novas estadias contextuais, inclusive
+  Movimentações, fecham em centavos HALF_UP. Base/devido/ajuste continuam em
+  inteiros escalados de seis casas; OS e pendência fiscal usam o devido.
+- Estado pré-deploy com valor esperado antigo recebe 409 sem efeitos. Históricos
+  sem marcador continuam em seis casas. Conferência de hashes antes/depois da
+  migração comprovou as 83 tabelas preexistentes inalteradas.
+- Suprimento/sangria têm motivo, ator, UUID, saldo protegido e ledger imutável;
+  consulta de turnos é restrita à supervisão. Não são receita de cliente.
+- Suíte completa final no checkout: 957 testes passaram, zero falhas/erros/skips,
+  Maven verify/package aprovado. Banco exclusivo de testes 55475.
+- Chrome validou pré/pós-pago, dinheiro/troco, recibo, mesma OS, NFS-e pendente,
+  cancelamento, 403 mantendo sessão, perda de resposta reconciliada, sangrias
+  concorrentes e 16 tentativas de 2 operadores para 10 vagas sem exceder capacidade.
+- Restore real da V107 comparou 86 tabelas, conteúdos e sequências iguais. Origem
+  e documentos antigos preservados. Destino novo, sem drop/clean/recálculo.
+- Perfil prod/production recusa configuração insegura antes do datasource;
+  9 testes puros e o JAR real confirmaram recusa. Helper de assinatura local
+  protegido por DPAPI CurrentUser substitui a chave aleatória por reinício;
+  8 verificações passaram no checkout. Chrome confirmou o mesmo token contextual
+  válido (HTTP 200) após reinício da API e novo build com a aba aberta, mantendo
+  os assets anteriores. A adoção da chave estável exige novo login uma vez.
+
+## Limites atuais
+
+Sem pagamento bancário ou emissão fiscal reais. Provedores, município/certificado,
+equipamento, monitoramento externo, promoção do schema produtivo e piloto real
+permanecem gates de implantação em [[brain/prontidao-producao]]. Não há escala
+de equipe por evento, sincronização offline ou fechamento DRE completo com taxas,
+repasses e fontes externas. O caixa atual continua recebimento manual explícito.
+Uso simultâneo de múltiplas abas do mesmo operador não é coordenado por lock
+distribuído; cada operador deve usar sua conta/turno. Sem commit/push/deploy.
+
+## Sessão 2026-11-19 — rotina operacional validada
+
+Implementados contexto, busca de saída, recebido/troco e segunda via no frontend;
+API incremental de correções auditadas com ledger em seis casas, OS e pendência
+fiscal preservadas/canceladas na mesma transação. Preparação avulsa do evento
+não depende de produto/lote. Resumo separa valores da portaria e ocupação QR,
+limitando seções por RBAC. A V106 está aplicada na base de teste da prévia.
+
+Verificação: 937 testes backend passaram em PostgreSQL isolado e vazio, sem
+alterar as proteções de migração; 521 testes frontend, lint, typecheck, build e
+teste standalone de publicação passaram. O cluster temporário da suíte foi
+parado após a execução; API 18087, PostgreSQL 55474 e prévia 5174 permanecem.
+
+Chrome real executou caixa pré/pós-pago, troco de seis casas, segunda via,
+contexto após reload, saída sem duplicação, cancelamento supervisor, vínculos
+com a mesma OS/pendência fiscal, bloqueio do Caixa e consulta do Gestor.
+Também validou 13 telas demonstrativas desktop e quatro mobile sem erros HTTP
+ou overflow horizontal de página. Documentos antigos não foram recalculados.
+
+Organização demonstrativa carregada: quatro eventos/pátios, 138 vagas,
+45 estadias, 26 clientes, sete fornecedores, 16 produtos, documentos, estoque,
+contas e baixas relacionados. Contas públicas de teste e limites estão em
+`scripts/seed-operated-organization.README.md`; cobertura inclui as 84 tabelas
+ativas (negócio, configuração e histórico Flyway), nenhuma vazia. A repetição
+final manteve as contagens das 84 tabelas, incluindo turnos e auditoria.
+Somente `demo.caixa` permanece com turno aberto. Foram conferidos zero títulos
+a receber e zero notas internas duplicadas pelas OS automáticas das estadias.
+Há um pedido comercial em reembolso pendente, sem devolução externa simulada.
+
+Próximos passos de produto: integrar/homologar emissor NFS-e e meios externos
+quando houver escopo próprio; este runtime demonstra apenas registros internos.
+
+Não há transmissão fiscal, pagamento bancário, commit ou push autorizado.
+
+## Remoção de Despesas Avulsas — 2026-11-10
+
+- Recurso removido das rotas, do relatório financeiro, das pendências e dos seeds.
+- A V105 foi aplicada ao PostgreSQL local de teste. Verificação SQL confirmou que a tabela e as funções exclusivas não existem mais e que títulos regulares e baixas continuam disponíveis.
+- Passaram 27 testes focados do backend e 96 do frontend, além de lint, typecheck e build da prévia.
+
+## Cadastro de organização — 2026-11-10
+
+- O formulário valida os dígitos do CNPJ antes de enviar. A API usa a validação do domínio e devolve `400` com `erros.document`; duplicidade continua `409`.
+- Regressão coberta para sequência repetida e dígito verificador incorreto. Sem mudanças de schema, dados existentes ou permissões.
+
+## OS automática para estadias de evento — 2026-11-09
+
+- V104 abre uma OS em execução na entrada do Pátio e conclui a mesma ordem
+  na saída. O valor da estadia é congelado e a cobrança permanece no caixa.
+- A pendência de NFS-e fica vinculada à OS e à movimentação; não transmite
+  documento, não cria Nota de Serviço interna paralela e não gera recebível.
+- OS automática é de consulta para quem tem permissão. Não exige cadastro
+  manual de cliente nem permite gerar nota ou concluir/cancelar manualmente.
+  Movimentações anteriores já encerradas não são reprocessadas.
+- PostgreSQL de teste dedicado: 21 testes focados passaram, incluindo
+  repetição da entrada/saída, caixa pré e pós-pago e regressão da OS manual.
+  Frontend: 17 testes focados, typecheck, lint e build passaram.
+- Prévia 5174 atualizada. Chrome validou os dois modos com o perfil Caixa,
+  troca de turno sem cobrar novamente e consulta da pendência no detalhe da
+  OS pelo perfil gestor. O banco confirmou duas OS concluídas vinculadas às
+  duas pendências e nenhum recebível ou Nota de Serviço interna.
+
+## Entrada avulsa de evento no caixa — 2026-11-09
+
+- V103 liga a entrada por placa sem reserva a um evento e à alocação do pátio.
+  O valor fixo é congelado na estadia; a configuração determina se o recebimento
+  ocorre na entrada ou saída. As cotas vendável e reservada são preservadas.
+- O recebimento entra no turno que o registrou. A estadia pré-paga sai sem nova
+  cobrança, inclusive após a troca de turno. A saída gera uma pendência fiscal
+  vinculada, sem emissão de NFS-e, OS ou recebível.
+- 29 testes focados de API passaram no PostgreSQL de QA dedicado, incluindo
+  três regressões de integração de entrada, saída e lotação por QR. Em Chrome
+  a 390 px, com a conta Caixa, os dois fluxos foram executados pela 5174;
+  duas pendências e a liberação da lotação foram confirmadas no banco.
+- Frontend: 471 testes em 77 arquivos, typecheck, lint e build aprovados.
+  O empacotador Spring não conseguiu renomear o JAR anterior no Windows;
+  a prévia executa o código atual diretamente pelo Spring Boot/Maven.
+- Prévia em 127.0.0.1:5174 com API em 127.0.0.1:18087 e PostgreSQL local de
+  QA em 55474. Não houve transmissão fiscal, publicação ou deploy.
+- Próximo passo fiscal: integrar e homologar o emissor aplicável. O status
+  pendente não comprova emissão.
+
+## Permissões de navegação do caixa — 2026-11-09
+
+- O papel Caixa do pátio não vê nem acessa as rotas administrativas sem as
+  permissões correspondentes. O menu segue as mesmas regras das rotas diretas.
+- A API distingue acesso proibido (`403`) de sessão ausente ou inválida
+  (`401`). Não há migração nem alteração nas permissões cadastradas.
+- Na prévia `:5174`, a conta de caixa foi validada em desktop e celular:
+  11 rotas diretas bloqueadas, seis negativas da API com `403` e Pátio
+  acessível com a mesma sessão.
+
+## Caixa do Pátio — 2026-11-09
+
+- V101 conecta abertura, entrada por placa com pátio, prévia tarifária, confirmação
+  por meio de pagamento e fechamento com conferência de dinheiro. O histórico de
+  movimentações anterior não é recalculado.
+- A cobrança operacional não cria OS, Nota de Serviço nem recebível. Integração
+  bancária, estorno de saída paga e fechamento gerencial de caixas de outros
+  operadores não fazem parte deste recorte.
+- V102 permite operar com o papel Caixa do pátio, sem dar acesso à gestão
+  de tarifas ou a turnos de outros operadores.
+- Banco local de teste validado até V102; 31 testes de Pátio, autorização
+  e OpenAPI aprovados. Regressão web: 459 testes; lint, build e teste focado
+  do fluxo aprovados com os ajustes finais.
+- Chromium a 390 px aprovou o cenário completo com papel Caixa do pátio:
+  entrada, prévia após permanência, pagamento, fechamento com diferença de
+  um milionésimo, recarga e consulta do caixa persistido.
+
+## Situação de Vaga — 2026-11-08
+
+- Menu da listagem permite bloquear, colocar em manutenção e liberar a vaga
+  com confirmação. Preserva filtros e atualiza a situação após a resposta.
+- Nova operação versionada e auditada em [[brain/instalacoes]], com o mesmo
+  RBAC da edição. Sem migração e sem mexer em cotas, reservas ou capacidade de eventos.
+- 41 testes direcionados de backend passaram no banco de QA, incluindo
+  transições, replay, concorrência por versão, permissões e OpenAPI.
+- Chromium em desktop e celular emulado confirmou as ações na listagem,
+  cancelamento sem alteração, persistência após recarregar e filtros preservados.
+  Frontend: 459 testes; typecheck, lint e builds passaram.
+  Prévia de QA em `127.0.0.1:5176/app/instalacoes?aba=spaces`.
+
+## Cadastro Individual de Vaga — 2026-11-08
+
+- **Nova vaga** abre formulário em página; **Importar vagas** permanece como
+  ação secundária na mesma aba. O cadastro reaproveita o setor filtrado,
+  restringe as categorias e atualiza a listagem ao salvar.
+- Nova rota em [[brain/instalacoes]] sem migração e sem alterar a importação.
+  Ambos os caminhos compartilham lock do setor, regras de capacidade,
+  auditoria e evento de criação.
+- 30 testes de backend passaram no banco local de QA, incluindo OpenAPI e
+  regressão da importação no mesmo setor. Frontend: 458 testes, typecheck,
+  lint e build; empacotamento do backend também passou.
+- Chromium em desktop e celular emulado confirmou cadastro, persistência após
+  recarregar, reaproveitamento do setor filtrado e importação no mesmo setor.
+  Prévia em `127.0.0.1:5176/app/instalacoes?aba=spaces`, apenas com banco de QA.
+
+## Gestão de Vagas — 2026-11-08
+
+- Aba Vagas lista cadastros da organização com busca por código, filtro
+  pesquisável por setor e edição em página; os filtros permanecem no retorno.
+- A importação em lote continua disponível e invalida a listagem após sucesso.
+  Código, categoria, posição e acessibilidade são editáveis; setor e situação
+  ficam preservados. Edição auditada e versionada, sem migração.
+- Regras e contrato em [[brain/instalacoes]]; 41 testes de backend, incluindo
+  OpenAPI, isolamento, unicidade, filtros opcionais e versão. Frontend:
+  457 testes, typecheck, lint e build. QA real em Chromium mobile e desktop
+  confirmou importação, filtros combinados, rejeição de código duplicado
+  e edição persistida após recarregar.
+- Prévia de QA: `127.0.0.1:5176/app/instalacoes?aba=spaces`, API `:8089`.
+
+## Gestão de Instalações — 2026-11-08
+
+- Locais, pátios e setores têm lista pesquisável com paginação e edição em
+  página. O retorno mantém a aba, a busca e a página; catálogos dos seletores
+  continuam mostrando apenas opções ativas.
+- Leitura e escrita usam o JWT da organização e as permissões existentes.
+  Edição auditada exige a versão lida, preserva situação e vínculos e
+  protege capacidade de setores, vagas e alocações. Sem migração.
+- Validação: 39 testes direcionados de backend (incluindo OpenAPI),
+  456 testes de frontend na rodada de regressão, 4 testes da tela na revisão
+  final, typecheck, lint e builds. Chromium mobile com cadastro, busca, edição,
+  persistência após recarregar e regressão de Eventos/Alocação. Chromium
+  desktop confirmou tabela e edição acessível por linha. QA também rejeitou
+  reduções de capacidade incompatíveis, categoria em uso e acesso de outro tenant.
+- Prévia local em `127.0.0.1:5176` com API `:8089`, isolada no PostgreSQL de QA.
+  Próximo passo: conferência do usuário na aba de Instalações.
+
+## Consulta de Instalações — 2026-11-08
+
+- Consultas paginadas de locais, pátios e setores ativos, com escopo no JWT
+  e busca por nome. Adicionada leitura contextual de cidades para os cadastros.
+- Alocações devolvem o nome real do pátio. Nenhuma migração ou alteração de
+  permissão de escrita foi necessária. Contratos em [[brain/instalacoes]] e [[brain/venues]].
+- QA local (:5176 / :8089): duas sessões Chromium de 390 px, com registros
+  gravados pela interface e seleção em sessão nova. Verificadas importação
+  de duas vagas, criação de evento, alocação e isolamento das três consultas
+  entre organizações. Maven: 35 testes direcionados; frontend: 455 testes.
 
 ## Corte operacional da plataforma — 2026-11-08
 

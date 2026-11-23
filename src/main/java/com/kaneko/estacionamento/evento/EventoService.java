@@ -8,10 +8,12 @@ import com.kaneko.estacionamento.acesso.SessaoEstacionamentoRepository;
 import com.kaneko.estacionamento.acesso.StatusPresenca;
 import com.kaneko.estacionamento.acesso.StatusSessaoEstacionamento;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
+import com.kaneko.estacionamento.common.exception.CampoInvalidoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.idempotencia.IdempotenciaRepository;
 import com.kaneko.estacionamento.common.outbox.OutboxService;
 import com.kaneko.estacionamento.common.outbox.PublicarEventoOutboxCommand;
+import com.kaneko.estacionamento.conveniencia.ServicoRepository;
 import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
 import com.kaneko.estacionamento.evento.dto.AtualizarEventoRequest;
 import com.kaneko.estacionamento.evento.dto.ChecklistConfiguracaoEventoResponse;
@@ -45,6 +47,7 @@ public class EventoService {
     private final EventoRepository eventos;
     private final OrganizacaoRepository organizacoes;
     private final VenueRepository venues;
+    private final ServicoRepository servicos;
     private final AlocacaoPatioEventoRepository alocacoes;
     private final ProdutoEstacionamentoRepository produtos;
     private final PresencaRepository presencas;
@@ -55,7 +58,7 @@ public class EventoService {
 
     public EventoService(
             EventoRepository eventos, OrganizacaoRepository organizacoes,
-            VenueRepository venues, AlocacaoPatioEventoRepository alocacoes,
+            VenueRepository venues, ServicoRepository servicos, AlocacaoPatioEventoRepository alocacoes,
             ProdutoEstacionamentoRepository produtos,
             PresencaRepository presencas,
             SessaoEstacionamentoRepository sessoes,
@@ -64,6 +67,7 @@ public class EventoService {
         this.eventos = eventos;
         this.organizacoes = organizacoes;
         this.venues = venues;
+        this.servicos = servicos;
         this.alocacoes = alocacoes;
         this.produtos = produtos;
         this.presencas = presencas;
@@ -83,6 +87,14 @@ public class EventoService {
     public EventoResponse buscar(Long organizacaoId, Long eventoId) {
         return EventoResponse.from(eventos.findByIdAndOrganizacaoId(eventoId, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Evento", eventoId)));
+    }
+
+    public record OpcaoServico(Long id, String name) {}
+
+    @Transactional(readOnly = true)
+    public Page<OpcaoServico> opcoesDeServico(Long organizacaoId, String busca, Pageable pageable) {
+        return servicos.procurarAtivos(organizacaoId, busca.strip(), pageable)
+                .map(servico -> new OpcaoServico(servico.getId(), servico.getNome()));
     }
 
     @Transactional
@@ -136,6 +148,11 @@ public class EventoService {
         venues.findByIdAndOrganizacaoIdAndAtivoTrue(dados.venueId(), organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Venue ativo", dados.venueId()));
+        var servico = servicos.findByIdAndOrganizacaoId(dados.servicoId(), organizacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Serviço", dados.servicoId()));
+        if (!Boolean.TRUE.equals(servico.getAtivo())) {
+            throw new CampoInvalidoException("serviceId", "Selecione um tipo de serviço ativo.");
+        }
         if (dados.externalId() != null
                 && eventos.existsByOrganizacaoIdAndExternalIdIgnoreCase(
                         organizacaoId, dados.externalId())) {
@@ -144,7 +161,7 @@ public class EventoService {
 
         Evento evento = Evento.criar(
                 organizacaoId, dados.venueId(), dados.nome(), dados.inicio(), dados.fim(),
-                dados.fusoHorario(), dados.externalId());
+                dados.fusoHorario(), dados.externalId(), servico);
         evento = eventos.saveAndFlush(evento);
 
         Map<String, Object> estado = snapshot(evento);
@@ -405,8 +422,11 @@ public class EventoService {
         if (request.venueId() == null) {
             throw new IllegalArgumentException("O venue e obrigatorio.");
         }
+        if (request.serviceId() == null || request.serviceId() <= 0) {
+            throw new CampoInvalidoException("serviceId", "Selecione o tipo de serviço do evento.");
+        }
         return new DadosCriacao(
-                nome, request.venueId(), inicio, fim, fuso, externalId);
+                nome, request.venueId(), inicio, fim, fuso, externalId, request.serviceId());
     }
 
     private static String validarChave(String valor) {
@@ -424,7 +444,7 @@ public class EventoService {
         String canonico = campo(dados.nome()) + campo(dados.venueId().toString())
                 + campo(dados.inicio().toInstant().toString())
                 + campo(dados.fim().toInstant().toString())
-                + campo(dados.fusoHorario()) + campo(dados.externalId());
+                + campo(dados.fusoHorario()) + campo(dados.externalId()) + campo(dados.servicoId().toString());
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(canonico.getBytes(StandardCharsets.UTF_8));
@@ -442,6 +462,7 @@ public class EventoService {
         Map<String, Object> estado = new LinkedHashMap<>();
         estado.put("nome", evento.getNome());
         estado.put("venueId", evento.getVenueId());
+        if (evento.getServico() != null) estado.put("serviceId", evento.getServico().getId());
         estado.put("inicio", evento.getInicio().toInstant().toString());
         estado.put("fim", evento.getFim().toInstant().toString());
         estado.put("fusoHorario", evento.getFusoHorario());
@@ -455,5 +476,5 @@ public class EventoService {
 
     private record DadosCriacao(
             String nome, Long venueId, OffsetDateTime inicio, OffsetDateTime fim,
-            String fusoHorario, String externalId) {}
+            String fusoHorario, String externalId, Long servicoId) {}
 }

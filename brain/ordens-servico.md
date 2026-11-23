@@ -10,6 +10,14 @@ Controlar a contratacao e a execucao de servicos por organizacao sem confundir a
 
 A V65 implementa o agregado `OrdemServico`, itens com snapshot do servico e o ciclo `RASCUNHO -> EM_EXECUCAO -> CONCLUIDA`. Cancelamento e permitido antes da conclusao. Estados finais sao terminais.
 
+O [[operacao|Pátio]] abre automaticamente uma OS em execução para cada nova
+estadia avulsa de evento. `movimentacaoPatioId` identifica a origem; ela tem
+um item com a descrição e o valor do estacionamento, sem cliente ou catálogo
+obrigatórios. Comandos manuais de alteração, transição e preparação de nota
+retornam 409 para essas ordens. A saída conclui a OS na mesma transação do
+Pátio. O GET de documentos expõe `nfsePatio` somente a quem tem leitura
+fiscal, separado da Nota de Serviço interna; não cria nova cobrança.
+
 ## Fluxo (camadas da arquitetura)
 
 `OrdemServicoController` valida contexto e versao, `OrdemServicoService` resolve cliente e servicos no tenant, persiste o agregado, registra [[auditoria]] e publica fatos pela [[outbox]]. A [[fiscal-financeiro|Nota de Servico]] copia os itens congelados da ordem concluída, guarda o plano de parcelas da revisão salva e só gera contas a receber na emissão interna dessa revisão.
@@ -34,6 +42,9 @@ antes da paginação; o total filtrado não é perdido quando a página está va
 
 - `OrdemServico`: cliente, numero, estado, datas, moeda, totais, versao e itens.
 - `ItemOrdemServico`: servico, descricao congelada, quantidade, precos e desconto.
+- Desde a V110, o item da OS automática aponta para o serviço escolhido no
+  [[eventos|evento]] e congela seu nome na entrada. Eventos sem vínculo
+  preservam o texto e as ordens existentes não são regravadas.
 - `NotaServico.ordemServico`: vínculo opcional, único e não substituível na edição. A V83 adiciona composição e parcelas congeladas ao rascunho; uma nota vinculada não aceita substituir os itens da ordem.
 - A V98 de teste guarda quantidade, valores da OS, preço de catálogo,
   Nota de Serviço e seus itens/parcelas em milionésimos inteiros. A API
@@ -77,6 +88,8 @@ situação, ordenação, paginação, isolamento e caracteres literais.
 
 | Data | Acao |
 |---|---|
+| 2026-11-22 | V110 associa serviço escolhido no evento ao item da OS automática, sem alterar a origem do valor da estadia. |
+| 2026-11-09 | V104 integra OS automática de evento, controlada exclusivamente pelo Pátio. |
 | 2026-11-08 | V98 usa seis casas da ordem ao recebimento, preserva o snapshot histórico e rejeita entradas com sete casas. |
 | 2026-11-08 | Corrige 500 nas transições da OS com sessão fechada, coberto em teste com open-in-view desabilitado. |
 | 2026-11-06 | OS concluída passa a preparar itens e parcelas persistidos para conferência versionada; conclusão continua sem cobrança. |

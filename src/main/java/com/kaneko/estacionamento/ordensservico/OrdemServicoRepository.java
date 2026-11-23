@@ -13,6 +13,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Long> {
+    Optional<OrdemServico> findByOrganizacaoIdAndMovimentacaoPatioId(Long organizacaoId, Long movimentacaoPatioId);
+    boolean existsByOrganizacaoIdAndMovimentacaoPatioId(Long organizacaoId, Long movimentacaoPatioId);
     boolean existsByOrganizacaoIdAndNumeroIgnoreCase(Long organizacaoId, String numero);
     boolean existsByOrganizacaoIdAndNumeroIgnoreCaseAndIdNot(
             Long organizacaoId, String numero, Long id);

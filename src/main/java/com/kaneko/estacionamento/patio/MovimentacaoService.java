@@ -35,19 +35,25 @@ public class MovimentacaoService {
     private final TarifaRepository tarifaRepository;
     private final PatioRepository patioRepository;
     private final AuditoriaService auditoria;
+    private final PatioEventoRepository estadiasEvento;
+    private final PatioCobrancaCentavosRepository centavos;
 
     public MovimentacaoService(MovimentacaoRepository repository,
                                VeiculoRepository veiculoRepository,
                                MensalistaRepository mensalistaRepository,
                                TarifaRepository tarifaRepository,
                                PatioRepository patioRepository,
-                               AuditoriaService auditoria) {
+                               AuditoriaService auditoria,
+                               PatioEventoRepository estadiasEvento,
+                               PatioCobrancaCentavosRepository centavos) {
         this.repository = repository;
         this.veiculoRepository = veiculoRepository;
         this.mensalistaRepository = mensalistaRepository;
         this.tarifaRepository = tarifaRepository;
         this.patioRepository = patioRepository;
         this.auditoria = auditoria;
+        this.estadiasEvento = estadiasEvento;
+        this.centavos = centavos;
     }
 
     @Transactional(readOnly = true)
@@ -73,6 +79,29 @@ public class MovimentacaoService {
 
     @Transactional
     public Movimentacao registrarEntrada(Long organizacaoId, EntradaRequest req) {
+        return registrarEntrada(organizacaoId, req, null, null, false);
+    }
+
+    Patio prepararPatioDaEntrada(Long org, Long id) {
+        Patio patio = patioRepository.bloquearAtivo(id, org)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Pátio ativo", id));
+        if (repository.countByPatioIdAndStatus(id, StatusMovimentacao.ABERTO)
+                + estadiasEvento.ocupacaoPorCredencial(org, id) >= patio.getCapacidadeOperacional()) {
+            throw new ConflitoException("Este pátio atingiu sua capacidade operacional.");
+        }
+        return patio;
+    }
+
+    Movimentacao registrarEntradaDeTurno(Long org, Long veiculo, long turno, Patio patio) {
+        return registrarEntrada(org, new EntradaRequest(veiculo, null), turno, patio, false);
+    }
+
+    Movimentacao registrarEntradaEvento(Long org, Long veiculo, long turno, Patio patio) {
+        return registrarEntrada(org, new EntradaRequest(veiculo, null), turno, patio, true);
+    }
+
+    private Movimentacao registrarEntrada(Long organizacaoId, EntradaRequest req, Long turnoId, Patio patioDoTurno,
+                                          boolean evento) {
         Veiculo veiculo = buscarVeiculo(organizacaoId, req.veiculoId());
         if (Boolean.FALSE.equals(veiculo.getAtivo())) {
             throw new ConflitoException("O veiculo esta inativo e nao pode entrar no patio.");
@@ -87,10 +116,13 @@ public class MovimentacaoService {
 
         Movimentacao mov = new Movimentacao();
         mov.setOrganizacaoId(organizacaoId);
+        mov.setPatioTurnoEntradaId(turnoId);
         mov.setVeiculo(veiculo);
         mov.setDataEntrada(OffsetDateTime.now());
         mov.setStatus(StatusMovimentacao.ABERTO);
-        if (req.patioId() != null) {
+        if (patioDoTurno != null) {
+            mov.setPatio(patioDoTurno);
+        } else if (req.patioId() != null) {
             mov.setPatio((organizacaoId == null ? patioRepository.findById(req.patioId())
                     : patioRepository.findByIdAndOrganizacaoId(req.patioId(), organizacaoId))
                     .orElseThrow(() -> new RecursoNaoEncontradoException("Patio", req.patioId())));
@@ -102,7 +134,9 @@ public class MovimentacaoService {
                                 veiculo.getId(), StatusMensalista.ATIVO)
                         : mensalistaRepository.findFirstByOrganizacaoIdAndVeiculoIdAndStatus(
                                 organizacaoId, veiculo.getId(), StatusMensalista.ATIVO);
-        if (contrato.isPresent()) {
+        if (evento) {
+            mov.setTipo(TipoMovimentacao.AVULSO);
+        } else if (contrato.isPresent()) {
             mov.setTipo(TipoMovimentacao.MENSALISTA);
             mov.setMensalista(contrato.get());
         } else {
@@ -115,28 +149,51 @@ public class MovimentacaoService {
             mov.setTarifa(tarifa);
         }
         mov = repository.saveAndFlush(mov);
+        // Fonte única para entradas comuns contextuais, pelo Caixa ou pelo CRUD.
+        // Evento congela sua base/devido no fluxo próprio, sem um segundo marcador.
+        if (organizacaoId != null && !evento) centavos.marcarComum(organizacaoId, mov.getId());
         auditar(mov, "MOVIMENTACAO_ABERTA", null, snapshot(mov));
         return mov;
     }
 
     @Transactional
     public Movimentacao registrarSaida(Long organizacaoId, Long id) {
-        Movimentacao mov = buscar(organizacaoId, id);
+        Movimentacao mov = buscarParaAlterar(organizacaoId, id);
+        if (mov.getStatus() != StatusMovimentacao.ABERTO) {
+            throw new ConflitoException("Esta movimentacao nao esta aberta e nao pode receber saida.");
+        }
+        if (mov.getPatioTurnoEntradaId() != null) {
+            throw new ConflitoException("Use a saída com conferência e pagamento no Pátio.");
+        }
+        OffsetDateTime saida = OffsetDateTime.now();
+        BigDecimal valor = calcularSaida(mov, saida);
+        if (organizacaoId != null && centavos.novaRegra(organizacaoId, id)) {
+            var snapshot = PatioCobrancaCentavos.paraCobrar(valor);
+            centavos.confirmarComum(organizacaoId, id, snapshot);
+            valor = snapshot.valorDevido();
+        }
+        return fecharMovimentacao(mov, saida, valor);
+    }
+
+    Movimentacao buscarParaAlterar(Long organizacaoId, Long id) {
+        return organizacaoId == null ? buscar(null, id) : repository.bloquearNoTenant(organizacaoId, id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Movimentacao", id));
+    }
+
+    static BigDecimal calcularSaida(Movimentacao mov, OffsetDateTime saida) {
+        if (mov.getTipo() == TipoMovimentacao.MENSALISTA) {
+            return BigDecimal.ZERO.setScale(MilionesimosConverter.ESCALA);
+        }
+        Tarifa t = mov.getTarifa();
+        return CalculoTarifa.calcular(
+                t.getValorHora(), t.getValorDiaria(), t.getToleranciaMin(), mov.getDataEntrada(), saida);
+    }
+
+    Movimentacao fecharMovimentacao(Movimentacao mov, OffsetDateTime saida, BigDecimal valor) {
         if (mov.getStatus() != StatusMovimentacao.ABERTO) {
             throw new ConflitoException("Esta movimentacao nao esta aberta e nao pode receber saida.");
         }
         Map<String, Object> anterior = snapshot(mov);
-        OffsetDateTime saida = OffsetDateTime.now();
-
-        BigDecimal valor;
-        if (mov.getTipo() == TipoMovimentacao.MENSALISTA) {
-            valor = BigDecimal.ZERO.setScale(MilionesimosConverter.ESCALA);
-        } else {
-            Tarifa t = mov.getTarifa();
-            valor = CalculoTarifa.calcular(
-                    t.getValorHora(), t.getValorDiaria(), t.getToleranciaMin(), mov.getDataEntrada(), saida);
-        }
-
         mov.setDataSaida(saida);
         mov.setValorCobrado(valor);
         mov.setStatus(StatusMovimentacao.FECHADO);
@@ -152,7 +209,10 @@ public class MovimentacaoService {
      */
     @Transactional
     public Movimentacao cancelar(Long organizacaoId, Long id) {
-        Movimentacao mov = buscar(organizacaoId, id);
+        Movimentacao mov = buscarParaAlterar(organizacaoId, id);
+        if (organizacaoId != null && estadiasEvento.buscar(organizacaoId, id).isPresent()) {
+            throw new ConflitoException("A estadia de evento deve ser encerrada pelo caixa do Pátio.");
+        }
         if (mov.getStatus() != StatusMovimentacao.ABERTO) {
             throw new ConflitoException(
                     "Apenas uma movimentacao ABERTA pode ser cancelada.");
@@ -184,6 +244,7 @@ public class MovimentacaoService {
         Map<String, Object> dados = new LinkedHashMap<>();
         dados.put("veiculoId", mov.getVeiculo().getId());
         dados.put("patioId", mov.getPatio() != null ? mov.getPatio().getId() : null);
+        dados.put("turnoEntradaId", mov.getPatioTurnoEntradaId());
         dados.put("mensalistaId", mov.getMensalista() != null ? mov.getMensalista().getId() : null);
         dados.put("tarifaId", mov.getTarifa() != null ? mov.getTarifa().getId() : null);
         dados.put("tipo", mov.getTipo().name());

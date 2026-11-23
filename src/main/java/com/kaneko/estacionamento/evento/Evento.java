@@ -1,10 +1,14 @@
 package com.kaneko.estacionamento.evento;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
+import com.kaneko.estacionamento.conveniencia.Servico;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.DateTimeException;
@@ -24,6 +28,9 @@ public class Evento extends AuditableEntity {
     private Long organizacaoId;
     @Column(name = "venue_id", nullable = false, updatable = false)
     private Long venueId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "servico_id", updatable = false)
+    private Servico servico;
     @Column(nullable = false, length = 180)
     private String nome;
     @Column(nullable = false)
@@ -47,7 +54,7 @@ public class Evento extends AuditableEntity {
     public static Evento criar(
             Long organizacaoId, Long venueId, String nome,
             OffsetDateTime inicio, OffsetDateTime fim,
-            String fusoHorario, String externalId) {
+            String fusoHorario, String externalId, Servico servico) {
         if (organizacaoId == null || venueId == null) {
             throw new IllegalArgumentException("Organizacao e venue sao obrigatorios.");
         }
@@ -57,6 +64,7 @@ public class Evento extends AuditableEntity {
         Evento evento = new Evento();
         evento.organizacaoId = organizacaoId;
         evento.venueId = venueId;
+        evento.servico = servico;
         evento.nome = textoObrigatorio(nome, "nome", 180);
         evento.inicio = inicio;
         evento.fim = fim;
@@ -118,6 +126,17 @@ public class Evento extends AuditableEntity {
         if (status != StatusEvento.VENDAS_ENCERRADAS) {
             throw new IllegalStateException(
                     "Somente evento com vendas encerradas pode iniciar operacao.");
+        }
+        status = StatusEvento.EM_OPERACAO;
+    }
+
+    /** Entrada por placa, sem oferta comercial: os requisitos reais são conferidos pelo serviço. */
+    public void iniciarOperacaoAvulsa() {
+        if (status != StatusEvento.RASCUNHO && status != StatusEvento.CONFIGURADO) {
+            throw new IllegalStateException("Somente evento em preparação pode iniciar operação avulsa.");
+        }
+        if (politicaReentrada == null) {
+            throw new IllegalStateException("Defina a política de reentrada antes de iniciar a operação.");
         }
         status = StatusEvento.EM_OPERACAO;
     }

@@ -1,5 +1,7 @@
 {
   "nodes": [
+    {"id": "opcoes-operacionais", "type": "file", "file": "opcoes-operacionais.md", "x": 4500, "y": 640, "width": 360, "height": 220},
+    {"id": "prontidao-producao", "type": "file", "file": "prontidao-producao.md", "x": 9000, "y": 960, "width": 360, "height": 220},
     {"id": "importacao-xml", "type": "file", "file": "importacao-xml.md", "x": 8500, "y": 960, "width": 360, "height": 220},
     {"id": "core", "type": "file", "file": "core.md", "x": 0, "y": 0, "width": 360, "height": 220},
     {"id": "contas", "type": "file", "file": "contas.md", "x": 0, "y": 320, "width": 360, "height": 220},
@@ -38,6 +40,9 @@
     {"id": "navegacao", "type": "file", "file": "navegacao.md", "x": 12500, "y": 160, "width": 360, "height": 220}
   ],
   "edges": [
+    {"id": "opcoes-acesso", "fromNode": "opcoes-operacionais", "fromSide": "top", "toNode": "acesso", "toSide": "bottom", "label": "escolha por nome"},
+    {"id": "opcoes-pedidos", "fromNode": "opcoes-operacionais", "fromSide": "top", "toNode": "pedidos", "toSide": "bottom", "label": "escopo do operador"},
+    {"id": "opcoes-rbac", "fromNode": "opcoes-operacionais", "fromSide": "left", "toNode": "rbac", "toSide": "bottom", "label": "permissões efetivas"},
     {"id": "xml-fiscal", "fromNode": "importacao-xml", "fromSide": "left", "toNode": "fiscal-financeiro", "toSide": "right", "label": "confirmacao atomica"},
     {"id": "xml-auditoria", "fromNode": "importacao-xml", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "rastro das etapas"},
     {"id": "core-contas", "fromNode": "core", "fromSide": "bottom", "toNode": "contas", "toSide": "top", "label": "identidade global"},
@@ -63,6 +68,8 @@
     {"id": "eventos-outbox", "fromNode": "eventos", "fromSide": "right", "toNode": "outbox", "toSide": "left", "label": "Criado/Configurado/Publicado/VendasAbertas"},
     {"id": "organizacoes-eventos", "fromNode": "organizacoes", "fromSide": "right", "toNode": "eventos", "toSide": "left", "label": "ownership tenant"},
     {"id": "eventos-inventario", "fromNode": "eventos", "fromSide": "right", "toNode": "inventario", "toSide": "left", "label": "janela e estado"},
+    {"id": "eventos-escolha-servico", "fromNode": "eventos", "fromSide": "right", "toNode": "conveniencia", "toSide": "left", "label": "serviço escolhido V110"},
+    {"id": "eventos-ordens-servico", "fromNode": "eventos", "fromSide": "bottom", "toNode": "ordens-servico", "toSide": "top", "label": "serviço da estadia"},
     {"id": "instalacoes-inventario", "fromNode": "instalacoes", "fromSide": "right", "toNode": "inventario", "toSide": "left", "label": "capacidade do pátio"},
     {"id": "rbac-inventario", "fromNode": "rbac", "fromSide": "right", "toNode": "inventario", "toSide": "left", "label": "inventory:manage"},
     {"id": "inventario-auditoria", "fromNode": "inventario", "fromSide": "left", "toNode": "auditoria", "toSide": "right", "label": "mutações auditadas"},
@@ -131,6 +138,7 @@
     {"id": "rbac-fiscal-financeiro", "fromNode": "rbac", "fromSide": "right", "toNode": "fiscal-financeiro", "toSide": "left", "label": "fiscal/finance"},
     {"id": "unificacao-operacao", "fromNode": "unificacao-multitenant", "fromSide": "right", "toNode": "operacao", "toSide": "left", "label": "ownership operacional"},
     {"id": "clientes-operacao", "fromNode": "clientes", "fromSide": "right", "toNode": "operacao", "toSide": "left", "label": "veículo do cliente"},
+    {"id": "fiscal-clientes", "fromNode": "fiscal-financeiro", "fromSide": "left", "toNode": "clientes", "toSide": "right", "label": "tomador identificado"},
     {"id": "rbac-operacao", "fromNode": "rbac", "fromSide": "right", "toNode": "operacao", "toSide": "left", "label": "operations:read/manage"},
     {"id": "clientes-vendas-administrativas", "fromNode": "clientes", "fromSide": "right", "toNode": "vendas-administrativas", "toSide": "left", "label": "cliente da venda"},
     {"id": "vendas-administrativas-estoque", "fromNode": "vendas-administrativas", "fromSide": "left", "toNode": "estoque", "toSide": "right", "label": "baixa física"},
@@ -139,6 +147,7 @@
     {"id": "clientes-ordens-servico", "fromNode": "clientes", "fromSide": "right", "toNode": "ordens-servico", "toSide": "left", "label": "cliente solicitante"},
     {"id": "conveniencia-ordens-servico", "fromNode": "conveniencia", "fromSide": "right", "toNode": "ordens-servico", "toSide": "left", "label": "catalogo de servicos"},
     {"id": "ordens-servico-fiscal", "fromNode": "ordens-servico", "fromSide": "left", "toNode": "fiscal-financeiro", "toSide": "right", "label": "NFS e conta a receber"},
+    {"id": "operacao-fiscal-listagem", "fromNode": "operacao", "fromSide": "left", "toNode": "fiscal-financeiro", "toSide": "right", "label": "rascunhos na listagem unificada"},
     {"id": "rbac-ordens-servico", "fromNode": "rbac", "fromSide": "right", "toNode": "ordens-servico", "toSide": "left", "label": "service_orders:read/manage"},
     {"id": "core-consultas", "fromNode": "core", "fromSide": "right", "toNode": "consultas", "toSide": "left", "label": "busca transversal"},
     {"id": "rbac-consultas", "fromNode": "rbac", "fromSide": "right", "toNode": "consultas", "toSide": "left", "label": "grupos permitidos"},
@@ -147,6 +156,8 @@
     {"id": "consultas-navegacao", "fromNode": "consultas", "fromSide": "right", "toNode": "navegacao", "toSide": "left", "label": "busca no cabeçalho"},
     {"id": "consultas-vendas-pendencias", "fromNode": "consultas", "fromSide": "left", "toNode": "vendas-administrativas", "toSide": "right", "label": "confirmadas sem nota"},
     {"id": "consultas-servicos-pendencias", "fromNode": "consultas", "fromSide": "left", "toNode": "ordens-servico", "toSide": "right", "label": "concluidas sem nota"},
-    {"id": "consultas-financeiro-pendencias", "fromNode": "consultas", "fromSide": "left", "toNode": "fiscal-financeiro", "toSide": "right", "label": "vencidas com saldo"}
+    {"id": "consultas-financeiro-pendencias", "fromNode": "consultas", "fromSide": "left", "toNode": "fiscal-financeiro", "toSide": "right", "label": "vencidas com saldo"},
+    {"id": "core-prontidao", "fromNode": "core", "fromSide": "right", "toNode": "prontidao-producao", "toSide": "left", "label": "configuração e recuperação"},
+    {"id": "prontidao-rbac", "fromNode": "prontidao-producao", "fromSide": "left", "toNode": "rbac", "toSide": "right", "label": "gate de implantação"}
   ]
 }

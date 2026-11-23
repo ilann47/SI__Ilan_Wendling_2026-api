@@ -35,6 +35,9 @@ public class Movimentacao extends AuditableEntity {
     @Column(name = "organizacao_id", updatable = false)
     private Long organizacaoId;
 
+    @Column(name = "patio_turno_entrada_id", updatable = false)
+    private Long patioTurnoEntradaId;
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version;

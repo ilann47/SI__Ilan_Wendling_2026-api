@@ -15,6 +15,7 @@ public interface VeiculoRepository extends JpaRepository<Veiculo, Long>,
 
     /** Unicidade da placa (uq_veiculo_placa). */
     boolean existsByOrganizacaoIdAndPlaca(Long organizacaoId, String placa);
+    Optional<Veiculo> findByOrganizacaoIdAndPlaca(Long organizacaoId, String placa);
     boolean existsByOrganizacaoIdIsNullAndPlaca(String placa);
 
     /** Mesma checagem, ignorando o proprio registro — usado em alteracoes. */

@@ -65,6 +65,7 @@ public class MensalistaService {
         Cliente cliente = buscarCliente(organizacaoId, req.clienteId());
         Veiculo veiculo = buscarVeiculo(organizacaoId, req.veiculoId());
         StatusMensalista status = req.status() != null ? req.status() : StatusMensalista.ATIVO;
+        if (status == StatusMensalista.ATIVO) validarCadastroFiscal(cliente);
         LocalDate inicio = req.dataInicio() != null ? req.dataInicio() : LocalDate.now();
         validarPeriodo(inicio, req.dataFim());
         if (status == StatusMensalista.ATIVO
@@ -87,6 +88,11 @@ public class MensalistaService {
         Cliente cliente = buscarCliente(organizacaoId, req.clienteId());
         Veiculo veiculo = buscarVeiculo(organizacaoId, req.veiculoId());
         StatusMensalista status = req.status() != null ? req.status() : StatusMensalista.ATIVO;
+        if (status == StatusMensalista.ATIVO
+                && (mensalista.getStatus() != StatusMensalista.ATIVO
+                    || !cliente.getId().equals(mensalista.getCliente().getId()))) {
+            validarCadastroFiscal(cliente);
+        }
         LocalDate inicio = req.dataInicio() != null ? req.dataInicio() : mensalista.getDataInicio();
         validarPeriodo(inicio, req.dataFim());
         if (status == StatusMensalista.ATIVO
@@ -150,6 +156,13 @@ public class MensalistaService {
     private void validarPeriodo(LocalDate inicio, LocalDate fim) {
         if (fim != null && fim.isBefore(inicio)) {
             throw new ConflitoException("A data de término não pode ser anterior à data de início.");
+        }
+    }
+
+    private void validarCadastroFiscal(Cliente cliente) {
+        if (cliente.isCadastroFiscalBasico()) {
+            throw new ConflitoException(
+                    "Complete o cadastro do cliente com um telefone ou e-mail válido antes de ativar o contrato de mensalista.");
         }
     }
 
