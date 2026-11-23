@@ -143,7 +143,7 @@ O sistema deve permitir cadastrar uma forma de pagamento informando **nome** (ob
 O sistema deve permitir editar nome e descrição de uma forma de pagamento, mantendo a unicidade do nome.
 
 ### 4.7.4 Excluir Forma de Pagamento
-O sistema deve permitir excluir (inativar) uma forma de pagamento. A exclusão física deve ser bloqueada quando houver contas a pagar, contas a receber, despesas avulsas (`fk_contas_pagar_avulsa_forma`) ou notas de serviço vinculadas (`ON DELETE RESTRICT`). As parcelas de condição de pagamento, por sua vez, não bloqueiam a exclusão: o vínculo é apenas anulado (`forma_pagamento_id` definido como nulo, `ON DELETE SET NULL`).
+O sistema deve permitir excluir (inativar) uma forma de pagamento. A exclusão física deve ser bloqueada quando houver contas a pagar, contas a receber ou notas de serviço vinculadas (`ON DELETE RESTRICT`). As parcelas de condição de pagamento, por sua vez, não bloqueiam a exclusão: o vínculo é apenas anulado (`forma_pagamento_id` definido como nulo, `ON DELETE SET NULL`).
 
 ---
 
@@ -433,7 +433,7 @@ Receber valor e data opcional. Aceitar baixa parcial ou total até o saldo, regi
 
 ### 4.23.3 Cancelar ou editar
 
-Cancelar somente título sem baixa. Não editar diretamente parcelas fiscais. A edição de despesa avulsa pendente tem fluxo próprio.
+Cancelar somente título sem baixa. Não editar diretamente parcelas fiscais.
 
 ### 4.23.4 Consultar
 
@@ -459,22 +459,6 @@ Permitir cancelar título sem baixa. Não existe edição direta no contrato atu
 
 Listar, filtrar, apresentar resumo, vencimento, saldo, origem e histórico de baixas.
 
-## 4.25 Lançar Despesa Avulsa
-
-Processo de registro de despesas sem nota fiscal de mercadoria (ex.: aluguel, luz, água, salário), por meio da entidade `contas_pagar_avulsa`.
-
-### 4.25.1 Lançar Despesa Avulsa
-O sistema deve permitir lançar uma despesa avulsa informando **descrição**, **valor original**, **valor total** e **data de vencimento** (obrigatórios), além de fornecedor (opcional), forma de pagamento, dados de nota (número/modelo/série), parcelamento e observação, com situação inicial `PENDENTE`. Os valores devem ser não negativos e coerentes (valor total ≥ valor original − desconto — `ck_contas_pagar_avulsa_total_min`), e o vencimento não pode ser anterior à emissão.
-
-### 4.25.2 Baixar (Pagar) Despesa Avulsa
-O sistema deve registrar pagamento total ou parcial com valor e data opcional, sem ultrapassar o saldo. Na quitação, grava a data informada ou a data corrente. Desconto, juros e multa pertencem ao lançamento da despesa, não ao comando de baixa.
-
-### 4.25.3 Cancelar Despesa Avulsa
-O sistema deve permitir cancelar uma despesa avulsa pendente (situação `CANCELADA`).
-
-### 4.25.4 Consultar Despesas Avulsas
-O sistema deve permitir consultar e listar despesas avulsas por fornecedor, situação e período de vencimento.
-
 ---
 
 ## Relatórios
@@ -488,7 +472,7 @@ O sistema deve emitir um relatório dos veículos atualmente no pátio, a partir
 O sistema deve emitir um relatório de faturamento de um dia (ou período) informado, consolidando os valores cobrados nas saídas de pátio (`movimentacao` `FECHADO`), as notas de saída e de serviço confirmadas/emitidas e os recebimentos efetivados, com totalização geral e por origem (estacionamento avulso, mensalidade, conveniência e serviços).
 
 ## 4.28 Relatório de Contas a Vencer
-O sistema deve emitir um relatório das contas a pagar e a receber com vencimento dentro de um período informado e situação em aberto (`PENDENTE`/`PARCIAL`), agrupadas por data de vencimento e por contraparte (fornecedor/cliente), destacando os títulos vencidos e totalizando os valores. Inclui as despesas avulsas em aberto.
+O sistema deve emitir um relatório das contas a pagar e a receber com vencimento dentro de um período informado e situação em aberto (`PENDENTE`/`PARCIAL`), agrupadas por data de vencimento e por contraparte (fornecedor/cliente), destacando os títulos vencidos e totalizando os valores.
 
 ## 4.29 Relatório de Estoque Mínimo
 O sistema deve emitir um relatório dos produtos cujo estoque atual (`quantidade`) esteja igual ou inferior ao estoque mínimo (`quantidade_minima`), exibindo produto, marca, categoria, quantidade atual, quantidade mínima e fornecedores associados, para apoiar a reposição de mercadorias.
@@ -557,7 +541,7 @@ O sistema deve permitir excluir (inativar) um vínculo de frota, preservando o h
 | Grupo | Itens | Faixa de RF |
 |-------|-------|-------------|
 | Manter Cadastros | 20 cadastros (País, Estado, Cidade, Cargo, Funcionário, Usuário, Forma de Pagamento, Condição de Pagamento, Fornecedor, Cliente, Veículo, Tarifa, Categoria, Marca, Unidade de Medida, Serviço, Produto, Transportadora, Veículo de Frota, Frota da Transportadora) | 4.1 a 4.17 e 4.31 a 4.33 |
-| Processos de Negócio | 8 processos | 4.18 a 4.25 |
+| Processos de Negócio | 7 processos | 4.18 a 4.24 |
 | Relatórios | 5 relatórios | 4.26 a 4.30 |
 
 Os requisitos funcionais aqui listados servem de base para os Casos de Uso detalhados em [[05-casos-de-uso]] e estão fundamentados no modelo de dados descrito em [[03-der]].

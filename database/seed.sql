@@ -141,10 +141,6 @@ INSERT INTO nota_servico (id, numero, serie, cliente_id, servico_id, mensalista_
 INSERT INTO usuario (id, nome, login, senha, email, funcionario_id, perfil) VALUES
   (1,'Carlos Pereira','admin','$2a$10$exemploHashAdmin0000000000000000000000','admin@kaneko.com',1,'ADMIN'),
   (2,'Joao Mendes','joao','$2a$10$exemploHashJoao00000000000000000000000','joao@kaneko.com',2,'OPERADOR');
--- Despesas avulsas (sem nota fiscal)
-INSERT INTO contas_pagar_avulsa (id, descricao, forma_pagamento_id, valor_original, valor_total, data_emissao, data_vencimento, situacao) VALUES
-  (1,'Aluguel do imovel - junho',4,3000.00,3000.00,DATE '2026-06-01',DATE '2026-06-10','PENDENTE'),
-  (2,'Energia eletrica - maio',1,850.00,850.00,DATE '2026-06-01',DATE '2026-06-15','PENDENTE');
 -- Vinculo produto x fornecedor (de qual fornecedor compramos cada produto)
 INSERT INTO produto_fornecedor (produto_id, fornecedor_id, codigo_prod, custo) VALUES
   (1,1,'CC350',2.50),(2,1,'AG500',1.00),(3,2,'SLG100',3.00);
@@ -182,4 +178,3 @@ SELECT setval(pg_get_serial_sequence('conta_pagar','id'),        (SELECT max(id)
 SELECT setval(pg_get_serial_sequence('conta_receber','id'),      (SELECT max(id) FROM conta_receber));
 SELECT setval(pg_get_serial_sequence('nota_servico','id'),       (SELECT max(id) FROM nota_servico));
 SELECT setval(pg_get_serial_sequence('usuario','id'),            (SELECT max(id) FROM usuario));
-SELECT setval(pg_get_serial_sequence('contas_pagar_avulsa','id'),(SELECT max(id) FROM contas_pagar_avulsa));

@@ -2,8 +2,6 @@ package com.kaneko.estacionamento.relatorio;
 
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.financeiro.ContaPagar;
-import com.kaneko.estacionamento.financeiro.ContaPagarAvulsa;
-import com.kaneko.estacionamento.financeiro.ContaPagarAvulsaRepository;
 import com.kaneko.estacionamento.financeiro.ContaPagarRepository;
 import com.kaneko.estacionamento.financeiro.ContaReceber;
 import com.kaneko.estacionamento.financeiro.ContaReceberRepository;
@@ -60,7 +58,6 @@ public class RelatorioService {
     private final NotaServicoRepository notaServicoRepository;
     private final ContaReceberRepository contaReceberRepository;
     private final ContaPagarRepository contaPagarRepository;
-    private final ContaPagarAvulsaRepository contaPagarAvulsaRepository;
     private final MensalistaRepository mensalistaRepository;
     private final SaldoEstoqueRepository saldoEstoqueRepository;
 
@@ -69,7 +66,6 @@ public class RelatorioService {
                             NotaServicoRepository notaServicoRepository,
                             ContaReceberRepository contaReceberRepository,
                             ContaPagarRepository contaPagarRepository,
-                            ContaPagarAvulsaRepository contaPagarAvulsaRepository,
                             MensalistaRepository mensalistaRepository,
                             SaldoEstoqueRepository saldoEstoqueRepository) {
         this.movimentacaoRepository = movimentacaoRepository;
@@ -77,7 +73,6 @@ public class RelatorioService {
         this.notaServicoRepository = notaServicoRepository;
         this.contaReceberRepository = contaReceberRepository;
         this.contaPagarRepository = contaPagarRepository;
-        this.contaPagarAvulsaRepository = contaPagarAvulsaRepository;
         this.mensalistaRepository = mensalistaRepository;
         this.saldoEstoqueRepository = saldoEstoqueRepository;
     }
@@ -160,18 +155,6 @@ public class RelatorioService {
         for (ContaPagar c : contasPagar) {
             aPagar.add(new ContasAVencerResponse.Titulo("CONTA_PAGAR", c.getId(),
                     c.getFornecedor().getNome(), c.getDataVencimento(),
-                    c.getValorTotal().subtract(c.getValorPago()),
-                    c.getDataVencimento().isBefore(hoje), c.getSituacao().name()));
-        }
-        List<ContaPagarAvulsa> despesas = organizacaoId == null
-                ? contaPagarAvulsaRepository.findBySituacaoInAndDataVencimentoBetween(
-                        ABERTAS_PAGAR, inicio, fim)
-                : contaPagarAvulsaRepository.findByOrganizacaoIdAndSituacaoInAndDataVencimentoBetween(
-                        organizacaoId, ABERTAS_PAGAR, inicio, fim);
-        for (ContaPagarAvulsa c : despesas) {
-            String contraparte = c.getFornecedor() != null ? c.getFornecedor().getNome() : c.getDescricao();
-            aPagar.add(new ContasAVencerResponse.Titulo("DESPESA_AVULSA", c.getId(),
-                    contraparte, c.getDataVencimento(),
                     c.getValorTotal().subtract(c.getValorPago()),
                     c.getDataVencimento().isBefore(hoje), c.getSituacao().name()));
         }

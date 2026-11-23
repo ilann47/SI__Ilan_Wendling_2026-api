@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 @TenantApiIntegrationTest
@@ -20,6 +21,7 @@ class RelatorioTenantApiTest {
     @Autowired private MockMvc mvc;
     @Autowired private TenantTestSupport tenant;
     @Autowired private RelatorioService service;
+    @Autowired private JdbcTemplate jdbc;
     @Autowired private com.kaneko.estacionamento.pessoas.ClienteRepository clientes;
     @Autowired private com.kaneko.estacionamento.fiscal.NotaServicoRepository notasServico;
     private TenantFixture tenantA;
@@ -31,8 +33,8 @@ class RelatorioTenantApiTest {
 
     @Test
     void consolidaSomenteDadosDoTenantAtivo() throws Exception {
-        criarDespesa(tenantA,100);
-        criarDespesa(tenantB,900);
+        criarContaPagar(tenantA,100);
+        criarContaPagar(tenantB,900);
         String hoje=LocalDate.now().toString();
         String fim=LocalDate.now().plusDays(30).toString();
 
@@ -41,6 +43,7 @@ class RelatorioTenantApiTest {
                 .param("inicio",hoje).param("fim",fim))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.aPagar.length()").value(1))
+                .andExpect(jsonPath("$.aPagar[0].origem").value("CONTA_PAGAR"))
                 .andExpect(jsonPath("$.totalAPagar").value(100));
         mvc.perform(get("/api/relatorios/faturamento")
                 .header("Authorization",tenantA.tokenContextual()).param("inicio",hoje))
@@ -81,11 +84,16 @@ class RelatorioTenantApiTest {
         notasServico.saveAndFlush(nota);
     }
 
-    private void criarDespesa(TenantFixture fixture,int valor)throws Exception{
-        mvc.perform(post("/api/contas-pagar-avulsas")
+    private void criarContaPagar(TenantFixture fixture,int valor)throws Exception{
+        Long fornecedorId = jdbc.queryForObject("""
+                INSERT INTO fornecedor(organizacao_id,nome,tipo,documento,limite_credito_micros,ativo,created_at,updated_at)
+                VALUES (?,'Fornecedor relatório','JURIDICA','12345678000195',0,true,now(),now())
+                RETURNING id
+                """, Long.class, fixture.organizacaoId());
+        mvc.perform(post("/api/contas-pagar")
                 .header("Authorization",fixture.tokenContextual())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"descricao\":\"Despesa\",\"valorOriginal\":"+valor+","
+                .content("{\"fornecedorId\":"+fornecedorId+",\"valorOriginal\":"+valor+","
                         +"\"dataVencimento\":\""+LocalDate.now().plusDays(10)+"\"}"))
                 .andExpect(status().isCreated());
     }

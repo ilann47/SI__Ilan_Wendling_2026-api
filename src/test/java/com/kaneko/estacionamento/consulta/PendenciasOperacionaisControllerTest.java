@@ -61,16 +61,22 @@ class PendenciasOperacionaisControllerTest {
                 .andExpect(jsonPath("$.grupos[?(@.tipo == 'CONTA_RECEBER_VENCIDA')].itens[0].valor").value(org.hamcrest.Matchers.contains(100.0)));
     }
 
-    @Test void preservaDespesaAvulsaVencidaSemFornecedor() throws Exception {
+    @Test void preservaContaPagarVencidaSemCategoriaDeDespesaAvulsa() throws Exception {
         var a = tenant.criarTenantAdmin();
+        Long fornecedorId = jdbc.queryForObject("""
+            INSERT INTO fornecedor(organizacao_id,nome,tipo,documento,limite_credito_micros,ativo,created_at,updated_at)
+            VALUES (?,'Fornecedor pendências','JURIDICA','12345678000195',0,true,now(),now())
+            RETURNING id
+            """, Long.class, a.organizacaoId());
         jdbc.update("""
-            INSERT INTO contas_pagar_avulsa(organizacao_id,descricao,valor_original_micros,valor_total_micros,data_emissao,data_vencimento)
-            VALUES (?,'Aluguel',50000001,50000001,current_date-40,current_date-10)
-            """, a.organizacaoId());
+            INSERT INTO conta_pagar(organizacao_id,fornecedor_id,valor_original_micros,valor_total_micros,data_emissao,data_vencimento)
+            VALUES (?,?,50000001,50000001,current_date-40,current_date-10)
+            """, a.organizacaoId(), fornecedorId);
         mvc.perform(get("/api/v1/operational-pendencies").header("Authorization", a.tokenContextual()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
-                .andExpect(jsonPath("$.grupos[?(@.tipo == 'DESPESA_AVULSA_VENCIDA')].total").value(org.hamcrest.Matchers.contains(1)))
-                .andExpect(jsonPath("$.grupos[?(@.tipo == 'DESPESA_AVULSA_VENCIDA')].itens[0].valor")
+                .andExpect(jsonPath("$.grupos[?(@.tipo == 'DESPESA_AVULSA_VENCIDA')]").isEmpty())
+                .andExpect(jsonPath("$.grupos[?(@.tipo == 'CONTA_PAGAR_VENCIDA')].total").value(org.hamcrest.Matchers.contains(1)))
+                .andExpect(jsonPath("$.grupos[?(@.tipo == 'CONTA_PAGAR_VENCIDA')].itens[0].valor")
                         .value(org.hamcrest.Matchers.contains(50.000001)));
     }
 

@@ -42,7 +42,7 @@ Os protótipos estão agrupados conforme os módulos do sistema:
 - **6.7 Módulo Pátio** — Veículo, Tarifa, Mensalista, Movimentação.
 - **6.8 Módulo Conveniência** — Categoria, Marca, Unidade de Medida, Serviço, Produto.
 - **6.9 Módulo Fiscal** — Nota de Entrada, Nota de Saída, Nota de Serviço.
-- **6.10 Módulo Financeiro** — Formas e Condições de Pagamento, Contas a Pagar, Contas a Receber, Contas a Pagar Avulsa.
+- **6.10 Módulo Financeiro** — Formas e Condições de Pagamento, Contas a Pagar e Contas a Receber.
 
 Para evitar repetição exaustiva, as telas de **cadastro de apoio** (que seguem rigorosamente o CRUD-padrão da tabela acima) são descritas de forma sintética, enquanto as telas que carregam **regras de negócio relevantes** (Movimentação, Mensalista, Notas, Contas) recebem descrição detalhada. Cada protótipo cobre, conforme aplicável, os estados de **Listagem, Cadastro/Inserir, Edição, Exclusão** e, ao final de cada módulo, os **Relatórios**.
 
@@ -373,16 +373,11 @@ Forma identifica o meio de pagamento cadastrado. Condição descreve parcelas e 
 
 **Baixa e cancelamento.** Em **Registrar pagamento** ou **Registrar recebimento**, informar **Valor da baixa** e **Data da baixa**. Conferir a situação e o histórico depois da ação. O sistema protege tentativas repetidas contra duplicação. **Cancelar título** é ação separada e não está disponível quando existe baixa. O lançamento manual abre **Novo lançamento**, sem alterar uma nota existente.
 
-### 6.10.3 Despesa avulsa
-
-Cadastro separado, em Contas a Pagar Avulsas. Permite registrar despesa sem vínculo fiscal obrigatório, editar enquanto pendente e registrar baixa ou cancelamento pelos comandos próprios do recurso.
-
-### 6.10.4 Correspondência com a API
+### 6.10.3 Correspondência com a API
 
 | Recurso | Operações implementadas |
 |---|---|
 | Contas a Pagar e a Receber | Bases `/api/contas-pagar` e `/api/contas-receber`: listagem, detalhe, resumo, lançamento, histórico `GET /{id}/baixas`, `POST /{id}/baixa` e `POST /{id}/cancelamento`. Não há `PUT` nem `DELETE` nesses títulos. |
-| Despesa avulsa | Base `/api/contas-pagar-avulsas`: listagem, detalhe, criação, edição de pendente, baixa, cancelamento e exclusão. |
 
 A baixa dos títulos regulares usa `{ valor, data? }`; o frontend envia `Idempotency-Key`. [Casos de uso financeiros](05-casos-de-uso/processos-financeiros.md).
 

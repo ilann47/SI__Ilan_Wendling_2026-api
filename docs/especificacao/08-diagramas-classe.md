@@ -2,7 +2,7 @@
 
 # 8. Diagramas de Classe (UML)
 
-As seções 8.1 a 8.10 preservam a representação histórica de classes do **Estacionamento Kaneko**, derivada de `database/schema.sql` (34 tabelas), com atributos tipados no estilo Java/JPA e enumerações modeladas como classes `<<enumeration>>`. A seção **8.10.1** apresenta o recorte vigente das notas de mercadoria, estoque e contas multiempresa, em correspondência com o [[03-der]].
+As seções 8.1 a 8.10 preservam a representação histórica de classes do **Estacionamento Kaneko**, derivada do modelo anterior à evolução multiempresa, sem o recurso financeiro descontinuado, com atributos tipados no estilo Java/JPA e enumerações modeladas como classes `<<enumeration>>`. A seção **8.10.1** apresenta o recorte vigente das notas de mercadoria, estoque e contas multiempresa, em correspondência com o [[03-der]].
 
 As associações refletem as chaves estrangeiras do banco, com rótulos de cardinalidade. Adotam-se as convenções:
 
@@ -587,7 +587,7 @@ classDiagram
 
 ## 8.8 Módulo Financeiro
 
-Títulos a pagar e a receber. Conta a Pagar nasce de Nota de Entrada (ou avulsa); Conta a Receber nasce de Nota de Saída ou de Mensalista; Conta a Pagar Avulsa cobre despesas sem nota (aluguel, luz, água, salário).
+Títulos a pagar e a receber. Conta a Pagar pode ser vinculada à Nota de Entrada ou lançada manualmente com fornecedor. Conta a Receber pode ter origem fiscal, contratual ou manual.
 
 ```mermaid
 classDiagram
@@ -627,28 +627,6 @@ classDiagram
         +LocalDateTime criadoEm
         +LocalDateTime atualizadoEm
     }
-    class ContasPagarAvulsa {
-        +Long id
-        +String descricao
-        +String numeroNota
-        +String modelo
-        +String serie
-        +Integer numeroParcela
-        +Integer totalParcelas
-        +BigDecimal valorOriginal
-        +BigDecimal valorPago
-        +BigDecimal valorDesconto
-        +BigDecimal valorJuros
-        +BigDecimal valorMulta
-        +BigDecimal valorTotal
-        +LocalDate dataEmissao
-        +LocalDate dataVencimento
-        +LocalDate dataPagamento
-        +SituacaoContaPagar situacao
-        +String observacao
-        +LocalDateTime criadoEm
-        +LocalDateTime atualizadoEm
-    }
     class SituacaoContaPagar {
         <<enumeration>>
         PENDENTE
@@ -673,14 +651,9 @@ classDiagram
     ContaReceber "*" --> "0..1" Mensalista : origem contrato
     ContaReceber "*" --> "0..1" CondicaoPagamento : usa
     ContaReceber "*" --> "0..1" FormaPagamento : usa
-    ContasPagarAvulsa "*" --> "0..1" Fornecedor : deve a
-    ContasPagarAvulsa "*" --> "0..1" FormaPagamento : usa
     ContaPagar ..> SituacaoContaPagar
     ContaReceber ..> SituacaoContaReceber
-    ContasPagarAvulsa ..> SituacaoContaPagar
 ```
-
-> 🖼️ **Versão em imagem (PNG):** [`diagramas/8-8-financeiro.png`](diagramas/8-8-financeiro.png)
 
 ---
 

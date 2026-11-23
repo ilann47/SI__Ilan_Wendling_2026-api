@@ -546,23 +546,6 @@ where not exists (
       and cr.numero_parcela = 1
 );
 
-insert into contas_pagar_avulsa
-    (id, descricao, fornecedor_id, forma_pagamento_id, numero_nota, modelo,
-     serie, numero_parcela, total_parcelas, valor_original_micros, valor_pago_micros,
-     valor_desconto_micros, valor_juros_micros, valor_multa_micros, valor_total_micros, data_emissao,
-     data_vencimento, situacao, observacao, organizacao_id, version)
-select nextval('contas_pagar_avulsa_id_seq'), 'Energia eletrica Demo', null, fp.id,
-       'DESP-DEMO-001', 'FAT', 'D1', 1, 1, kaneko_micros(480), 0, 0, 0, 0, kaneko_micros(480),
-       current_date, current_date + 10, 'PENDENTE',
-       'Despesa operacional demonstrativa', c.organizacao_id, 0
-from demo_seed_context c
-join forma_pagamento fp
-  on fp.organizacao_id = c.organizacao_id and fp.nome = 'PIX Demo'
-where not exists (
-    select 1 from contas_pagar_avulsa d
-    where d.organizacao_id = c.organizacao_id and d.numero_nota = 'DESP-DEMO-001'
-);
-
 insert into tarifa
     (id, descricao, valor_hora_micros, valor_diaria_micros, tolerancia_min,
      valor_mensalidade_micros, ativo, organizacao_id, version)

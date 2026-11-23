@@ -23,7 +23,7 @@ recorte não permite confirmar suas especificações detalhadas.
 **Divergências deliberadas.** A compra é a Nota de Entrada e a venda de
 mercadoria começa na Nota de Saída; Ordem de Compra e Pedido de Venda não
 integram esses fluxos. Não há edição direta de títulos fiscais nem estorno
-bancário. Uma despesa avulsa pendente pode ser editada. A opção “alterar
+bancário. A opção “alterar
 contas” do exemplo não foi usada para liberar mudança de origem, valor ou
 histórico de títulos fiscais. O caso de uso distingue cancelamento de rascunho
 de reversão interna da confirmada; não há emissão/estorno fiscal externo.
@@ -113,11 +113,13 @@ Os itens a seguir derivam da **auditoria crítica dos casos de uso** (`05-casos-
 
 ### P1 — Integridade de dados (camada de banco)
 
+Os achados desta seção retratam a linha de base acadêmica analisada à época; não descrevem o schema executável atual. A estrutura de Despesas Avulsas mencionada no achado P1.1 foi descontinuada e removida do banco de teste na V105.
+
 **Prioridade máxima.** Defeitos de integridade no banco são os mais caros e perigosos: uma vez gravado um registro inconsistente, ele contamina relatórios financeiros e o fechamento de caixa, e a correção retroativa é trabalhosa. O banco é a última linha de defesa e deve rejeitar estados impossíveis independentemente de bugs na aplicação (princípio *fail-fast* na borda dos dados).
 
 **P1.1 — CHECK de composição de `valor_total` em `conta_pagar` e `conta_receber`.**
-*Achado.* Hoje **apenas** `contas_pagar_avulsa` possui uma restrição de composição de valor — `ck_contas_pagar_avulsa_total_min CHECK (valor_total >= valor_original - valor_desconto)` (schema, linha 754). Em `conta_pagar` (linhas 610–646) e `conta_receber` (linhas 655–694) há apenas restrições de não-negatividade (`ck_conta_pagar_valores`, `ck_conta_receber_valores`) e teto de pago/recebido (`ck_conta_pagar_pago_teto`, `ck_conta_receber_recebido_teto`), mas **nenhuma** que vincule `valor_total` à fórmula `valor_total = valor_original - valor_desconto + valor_juros + valor_multa`. Essa igualdade é, atualmente, **garantida apenas pela aplicação** — que ainda não existe.
-*Ação.* Adicionar a `conta_pagar` e `conta_receber` uma constraint de composição que ancore `valor_total` em seus componentes. Avaliar entre a **igualdade exata** (`CHECK (valor_total = valor_original - valor_desconto + valor_juros + valor_multa)`) e, caso o arredondamento de parcelas torne a igualdade frágil, uma **cota inferior** no padrão já adotado para a avulsa (`CHECK (valor_total >= valor_original - valor_desconto)`). Recomenda-se a igualdade exata por ser a regra real do negócio; havendo divergência de centavos por rateio, documentar e migrar para a cota mínima.
+*Achado da linha de base.* À época, **apenas** `contas_pagar_avulsa` possuía uma restrição de composição de valor — `ck_contas_pagar_avulsa_total_min CHECK (valor_total >= valor_original - valor_desconto)` (schema, linha 754). Em `conta_pagar` (linhas 610–646) e `conta_receber` (linhas 655–694) há apenas restrições de não-negatividade (`ck_conta_pagar_valores`, `ck_conta_receber_valores`) e teto de pago/recebido (`ck_conta_pagar_pago_teto`, `ck_conta_receber_recebido_teto`), mas **nenhuma** que vincule `valor_total` à fórmula `valor_total = valor_original - valor_desconto + valor_juros + valor_multa`. A análise registrou essa igualdade como responsabilidade da futura camada de aplicação.
+*Ação.* Adicionar a `conta_pagar` e `conta_receber` uma constraint de composição que ancore `valor_total` em seus componentes. Avaliar entre a **igualdade exata** (`CHECK (valor_total = valor_original - valor_desconto + valor_juros + valor_multa)`) e, caso o arredondamento de parcelas torne a igualdade frágil, uma **cota inferior** no padrão usado na época para o recurso descontinuado (`CHECK (valor_total >= valor_original - valor_desconto)`). Recomenda-se a igualdade exata por ser a regra real do negócio; havendo divergência de centavos por rateio, documentar e migrar para a cota mínima.
 *Justificativa da prioridade.* É a divergência mais grave: sem o CHECK, qualquer falha de cálculo na futura camada de serviço grava títulos financeiros com total incoerente, sem detecção. O custo da migração é baixo (duas constraints) e o ganho de garantia é alto.
 
 **P1.2 — Índice único parcial para "tarifa vigente" única.**

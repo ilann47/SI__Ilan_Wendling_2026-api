@@ -28,15 +28,6 @@ public class PendenciasOperacionaisService {
         LocalDate hoje = LocalDate.now(ZoneId.of(fuso));
         List<Grupo> grupos = new ArrayList<>();
         if (permissoes.contains("finance:read")) {
-            grupos.add(consultar("DESPESA_AVULSA_VENCIDA", limite, """
-                SELECT c.id, concat('Pagar despesa ',c.descricao) titulo, coalesce(f.nome,'Despesa avulsa') contraparte,
-                       concat('/app/contas-pagar-avulsas?detail=',c.id) caminho, c.data_vencimento data,
-                       (c.valor_total_micros-c.valor_pago_micros) * 0.000001 valor, count(*) OVER() total
-                FROM contas_pagar_avulsa c LEFT JOIN fornecedor f ON f.id=c.fornecedor_id AND f.organizacao_id=c.organizacao_id
-                WHERE c.organizacao_id=? AND c.situacao IN ('PENDENTE','PARCIAL')
-                  AND c.valor_total_micros>c.valor_pago_micros AND c.data_vencimento<?
-                ORDER BY c.data_vencimento,c.id LIMIT ?
-                """, org, hoje, limite));
             grupos.add(consultar("CONTA_PAGAR_VENCIDA", limite, """
                 SELECT c.id, concat('Pagar ',f.nome) titulo, f.nome contraparte,
                        concat('/app/contas-pagar?detail=',c.id) caminho, c.data_vencimento data,

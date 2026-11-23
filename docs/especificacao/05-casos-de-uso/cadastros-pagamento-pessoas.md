@@ -20,7 +20,7 @@ Convenções adotadas neste documento:
 - **RN002:** O nome da forma de pagamento é obrigatório, possui no máximo 100 caracteres e deve ser único em todo o sistema (`uq_forma_pagamento_nome`). Não é permitido cadastrar duas formas de pagamento com o mesmo nome.
 - **RN003:** A descrição é obrigatória e possui no máximo 255 caracteres.
 - **RN004:** Toda forma de pagamento é criada com a situação ativa (`ativo = TRUE`) por padrão.
-- **RN005:** A forma de pagamento não pode ser excluída fisicamente quando estiver vinculada a notas de serviço, contas a pagar, contas a receber ou contas a pagar avulsas (restrições `ON DELETE RESTRICT`). Nesse caso, deve ser realizada a exclusão lógica (desativação), definindo `ativo = FALSE`. As parcelas de condição de pagamento não impedem a exclusão física: a chave estrangeira `fk_parcela_forma` é `ON DELETE SET NULL`, de modo que o vínculo da parcela é apenas anulado.
+- **RN005:** A forma de pagamento não pode ser excluída fisicamente quando estiver vinculada a notas de serviço, contas a pagar ou contas a receber (restrições `ON DELETE RESTRICT`). Nesse caso, deve ser realizada a exclusão lógica (desativação), definindo `ativo = FALSE`. As parcelas de condição de pagamento não impedem a exclusão física: a chave estrangeira `fk_parcela_forma` é `ON DELETE SET NULL`, de modo que o vínculo da parcela é apenas anulado.
 
 ## Nome do Caso de Uso
 
@@ -204,7 +204,7 @@ O caso de uso é ativado quando o usuário acessa a opção "Condições de Paga
 - **RN008:** Cada e-mail de contato exige o endereço de e-mail (obrigatório, máximo 120 caracteres) e, quando informado, o tipo deve ser um dos valores "COMERCIAL", "FINANCEIRO", "COMPRAS", "VENDAS" ou "SUPORTE" (`ck_fornecedor_email_tipo`).
 - **RN009:** Cada telefone de contato exige o número (obrigatório, máximo 20 caracteres) e, quando informado, o tipo deve ser um dos valores "COMERCIAL", "RESIDENCIAL", "CELULAR", "FAX" ou "WHATSAPP" (`ck_fornecedor_telefone_tipo`).
 - **RN010:** Os e-mails e telefones de contato são excluídos em cascata quando o fornecedor é excluído fisicamente (`ON DELETE CASCADE`).
-- **RN011:** O fornecedor não pode ser excluído fisicamente quando estiver vinculado a notas de entrada, contas a pagar, contas a pagar avulsas ou ao relacionamento produto x fornecedor, em razão das restrições `ON DELETE RESTRICT`. Nesse caso, deve ser realizada a exclusão lógica (`ativo = FALSE`).
+- **RN011:** O fornecedor não pode ser excluído fisicamente quando estiver vinculado a notas de entrada, contas a pagar ou ao relacionamento produto x fornecedor, em razão das restrições `ON DELETE RESTRICT`. Nesse caso, deve ser realizada a exclusão lógica (`ativo = FALSE`).
 
 ## Nome do Caso de Uso
 
@@ -299,7 +299,7 @@ O caso de uso é ativado quando o usuário acessa a opção "Fornecedores" no me
 - **E3 — Valor inválido:** Caso o tipo informado seja diferente de "FISICA" ou "JURIDICA" (`ck_fornecedor_tipo`), o limite de crédito seja negativo (`ck_fornecedor_limite`), ou o tipo de um e-mail ou telefone esteja fora dos valores permitidos (`ck_fornecedor_email_tipo`, `ck_fornecedor_telefone_tipo`), o sistema interrompe a gravação e exibe a mensagem: **"Valor inválido informado. Verifique o tipo do fornecedor, o limite de crédito e os tipos de contato."**
 - **E4 — Mais de um contato principal:** Caso seja marcado mais de um e-mail como principal, ou mais de um telefone como principal (violação de `uq_fornecedor_email_principal` ou `uq_fornecedor_telefone_principal`), o sistema interrompe a gravação e exibe a mensagem: **"Apenas um e-mail e um telefone podem ser marcados como principal."**
 - **E5 — Referência inexistente ou inativa:** Caso a cidade ou a condição de pagamento informada não exista, as chaves estrangeiras (`fk_fornecedor_cidade`, `fk_fornecedor_condicao`) impedem a gravação; caso o registro exista mas esteja inativo, a validação de aplicação interrompe a operação (o banco não rejeita referências a registros inativos). Em ambos os casos o sistema exibe a mensagem: **"O registro relacionado informado não foi encontrado ou está inativo."**
-- **E6 — Registro vinculado a outro:** Caso o fornecedor esteja vinculado a notas de entrada, contas a pagar, contas a pagar avulsas ou ao relacionamento produto x fornecedor, o sistema impede a exclusão física e exibe a mensagem: **"Este fornecedor está vinculado a outros registros e não pode ser excluído. Deseja desativá-lo?"** Em caso de confirmação, o sistema realiza a exclusão lógica (`ativo = FALSE`) e exibe "Fornecedor desativado com sucesso."
+- **E6 — Registro vinculado a outro:** Caso o fornecedor esteja vinculado a notas de entrada, contas a pagar ou ao relacionamento produto x fornecedor, o sistema impede a exclusão física e exibe a mensagem: **"Este fornecedor está vinculado a outros registros e não pode ser excluído. Deseja desativá-lo?"** Em caso de confirmação, o sistema realiza a exclusão lógica (`ativo = FALSE`) e exibe "Fornecedor desativado com sucesso."
 
 ---
 

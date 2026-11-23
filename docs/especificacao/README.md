@@ -51,7 +51,7 @@ As convenções a seguir são aplicadas de forma uniforme a todos os documentos 
 - **Mensagens parametrizadas.** Mensagens que dependem do campo em validação utilizam o marcador `[nome do campo]` como ponto de substituição (por exemplo, `O campo [nome do campo] é obrigatório.`).
 - **Hierarquia de cabeçalhos.** O título do arquivo é `H1`; o caso de uso e suas seções internas são `H2`; as sub-ações de manutenção (**Inserir**, **Alterar**, **Excluir**) são `H3`.
 - **Diagramas.** Todos os diagramas são expressos em **Mermaid**, utilizando `erDiagram` (entidade-relacionamento), `classDiagram` (classes) e `sequenceDiagram` (sequência).
-- **Modelo físico.** `database/schema.sql` documenta a baseline original de 34 tabelas. O modelo executável vigente é a sequência `src/main/resources/db/migration/V*`, validada por Flyway e Hibernate; nenhuma alteração deve ser aplicada diretamente ao arquivo histórico como substituto de migration.
+- **Modelo físico.** `database/schema.sql` é uma referência de desenvolvimento. O modelo executável vigente é a sequência de migrations `src/main/resources/db/migration/V*`, validada por Flyway e Hibernate. A prévia local aplica também `db/test-cutover`, incluindo a V105, que retira a estrutura legada do recurso financeiro descontinuado. O arquivo de referência não substitui as migrations.
 
 ---
 

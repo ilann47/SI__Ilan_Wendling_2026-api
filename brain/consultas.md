@@ -41,14 +41,13 @@ Não existem. A primeira versão usa PostgreSQL e os dados transacionais existen
 
 O teste de integração prova autenticação contextual, validação do termo e isolamento de clientes homônimos entre organizações. O frontend prova abertura por `Ctrl+K`, debounce e renderização agrupada.
 
-`PendenciasOperacionaisControllerTest` cobre contagem além do limite, isolamento/RBAC, token global, limite inválido, nota de serviço já gerada, vencidas antigas e despesas avulsas sem fornecedor. Quatro cenários passaram na rodada focalizada integrada de 2026-09-12.
+`PendenciasOperacionaisControllerTest` cobre contagem além do limite, isolamento/RBAC, token global, limite inválido, nota de serviço já gerada e títulos regulares vencidos. A categoria removida de Despesas Avulsas não é devolvida.
 
 ## Decisões Técnicas
 
 - O tenant vem exclusivamente do principal autenticado; não há header selecionável.
 - Consultas usam projeções diretas para evitar carregar agregados completos.
 - Pendências usam snapshot PostgreSQL `REPEATABLE_READ` e `count(*) OVER()` antes do limite: contagem e itens permanecem coerentes, sem deduzir o total pela primeira página. SQL é parametrizado e cada categoria exige sua permissão no tenant.
-- Despesas avulsas vencidas são preservadas como categoria própria, inclusive sem fornecedor associado, e não se confundem com títulos de compra.
 - A revisão de compras parte da Nota de Entrada pendente. Pedidos de venda históricos não são pendências acionáveis. OS concluídas só aparecem sem nota vinculada; contas vencidas pendentes/parciais consideram saldo positivo e todo o histórico, não o período do resumo financeiro.
 - Um índice de busca dedicado não foi introduzido nesta versão; poderá ser avaliado com métricas reais.
 
@@ -60,6 +59,7 @@ O teste de integração prova autenticação contextual, validação do termo e 
 
 | Data | Ação |
 |---|---|
+| 2026-11-10 | Retira a categoria de Despesas Avulsas das pendências, mantendo os títulos regulares vencidos. |
 | 2026-11-08 | Pendências convertem o total inteiro da OS e o saldo inteiro da despesa avulsa para as unidades usuais da API. |
 | 2026-11-05 | Retira a categoria de Pedido de Venda sem nota; os pedidos de eventos e as pendências de serviço são preservados. |
 | 2026-08-17 | Implementa busca global tenant-aware e entrada permanente no cabeçalho. |

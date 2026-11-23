@@ -121,7 +121,6 @@
 | `DocumentoFiscal` | TARGET; abstração externa | tipo, emitente, número, série, chave, ambiente, XML/ref | origem comercial | solicitado/processando/autorizado/rejeitado/cancelado | todos os protocolos |
 | `ContaPagar` | AS-IS/EVOLUÇÃO; obrigação | fornecedor, origem, parcela, valores, vencimento | nota/condição/baixas | pendente/parcial/paga/cancelada | baixas e ajustes |
 | `ContaReceber` | AS-IS/EVOLUÇÃO; direito | cliente, pedido/nota/contrato, valores, vencimento | origem/baixas | pendente/parcial/recebida/cancelada | baixas e conciliação |
-| `ContaPagarAvulsa` | AS-IS; despesa sem nota estruturada | descrição, fornecedor opcional, valores, datas | forma de pagamento | estados de conta | baixas |
 | `BaixaFinanceira` | TARGET; lançamento de liquidação | conta, valor, data, meio, origem | N:1 conta | append-only; ≤ saldo | operador e conciliação |
 | `Conciliacao` | TARGET; conferência entre fontes | período, origem, totais, divergências | pagamentos/contas/caixa | pendente/com-divergências/conciliada/aprovada | executor/aprovador |
 | `Repasse` | TARGET; obrigação com parceiro | beneficiário, regra, base, taxas, líquido | evento/pedidos | calculado/aprovado/pago/cancelado | regra versionada |

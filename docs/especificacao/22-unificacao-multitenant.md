@@ -321,7 +321,6 @@ não são considerados seguros até a conclusão da respectiva história backend
 | `ordem_servico` e itens | Inexistentes | Novo agregado tenant | ADR e máquina de estados antes do DDL | 5 |
 | `nota_servico` | Global | Tenant direto | cliente, serviço e origem no mesmo tenant | 5 |
 | `conta_receber` | Global | Tenant direto | origem comercial/fiscal no mesmo tenant | 5/6 |
-| `contas_pagar_avulsa` | Global | Tenant direto | fornecedor/forma no tenant quando presentes | 6 |
 | relatórios legados | Consultas globais | Projeções tenant/evento | nenhuma agregação sem filtro de owner | 6 |
 | eventos, inventário, credenciais e acesso | Tenant direto | Preservar/integrar | FKs compostas já existentes | transversal |
 | `comprador_pedido` | Owner derivado do pedido | Filho tenant derivado | PK/FK com pedido é suficiente; consultas partem do agregado | transversal |
@@ -532,8 +531,7 @@ A V61 migra `Movimentacao`, exige Pátio e todas as referências no mesmo tenant
 preserva cálculo, saída e cancelamento legados. O frontend passa a isolar cache,
 menu e listagens por organização ativa.
 
-A V62 migra `ContaPagarAvulsa`, incluindo baixa e cancelamento, com Fornecedor
-e Forma de Pagamento do mesmo tenant. Registros históricos permanecem separados.
+A V62 migrou o recurso legado `ContaPagarAvulsa` para o contexto da organização. Essa etapa é histórica: o recurso foi descontinuado e a V105 retira sua estrutura no PostgreSQL local de teste.
 
 O módulo experimental de Ordem/Recebimento de Compra foi removido em 2026-10-30.
 A entrada vigente ocorre exclusivamente por Nota de Entrada, cuja confirmação
@@ -609,9 +607,11 @@ constituem um mecanismo de backfill: UC732 deverá substituí-los somente dentro
 uma migration/procedure administrativa auditada, migrar o grafo inteiro na mesma
 unidade transacional e restabelecer as invariantes antes do commit.
 
-A V47 aplica a mesma disciplina ao agregado de Fornecedor. Se Nota de Entrada,
-`conta_pagar`, `contas_pagar_avulsa` ou `produto_fornecedor` já apontarem para um
-Fornecedor tenant-aware, o upgrade falha com a constraint lógica específica. O
+A V47 aplicou a mesma disciplina ao agregado de Fornecedor: na validação da
+versão, referências a um fornecedor de organização em Nota de Entrada,
+`conta_pagar`, `produto_fornecedor` ou no antigo recurso `contas_pagar_avulsa`
+impediam o upgrade. A V105 retira somente a referência ao recurso descontinuado
+dos mecanismos ativos de integridade no PostgreSQL de teste. O
 mesmo ocorre quando condição de pagamento ou transportadora divergem do owner da
 raiz. Após os preflights, `ck_fornecedor_owner_imutavel` bloqueia troca, remoção ou
 atribuição direta de owner. O mecanismo futuro de UC732 deverá substituir o guard

@@ -44,16 +44,6 @@ class FornecedorLegacyConsumerConstraintTest {
     }
 
     @Test
-    void contaPagarAvulsaGlobalNaoReferenciaFornecedorTenant() {
-        assertViolation(() -> jdbc.update("""
-                INSERT INTO contas_pagar_avulsa
-                    (descricao, fornecedor_id, valor_original_micros, valor_total_micros,
-                     data_vencimento, created_at, updated_at)
-                VALUES ('Despesa', ?, 10000000, 10000000, CURRENT_DATE, now(), now())
-                """, fornecedorTenant), "23503", "fk_contas_pagar_avulsa_fornecedor_owner");
-    }
-
-    @Test
     void produtoFornecedorGlobalNaoReferenciaFornecedorTenant() {
         Long produtoId = inserirProdutoHistorico();
         assertViolation(() -> jdbc.update("""
@@ -77,12 +67,6 @@ class FornecedorLegacyConsumerConstraintTest {
                     (fornecedor_id, valor_original_micros, valor_total_micros, data_vencimento,
                      created_at, updated_at)
                 VALUES (?, 10000000, 10000000, CURRENT_DATE, now(), now())
-                """, historico)).doesNotThrowAnyException();
-        assertThatCode(() -> jdbc.update("""
-                INSERT INTO contas_pagar_avulsa
-                    (descricao, fornecedor_id, valor_original_micros, valor_total_micros,
-                     data_vencimento, created_at, updated_at)
-                VALUES ('Historica', ?, 10000000, 10000000, CURRENT_DATE, now(), now())
                 """, historico)).doesNotThrowAnyException();
         Long produtoId = inserirProdutoHistorico();
         assertThatCode(() -> jdbc.update("""
@@ -119,21 +103,6 @@ class FornecedorLegacyConsumerConstraintTest {
                 () -> jdbc.update("UPDATE conta_pagar SET fornecedor_id = ? WHERE id = ?",
                         fornecedorTenant, contaId),
                 "23503", "fk_conta_pagar_fornecedor_owner");
-    }
-
-    @Test
-    void updateAdversarialDaContaPagarAvulsaERecusado() {
-        Long historico = inserirFornecedor(null, "77665544000135");
-        Long avulsaId = jdbc.queryForObject("""
-                INSERT INTO contas_pagar_avulsa
-                    (descricao, fornecedor_id, valor_original_micros, valor_total_micros,
-                     data_vencimento, created_at, updated_at)
-                VALUES ('Update', ?, 10000000, 10000000, CURRENT_DATE, now(), now()) RETURNING id
-                """, Long.class, historico);
-        assertViolation(
-                () -> jdbc.update("UPDATE contas_pagar_avulsa SET fornecedor_id = ? WHERE id = ?",
-                        fornecedorTenant, avulsaId),
-                "23503", "fk_contas_pagar_avulsa_fornecedor_owner");
     }
 
     @Test
