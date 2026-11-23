@@ -12,6 +12,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface TarifaRepository extends JpaRepository<Tarifa, Long>,
         JpaSpecificationExecutor<Tarifa> {
 
+    Optional<Tarifa> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+    Optional<Tarifa> findByIdAndOrganizacaoIdIsNull(Long id);
+
     /**
      * Tarifa vigente para a cobranca: a tarifa ativa mais recente (maior id).
      *
@@ -19,4 +22,6 @@ public interface TarifaRepository extends JpaRepository<Tarifa, Long>,
      * espera-se uma so, e o desempate adota a mais recente.
      */
     Optional<Tarifa> findFirstByAtivoTrueOrderByIdDesc();
+
+    Optional<Tarifa> findFirstByOrganizacaoIdAndAtivoTrueOrderByIdDesc(Long organizacaoId);
 }

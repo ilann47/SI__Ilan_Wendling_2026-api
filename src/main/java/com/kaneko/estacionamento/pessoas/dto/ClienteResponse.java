@@ -35,6 +35,7 @@ public record ClienteResponse(
         BigDecimal limiteCredito,
         String observacao,
         Boolean ativo,
+        boolean cadastroFiscalBasico,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -64,6 +65,7 @@ public record ClienteResponse(
                 c.getLimiteCredito(),
                 c.getObservacao(),
                 c.getAtivo(),
+                c.isCadastroFiscalBasico(),
                 c.getCreatedAt(),
                 c.getUpdatedAt());
     }

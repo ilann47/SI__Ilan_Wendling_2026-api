@@ -7,6 +7,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+import jakarta.persistence.Convert;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -16,7 +18,8 @@ import lombok.Setter;
  * Condicao de pagamento (raiz do agregado) com suas {@link ParcelaCondicaoPagamento
  * parcelas}. Mapeia a tabela {@code condicao_pagamento}.
  *
- * <p>O nome e unico em todo o sistema (restricao {@code uq_condicao_pagamento_nome}).
+ * <p>O nome e unico dentro da organizacao proprietaria. Registros historicos
+ * podem permanecer sem owner durante a reconciliacao controlada.
  * As parcelas detalham o vencimento ({@code dias}) e o peso ({@code percentual}) de
  * cada cobranca; quando informadas, a soma dos percentuais deve fechar em 100.
  */
@@ -26,19 +29,25 @@ import lombok.Setter;
 @Setter
 public class CondicaoPagamento extends BaseEntity {
 
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
     @Column(name = "nome", nullable = false, length = 100)
     private String nome;
 
     @Column(name = "numero_parcelas", nullable = false)
     private Integer numeroParcelas = 1;
 
-    @Column(name = "percentual_juros", nullable = false, precision = 6, scale = 2)
+    @Column(name = "percentual_juros_micros", nullable = false, precision = 10, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal percentualJuros = BigDecimal.ZERO;
 
-    @Column(name = "percentual_multa", nullable = false, precision = 6, scale = 2)
+    @Column(name = "percentual_multa_micros", nullable = false, precision = 10, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal percentualMulta = BigDecimal.ZERO;
 
-    @Column(name = "percentual_desconto", nullable = false, precision = 5, scale = 2)
+    @Column(name = "percentual_desconto_micros", nullable = false, precision = 9, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal percentualDesconto = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "condicaoPagamento", cascade = CascadeType.ALL, orphanRemoval = true)

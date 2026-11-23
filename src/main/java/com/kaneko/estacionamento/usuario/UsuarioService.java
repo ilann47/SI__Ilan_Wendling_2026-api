@@ -113,7 +113,7 @@ public class UsuarioService {
     }
 
     private Funcionario buscarFuncionario(Long id) {
-        return funcionarioRepository.findById(id)
+        return funcionarioRepository.findByIdAndOrganizacaoIdIsNull(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Funcionario", id));
     }
 }

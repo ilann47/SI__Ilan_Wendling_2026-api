@@ -11,11 +11,14 @@ import java.time.OffsetDateTime;
  */
 public record MovimentacaoResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         Long veiculoId,
         String veiculoPlaca,
         TipoMovimentacao tipo,
         Long mensalistaId,
         Long tarifaId,
+        Long patioId,
         OffsetDateTime dataEntrada,
         OffsetDateTime dataSaida,
         BigDecimal valorCobrado,
@@ -27,11 +30,14 @@ public record MovimentacaoResponse(
     public static MovimentacaoResponse from(Movimentacao m) {
         return new MovimentacaoResponse(
                 m.getId(),
+                m.getOrganizacaoId(),
+                m.getVersion(),
                 m.getVeiculo().getId(),
                 m.getVeiculo().getPlaca(),
                 m.getTipo(),
                 m.getMensalista() != null ? m.getMensalista().getId() : null,
                 m.getTarifa() != null ? m.getTarifa().getId() : null,
+                m.getPatio() != null ? m.getPatio().getId() : null,
                 m.getDataEntrada(),
                 m.getDataSaida(),
                 m.getValorCobrado(),

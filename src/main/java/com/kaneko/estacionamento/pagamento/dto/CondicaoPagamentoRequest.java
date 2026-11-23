@@ -1,7 +1,9 @@
 package com.kaneko.estacionamento.pagamento.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,13 +29,16 @@ public record CondicaoPagamentoRequest(
         Integer numeroParcelas,
 
         @PositiveOrZero(message = "O percentual de juros não pode ser negativo.")
+        @Digits(integer = 4, fraction = 6)
         BigDecimal percentualJuros,
 
         @PositiveOrZero(message = "O percentual de multa não pode ser negativo.")
+        @Digits(integer = 4, fraction = 6)
         BigDecimal percentualMulta,
 
         @PositiveOrZero(message = "O percentual de desconto não pode ser negativo.")
         @DecimalMax(value = "100.00", message = "O percentual de desconto não pode exceder 100.")
+        @Digits(integer = 3, fraction = 6)
         BigDecimal percentualDesconto,
 
         Boolean ativo,
@@ -41,4 +46,9 @@ public record CondicaoPagamentoRequest(
         @Valid
         List<ParcelaRequest> parcelas
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

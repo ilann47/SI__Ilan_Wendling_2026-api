@@ -6,6 +6,8 @@ import com.kaneko.estacionamento.pessoas.EstadoCivil;
 import com.kaneko.estacionamento.pessoas.Sexo;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -21,15 +23,17 @@ import lombok.Setter;
 /**
  * Funcionario do estacionamento. Mapeia a tabela {@code funcionario}.
  *
- * <p>O CPF e unico ({@code uq_funcionario_cpf}). O {@link Cargo} e obrigatorio;
- * cidade e nacionalidade (pais) sao opcionais. Reaproveita os enums de pessoa
- * ({@link TipoPessoa}, {@link Sexo}, {@link EstadoCivil}).
+ * <p>O CPF e unico dentro da organizacao proprietaria. O {@link Cargo} e
+ * obrigatorio e deve pertencer ao mesmo tenant; cidade permanece global.
  */
 @Entity
 @Table(name = "funcionario")
 @Getter
 @Setter
 public class Funcionario extends BaseEntity {
+
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
 
     @Column(name = "nome", nullable = false, length = 120)
     private String nome;
@@ -99,7 +103,8 @@ public class Funcionario extends BaseEntity {
     @Column(name = "data_demissao")
     private LocalDate dataDemissao;
 
-    @Column(name = "salario", precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "salario_micros", precision = 14, scale = 0)
     private BigDecimal salario;
 
     @Column(name = "observacao", length = 255)

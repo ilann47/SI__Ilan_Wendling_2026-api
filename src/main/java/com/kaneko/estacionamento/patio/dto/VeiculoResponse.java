@@ -10,6 +10,8 @@ import java.time.OffsetDateTime;
  */
 public record VeiculoResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         String placa,
         String modelo,
         String cor,
@@ -25,6 +27,8 @@ public record VeiculoResponse(
     public static VeiculoResponse from(Veiculo v) {
         return new VeiculoResponse(
                 v.getId(),
+                v.getOrganizacaoId(),
+                v.getVersion(),
                 v.getPlaca(),
                 v.getModelo(),
                 v.getCor(),

@@ -6,6 +6,9 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.kaneko.estacionamento.common.security.UsuarioAutenticado;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,32 +34,47 @@ public class FormaPagamentoController {
     }
 
     @GetMapping
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('payments:read', authentication)")
     public Page<FormaPagamentoResponse> listar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) Boolean ativo,
             Pageable pageable) {
-        return service.listar(nome, ativo, pageable);
+        return service.listar(principal.organizacaoId(), nome, ativo, pageable);
     }
 
     @GetMapping("/{id}")
-    public FormaPagamentoResponse buscar(@PathVariable Long id) {
-        return FormaPagamentoResponse.from(service.buscar(id));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('payments:read', authentication)")
+    public FormaPagamentoResponse buscar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        return FormaPagamentoResponse.from(service.buscar(principal.organizacaoId(), id));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public FormaPagamentoResponse criar(@Valid @RequestBody FormaPagamentoRequest req) {
-        return FormaPagamentoResponse.from(service.criar(req));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('payments:manage', authentication)")
+    public FormaPagamentoResponse criar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @Valid @RequestBody FormaPagamentoRequest req) {
+        return FormaPagamentoResponse.from(service.criar(principal.organizacaoId(), req));
     }
 
     @PutMapping("/{id}")
-    public FormaPagamentoResponse atualizar(@PathVariable Long id, @Valid @RequestBody FormaPagamentoRequest req) {
-        return FormaPagamentoResponse.from(service.atualizar(id, req));
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('payments:manage', authentication)")
+    public FormaPagamentoResponse atualizar(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id,
+            @Valid @RequestBody FormaPagamentoRequest req) {
+        return FormaPagamentoResponse.from(service.atualizar(principal.organizacaoId(), id, req));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void excluir(@PathVariable Long id) {
-        service.excluir(id);
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('payments:manage', authentication)")
+    public void excluir(
+            @AuthenticationPrincipal UsuarioAutenticado principal,
+            @PathVariable Long id) {
+        service.excluir(principal.organizacaoId(), id);
     }
 }

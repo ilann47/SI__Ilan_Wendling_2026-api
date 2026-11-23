@@ -3,6 +3,7 @@ package com.kaneko.estacionamento.patio.dto;
 import com.kaneko.estacionamento.patio.StatusMensalista;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -21,6 +22,7 @@ public record MensalistaRequest(
 
         @NotNull(message = "O valor mensal é obrigatório.")
         @PositiveOrZero(message = "O valor mensal não pode ser negativo.")
+        @Digits(integer = 8, fraction = 6)
         BigDecimal valorMensal,
 
         LocalDate dataInicio,

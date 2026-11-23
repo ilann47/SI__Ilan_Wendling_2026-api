@@ -2,9 +2,16 @@
 
 # 1. Introdução
 
+> **Classificação histórica:** este documento descreve a v1 acadêmica original.
+> Frontend, autenticação, multiempresa e o schema atual são descritos pelos
+> documentos 11 a 22 e pelas migrations Flyway; afirmações abaixo sobre ausência
+> dessas capacidades não representam o AS-IS executável atual.
+
 Este documento integra a especificação de requisitos do Sistema de Controle do **Estacionamento Kaneko**, elaborado segundo o modelo de prática profissional de Sistemas de Informação. Esta seção apresenta a finalidade do documento, delimita o escopo do produto de software — explicitando o que está dentro e fora do alcance da versão 1 (v1) — e descreve a empresa para a qual o sistema é proposto. As seções seguintes da especificação tratam da análise do negócio, dos requisitos funcionais e não funcionais, dos casos de uso, do modelo de dados (Diagrama Entidade-Relacionamento e dicionário de dados) e dos demais artefatos técnicos.
 
-A delimitação de escopo aqui apresentada está fundamentada diretamente no modelo físico de dados do sistema, materializado no arquivo `database/schema.sql` (PostgreSQL 17, banco `estacionamento_kaneko`), que reúne 34 tabelas distribuídas pelos domínios de geografia, pessoas, condições e formas de pagamento, recursos humanos, pátio (mensalista e avulso), conveniência com controle de estoque, documentos fiscais, financeiro a pagar e a receber e logística (transportadora e frota).
+A delimitação de escopo original está fundamentada em `database/schema.sql`. O
+arquivo permanece como baseline histórica; o modelo físico executável atual é a
+sequência de migrations Flyway.
 
 ---
 
@@ -25,7 +32,10 @@ O público-alvo deste documento compreende: o analista de sistemas e a equipe de
 
 ## 1.2 Escopo
 
-O produto de software é uma aplicação de gestão para um estacionamento com loja de conveniência. O sistema é disponibilizado como uma **API REST** documentada via **Swagger/OpenAPI**, sem interface gráfica própria nesta versão — o consumo ocorre por clientes HTTP (Swagger UI, ferramentas de teste de API ou um front-end a ser desenvolvido em fase posterior). O backend é construído sobre Spring Boot (Java) com persistência em PostgreSQL, e o esquema de banco descrito em `schema.sql` constitui a fonte de verdade do domínio.
+O produto de software é uma aplicação de gestão para estacionamento e
+conveniência. A baseline original foi especificada como **API REST** sem interface
+própria. O AS-IS evoluído possui frontend React, autenticação JWT, contexto
+organizacional e migrations Flyway; os documentos 11 a 22 governam essa evolução.
 
 O sistema cobre o ciclo operacional completo do estabelecimento: o cadastro das entidades de apoio (geografia, pessoas, pagamento e produtos), o controle do pátio nas modalidades avulsa e mensalista, a operação da conveniência com movimentação de estoque, a escrituração dos documentos fiscais correspondentes e a apuração financeira de contas a pagar e a receber.
 
@@ -42,7 +52,7 @@ As funcionalidades a seguir integram a versão 1 e estão suportadas por tabelas
 | **Pátio — avulso (rotativo)** | Registro da movimentação de pátio (ticket de entrada/saída) para veículos avulsos e mensalistas, com cálculo de cobrança a partir da tarifa vigente (valor por hora, teto de diária e tolerância de cortesia), controle de status (aberto, fechado, cancelado) e a regra de no máximo uma movimentação aberta por veículo. | `movimentacao`, `tarifa`, `veiculo` |
 | **Conveniência com estoque** | Cadastro de produtos com categoria, marca e unidade de medida, controle de estoque (quantidade atual, quantidade mínima, fração para itens vendidos por peso/volume), precificação (custo, venda e margem) e vínculo N:N produto × fornecedor. | `produto`, `categoria`, `marca`, `unidade_medida`, `produto_fornecedor`, `servico` |
 | **Documentos fiscais (escrituração)** | Registro de nota de entrada (compra de mercadoria, que acresce o estoque na confirmação), nota de saída (venda de mercadoria, que reduz o estoque na confirmação) e nota de serviço (NFS-e do estacionamento, com base de cálculo e alíquota de ISS, originada de uma movimentação avulsa ou de uma mensalidade). Inclui itens com rateio de frete, seguro e despesas. | `nota_entrada`, `item_nota_entrada`, `nota_saida`, `item_nota_saida`, `nota_servico` |
-| **Financeiro — a pagar e a receber** | Controle de contas a pagar (originadas de notas de entrada e de despesas avulsas como aluguel, energia e água) e contas a receber (originadas de notas de saída e de mensalidades), com parcelamento, baixa por situação (pendente, parcial, paga/recebida, cancelada), e composição de valores (original, pago/recebido, desconto, juros, multa, total). | `conta_pagar`, `conta_receber`, `contas_pagar_avulsa` |
+| **Financeiro — a pagar e a receber** | Controle de contas a pagar (originadas de notas de entrada ou lançadas manualmente com fornecedor) e contas a receber (originadas de notas de saída e de mensalidades), com parcelamento, baixa por situação (pendente, parcial, paga/recebida, cancelada), e composição de valores (original, pago/recebido, desconto, juros, multa, total). | `conta_pagar`, `conta_receber` |
 
 De forma sintética, estão **dentro do escopo da v1**: (i) os cadastros geográficos, de pessoas e de pagamento; (ii) a operação de pátio mensalista e avulsa; (iii) a conveniência com controle de estoque; (iv) a escrituração de documentos fiscais de entrada, saída e serviço; e (v) o financeiro a pagar e a receber.
 

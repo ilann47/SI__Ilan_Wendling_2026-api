@@ -20,6 +20,8 @@ public interface CidadeRepository extends JpaRepository<Cidade, Long>,
     /** Mesma checagem, ignorando o proprio registro — usado em alteracoes. */
     boolean existsByEstadoIdAndNomeAndIdNot(Long estadoId, String nome, Long id);
 
+    Optional<Cidade> findByEstadoIdAndNomeIgnoreCase(Long estadoId, String nome);
+
     @Override
     @EntityGraph(attributePaths = "estado")
     Optional<Cidade> findById(Long id);

@@ -2,11 +2,14 @@ package com.kaneko.estacionamento.financeiro;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
 import com.kaneko.estacionamento.fiscal.NotaSaida;
+import com.kaneko.estacionamento.fiscal.NotaServico;
 import com.kaneko.estacionamento.patio.Mensalista;
 import com.kaneko.estacionamento.pessoas.Cliente;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import com.kaneko.estacionamento.pagamento.FormaPagamento;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,6 +17,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.Getter;
@@ -29,6 +33,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ContaReceber extends AuditableEntity {
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Version @Column(name = "version", nullable = false)
+    private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)
@@ -37,6 +46,10 @@ public class ContaReceber extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nota_saida_id")
     private NotaSaida notaSaida;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nota_servico_id")
+    private NotaServico notaServico;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mensalista_id")
@@ -56,22 +69,28 @@ public class ContaReceber extends AuditableEntity {
     @Column(name = "total_parcelas", nullable = false)
     private Integer totalParcelas = 1;
 
-    @Column(name = "valor_original", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_original_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorOriginal;
 
-    @Column(name = "valor_recebido", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_recebido_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorRecebido = BigDecimal.ZERO;
 
-    @Column(name = "valor_desconto", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_desconto_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorDesconto = BigDecimal.ZERO;
 
-    @Column(name = "valor_juros", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_juros_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorJuros = BigDecimal.ZERO;
 
-    @Column(name = "valor_multa", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_multa_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorMulta = BigDecimal.ZERO;
 
-    @Column(name = "valor_total", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_total_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal valorTotal;
 
     @Column(name = "data_emissao", nullable = false)

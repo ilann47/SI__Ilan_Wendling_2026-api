@@ -4,6 +4,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repositorio de {@link Cliente}. Suporta filtros dinamicos via
@@ -13,11 +15,22 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ClienteRepository extends JpaRepository<Cliente, Long>,
         JpaSpecificationExecutor<Cliente> {
 
-    /** Unicidade do documento (uq_cliente_documento). */
-    boolean existsByDocumento(String documento);
+    @EntityGraph(attributePaths = {"cidade", "condicaoPagamento"})
+    Optional<Cliente> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
 
-    /** Mesma checagem, ignorando o proprio registro — usado em alteracoes. */
-    boolean existsByDocumentoAndIdNot(String documento, Long id);
+    @EntityGraph(attributePaths = {"cidade", "condicaoPagamento"})
+    Optional<Cliente> findByIdAndOrganizacaoIdIsNull(Long id);
+
+    @Query("""
+            select count(c) > 0 from Cliente c
+            where c.organizacaoId = :organizacaoId
+              and c.documento = :documento
+              and (:idIgnorado is null or c.id <> :idIgnorado)
+            """)
+    boolean existeDocumento(
+            @Param("organizacaoId") Long organizacaoId,
+            @Param("documento") String documento,
+            @Param("idIgnorado") Long idIgnorado);
 
     @Override
     @EntityGraph(attributePaths = {"cidade", "condicaoPagamento"})

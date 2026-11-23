@@ -10,6 +10,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.core.annotation.Order;
 
 /**
  * Cria um usuario administrador inicial quando o cadastro de usuarios esta vazio,
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  * testes ({@code app.bootstrap-admin.enabled=false}).
  */
 @Component
+@Order(0)
 @ConditionalOnProperty(name = "app.bootstrap-admin.enabled", havingValue = "true", matchIfMissing = true)
 public class DataInitializer implements CommandLineRunner {
 

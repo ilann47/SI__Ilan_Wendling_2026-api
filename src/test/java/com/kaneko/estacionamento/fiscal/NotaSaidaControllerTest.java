@@ -30,7 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Teste de integracao da nota de saida — criacao, confirmacao com validacao e
  * baixa de estoque, geracao de titulos e demais fluxos.
  */
-@SpringBootTest
+@SpringBootTest(properties =
+        "spring.jpa.properties.hibernate.query.fail_on_pagination_over_collection_fetch=true")
 @AutoConfigureMockMvc
 @Transactional
 class NotaSaidaControllerTest {

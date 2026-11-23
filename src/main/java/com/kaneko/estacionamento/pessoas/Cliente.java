@@ -4,6 +4,8 @@ import com.kaneko.estacionamento.common.BaseEntity;
 import com.kaneko.estacionamento.geografia.Cidade;
 import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -13,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -20,7 +23,7 @@ import lombok.Setter;
  * Cliente do estacionamento (pessoa fisica ou juridica). Mapeia a tabela
  * {@code cliente}.
  *
- * <p>O documento (CPF/CNPJ) e unico no sistema ({@code uq_cliente_documento}).
+ * <p>O documento (CPF/CNPJ) e unico dentro da organizacao proprietaria.
  * As referencias a cidade, nacionalidade (pais) e condicao de pagamento sao
  * opcionais.
  */
@@ -30,8 +33,15 @@ import lombok.Setter;
 @Setter
 public class Cliente extends BaseEntity {
 
-    @Column(name = "nome", nullable = false, length = 120)
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Column(name = "nome", nullable = false, length = 160)
     private String nome;
+
+    @Setter(AccessLevel.NONE)
+    @Column(name = "origem_cadastro_fiscal", nullable = false, updatable = false)
+    private boolean origemCadastroFiscal;
 
     @Column(name = "apelido", length = 60)
     private String apelido;
@@ -86,9 +96,24 @@ public class Cliente extends BaseEntity {
     @JoinColumn(name = "condicao_pagamento_id")
     private CondicaoPagamento condicaoPagamento;
 
-    @Column(name = "limite_credito", nullable = false, precision = 15, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "limite_credito_micros", nullable = false, precision = 19, scale = 0)
     private BigDecimal limiteCredito = BigDecimal.ZERO;
 
     @Column(name = "observacao", length = 255)
     private String observacao;
+
+    public boolean isCadastroFiscalBasico() {
+        return origemCadastroFiscal && !telefoneValido() && !emailValido();
+    }
+
+    private boolean telefoneValido() {
+        if (telefone == null || !telefone.strip().matches("\\+?[0-9(). -]+")) return false;
+        String semMascara = telefone.strip().replaceAll("[(). -]", "");
+        return semMascara.matches("(?:\\+55)?[1-9][0-9]{9,10}");
+    }
+
+    private boolean emailValido() {
+        return email != null && email.strip().matches("[^\\s@]+@[^\\s@.]+(?:\\.[^\\s@.]+)+");
+    }
 }

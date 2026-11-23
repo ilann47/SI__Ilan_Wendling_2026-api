@@ -8,6 +8,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
+import jakarta.persistence.Convert;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,6 +28,9 @@ import lombok.Setter;
 @Setter
 public class ParcelaCondicaoPagamento extends AuditableEntity {
 
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
     @Column(name = "numero", nullable = false)
     private Integer numero;
 
@@ -34,7 +39,8 @@ public class ParcelaCondicaoPagamento extends AuditableEntity {
     private Integer dias;
 
     /** Percentual do valor total nesta parcela. */
-    @Column(name = "percentual", nullable = false, precision = 5, scale = 2)
+    @Column(name = "percentual_micros", nullable = false, precision = 9, scale = 0)
+    @Convert(converter = MilionesimosConverter.class)
     private BigDecimal percentual;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.common.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -78,6 +79,22 @@ class AutorizacaoPerfilTest {
     }
 
     @Test
+    void contaNeutraRecebe403SemAcionarDespachoDeErroDoServlet() throws Exception {
+        String login = "conta_neutra_sem_acesso_test";
+        usuarioService.criar(new UsuarioRequest("Conta neutra", login, "senha123",
+                null, null, PerfilUsuario.USUARIO));
+        String token = "Bearer " + jwtService.gerarToken(login, "USUARIO");
+        for (String path : new String[]{"/api/usuarios", "/api/paises", "/api/estados", "/api/cidades"}) {
+            mvc.perform(get(path).header("Authorization", token))
+                    .andExpect(status().isForbidden())
+                    .andExpect(result -> assertThat(result.getResponse().getErrorMessage())
+                            .as("não chamar sendError, que é redespachado para /error em produção")
+                            .isNull());
+        }
+        mvc.perform(get("/api/v1/me").header("Authorization", token)).andExpect(status().isOk());
+    }
+
+    @Test
     void operadorNaoExcluiUsuario() throws Exception {
         mvc.perform(delete("/api/usuarios/1").header("Authorization", tokenOperador))
                 .andExpect(status().isForbidden());
@@ -98,17 +115,17 @@ class AutorizacaoPerfilTest {
                 .andExpect(status().isForbidden());
     }
 
-    // ---- OPERADOR continua operando o dia a dia ----
+    // ---- Perfil global nao substitui permissoes contextuais ----
 
     @Test
-    void operadorAcessaCadastrosGerais() throws Exception {
-        mvc.perform(get("/api/clientes").header("Authorization", tokenOperador))
-                .andExpect(status().isOk());
+    void operadorGlobalNaoAcessaCatalogoMasMantemOperacaoLegada() throws Exception {
+        mvc.perform(get("/api/categorias").header("Authorization", tokenOperador))
+                .andExpect(status().isForbidden());
         mvc.perform(get("/api/movimentacoes/patio").header("Authorization", tokenOperador))
                 .andExpect(status().isOk());
     }
 
-    // ---- ADMIN passa pela autorizacao ----
+    // ---- ADMIN global permanece administrador somente das APIs legadas ----
 
     @Test
     void adminCriaUsuario() throws Exception {
@@ -124,10 +141,11 @@ class AutorizacaoPerfilTest {
     }
 
     @Test
-    void adminPassaNaAutorizacaoDeExclusao() throws Exception {
-        // Admin nao e barrado por role; o 404 prova que chegou ao handler (id inexistente).
-        mvc.perform(delete("/api/clientes/999999").header("Authorization", tokenAdmin))
-                .andExpect(status().isNotFound());
+    void adminGlobalNaoSubstituiCatalogManage() throws Exception {
+        // O perfil ADMIN global nao cria contexto nem permissoes de Membership.
+        mvc.perform(delete("/api/categorias/999999").header("Authorization", tokenAdmin)
+                        .header("If-Match", "\"0\""))
+                .andExpect(status().isForbidden());
     }
 
     // ---- Sem token continua 401 (autenticacao antes de autorizacao) ----

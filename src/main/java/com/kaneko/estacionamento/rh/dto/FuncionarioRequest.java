@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.rh.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.kaneko.estacionamento.pessoas.EstadoCivil;
 import com.kaneko.estacionamento.pessoas.Sexo;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -52,10 +54,16 @@ public record FuncionarioRequest(
         LocalDate dataDemissao,
 
         @PositiveOrZero(message = "O salário não pode ser negativo.")
+        @Digits(integer = 8, fraction = 6)
         BigDecimal salario,
 
         @Size(max = 255) String observacao,
 
         Boolean ativo
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

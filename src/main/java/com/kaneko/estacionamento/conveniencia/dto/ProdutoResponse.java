@@ -28,6 +28,7 @@ public record ProdutoResponse(
         String descricao,
         String observacao,
         Boolean ativo,
+        Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -53,6 +54,7 @@ public record ProdutoResponse(
                 p.getDescricao(),
                 p.getObservacao(),
                 p.getAtivo(),
+                p.getVersion(),
                 p.getCreatedAt(),
                 p.getUpdatedAt());
     }

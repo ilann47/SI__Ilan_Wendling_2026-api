@@ -1,8 +1,8 @@
-> Links: [[01-introducao]] · [[03-der]] · [[relatorio-conformidade]]
+> Links: [[01-introducao]] · [[03-der]] · [[11-visao-produto-enterprise]] · [[12-dominio-ddd]] · [[20-roadmap-produto]] · [[21-status-implementacao]] · [[22-unificacao-multitenant]] · [[24-adr-venda-administrativa]] · [[relatorio-conformidade]]
 
 # Especificação de Requisitos — Sistema Estacionamento Kaneko
 
-Este diretório reúne a especificação de requisitos do **Sistema de Controle do Estacionamento Kaneko**, elaborada segundo o modelo de prática profissional de Sistemas de Informação (Documento de Visão e Especificação de Requisitos orientada a Casos de Uso). Trata-se de um **projeto acadêmico**, proposto para uma **empresa fictícia** — o Estacionamento Kaneko —, cujo objetivo é registrar de forma completa e não ambígua os requisitos do produto de software, servindo como referência única e formal para a equipe de desenvolvimento, para os responsáveis pela operação do estabelecimento e para os avaliadores acadêmicos. Toda a delimitação de escopo está fundamentada no modelo físico de dados materializado em `database/schema.sql` (PostgreSQL 17, banco `estacionamento_kaneko`, 34 tabelas).
+Este diretório reúne a especificação de requisitos do **Sistema de Controle do Estacionamento Kaneko**, projeto acadêmico de uma empresa fictícia, organizada conforme o modelo de prática profissional (Documento de Visão e Especificação de Requisitos orientada a Casos de Uso). Os capítulos 01 a 10 preservam a estrutura acadêmica e sinalizam trechos históricos. Para a apresentação do fluxo vigente de mercadorias e financeiro, use o recorte rastreável abaixo. As migrations Flyway, e não `database/schema.sql`, definem o modelo físico executável.
 
 ---
 
@@ -12,9 +12,9 @@ Este diretório reúne a especificação de requisitos do **Sistema de Controle 
 |---|-----------|-----------|
 | 01 | [Introdução](01-introducao.md) | Finalidade do documento, delimitação de escopo (dentro e fora da v1), definições e descrição da empresa fictícia. |
 | 02 | [Análise de Negócio](02-analise-negocio.md) | Contexto do negócio, processos atuais, regras gerais e necessidades que justificam o sistema. |
-| 03 | [Diagrama Entidade-Relacionamento (DER)](03-der.md) | Modelo lógico de dados com as 34 entidades persistentes, atributos e relacionamentos, em Mermaid `erDiagram`. |
+| 03 | [Diagrama Entidade-Relacionamento (DER)](03-der.md) | Modelo histórico e recorte vigente de mercadorias, estoque e contas, com atributos, relacionamentos e cardinalidades em Mermaid. |
 | 04 | [Requisitos Funcionais](04-requisitos-funcionais.md) | Catálogo dos requisitos funcionais (RF) e sua rastreabilidade para os casos de uso. |
-| 05 | [Casos de Uso](05-casos-de-uso/) | Especificação detalhada dos casos de uso, organizada em seis arquivos por bloco funcional (ver subitens abaixo). |
+| 05 | [Casos de Uso](05-casos-de-uso/) | Especificação dos casos de uso organizada em sete blocos funcionais (ver subitens abaixo). |
 | 05.1 | [Cadastros — Geografia e RH](05-casos-de-uso/cadastros-geografia-rh.md) | Casos de uso de país, estado, cidade, cargo, funcionário e usuário (bloco UC0xx). |
 | 05.2 | [Cadastros — Pagamento e Pessoas](05-casos-de-uso/cadastros-pagamento-pessoas.md) | Casos de uso de formas e condições de pagamento, fornecedores e clientes (bloco UC1xx). |
 | 05.3 | [Cadastros — Conveniência](05-casos-de-uso/cadastros-conveniencia.md) | Casos de uso de produtos, categorias e controle de estoque da conveniência (bloco UC2xx). |
@@ -31,6 +31,16 @@ Este diretório reúne a especificação de requisitos do **Sistema de Controle 
 
 ---
 
+## Rastreabilidade acadêmica — Fiscal e Financeiro vigentes
+
+| Fluxo | Requisito e caso de uso | Interfaces e modelos |
+|---|---|---|
+| Compra / Nota de Entrada manual e XML | [RF 4.20](04-requisitos-funcionais.md#420-registrar-compra--nota-de-entrada), [UC401](05-casos-de-uso/processos-fiscais.md#uc401--gerenciar-compra-nota-de-entrada) | [Telas](06-prototipos.md#691-nota-de-entrada-consultar-lançar-e-conferir), [sequência](09-diagramas-sequencia.md#94-uc401--compra-pela-nota-de-entrada) |
+| Venda direta / Nota de Saída e reversão | [RF 4.21](04-requisitos-funcionais.md#421-registrar-venda--nota-de-saída), [UC402 e UC404](05-casos-de-uso/processos-fiscais.md#uc402--gerenciar-venda-nota-de-saída) | [Telas](06-prototipos.md#692-nota-de-saída-registrar-venda-de-mercadoria), [sequência](09-diagramas-sequencia.md#95-uc402-e-uc404--venda-direta-e-reversão-interna) |
+| Contas e baixas | [RF 4.23/4.24](04-requisitos-funcionais.md#423-gerenciar-contas-a-pagar), [UC501/UC502](05-casos-de-uso/processos-financeiros.md#51-processo-uc501--gerenciar-conta-a-pagar) | [Telas](06-prototipos.md#6102-contas-a-pagar-e-a-receber), [sequência](09-diagramas-sequencia.md#97-uc501-e-uc502--registrar-baixa-financeira) |
+
+Os três fluxos compartilham o [DER fiscal](03-der.md#351-recorte-vigente--notas-de-mercadoria-estoque-e-contas-v54v82), o [recorte do dicionário de dados](07-dicionario-de-dados.md#713-recorte-vigente--notas-estoque-e-contas) e o [UML de domínio](08-diagramas-classe.md). A organização em capítulos evita duplicar tabelas e diagramas; a matriz acima faz a ligação que o exemplo acadêmico apresenta dentro de cada caso de uso.
+
 ## Convenções Adotadas
 
 As convenções a seguir são aplicadas de forma uniforme a todos os documentos desta especificação:
@@ -41,15 +51,46 @@ As convenções a seguir são aplicadas de forma uniforme a todos os documentos 
 - **Mensagens parametrizadas.** Mensagens que dependem do campo em validação utilizam o marcador `[nome do campo]` como ponto de substituição (por exemplo, `O campo [nome do campo] é obrigatório.`).
 - **Hierarquia de cabeçalhos.** O título do arquivo é `H1`; o caso de uso e suas seções internas são `H2`; as sub-ações de manutenção (**Inserir**, **Alterar**, **Excluir**) são `H3`.
 - **Diagramas.** Todos os diagramas são expressos em **Mermaid**, utilizando `erDiagram` (entidade-relacionamento), `classDiagram` (classes) e `sequenceDiagram` (sequência).
-- **Modelo físico.** O modelo físico está definido em `database/schema.sql` (PostgreSQL 17, **34 tabelas**), com chave primária `id` do tipo `IDENTITY`, unicidade de negócio aplicada ao trio fiscal, campos de auditoria em `TIMESTAMPTZ`, exclusão lógica por meio do campo `ativo` e chaves estrangeiras com políticas `ON DELETE RESTRICT` / `CASCADE` / `SET NULL` conforme a semântica de cada relacionamento.
+- **Modelo físico.** `database/schema.sql` é uma referência de desenvolvimento. O modelo executável vigente é a sequência de migrations `src/main/resources/db/migration/V*`, validada por Flyway e Hibernate. A prévia local aplica também `db/test-cutover`, incluindo a V105, que retira a estrutura legada do recurso financeiro descontinuado. O arquivo de referência não substitui as migrations.
 
 ---
 
-## Divergências Deliberadas do Modelo
+## Divergências Deliberadas da baseline histórica
 
-A especificação adota, de forma consciente, algumas divergências em relação ao modelo de prática profissional. Cada uma está justificada em detalhe no [Relatório de Conformidade](relatorio-conformidade.md); em resumo:
+A lista abaixo descreve decisões da v1 acadêmica original, não o estado atual da aplicação. A evolução implementada e TARGET está nos documentos 11 a 22 e no [Relatório de Conformidade](relatorio-conformidade.md).
 
-1. **Sem telas próprias na v1.** A interface da versão 1 é a **API REST documentada via Swagger/OpenAPI**, e não um conjunto de telas de aplicação; os protótipos têm caráter ilustrativo.
-2. **Autenticação modelada, não implementada.** O módulo de autenticação/login foi **modelado** (tabela `usuario`, perfis `ADMIN` e `OPERADOR`), porém **não é implementado** no v1.
+1. **Sem telas próprias na baseline v1.** A interface original era a **API REST documentada via Swagger/OpenAPI**; o AS-IS atual possui frontend React.
+2. **Autenticação inicialmente apenas modelada.** A baseline continha `usuario`, `ADMIN` e `OPERADOR`; o AS-IS atual implementa JWT, Membership e RBAC contextual.
 3. **Empresa fictícia.** O Estacionamento Kaneko é uma empresa fictícia, criada exclusivamente para fins acadêmicos.
 4. **Escopo reduzido.** O sistema não contempla operação **multifilial** nem **integração fiscal** de transmissão à SEFAZ (as notas são registros internos). O **frete** é modelado: além do tipo (CIF/FOB) e dos valores rateáveis na nota, o sistema possui o **Módulo de Logística** (transportadora, veículo de frota e a frota N:N), com o fornecedor apontando para a sua transportadora padrão — sem, contudo, emissão de conhecimento de transporte eletrônico (CT-e).
+
+---
+
+## Arquitetura de Produto Enterprise (visão evolutiva)
+
+Os documentos 01 a 10 incluem tanto a baseline quanto seções explicitamente atualizadas. Consulte a classificação do trecho antes de usá-lo como descrição do produto executável. Os documentos 11 a 25 registram arquitetura e decisões evolutivas:
+
+| # | Documento | Conteúdo |
+|---|---|---|
+| 11 | [Visão de Produto Enterprise](11-visao-produto-enterprise.md) | Propósito, visão, público, SaaS/on-premise, multiempresa, multipátio, multievento e princípios. |
+| 12 | [Domínio e Context Map](12-dominio-ddd.md) | Linguagem ubíqua, bounded contexts, agregados, value objects, invariantes, serviços e dependências. |
+| 13 | [Event Storming](13-event-storming.md) | Comandos, eventos de domínio, policies e process managers. |
+| 14 | [Modelagem Completa do Domínio](14-modelagem-dominio.md) | Entidades atuais e futuras, atributos, estados, relacionamentos, validações e auditoria. |
+| 15 | [Máquinas de Estados](15-maquinas-de-estados.md) | Estados, transições, atores, regras e efeitos colaterais. |
+| 16 | [Casos de Uso da Plataforma](16-casos-de-uso-plataforma.md) | Eventos, vendas, credenciais, acesso, ERP, equipamentos e integrações. |
+| 17 | [Arquitetura de APIs](17-apis-enterprise.md) | Contratos REST, payloads, respostas, status, idempotência, versionamento e eventos públicos. |
+| 18 | [Permissões e RBAC](18-permissoes-rbac.md) | Papéis, permissões, escopos, ABAC e segregação de funções. |
+| 19 | [Equipamentos e Integrações](19-equipamentos-integracoes.md) | Portas canônicas, Edge, contingência, ACL, webhooks, retries e telemetria. |
+| 20 | [Roadmap do Produto](20-roadmap-produto.md) | Fundação, dez fases, riscos, impactos, NFRs e plano de evolução. |
+| 21 | [Estado de Implementação](21-status-implementacao.md) | Classificação das histórias, dependências, bloqueios externos e condições de retomada. |
+| 22 | [Unificação Multi-Tenant](22-unificacao-multitenant.md) | Ownership, migração aditiva, RBAC e integração dos módulos empresariais permanentes. |
+| 24 | [ADR de Venda Administrativa](24-adr-venda-administrativa.md) | Histórico da decisão substituída: V82 removeu Pedido de Venda; a Nota de Saída inicia a venda de mercadoria. |
+| 25 | [ADR de Ordem de Serviço](25-adr-ordem-servico.md) | Ciclo operacional de serviços e faturamento único pela Nota de Serviço. |
+| — | [Registro Central de Bloqueios](bloqueios-externos.md) | Dependências externas, decisões de negócio e infraestrutura que impedem histórias específicas. |
+
+### Regra de prevalência
+
+- Para saber o que o software **faz hoje**, prevalecem código, migrations e documentos AS-IS.
+- Para orientar novas decisões e implementações, prevalecem os documentos 11 a 22.
+- Uma capacidade TARGET não deve ser apresentada como implementada até ser incorporada ao código, testes e documentação AS-IS.
+- Nenhuma evolução elimina funcionalidades existentes sem plano explícito de compatibilidade e migração.

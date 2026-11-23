@@ -18,7 +18,8 @@ import lombok.Setter;
  *
  * <p>A senha e armazenada como hash BCrypt — nunca em texto puro. O login e o
  * email (quando informado) sao unicos (case-insensitive). Cada funcionario pode
- * ter no maximo um usuario vinculado.
+ * ter no maximo um usuario vinculado. Contas de autocadastro usam o perfil
+ * neutro {@link PerfilUsuario#USUARIO}; o acesso empresarial vem de Membership/RBAC.
  */
 @Entity
 @Table(name = "usuario")

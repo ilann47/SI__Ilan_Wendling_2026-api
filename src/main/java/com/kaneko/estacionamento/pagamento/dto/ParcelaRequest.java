@@ -1,5 +1,8 @@
 package com.kaneko.estacionamento.pagamento.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -25,8 +28,15 @@ public record ParcelaRequest(
 
         @NotNull(message = "O percentual da parcela é obrigatório.")
         @PositiveOrZero(message = "O percentual da parcela não pode ser negativo.")
+        @DecimalMax("100")
+        @Digits(integer = 3, fraction = 6)
         BigDecimal percentual,
 
         Long formaPagamentoId
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

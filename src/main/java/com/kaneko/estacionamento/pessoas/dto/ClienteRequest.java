@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.pessoas.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.kaneko.estacionamento.pessoas.EstadoCivil;
 import com.kaneko.estacionamento.pessoas.Sexo;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
@@ -7,6 +8,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -17,7 +19,7 @@ import java.time.LocalDate;
 public record ClienteRequest(
 
         @NotBlank(message = "O nome é obrigatório.")
-        @Size(max = 120, message = "O nome deve ter no máximo 120 caracteres.")
+        @Size(max = 160, message = "O nome deve ter no máximo 160 caracteres.")
         String nome,
 
         @Size(max = 60, message = "O apelido deve ter no máximo 60 caracteres.")
@@ -45,10 +47,16 @@ public record ClienteRequest(
         Long condicaoPagamentoId,
 
         @PositiveOrZero(message = "O limite de crédito não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal limiteCredito,
 
         @Size(max = 255) String observacao,
 
         Boolean ativo
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

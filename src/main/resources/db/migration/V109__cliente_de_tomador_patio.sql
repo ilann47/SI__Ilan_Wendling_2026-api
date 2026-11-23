@@ -1,0 +1,3 @@
+ALTER TABLE cliente
+    ALTER COLUMN nome TYPE VARCHAR(160),
+    ADD COLUMN origem_cadastro_fiscal BOOLEAN NOT NULL DEFAULT FALSE;

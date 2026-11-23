@@ -10,6 +10,9 @@ import jakarta.validation.constraints.NotNull;
 public record EntradaRequest(
 
         @NotNull(message = "O veículo é obrigatório.")
-        Long veiculoId
+        Long veiculoId,
+
+        /** Pátio onde a entrada ocorre (opcional; base da ocupação por pátio). */
+        Long patioId
 ) {
 }

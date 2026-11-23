@@ -13,20 +13,46 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * Repositorio de {@link ContaPagar}.
  */
 public interface ContaPagarRepository extends JpaRepository<ContaPagar, Long> {
+    @org.springframework.data.jpa.repository.Query("""
+            select c.id from ContaPagar c
+            where c.organizacaoId = :org and c.notaEntrada.id = :notaId
+            order by c.id
+            """)
+    List<Long> findIdsPorNota(@org.springframework.data.repository.query.Param("org") Long org,
+            @org.springframework.data.repository.query.Param("notaId") Long notaId);
 
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
-    List<ContaPagar> findByNotaEntradaId(Long notaEntradaId);
+    List<ContaPagar> findByOrganizacaoIdAndNotaEntradaIdInOrderByDataVencimentoAsc(
+            Long organizacaoId, List<Long> notaIds);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select c from ContaPagar c where c.id = :id and "
+            + "((:org is null and c.organizacaoId is null) or c.organizacaoId = :org)")
+    Optional<ContaPagar> buscarParaBaixa(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("org") Long org);
+
+    @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
+    List<ContaPagar> findByNotaEntradaIdAndOrganizacaoIdOrderByNumeroParcelaAsc(
+            Long notaEntradaId, Long organizacaoId);
 
     /** Titulos a pagar em aberto vencendo no intervalo — base do relatorio 4.28. */
     @EntityGraph(attributePaths = "fornecedor")
-    List<ContaPagar> findBySituacaoInAndDataVencimentoBetween(
+    List<ContaPagar> findByOrganizacaoIdIsNullAndSituacaoInAndDataVencimentoBetween(
             Collection<SituacaoContaPagar> situacoes, LocalDate inicio, LocalDate fim);
+    @EntityGraph(attributePaths = "fornecedor")
+    List<ContaPagar> findByOrganizacaoIdAndSituacaoInAndDataVencimentoBetween(
+            Long organizacaoId, Collection<SituacaoContaPagar> situacoes,
+            LocalDate inicio, LocalDate fim);
 
-    @Override
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
-    Page<ContaPagar> findAll(Pageable pageable);
+    Page<ContaPagar> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
 
-    @Override
     @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
-    Optional<ContaPagar> findById(Long id);
+    Page<ContaPagar> findAllByOrganizacaoIdIsNull(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
+    Optional<ContaPagar> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    @EntityGraph(attributePaths = {"fornecedor", "notaEntrada", "formaPagamento"})
+    Optional<ContaPagar> findByIdAndOrganizacaoIdIsNull(Long id);
 }

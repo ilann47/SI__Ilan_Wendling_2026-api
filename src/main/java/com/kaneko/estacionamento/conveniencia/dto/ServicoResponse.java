@@ -13,6 +13,7 @@ public record ServicoResponse(
         String descricao,
         BigDecimal valorPadrao,
         Boolean ativo,
+        Long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -25,6 +26,7 @@ public record ServicoResponse(
                 servico.getDescricao(),
                 servico.getValorPadrao(),
                 servico.getAtivo(),
+                servico.getVersion(),
                 servico.getCreatedAt(),
                 servico.getUpdatedAt());
     }

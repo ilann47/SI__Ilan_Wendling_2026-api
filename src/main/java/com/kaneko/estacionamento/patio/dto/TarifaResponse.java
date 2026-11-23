@@ -9,6 +9,8 @@ import java.time.OffsetDateTime;
  */
 public record TarifaResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         String descricao,
         BigDecimal valorHora,
         BigDecimal valorDiaria,
@@ -22,6 +24,8 @@ public record TarifaResponse(
     public static TarifaResponse from(Tarifa tarifa) {
         return new TarifaResponse(
                 tarifa.getId(),
+                tarifa.getOrganizacaoId(),
+                tarifa.getVersion(),
                 tarifa.getDescricao(),
                 tarifa.getValorHora(),
                 tarifa.getValorDiaria(),

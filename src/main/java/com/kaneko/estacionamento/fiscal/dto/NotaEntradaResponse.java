@@ -13,6 +13,8 @@ import java.util.List;
  */
 public record NotaEntradaResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         String numero,
         String modelo,
         String serie,
@@ -20,6 +22,8 @@ public record NotaEntradaResponse(
         String fornecedorNome,
         Long condicaoPagamentoId,
         String condicaoPagamentoNome,
+        Long localEstoqueId,
+        String localEstoqueNome,
         LocalDate dataEmissao,
         LocalDate dataChegada,
         TipoFrete tipoFrete,
@@ -33,12 +37,17 @@ public record NotaEntradaResponse(
         String observacao,
         List<ItemNotaEntradaResponse> itens,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Long transportadoraId, String transportadoraNome, String observacaoInterna,
+        OffsetDateTime revertidaEm,
+        String motivoReversao
 ) {
 
     public static NotaEntradaResponse from(NotaEntrada nota) {
         return new NotaEntradaResponse(
                 nota.getId(),
+                nota.getOrganizacaoId(),
+                nota.getVersion(),
                 nota.getNumero(),
                 nota.getModelo(),
                 nota.getSerie(),
@@ -46,6 +55,8 @@ public record NotaEntradaResponse(
                 nota.getFornecedor().getNome(),
                 nota.getCondicaoPagamento() != null ? nota.getCondicaoPagamento().getId() : null,
                 nota.getCondicaoPagamento() != null ? nota.getCondicaoPagamento().getNome() : null,
+                nota.getLocalEstoque() != null ? nota.getLocalEstoque().getId() : null,
+                nota.getLocalEstoque() != null ? nota.getLocalEstoque().getNome() : null,
                 nota.getDataEmissao(),
                 nota.getDataChegada(),
                 nota.getTipoFrete(),
@@ -59,6 +70,11 @@ public record NotaEntradaResponse(
                 nota.getObservacao(),
                 nota.getItens().stream().map(ItemNotaEntradaResponse::from).toList(),
                 nota.getCreatedAt(),
-                nota.getUpdatedAt());
+                nota.getUpdatedAt(),
+                nota.getTransportadora() == null ? null : nota.getTransportadora().getId(),
+                nota.getTransportadora() == null ? null : nota.getTransportadora().getNome(),
+                nota.getObservacaoInterna(),
+                nota.getRevertidaEm(),
+                nota.getMotivoReversao());
     }
 }

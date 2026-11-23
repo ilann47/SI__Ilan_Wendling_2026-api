@@ -11,10 +11,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface ProdutoFornecedorRepository extends JpaRepository<ProdutoFornecedor, Long> {
 
-    /** Unicidade do par (uq_produto_fornecedor). */
-    boolean existsByProdutoIdAndFornecedorId(Long produtoId, Long fornecedorId);
+    @EntityGraph(attributePaths = {"produto", "fornecedor"})
+    Optional<ProdutoFornecedor> findByProdutoIdAndFornecedorIdAndOrganizacaoId(
+            Long produtoId, Long fornecedorId, Long organizacaoId);
 
-    boolean existsByProdutoIdAndFornecedorIdAndIdNot(Long produtoId, Long fornecedorId, Long id);
+    @EntityGraph(attributePaths = {"produto", "fornecedor"})
+    Optional<ProdutoFornecedor> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    @EntityGraph(attributePaths = {"produto", "fornecedor"})
+    Optional<ProdutoFornecedor> findByIdAndOrganizacaoIdIsNull(Long id);
+
+    @EntityGraph(attributePaths = {"produto", "fornecedor"})
+    Page<ProdutoFornecedor> findAllByOrganizacaoId(Long organizacaoId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"produto", "fornecedor"})
+    Page<ProdutoFornecedor> findAllByOrganizacaoIdAndProdutoId(
+            Long organizacaoId, Long produtoId, Pageable pageable);
 
     @Override
     @EntityGraph(attributePaths = {"produto", "fornecedor"})

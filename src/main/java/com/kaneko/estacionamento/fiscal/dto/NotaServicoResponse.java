@@ -5,12 +5,15 @@ import com.kaneko.estacionamento.fiscal.SituacaoNotaServico;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * Representacao de saida de uma nota de servico.
  */
 public record NotaServicoResponse(
         Long id,
+        Long organizacaoId,
+        Long version,
         String numero,
         String modelo,
         String serie,
@@ -19,6 +22,7 @@ public record NotaServicoResponse(
         Long servicoId,
         Long movimentacaoId,
         Long mensalistaId,
+        Long ordemServicoId,
         Long condicaoPagamentoId,
         Long formaPagamentoId,
         LocalDate dataEmissao,
@@ -30,12 +34,19 @@ public record NotaServicoResponse(
         SituacaoNotaServico situacao,
         String observacao,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        List<ItemNotaServicoResponse> itens,
+        List<ParcelaNotaEntradaResponse> parcelas,
+        boolean cronogramaDefinido,
+        String motivoCancelamento,
+        OffsetDateTime canceladaEm
 ) {
 
     public static NotaServicoResponse from(NotaServico n) {
         return new NotaServicoResponse(
                 n.getId(),
+                n.getOrganizacaoId(),
+                n.getVersion(),
                 n.getNumero(),
                 n.getModelo(),
                 n.getSerie(),
@@ -44,6 +55,7 @@ public record NotaServicoResponse(
                 n.getServico() != null ? n.getServico().getId() : null,
                 n.getMovimentacao() != null ? n.getMovimentacao().getId() : null,
                 n.getMensalista() != null ? n.getMensalista().getId() : null,
+                n.getOrdemServico() != null ? n.getOrdemServico().getId() : null,
                 n.getCondicaoPagamento() != null ? n.getCondicaoPagamento().getId() : null,
                 n.getFormaPagamento() != null ? n.getFormaPagamento().getId() : null,
                 n.getDataEmissao(),
@@ -55,6 +67,11 @@ public record NotaServicoResponse(
                 n.getSituacao(),
                 n.getObservacao(),
                 n.getCreatedAt(),
-                n.getUpdatedAt());
+                n.getUpdatedAt(),
+                n.getItens(),
+                n.getParcelas(),
+                n.isCronogramaDefinido(),
+                n.getMotivoCancelamento(),
+                n.getCanceladaEm());
     }
 }

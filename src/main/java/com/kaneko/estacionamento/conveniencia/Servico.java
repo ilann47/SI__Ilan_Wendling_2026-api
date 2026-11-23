@@ -1,9 +1,12 @@
 package com.kaneko.estacionamento.conveniencia;
 
 import com.kaneko.estacionamento.common.BaseEntity;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,6 +24,12 @@ import lombok.Setter;
 @Setter
 public class Servico extends BaseEntity {
 
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Version @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "nome", nullable = false, length = 100)
     private String nome;
 
@@ -28,6 +37,7 @@ public class Servico extends BaseEntity {
     private String descricao;
 
     /** Valor sugerido do servico; opcional (sem default no schema). */
-    @Column(name = "valor_padrao", precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_padrao_micros", precision = 14, scale = 0)
     private BigDecimal valorPadrao;
 }

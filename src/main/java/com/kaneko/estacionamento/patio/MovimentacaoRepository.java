@@ -3,10 +3,13 @@ package com.kaneko.estacionamento.patio;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * Repositorio de {@link Movimentacao}. As consultas carregam veiculo,
@@ -14,20 +17,48 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from Movimentacao m where m.id = :id and m.organizacaoId = :organizacaoId")
+    Optional<Movimentacao> bloquearNoTenant(Long organizacaoId, Long id);
+
     /** Ha movimentacao com o status informado para o veiculo? (regra 1 ABERTA por veiculo). */
     boolean existsByVeiculoIdAndStatus(Long veiculoId, StatusMovimentacao status);
+    boolean existsByOrganizacaoIdAndVeiculoIdAndStatus(
+            Long organizacaoId, Long veiculoId, StatusMovimentacao status);
+
+    /** Ocupacao de um patio: quantas movimentacoes estao com o status informado (ABERTO). */
+    long countByPatioIdAndStatus(Long patioId, StatusMovimentacao status);
 
     /** Patio atual: movimentacoes abertas, ordenadas pela entrada (relatorio 4.26). */
     @EntityGraph(attributePaths = {"veiculo", "mensalista"})
     List<Movimentacao> findByStatusOrderByDataEntradaAsc(StatusMovimentacao status);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista"})
+    List<Movimentacao> findByOrganizacaoIdAndStatusOrderByDataEntradaAsc(
+            Long organizacaoId, StatusMovimentacao status);
 
     /** Saidas de patio (fechadas) num intervalo — base do faturamento (relatorio 4.27). */
     @EntityGraph(attributePaths = "veiculo")
-    List<Movimentacao> findByStatusAndDataSaidaBetween(
+    List<Movimentacao> findByOrganizacaoIdIsNullAndStatusAndDataSaidaBetween(
             StatusMovimentacao status, OffsetDateTime inicio, OffsetDateTime fim);
+    @EntityGraph(attributePaths = "veiculo")
+    List<Movimentacao> findByOrganizacaoIdAndStatusAndDataSaidaBetween(
+            Long organizacaoId, StatusMovimentacao status,
+            OffsetDateTime inicio, OffsetDateTime fim);
 
     @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
     Page<Movimentacao> findByStatus(StatusMovimentacao status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Page<Movimentacao> findByOrganizacaoId(Long organizacaoId, Pageable pageable);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Page<Movimentacao> findByOrganizacaoIdIsNull(Pageable pageable);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Page<Movimentacao> findByOrganizacaoIdAndStatus(
+            Long organizacaoId, StatusMovimentacao status, Pageable pageable);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Optional<Movimentacao> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+    @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})
+    Optional<Movimentacao> findByIdAndOrganizacaoIdIsNull(Long id);
 
     @Override
     @EntityGraph(attributePaths = {"veiculo", "mensalista", "tarifa"})

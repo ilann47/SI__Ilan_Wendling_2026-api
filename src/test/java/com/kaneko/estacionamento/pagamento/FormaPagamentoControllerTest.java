@@ -8,30 +8,38 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
+import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Teste de integracao do CRUD de Forma de Pagamento — cobre todos os fluxos:
  * criar, listar, buscar (existente e inexistente), atualizar (existente e
  * inexistente), excluir e os erros de validacao e de unicidade.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
+@TenantApiIntegrationTest
 class FormaPagamentoControllerTest {
 
     @Autowired
     private MockMvc mvc;
+    @Autowired
+    private TenantTestSupport tenant;
+
+    private String token;
+
+    @BeforeEach
+    void setup() throws Exception {
+        token = tenant.criarTenantAdmin().tokenContextual();
+    }
 
     private Number criar(String nome) throws Exception {
         String json = "{ \"nome\": \"" + nome + "\", \"descricao\": \"" + nome + " - descricao\" }";
         String body = mvc.perform(post("/api/formas-pagamento")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -39,7 +47,8 @@ class FormaPagamentoControllerTest {
     }
 
     private long totalElementos() throws Exception {
-        String body = mvc.perform(get("/api/formas-pagamento"))
+        String body = mvc.perform(get("/api/formas-pagamento")
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         Number total = JsonPath.read(body, "$.totalElements");
@@ -52,6 +61,7 @@ class FormaPagamentoControllerTest {
                 { "nome": "Pix", "descricao": "Pagamento instantaneo" }
                 """;
         String body = mvc.perform(post("/api/formas-pagamento")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -61,7 +71,8 @@ class FormaPagamentoControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Number id = JsonPath.read(body, "$.id");
-        mvc.perform(get("/api/formas-pagamento/" + id))
+        mvc.perform(get("/api/formas-pagamento/" + id)
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Pix"))
                 .andExpect(jsonPath("$.descricao").value("Pagamento instantaneo"));
@@ -72,7 +83,8 @@ class FormaPagamentoControllerTest {
         long antes = totalElementos();
         criar("Dinheiro");
         criar("Cartao");
-        mvc.perform(get("/api/formas-pagamento"))
+        mvc.perform(get("/api/formas-pagamento")
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.totalElements").value((int) (antes + 2)));
@@ -82,7 +94,8 @@ class FormaPagamentoControllerTest {
     void filtraPorNome() throws Exception {
         criar("Pix");
         criar("Boleto");
-        mvc.perform(get("/api/formas-pagamento").param("nome", "pix"))
+        mvc.perform(get("/api/formas-pagamento").param("nome", "pix")
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].nome").value("Pix"));
@@ -95,6 +108,7 @@ class FormaPagamentoControllerTest {
                 { "nome": "Boleto", "descricao": "Boleto bancario" }
                 """;
         mvc.perform(put("/api/formas-pagamento/" + id)
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Boleto"))
@@ -107,6 +121,7 @@ class FormaPagamentoControllerTest {
                 { "nome": "X", "descricao": "Y" }
                 """;
         mvc.perform(put("/api/formas-pagamento/999999")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isNotFound());
     }
@@ -114,9 +129,11 @@ class FormaPagamentoControllerTest {
     @Test
     void excluiFormaPagamentoEdepoisRetorna404() throws Exception {
         Number id = criar("Temporario");
-        mvc.perform(delete("/api/formas-pagamento/" + id))
+        mvc.perform(delete("/api/formas-pagamento/" + id)
+                        .header("Authorization", token))
                 .andExpect(status().isNoContent());
-        mvc.perform(get("/api/formas-pagamento/" + id))
+        mvc.perform(get("/api/formas-pagamento/" + id)
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
     }
@@ -125,6 +142,7 @@ class FormaPagamentoControllerTest {
     void rejeitaNomeDuplicadoCom409() throws Exception {
         criar("Cheque");
         mvc.perform(post("/api/formas-pagamento")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"nome\": \"Cheque\", \"descricao\": \"Outra descricao\" }"))
                 .andExpect(status().isConflict());
@@ -132,13 +150,15 @@ class FormaPagamentoControllerTest {
 
     @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
-        mvc.perform(get("/api/formas-pagamento/999999"))
+        mvc.perform(get("/api/formas-pagamento/999999")
+                        .header("Authorization", token))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna400QuandoNomeAusente() throws Exception {
         mvc.perform(post("/api/formas-pagamento")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"descricao\": \"Sem nome\" }"))
                 .andExpect(status().isBadRequest());
@@ -147,6 +167,7 @@ class FormaPagamentoControllerTest {
     @Test
     void retorna400QuandoDescricaoAusente() throws Exception {
         mvc.perform(post("/api/formas-pagamento")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"nome\": \"Sem descricao\" }"))
                 .andExpect(status().isBadRequest());

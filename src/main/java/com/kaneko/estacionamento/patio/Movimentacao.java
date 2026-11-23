@@ -2,6 +2,8 @@ package com.kaneko.estacionamento.patio;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import com.kaneko.estacionamento.common.util.MilionesimosConverter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -9,6 +11,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import lombok.Getter;
@@ -29,6 +32,16 @@ import lombok.Setter;
 @Setter
 public class Movimentacao extends AuditableEntity {
 
+    @Column(name = "organizacao_id", updatable = false)
+    private Long organizacaoId;
+
+    @Column(name = "patio_turno_entrada_id", updatable = false)
+    private Long patioTurnoEntradaId;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "veiculo_id", nullable = false)
     private Veiculo veiculo;
@@ -41,6 +54,11 @@ public class Movimentacao extends AuditableEntity {
     @JoinColumn(name = "tarifa_id")
     private Tarifa tarifa;
 
+    /** Patio onde a movimentacao ocorre (base da ocupacao por patio). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patio_id")
+    private Patio patio;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false, length = 20)
     private TipoMovimentacao tipo;
@@ -51,7 +69,8 @@ public class Movimentacao extends AuditableEntity {
     @Column(name = "data_saida")
     private OffsetDateTime dataSaida;
 
-    @Column(name = "valor_cobrado", precision = 10, scale = 2)
+    @Convert(converter = MilionesimosConverter.class)
+    @Column(name = "valor_cobrado_micros", precision = 14, scale = 0)
     private BigDecimal valorCobrado;
 
     @Enumerated(EnumType.STRING)

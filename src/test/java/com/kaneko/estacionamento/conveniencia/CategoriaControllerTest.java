@@ -8,30 +8,39 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
+import com.kaneko.estacionamento.support.tenant.TenantFixture;
+import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
  * Teste de integracao do CRUD de Categoria — cobre todos os fluxos: criar,
  * listar, buscar (existente e inexistente), atualizar (existente e
  * inexistente), excluir e os erros de validacao e de unicidade.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
+@TenantApiIntegrationTest
 class CategoriaControllerTest {
 
     @Autowired
     private MockMvc mvc;
+    @Autowired
+    private TenantTestSupport tenant;
+    private TenantFixture tenantFixture;
+
+    @BeforeEach
+    void setupTenant() throws Exception {
+        tenantFixture = tenant.criarTenantAdmin();
+    }
 
     private Number criar(String nome) throws Exception {
         String json = "{ \"nome\": \"" + nome + "\" }";
-        String body = mvc.perform(post("/api/categorias")
+        String body = perform(post("/api/categorias")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -43,7 +52,7 @@ class CategoriaControllerTest {
         String json = """
                 { "nome": "Bebidas", "descricao": "Refrigerantes e sucos" }
                 """;
-        String body = mvc.perform(post("/api/categorias")
+        String body = perform(post("/api/categorias")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -52,7 +61,7 @@ class CategoriaControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Number id = JsonPath.read(body, "$.id");
-        mvc.perform(get("/api/categorias/" + id))
+        perform(get("/api/categorias/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Bebidas"))
                 .andExpect(jsonPath("$.descricao").value("Refrigerantes e sucos"));
@@ -62,7 +71,7 @@ class CategoriaControllerTest {
     void listaCategorias() throws Exception {
         criar("Bebidas");
         criar("Snacks");
-        mvc.perform(get("/api/categorias"))
+        perform(get("/api/categorias"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.totalElements").value(2));
@@ -73,7 +82,7 @@ class CategoriaControllerTest {
         criar("Bebidas");
         criar("Snacks");
 
-        mvc.perform(get("/api/categorias").param("nome", "bebid"))
+        perform(get("/api/categorias").param("nome", "bebid"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].nome").value("Bebidas"));
@@ -85,7 +94,8 @@ class CategoriaControllerTest {
         String json = """
                 { "nome": "Bebidas", "descricao": "Linha completa" }
                 """;
-        mvc.perform(put("/api/categorias/" + id)
+        perform(put("/api/categorias/" + id)
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Bebidas"))
@@ -94,7 +104,8 @@ class CategoriaControllerTest {
 
     @Test
     void atualizaCategoriaInexistenteRetorna404() throws Exception {
-        mvc.perform(put("/api/categorias/999999")
+        perform(put("/api/categorias/999999")
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"X\" }"))
                 .andExpect(status().isNotFound());
     }
@@ -102,9 +113,9 @@ class CategoriaControllerTest {
     @Test
     void excluiCategoriaEdepoisRetorna404() throws Exception {
         Number id = criar("Temporario");
-        mvc.perform(delete("/api/categorias/" + id))
+        perform(delete("/api/categorias/" + id).header("If-Match", "\"0\""))
                 .andExpect(status().isNoContent());
-        mvc.perform(get("/api/categorias/" + id))
+        perform(get("/api/categorias/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
     }
@@ -112,21 +123,25 @@ class CategoriaControllerTest {
     @Test
     void rejeitaNomeDuplicadoCom409() throws Exception {
         criar("Limpeza");
-        mvc.perform(post("/api/categorias")
+        perform(post("/api/categorias")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"Limpeza\" }"))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
-        mvc.perform(get("/api/categorias/999999"))
+        perform(get("/api/categorias/999999"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna400QuandoNomeVazio() throws Exception {
-        mvc.perform(post("/api/categorias")
+        perform(post("/api/categorias")
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"\" }"))
                 .andExpect(status().isBadRequest());
+    }
+
+    private ResultActions perform(MockHttpServletRequestBuilder request) throws Exception {
+        return mvc.perform(request.header("Authorization", tenantFixture.tokenContextual()));
     }
 }

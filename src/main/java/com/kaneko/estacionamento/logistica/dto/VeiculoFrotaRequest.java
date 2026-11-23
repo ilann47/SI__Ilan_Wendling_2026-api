@@ -1,9 +1,11 @@
 package com.kaneko.estacionamento.logistica.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 
 /**
@@ -22,10 +24,15 @@ public record VeiculoFrotaRequest(
         Integer ano,
 
         @PositiveOrZero(message = "A capacidade não pode ser negativa.")
+        @Digits(integer = 8, fraction = 6)
         BigDecimal capacidade,
 
         @Size(max = 255) String observacao,
 
         Boolean ativo
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException("O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

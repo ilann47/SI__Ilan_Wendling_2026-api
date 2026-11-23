@@ -1,10 +1,12 @@
 package com.kaneko.estacionamento.fornecedor.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.kaneko.estacionamento.pessoas.TipoPessoa;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -38,6 +40,7 @@ public record FornecedorRequest(
         Long transportadoraId,
 
         @PositiveOrZero(message = "O limite de crédito não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal limiteCredito,
 
         @Size(max = 255) String observacao,
@@ -47,4 +50,9 @@ public record FornecedorRequest(
         @Valid List<EmailRequest> emails,
         @Valid List<TelefoneRequest> telefones
 ) {
+    @JsonAnySetter
+    public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException(
+                "O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }

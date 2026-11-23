@@ -8,21 +8,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
+import com.kaneko.estacionamento.support.tenant.TenantFixture;
+import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Teste de integracao do CRUD de Produto — todos os fluxos, com as FKs de marca
  * e unidade de medida.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
+@TenantApiIntegrationTest
 @Transactional
 class ProdutoControllerTest {
 
@@ -35,25 +38,36 @@ class ProdutoControllerTest {
     @Autowired
     private UnidadeMedidaRepository unidadeMedidaRepository;
 
+    @Autowired
+    private TenantTestSupport tenant;
+
     private Long marcaId;
     private Long unidadeId;
+    private TenantFixture fixture;
 
     @BeforeEach
-    void setup() {
+    void setup() throws Exception {
+        fixture = tenant.criarTenantAdmin();
         Marca marca = new Marca();
         marca.setNome("Coca-Cola");
+        marca.setOrganizacaoId(fixture.organizacaoId());
         marcaId = marcaRepository.save(marca).getId();
 
         UnidadeMedida unidade = new UnidadeMedida();
         unidade.setNome("Unidade");
         unidade.setSigla("UN");
+        unidade.setOrganizacaoId(fixture.organizacaoId());
         unidadeId = unidadeMedidaRepository.save(unidade).getId();
+    }
+
+    private ResultActions perform(MockHttpServletRequestBuilder request) throws Exception {
+        return mvc.perform(request.header(HttpHeaders.AUTHORIZATION, fixture.tokenContextual()));
     }
 
     private Number criar(String nome) throws Exception {
         String json = "{ \"nome\": \"" + nome + "\", \"marcaId\": " + marcaId
                 + ", \"unidadeMedidaId\": " + unidadeId + " }";
-        String body = mvc.perform(post("/api/produtos")
+        String body = perform(post("/api/produtos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -63,8 +77,8 @@ class ProdutoControllerTest {
     @Test
     void criaEbuscaPorId() throws Exception {
         String json = "{ \"nome\": \"Refrigerante Lata\", \"codigoBarras\": \"7891000\", \"marcaId\": " + marcaId
-                + ", \"unidadeMedidaId\": " + unidadeId + ", \"valorVenda\": 5.50, \"quantidade\": 100 }";
-        String body = mvc.perform(post("/api/produtos")
+                + ", \"unidadeMedidaId\": " + unidadeId + ", \"valorVenda\": 5.50 }";
+        String body = perform(post("/api/produtos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.nome").value("Refrigerante Lata"))
@@ -74,7 +88,7 @@ class ProdutoControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Number id = JsonPath.read(body, "$.id");
-        mvc.perform(get("/api/produtos/" + id))
+        perform(get("/api/produtos/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.codigoBarras").value("7891000"));
     }
@@ -83,7 +97,7 @@ class ProdutoControllerTest {
     void listaProdutos() throws Exception {
         criar("Produto Um");
         criar("Produto Dois");
-        mvc.perform(get("/api/produtos"))
+        perform(get("/api/produtos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(2));
     }
@@ -93,7 +107,7 @@ class ProdutoControllerTest {
         criar("Refrigerante Lata");
         criar("Agua Mineral");
 
-        mvc.perform(get("/api/produtos").param("nome", "refrigerante"))
+        perform(get("/api/produtos").param("nome", "refrigerante"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].nome").value("Refrigerante Lata"));
@@ -104,7 +118,7 @@ class ProdutoControllerTest {
         Number id = criar("Produto Antigo");
         String json = "{ \"nome\": \"Produto Novo\", \"marcaId\": " + marcaId
                 + ", \"unidadeMedidaId\": " + unidadeId + ", \"valorVenda\": 9.90 }";
-        mvc.perform(put("/api/produtos/" + id)
+        perform(put("/api/produtos/" + id).header(HttpHeaders.IF_MATCH, "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Produto Novo"))
@@ -114,7 +128,7 @@ class ProdutoControllerTest {
     @Test
     void atualizaProdutoInexistenteRetorna404() throws Exception {
         String json = "{ \"nome\": \"X\", \"marcaId\": " + marcaId + ", \"unidadeMedidaId\": " + unidadeId + " }";
-        mvc.perform(put("/api/produtos/999999")
+        perform(put("/api/produtos/999999").header(HttpHeaders.IF_MATCH, "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isNotFound());
     }
@@ -122,9 +136,9 @@ class ProdutoControllerTest {
     @Test
     void excluiProdutoEdepoisRetorna404() throws Exception {
         Number id = criar("Temporario");
-        mvc.perform(delete("/api/produtos/" + id))
+        perform(delete("/api/produtos/" + id).header(HttpHeaders.IF_MATCH, "\"0\""))
                 .andExpect(status().isNoContent());
-        mvc.perform(get("/api/produtos/" + id))
+        perform(get("/api/produtos/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
     }
@@ -133,10 +147,10 @@ class ProdutoControllerTest {
     void rejeitaCodigoBarrasDuplicadoCom409() throws Exception {
         String json = "{ \"nome\": \"Produto A\", \"codigoBarras\": \"99999999\", \"marcaId\": " + marcaId
                 + ", \"unidadeMedidaId\": " + unidadeId + " }";
-        mvc.perform(post("/api/produtos")
+        perform(post("/api/produtos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated());
-        mvc.perform(post("/api/produtos")
+        perform(post("/api/produtos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isConflict());
     }
@@ -144,21 +158,21 @@ class ProdutoControllerTest {
     @Test
     void retorna404QuandoMarcaNaoExiste() throws Exception {
         String json = "{ \"nome\": \"Sem Marca\", \"marcaId\": 999999, \"unidadeMedidaId\": " + unidadeId + " }";
-        mvc.perform(post("/api/produtos")
+        perform(post("/api/produtos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
-        mvc.perform(get("/api/produtos/999999"))
+        perform(get("/api/produtos/999999"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna400QuandoMarcaAusente() throws Exception {
         String json = "{ \"nome\": \"Sem Marca\", \"unidadeMedidaId\": " + unidadeId + " }";
-        mvc.perform(post("/api/produtos")
+        perform(post("/api/produtos")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isBadRequest());
     }

@@ -8,30 +8,39 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
+import com.kaneko.estacionamento.support.tenant.TenantFixture;
+import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
  * Teste de integracao do CRUD de UnidadeMedida — cobre todos os fluxos: criar,
  * listar, buscar (existente e inexistente), atualizar (existente e
  * inexistente), excluir e os erros de validacao e de unicidade da sigla.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
+@TenantApiIntegrationTest
 class UnidadeMedidaControllerTest {
 
     @Autowired
     private MockMvc mvc;
+    @Autowired
+    private TenantTestSupport tenant;
+    private TenantFixture tenantFixture;
+
+    @BeforeEach
+    void setupTenant() throws Exception {
+        tenantFixture = tenant.criarTenantAdmin();
+    }
 
     private Number criar(String nome, String sigla) throws Exception {
         String json = "{ \"nome\": \"" + nome + "\", \"sigla\": \"" + sigla + "\" }";
-        String body = mvc.perform(post("/api/unidades-medida")
+        String body = perform(post("/api/unidades-medida")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -43,7 +52,7 @@ class UnidadeMedidaControllerTest {
         String json = """
                 { "nome": "Quilograma", "sigla": "kg" }
                 """;
-        String body = mvc.perform(post("/api/unidades-medida")
+        String body = perform(post("/api/unidades-medida")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -53,7 +62,7 @@ class UnidadeMedidaControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Number id = JsonPath.read(body, "$.id");
-        mvc.perform(get("/api/unidades-medida/" + id))
+        perform(get("/api/unidades-medida/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Quilograma"))
                 .andExpect(jsonPath("$.sigla").value("KG"));
@@ -63,7 +72,7 @@ class UnidadeMedidaControllerTest {
     void listaUnidades() throws Exception {
         criar("Unidade", "UN");
         criar("Litro", "L");
-        mvc.perform(get("/api/unidades-medida"))
+        perform(get("/api/unidades-medida"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.totalElements").value(2));
@@ -74,7 +83,7 @@ class UnidadeMedidaControllerTest {
         criar("Unidade", "UN");
         criar("Litro", "L");
 
-        mvc.perform(get("/api/unidades-medida").param("nome", "unid"))
+        perform(get("/api/unidades-medida").param("nome", "unid"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].nome").value("Unidade"));
@@ -86,7 +95,8 @@ class UnidadeMedidaControllerTest {
         String json = """
                 { "nome": "Pacote", "sigla": "PCT" }
                 """;
-        mvc.perform(put("/api/unidades-medida/" + id)
+        perform(put("/api/unidades-medida/" + id)
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Pacote"))
@@ -95,7 +105,8 @@ class UnidadeMedidaControllerTest {
 
     @Test
     void atualizaUnidadeInexistenteRetorna404() throws Exception {
-        mvc.perform(put("/api/unidades-medida/999999")
+        perform(put("/api/unidades-medida/999999")
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"nome\": \"X\", \"sigla\": \"X\" }"))
                 .andExpect(status().isNotFound());
@@ -104,9 +115,9 @@ class UnidadeMedidaControllerTest {
     @Test
     void excluiUnidadeEdepoisRetorna404() throws Exception {
         Number id = criar("Temporario", "TMP");
-        mvc.perform(delete("/api/unidades-medida/" + id))
+        perform(delete("/api/unidades-medida/" + id).header("If-Match", "\"0\""))
                 .andExpect(status().isNoContent());
-        mvc.perform(get("/api/unidades-medida/" + id))
+        perform(get("/api/unidades-medida/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
     }
@@ -114,7 +125,7 @@ class UnidadeMedidaControllerTest {
     @Test
     void rejeitaSiglaDuplicadaCom409() throws Exception {
         criar("Unidade", "UN");
-        mvc.perform(post("/api/unidades-medida")
+        perform(post("/api/unidades-medida")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"nome\": \"Unidades\", \"sigla\": \"un\" }"))
                 .andExpect(status().isConflict());
@@ -122,13 +133,13 @@ class UnidadeMedidaControllerTest {
 
     @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
-        mvc.perform(get("/api/unidades-medida/999999"))
+        perform(get("/api/unidades-medida/999999"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna400QuandoNomeAusente() throws Exception {
-        mvc.perform(post("/api/unidades-medida")
+        perform(post("/api/unidades-medida")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"sigla\": \"UN\" }"))
                 .andExpect(status().isBadRequest());
@@ -136,9 +147,13 @@ class UnidadeMedidaControllerTest {
 
     @Test
     void retorna400QuandoSiglaAusente() throws Exception {
-        mvc.perform(post("/api/unidades-medida")
+        perform(post("/api/unidades-medida")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"nome\": \"Unidade\" }"))
                 .andExpect(status().isBadRequest());
+    }
+
+    private ResultActions perform(MockHttpServletRequestBuilder request) throws Exception {
+        return mvc.perform(request.header("Authorization", tenantFixture.tokenContextual()));
     }
 }

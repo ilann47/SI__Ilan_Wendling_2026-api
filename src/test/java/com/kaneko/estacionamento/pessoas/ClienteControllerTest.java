@@ -14,24 +14,19 @@ import com.kaneko.estacionamento.geografia.Estado;
 import com.kaneko.estacionamento.geografia.EstadoRepository;
 import com.kaneko.estacionamento.geografia.Pais;
 import com.kaneko.estacionamento.geografia.PaisRepository;
-import com.kaneko.estacionamento.pagamento.CondicaoPagamento;
-import com.kaneko.estacionamento.pagamento.CondicaoPagamentoRepository;
+import com.kaneko.estacionamento.support.tenant.TenantApiIntegrationTest;
+import com.kaneko.estacionamento.support.tenant.TenantTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Teste de integracao do CRUD de Cliente — todos os fluxos, com a unicidade de
  * documento e a referencia opcional a Cidade.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
+@TenantApiIntegrationTest
 class ClienteControllerTest {
 
     @Autowired
@@ -47,12 +42,14 @@ class ClienteControllerTest {
     private CidadeRepository cidadeRepository;
 
     @Autowired
-    private CondicaoPagamentoRepository condicaoPagamentoRepository;
+    private TenantTestSupport tenant;
 
     private Long cidadeId;
+    private String token;
 
     @BeforeEach
-    void setup() {
+    void setup() throws Exception {
+        token = tenant.criarTenantAdmin().tokenContextual();
         Pais pais = new Pais();
         pais.setNome("Brasil");
         pais = paisRepository.save(pais);
@@ -72,6 +69,7 @@ class ClienteControllerTest {
     private Number criar(String nome, String documento) throws Exception {
         String json = "{ \"nome\": \"" + nome + "\", \"documento\": \"" + documento + "\" }";
         String body = mvc.perform(post("/api/clientes")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -83,6 +81,7 @@ class ClienteControllerTest {
         String json = "{ \"nome\": \"Joao da Silva\", \"documento\": \"12345678901\", \"tipo\": \"FISICA\","
                 + " \"sexo\": \"MASCULINO\", \"cidadeId\": " + cidadeId + ", \"limiteCredito\": 500.00 }";
         String body = mvc.perform(post("/api/clientes")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.nome").value("Joao da Silva"))
@@ -92,7 +91,8 @@ class ClienteControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         Number id = JsonPath.read(body, "$.id");
-        mvc.perform(get("/api/clientes/" + id))
+        mvc.perform(get("/api/clientes/" + id)
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.documento").value("12345678901"));
     }
@@ -101,7 +101,8 @@ class ClienteControllerTest {
     void listaClientes() throws Exception {
         criar("Cliente Um", "11111111111");
         criar("Cliente Dois", "22222222222");
-        mvc.perform(get("/api/clientes"))
+        mvc.perform(get("/api/clientes")
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(2));
     }
@@ -111,12 +112,14 @@ class ClienteControllerTest {
         criar("Ana Paula", "11111111111");
         criar("Bruno Costa", "22222222222");
 
-        mvc.perform(get("/api/clientes").param("nome", "ana"))
+        mvc.perform(get("/api/clientes").param("nome", "ana")
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].nome").value("Ana Paula"));
 
-        mvc.perform(get("/api/clientes").param("documento", "2222"))
+        mvc.perform(get("/api/clientes").param("documento", "2222")
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].nome").value("Bruno Costa"));
@@ -128,6 +131,7 @@ class ClienteControllerTest {
         String json = "{ \"nome\": \"Maria Souza\", \"documento\": \"33333333333\","
                 + " \"apelido\": \"Mari\", \"limiteCredito\": 1500.00 }";
         mvc.perform(put("/api/clientes/" + id)
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Maria Souza"))
@@ -139,6 +143,7 @@ class ClienteControllerTest {
     void atualizaClienteInexistenteRetorna404() throws Exception {
         String json = "{ \"nome\": \"X\", \"documento\": \"00000000000\" }";
         mvc.perform(put("/api/clientes/999999")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isNotFound());
     }
@@ -146,9 +151,11 @@ class ClienteControllerTest {
     @Test
     void excluiClienteEdepoisRetorna404() throws Exception {
         Number id = criar("Temporario", "44444444444");
-        mvc.perform(delete("/api/clientes/" + id))
+        mvc.perform(delete("/api/clientes/" + id)
+                        .header("Authorization", token))
                 .andExpect(status().isNoContent());
-        mvc.perform(get("/api/clientes/" + id))
+        mvc.perform(get("/api/clientes/" + id)
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
     }
@@ -157,6 +164,7 @@ class ClienteControllerTest {
     void rejeitaDocumentoDuplicadoCom409() throws Exception {
         criar("Cliente A", "99999999999");
         mvc.perform(post("/api/clientes")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"nome\": \"Cliente B\", \"documento\": \"99999999999\" }"))
                 .andExpect(status().isConflict());
@@ -168,20 +176,25 @@ class ClienteControllerTest {
                 { "nome": "Cliente B", "documento": "88888888888", "cidadeId": 999999 }
                 """;
         mvc.perform(post("/api/clientes")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void criaClienteComCondicaoPagamento() throws Exception {
-        CondicaoPagamento condicao = new CondicaoPagamento();
-        condicao.setNome("A Vista");
-        condicao.setNumeroParcelas(1);
-        Long condicaoId = condicaoPagamentoRepository.save(condicao).getId();
+        String condicaoBody = mvc.perform(post("/api/condicoes-pagamento")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"A Vista\",\"numeroParcelas\":1}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long condicaoId = ((Number) JsonPath.read(condicaoBody, "$.id")).longValue();
 
         String json = "{ \"nome\": \"Cliente Pago\", \"documento\": \"55555555555\","
                 + " \"condicaoPagamentoId\": " + condicaoId + " }";
         mvc.perform(post("/api/clientes")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.condicaoPagamentoId").value(condicaoId))
@@ -194,19 +207,22 @@ class ClienteControllerTest {
                 { "nome": "Cliente C", "documento": "66666666666", "condicaoPagamentoId": 999999 }
                 """;
         mvc.perform(post("/api/clientes")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna404QuandoNaoEncontrado() throws Exception {
-        mvc.perform(get("/api/clientes/999999"))
+        mvc.perform(get("/api/clientes/999999")
+                        .header("Authorization", token))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void retorna400QuandoDocumentoAusente() throws Exception {
         mvc.perform(post("/api/clientes")
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content("{ \"nome\": \"Sem Doc\" }"))
                 .andExpect(status().isBadRequest());
     }

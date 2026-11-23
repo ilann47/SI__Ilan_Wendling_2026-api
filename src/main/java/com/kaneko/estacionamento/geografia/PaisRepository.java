@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.geografia;
 
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
@@ -16,4 +17,6 @@ public interface PaisRepository extends JpaRepository<Pais, Long>,
 
     /** Indica se existe OUTRO pais (id diferente) com o mesmo nome — usado em alteracoes. */
     boolean existsByNomeAndIdNot(String nome, Long id);
+
+    Optional<Pais> findByNomeIgnoreCase(String nome);
 }

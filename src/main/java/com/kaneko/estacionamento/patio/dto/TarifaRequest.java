@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Digits;
 import java.math.BigDecimal;
 
 /**
@@ -19,10 +20,12 @@ public record TarifaRequest(
 
         @NotNull(message = "O valor por hora é obrigatório.")
         @PositiveOrZero(message = "O valor por hora não pode ser negativo.")
+        @Digits(integer = 8, fraction = 6)
         BigDecimal valorHora,
 
         @NotNull(message = "O valor da diária é obrigatório.")
         @PositiveOrZero(message = "O valor da diária não pode ser negativo.")
+        @Digits(integer = 8, fraction = 6)
         BigDecimal valorDiaria,
 
         @PositiveOrZero(message = "A tolerância não pode ser negativa.")
@@ -30,6 +33,7 @@ public record TarifaRequest(
 
         @NotNull(message = "O valor da mensalidade é obrigatório.")
         @PositiveOrZero(message = "O valor da mensalidade não pode ser negativo.")
+        @Digits(integer = 8, fraction = 6)
         BigDecimal valorMensalidade,
 
         Boolean ativo

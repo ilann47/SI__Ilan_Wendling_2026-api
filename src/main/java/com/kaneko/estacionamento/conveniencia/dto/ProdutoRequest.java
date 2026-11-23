@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.conveniencia.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -28,9 +30,11 @@ public record ProdutoRequest(
         Long categoriaId,
 
         @PositiveOrZero(message = "O valor de venda não pode ser negativo.")
+        @Digits(integer = 13, fraction = 6)
         BigDecimal valorVenda,
 
         @PositiveOrZero(message = "A quantidade mínima não pode ser negativa.")
+        @Digits(integer = 12, fraction = 6)
         BigDecimal quantidadeMinima,
 
         @Size(max = 255) String descricao,
@@ -38,4 +42,7 @@ public record ProdutoRequest(
 
         Boolean ativo
 ) {
+    @JsonAnySetter public void rejeitarCampoDesconhecido(String campo, Object valor) {
+        throw new IllegalArgumentException("O campo '" + campo + "' nao e aceito neste contrato.");
+    }
 }
