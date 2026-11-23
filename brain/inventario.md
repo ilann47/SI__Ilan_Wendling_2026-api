@@ -50,11 +50,21 @@ PATCH /api/v1/parking-allocations/{id} + If-Match
   idempotente para um pátio do tenant.
 - `PATCH /api/v1/parking-allocations/{id}`: altera somente capacidades e exige
   a versão exata do agregado em `If-Match`.
+- O calendário de pátio em [[instalacoes]] usa o mesmo cálculo temporal de
+  criação e edição da alocação: desconta o pico de vagas comprometidas ao
+  mesmo tempo, não a soma de todos os eventos que tocam o intervalo. Os
+  limites são semiabertos `[início,fim)`; janelas encostadas não se sobrepõem.
+  Uma alocação existente em rascunho compromete saldo e, na edição, a própria
+  alocação é excluída do cálculo. O lock do pátio permanece nas escritas.
 - `GET /api/v1/events/{eventoId}/availability`: consulta saldo comercial
   projetado; não cria hold.
 - `POST /api/v1/inventory-holds`: garante saldo temporário de forma atômica.
 
 ## Estrutura de Dados (DTOs, Entidades)
+
+A resposta de alocação inclui `parkingFacilityName`, resolvido na organização
+da alocação, para exibir o nome do pátio sem depender de cache do navegador
+(2026-11-08).
 
 `AlocacaoPatioEvento` contém organização, evento, pátio, início/fim,
 capacidades operacional, vendável e reservada, ocupação atual, versão e timestamps. As FKs
@@ -83,6 +93,8 @@ compensatório e concorrência real no PostgreSQL.
 
 - O lock pessimista ocorre na raiz `PatioInstalacao`, serializando decisões de
   capacidade para todas as alocações da mesma instalação.
+- O mesmo lock é usado na edição do pátio para proteger a capacidade já
+  comprometida pelo pico de alocações simultâneas ainda não encerradas.
 - A consulta usa sobreposição de intervalos semiabertos (`início < fim consultado`
   e `fim > início consultado`), permitindo janelas apenas adjacentes.
 - `vendável + reservada <= operacional`, e o operacional alocado simultâneo
@@ -110,6 +122,8 @@ compensatório e concorrência real no PostgreSQL.
 
 | Data | Ação |
 |---|---|
+| 2026-11-22 | Unifica o cálculo de saldo do calendário e das alocações pelo pico simultâneo de ocupação. |
+| 2026-11-08 | Protege alocações existentes ao reduzir a capacidade operacional de um pátio. |
 | 2026-07-30 | Implementa UC706 com alocação temporal e prevenção de sobrealocação. |
 | 2026-07-30 | Protege a capacidade vendável contra soma excessiva de quotas de produtos. |
 | 2026-07-30 | Vincula lotes de preço à quota do produto e impede períodos ambíguos. |

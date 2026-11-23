@@ -51,6 +51,16 @@ public class PatioInstalacao extends AuditableEntity {
         if (organizacaoId == null || cidadeId == null) {
             throw new IllegalArgumentException("Organizacao e cidade sao obrigatorias.");
         }
+        PatioInstalacao patio = new PatioInstalacao();
+        patio.organizacaoId = organizacaoId;
+        patio.ativo = ativo == null || ativo;
+        patio.atualizar(nome, endereco, numero, complemento, bairro, cep, cidadeId,
+                capacidadeFisica, capacidadeOperacional, observacao);
+        return patio;
+    }
+
+    void atualizar(String nome, String endereco, String numero, String complemento, String bairro,
+            String cep, Long cidadeId, Integer capacidadeFisica, Integer capacidadeOperacional, String observacao) {
         if (capacidadeFisica == null || capacidadeFisica < 1) {
             throw new IllegalArgumentException("A capacidade fisica deve ser de pelo menos uma vaga.");
         }
@@ -59,20 +69,16 @@ public class PatioInstalacao extends AuditableEntity {
             throw new IllegalArgumentException(
                     "A capacidade operacional deve estar entre zero e a capacidade fisica.");
         }
-        PatioInstalacao patio = new PatioInstalacao();
-        patio.organizacaoId = organizacaoId;
-        patio.nome = textoObrigatorio(nome, "nome", 120);
-        patio.endereco = textoObrigatorio(endereco, "endereco", 120);
-        patio.numero = textoOpcional(numero, "numero", 10);
-        patio.complemento = textoOpcional(complemento, "complemento", 100);
-        patio.bairro = textoObrigatorio(bairro, "bairro", 60);
-        patio.cep = textoObrigatorio(cep, "CEP", 9).toUpperCase(Locale.ROOT);
-        patio.cidadeId = cidadeId;
-        patio.capacidadeFisica = capacidadeFisica;
-        patio.capacidadeOperacional = capacidadeOperacional;
-        patio.observacao = textoOpcional(observacao, "observacao", 255);
-        patio.ativo = ativo == null || ativo;
-        return patio;
+        this.nome = textoObrigatorio(nome, "nome", 120);
+        this.endereco = textoObrigatorio(endereco, "endereco", 120);
+        this.numero = textoOpcional(numero, "numero", 10);
+        this.complemento = textoOpcional(complemento, "complemento", 100);
+        this.bairro = textoObrigatorio(bairro, "bairro", 60);
+        this.cep = textoObrigatorio(cep, "CEP", 9).toUpperCase(Locale.ROOT);
+        this.cidadeId = cidadeId;
+        this.capacidadeFisica = capacidadeFisica;
+        this.capacidadeOperacional = capacidadeOperacional;
+        this.observacao = textoOpcional(observacao, "observacao", 255);
     }
 
     private static String textoObrigatorio(String valor, String campo, int limite) {

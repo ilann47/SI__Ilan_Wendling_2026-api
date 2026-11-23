@@ -3,11 +3,20 @@ package com.kaneko.estacionamento.instalacoes;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface SetorRepository extends JpaRepository<Setor, Long> {
+public interface SetorRepository extends JpaRepository<Setor, Long>, JpaSpecificationExecutor<Setor> {
+    Optional<Setor> findByIdAndOrganizacaoId(Long id, Long organizacaoId);
+
+    @Query("select s.patioId from Setor s where s.id = :id and s.organizacaoId = :org")
+    Optional<Long> buscarPatio(@Param("id") Long id, @Param("org") Long org);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Setor s where s.id = :id and s.organizacaoId = :org")
+    Optional<Setor> buscarParaEdicao(@Param("id") Long id, @Param("org") Long org);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

@@ -47,6 +47,15 @@ public class Setor extends AuditableEntity {
         if (organizacaoId == null || patioId == null) {
             throw new IllegalArgumentException("Organizacao e patio sao obrigatorios.");
         }
+        Setor setor = new Setor();
+        setor.organizacaoId = organizacaoId;
+        setor.patioId = patioId;
+        setor.ativo = true;
+        setor.atualizar(codigo, nome, capacidade, categorias);
+        return setor;
+    }
+
+    void atualizar(String codigo, String nome, Integer capacidade, Set<CategoriaSetor> categorias) {
         if (capacidade == null || capacidade < 1) {
             throw new IllegalArgumentException("A capacidade do setor deve ser positiva.");
         }
@@ -54,18 +63,13 @@ public class Setor extends AuditableEntity {
                 || categorias.stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("O setor deve possuir ao menos uma categoria valida.");
         }
-        Setor setor = new Setor();
-        setor.organizacaoId = organizacaoId;
-        setor.patioId = patioId;
-        setor.codigo = normalizarCodigo(codigo);
-        setor.nome = textoObrigatorio(nome, "nome", 120);
-        setor.capacidade = capacidade;
-        setor.categorias = categorias.stream()
+        this.codigo = normalizarCodigo(codigo);
+        this.nome = textoObrigatorio(nome, "nome", 120);
+        this.capacidade = capacidade;
+        this.categorias = categorias.stream()
                 .sorted(Comparator.comparingInt(Enum::ordinal))
                 .map(Enum::name)
                 .toArray(String[]::new);
-        setor.ativo = true;
-        return setor;
     }
 
     public List<CategoriaSetor> categorias() {

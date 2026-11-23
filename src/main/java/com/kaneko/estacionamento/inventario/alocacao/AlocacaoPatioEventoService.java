@@ -23,6 +23,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,13 +55,17 @@ public class AlocacaoPatioEventoService {
     public List<AlocacaoPatioEventoResponse> listar(Long organizacaoId, Long eventoId) {
         eventos.findByIdAndOrganizacaoId(eventoId, organizacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Evento", eventoId));
-        return alocacoes.findAllByOrganizacaoIdAndEventoIdOrderById(organizacaoId, eventoId)
-                .stream().map(AlocacaoPatioEventoResponse::from).toList();
+        var registros = alocacoes.findAllByOrganizacaoIdAndEventoIdOrderById(organizacaoId, eventoId);
+        if (registros.isEmpty()) return List.of();
+        var ids = registros.stream().map(AlocacaoPatioEvento::getPatioId).collect(Collectors.toSet());
+        var nomes = patios.findAllByOrganizacaoIdAndIdIn(organizacaoId, ids).stream()
+                .collect(Collectors.toMap(PatioInstalacao::getId, PatioInstalacao::getNome));
+        return registros.stream().map(registro -> AlocacaoPatioEventoResponse.from(registro, nomes.get(registro.getPatioId()))).toList();
     }
 
     @Transactional(readOnly = true)
     public AlocacaoPatioEventoResponse buscar(Long organizacaoId, Long alocacaoId) {
-        return AlocacaoPatioEventoResponse.from(
+        return comNomePatio(
                 alocacoes.findByIdAndOrganizacaoId(alocacaoId, organizacaoId)
                         .orElseThrow(() -> new RecursoNaoEncontradoException(
                                 "Alocacao do evento", alocacaoId)));
@@ -81,7 +86,7 @@ public class AlocacaoPatioEventoService {
                 throw new ConflitoException(
                         "A chave de idempotencia ja foi usada com outro payload.");
             }
-            return AlocacaoPatioEventoResponse.from(alocacoes.findByIdAndOrganizacaoId(
+            return comNomePatio(alocacoes.findByIdAndOrganizacaoId(
                             anterior.get().recursoId(), organizacaoId)
                     .orElseThrow(() -> new ConflitoException(
                             "O resultado idempotente nao esta mais disponivel.")));
@@ -111,7 +116,7 @@ public class AlocacaoPatioEventoService {
         idempotencia.registrar(
                 organizacaoId, atorId, OPERACAO_CRIAR, chave,
                 requestHash, RECURSO, alocacao.getId());
-        return AlocacaoPatioEventoResponse.from(alocacao);
+        return AlocacaoPatioEventoResponse.from(alocacao, patio.getNome());
     }
 
     @Transactional
@@ -137,7 +142,13 @@ public class AlocacaoPatioEventoService {
                 organizacaoId, "CAPACIDADE_DA_ALOCACAO_ALTERADA", RECURSO, alocacao.getId(),
                 alocacao.getEventoId(), alocacao.getPatioId(), null, anterior, snapshot(alocacao),
                 versaoAnterior, alocacao.getVersion(), ClasseRetencaoAuditoria.CONFIGURACAO));
-        return AlocacaoPatioEventoResponse.from(alocacao);
+        return AlocacaoPatioEventoResponse.from(alocacao, patio.getNome());
+    }
+
+    private AlocacaoPatioEventoResponse comNomePatio(AlocacaoPatioEvento alocacao) {
+        String nome = patios.findAllByOrganizacaoIdAndIdIn(alocacao.getOrganizacaoId(), List.of(alocacao.getPatioId()))
+                .stream().findFirst().map(PatioInstalacao::getNome).orElse(null);
+        return AlocacaoPatioEventoResponse.from(alocacao, nome);
     }
 
     private Evento eventoConfiguravel(Long eventoId, Long organizacaoId) {
@@ -158,9 +169,10 @@ public class AlocacaoPatioEventoService {
     private void validarSaldoSobreposto(
             PatioInstalacao patio, java.time.OffsetDateTime inicio, java.time.OffsetDateTime fim,
             int capacidadeSolicitada, Long excluirId) {
-        long comprometida = alocacoes.somarCapacidadeOperacionalSobreposta(
-                patio.getId(), inicio, fim, excluirId);
-        if (comprometida + capacidadeSolicitada > patio.getCapacidadeOperacional()) {
+        int disponivel = CapacidadeTemporal.calcular(patio.getCapacidadeOperacional(), inicio, fim,
+                alocacoes.buscarSobrepostas(patio.getOrganizacaoId(), patio.getId(), inicio, fim, excluirId),
+                false).availableCapacity();
+        if (capacidadeSolicitada > disponivel) {
             throw new ConflitoException(
                     "A capacidade operacional do patio seria sobrealocada neste periodo.");
         }

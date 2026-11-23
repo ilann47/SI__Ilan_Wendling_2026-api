@@ -8,6 +8,7 @@ public record AlocacaoPatioEventoResponse(
         Long organizationId,
         Long eventId,
         Long parkingFacilityId,
+        String parkingFacilityName,
         OffsetDateTime startsAt,
         OffsetDateTime endsAt,
         Integer operationalCapacity,
@@ -17,10 +18,10 @@ public record AlocacaoPatioEventoResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
 
-    public static AlocacaoPatioEventoResponse from(AlocacaoPatioEvento alocacao) {
+    public static AlocacaoPatioEventoResponse from(AlocacaoPatioEvento alocacao, String patioNome) {
         return new AlocacaoPatioEventoResponse(
                 alocacao.getId(), alocacao.getOrganizacaoId(), alocacao.getEventoId(),
-                alocacao.getPatioId(), alocacao.getInicio(), alocacao.getFim(),
+                alocacao.getPatioId(), patioNome, alocacao.getInicio(), alocacao.getFim(),
                 alocacao.getCapacidadeOperacional(), alocacao.getCapacidadeVendavel(),
                 alocacao.getCapacidadeReservada(), alocacao.getVersion(),
                 alocacao.getCreatedAt(), alocacao.getUpdatedAt());

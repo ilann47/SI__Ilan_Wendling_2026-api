@@ -3,6 +3,7 @@ package com.kaneko.estacionamento.geografia;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import com.kaneko.estacionamento.common.web.FiltroSpecs;
+import com.kaneko.estacionamento.common.web.CatalogSearch;
 import com.kaneko.estacionamento.geografia.dto.CidadeRequest;
 import com.kaneko.estacionamento.geografia.dto.CidadeResponse;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,12 @@ public class CidadeService {
     public CidadeService(CidadeRepository repository, EstadoRepository estadoRepository) {
         this.repository = repository;
         this.estadoRepository = estadoRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CidadeResponse> listarAtivas(String nome, Long id, Pageable pageable) {
+        return repository.findAll(FiltroSpecs.todos(FiltroSpecs.igual("ativo", true),
+                FiltroSpecs.igual("id", id), CatalogSearch.porNome(nome)), pageable).map(CidadeResponse::from);
     }
 
     @Transactional(readOnly = true)

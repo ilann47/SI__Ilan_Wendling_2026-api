@@ -55,17 +55,22 @@ public class Venue extends AuditableEntity {
         }
         Venue venue = new Venue();
         venue.organizacaoId = organizacaoId;
-        venue.nome = textoObrigatorio(nome, "nome", 160);
         venue.tipo = TipoUnidadeOperacional.VENUE;
-        venue.endereco = textoObrigatorio(endereco, "endereco", 120);
-        venue.numero = textoOpcional(numero, "numero", 10);
-        venue.complemento = textoOpcional(complemento, "complemento", 100);
-        venue.bairro = textoObrigatorio(bairro, "bairro", 60);
-        venue.cep = textoObrigatorio(cep, "CEP", 9);
-        venue.cidadeId = cidadeId;
-        venue.fusoHorario = validarFuso(fusoHorario);
         venue.ativo = true;
+        venue.atualizar(nome, endereco, numero, complemento, bairro, cep, cidadeId, fusoHorario);
         return venue;
+    }
+
+    void atualizar(String nome, String endereco, String numero, String complemento,
+            String bairro, String cep, Long cidadeId, String fusoHorario) {
+        this.nome = textoObrigatorio(nome, "nome", 160);
+        this.endereco = textoObrigatorio(endereco, "endereco", 120);
+        this.numero = textoOpcional(numero, "numero", 10);
+        this.complemento = textoOpcional(complemento, "complemento", 100);
+        this.bairro = textoObrigatorio(bairro, "bairro", 60);
+        this.cep = textoObrigatorio(cep, "CEP", 9);
+        this.cidadeId = cidadeId;
+        this.fusoHorario = validarFuso(fusoHorario);
     }
 
     private static String validarFuso(String valor) {

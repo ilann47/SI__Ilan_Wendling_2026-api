@@ -1,5 +1,7 @@
 package com.kaneko.estacionamento.inventario.alocacao;
 
+import static com.kaneko.estacionamento.support.EventoCatalogoFixture.servicoEvento;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -163,6 +165,87 @@ class AlocacaoPatioEventoControllerTest {
     }
 
     @Test
+    void consultaSaldoMinimoECapacidadePorHorarioSemSomarAlocacoesDistintas() throws Exception {
+        String inicio = "2026-10-10T22:00:00Z";
+        String troca = "2026-10-11T00:00:00Z";
+        String fim = "2026-10-11T02:00:00Z";
+        criarAlocacao(tokenContextual, eventoId, "calendario-primeira",
+                payload(patioId, 70, 0, 0, inicio, troca), status().isCreated());
+        criarAlocacao(tokenContextual, criarEvento("Segunda janela", "calendario-janela"),
+                "calendario-segunda", payload(patioId, 60, 0, 0, troca, fim), status().isCreated());
+
+        consultarSaldo(patioId, tokenContextual, "2026-10-10T21:00:00Z",
+                "2026-10-11T03:00:00Z", true)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.operationalCapacity").value(100))
+                .andExpect(jsonPath("$.availableCapacity").value(30))
+                .andExpect(jsonPath("$.segments.length()").value(4))
+                .andExpect(jsonPath("$.segments[0].endsAt").value(inicio))
+                .andExpect(jsonPath("$.segments[0].availableCapacity").value(100))
+                .andExpect(jsonPath("$.segments[1].startsAt").value(inicio))
+                .andExpect(jsonPath("$.segments[1].endsAt").value(troca))
+                .andExpect(jsonPath("$.segments[1].availableCapacity").value(30))
+                .andExpect(jsonPath("$.segments[2].startsAt").value(troca))
+                .andExpect(jsonPath("$.segments[2].availableCapacity").value(40))
+                .andExpect(jsonPath("$.segments[3].availableCapacity").value(100));
+        consultarSaldo(patioId, tokenContextual, inicio, fim, false)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableCapacity").value(30))
+                .andExpect(jsonPath("$.segments.length()").value(0));
+
+        String criada = criarAlocacao(tokenContextual, criarEvento("Janela inteira", "calendario-toda"),
+                "calendario-terceira", payload(patioId, 30, 0, 0, inicio, fim), status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long alocacao = JsonPath.<Number>read(criada, "$.id").longValue();
+        consultarSaldo(patioId, tokenContextual, inicio, fim, true)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availableCapacity").value(0))
+                .andExpect(jsonPath("$.segments[0].availableCapacity").value(0))
+                .andExpect(jsonPath("$.segments[1].availableCapacity").value(10));
+
+        mvc.perform(patch("/api/v1/parking-allocations/{id}", alocacao)
+                        .header("Authorization", tokenContextual).header("If-Match", "\"0\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"operationalCapacity\":25,\"sellableCapacity\":0,\"reservedCapacity\":0}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void restringeConsultaAoTenantAtivoPermissoesEJanelaValida() throws Exception {
+        String inicio = "2026-10-10T22:00:00Z";
+        String fim = "2026-10-11T02:00:00Z";
+        long organizadorMembership = criarMembership(organizador.getId(), tokenContextual);
+        concederPapel(organizadorMembership, "ORGANIZADOR");
+        String tokenOrganizador = selecionar(organizacaoId,
+                bearer(jwt.gerarToken(organizador.getLogin(), "OPERADOR")));
+        consultarSaldo(patioId, tokenOrganizador, inicio, fim, true).andExpect(status().isForbidden());
+        consultarSaldo(patioId, tokenGlobal, inicio, fim, true).andExpect(status().isForbidden());
+
+        Long outraOrganizacao = organizacoes.criar(new CriarOrganizacaoRequest(
+                "45.723.174/0001-10", "Outro Tenant Calendario Ltda", null,
+                "BRL", "America/Sao_Paulo", "BR-SP", "ENTERPRISE")).id();
+        Long cidadeId = criarCidade("Cidade Calendario");
+        Long patioExterno = criarPatio(outraOrganizacao, cidadeId, "Externo Calendario", 100, 100, true);
+        Long patioInativo = criarPatio(organizacaoId, cidadeId, "Inativo Calendario", 100, 100, false);
+        consultarSaldo(patioExterno, tokenContextual, inicio, fim, true).andExpect(status().isNotFound());
+        consultarSaldo(patioInativo, tokenContextual, inicio, fim, true).andExpect(status().isNotFound());
+        consultarSaldo(patioId, tokenContextual, fim, inicio, true).andExpect(status().isBadRequest());
+        consultarSaldo(patioId, tokenContextual, "invalido", fim, true).andExpect(status().isBadRequest());
+        consultarSaldo(patioId, tokenContextual, inicio, "2026-12-11T00:00:00Z", true)
+                .andExpect(status().isBadRequest());
+        consultarSaldo(patioId, tokenContextual, inicio, "2026-12-11T00:00:00Z", false)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.availableCapacity").value(100));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions consultarSaldo(
+            Long patio, String token, String inicio, String fim, boolean incluirHorarios) throws Exception {
+        return mvc.perform(get("/api/v1/parking-facilities/{id}/availability", patio)
+                .header("Authorization", token)
+                .param("startsAt", inicio).param("endsAt", fim)
+                .param("includeTimeline", Boolean.toString(incluirHorarios)));
+    }
+
+    @Test
     void exigeInventoryManageETenantCoerente() throws Exception {
         long gestorMembership = criarMembership(gestor.getId(), tokenContextual);
         concederPapel(gestorMembership, "GESTOR");
@@ -224,19 +307,25 @@ class AlocacaoPatioEventoControllerTest {
     }
 
     private static String payload(Long patio, int operacional, int vendavel, int reservada) {
+        return payload(patio, operacional, vendavel, reservada,
+                "2026-10-10T17:00:00-03:00", "2026-10-11T01:00:00-03:00");
+    }
+
+    private static String payload(Long patio, int operacional, int vendavel, int reservada,
+                                  String inicio, String fim) {
         return """
                 {"parkingFacilityId":%d,
-                 "startsAt":"2026-10-10T17:00:00-03:00",
-                 "endsAt":"2026-10-11T01:00:00-03:00",
+                 "startsAt":"%s",
+                 "endsAt":"%s",
                  "operationalCapacity":%d,"sellableCapacity":%d,"reservedCapacity":%d}
-                """.formatted(patio, operacional, vendavel, reservada);
+                """.formatted(patio, inicio, fim, operacional, vendavel, reservada);
     }
 
     private Long criarEvento(String nome, String chave) {
         return eventos.criar(organizacaoId, admin.getId(), chave, new CriarEventoRequest(
                 nome, venueId, OffsetDateTime.parse("2026-10-10T19:00:00-03:00"),
                 OffsetDateTime.parse("2026-10-10T23:30:00-03:00"),
-                "America/Sao_Paulo", null)).id();
+                "America/Sao_Paulo", null, servicoEvento(jdbc, organizacaoId))).id();
     }
 
     private Long criarVenue(Long orgId, Long cidadeId, String nome) {

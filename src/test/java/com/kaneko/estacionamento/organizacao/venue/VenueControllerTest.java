@@ -1,6 +1,8 @@
 package com.kaneko.estacionamento.organizacao.venue;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -62,6 +64,34 @@ class VenueControllerTest {
         criarMembership(admin.getId(), tokenGlobal);
         tokenContextual = selecionar(organizacaoId, tokenGlobal);
         cidadeId = criarCidade(true, "Curitiba Venue");
+    }
+
+    @Test
+    void consultaLocaisPorNomeComPaginacaoEContexto() throws Exception {
+        criarVenue(tokenContextual, "Estação São Paulo", cidadeId, "America/Sao_Paulo", status().isCreated());
+        mvc.perform(get("/api/v1/venues").param("name", "estacao sao").header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Estação São Paulo"));
+        mvc.perform(get("/api/v1/venues").header("Authorization", tokenGlobal)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listaEEditaLocalSemSobrescreverVersaoDesatualizada() throws Exception {
+        String body = criarVenue(tokenContextual, "Estação Inicial", cidadeId, "America/Sao_Paulo",
+                status().isCreated()).andReturn().getResponse().getContentAsString();
+        Number id = JsonPath.read(body, "$.id");
+        mvc.perform(get("/api/v1/venues/management").param("name", "estacao")
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].name").value("Estação Inicial"));
+        mvc.perform(get("/api/v1/venues/{id}", id).header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(header().string("ETag", "\"0\""))
+                .andExpect(jsonPath("$.cityId").value(cidadeId));
+        var update = put("/api/v1/venues/{id}", id).header("Authorization", tokenContextual)
+                .contentType(MediaType.APPLICATION_JSON).content(payload("Local Renomeado", cidadeId, "America/Sao_Paulo"));
+        mvc.perform(update).andExpect(status().isPreconditionRequired());
+        mvc.perform(update.header("If-Match", "\"0\"")).andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"1\"")).andExpect(jsonPath("$.name").value("Local Renomeado"));
+        mvc.perform(update).andExpect(status().isPreconditionFailed());
     }
 
     @Test

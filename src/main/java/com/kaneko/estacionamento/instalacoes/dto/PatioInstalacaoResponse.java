@@ -13,6 +13,7 @@ public record PatioInstalacaoResponse(
         String district,
         String postalCode,
         Long cityId,
+        String cityName,
         Integer physicalCapacity,
         Integer operationalCapacity,
         String notes,
@@ -21,11 +22,11 @@ public record PatioInstalacaoResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
 
-    public static PatioInstalacaoResponse from(PatioInstalacao patio) {
+    public static PatioInstalacaoResponse from(PatioInstalacao patio, String cityName) {
         return new PatioInstalacaoResponse(
                 patio.getId(), patio.getOrganizacaoId(), patio.getNome(), patio.getEndereco(),
                 patio.getNumero(), patio.getComplemento(), patio.getBairro(), patio.getCep(),
-                patio.getCidadeId(), patio.getCapacidadeFisica(), patio.getCapacidadeOperacional(),
+                patio.getCidadeId(), cityName, patio.getCapacidadeFisica(), patio.getCapacidadeOperacional(),
                 patio.getObservacao(), patio.getAtivo(), patio.getVersion(), patio.getCreatedAt(),
                 patio.getUpdatedAt());
     }

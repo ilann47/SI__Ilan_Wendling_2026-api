@@ -46,12 +46,20 @@ public class Vaga extends AuditableEntity {
         Vaga vaga = new Vaga();
         vaga.organizacaoId = organizacaoId;
         vaga.setorId = setorId;
-        vaga.codigo = Setor.normalizarCodigo(codigo);
-        vaga.tipo = tipo;
-        vaga.acessivel = acessivel;
-        vaga.posicao = normalizarPosicao(posicao);
+        vaga.atualizar(codigo, tipo, acessivel, posicao);
         vaga.status = StatusVaga.LIVRE;
         return vaga;
+    }
+
+    void atualizar(String codigo, CategoriaSetor tipo, Boolean acessivel, String posicao) {
+        this.codigo = Setor.normalizarCodigo(codigo);
+        this.tipo = tipo;
+        this.acessivel = acessivel;
+        this.posicao = normalizarPosicao(posicao);
+    }
+
+    void alterarSituacao(StatusVaga situacao) {
+        this.status = java.util.Objects.requireNonNull(situacao);
     }
 
     public boolean equivale(

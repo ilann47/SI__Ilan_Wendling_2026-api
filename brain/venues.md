@@ -28,7 +28,15 @@ POST /api/v1/venues
 ## Endpoints (se houver)
 
 - `POST /api/v1/venues`: cria Venue ativo na organização autenticada.
-- Nenhum endpoint de consulta ou alteração foi antecipado nesta história.
+- `GET /api/v1/venues`: retorna opções ativas da organização do JWT
+  (`id`, `name`), com `name`, `id`, `page` e `size` conforme
+  [[instalacoes]]. Requer `organizations:admin`, `facilities:manage` ou
+  `events:create`. Exemplo: `GET /api/v1/venues?name=estacao&size=20`.
+- `GET /api/v1/venues/management`: lista locais ativos e inativos por
+  `name`, `page` e `size`, com `organizations:admin`.
+- `GET /api/v1/venues/{id}`: retorna cadastro, nome da cidade e `ETag`.
+- `PUT /api/v1/venues/{id}`: usa os campos do cadastro e exige `If-Match`;
+  mantém tipo, organização e situação. Detalhe e edição usam `organizations:admin`.
 
 ## Estrutura de Dados (DTOs, Entidades)
 
@@ -46,11 +54,13 @@ Nenhuma. Organização, geografia, RBAC e auditoria são dependências internas.
 - `403`: contexto ausente ou sem `organizations:admin`.
 - `404`: organização ou cidade ativa inexistente no caso de uso.
 - `409`: nome normalizado duplicado ou constraint violada.
+- `412` / `428`: versão desatualizada / ausência de `If-Match` na edição.
 
 ## Testes (curl ou equivalente)
 
 Os testes cobrem criação, tenant server-side, permissão, fuso IANA, cidade ativa,
 unicidade, tipo fixo, auditoria, constraints PostgreSQL e OpenAPI.
+`VenueControllerTest` cobre busca, detalhe, edição e rejeição de versão antiga.
 
 ## Decisões Técnicas
 
@@ -72,7 +82,10 @@ unicidade, tipo fixo, auditoria, constraints PostgreSQL e OpenAPI.
 
 ## Histórico (data + ação)
 
+2026-11-08: adiciona consulta contextual por nome para selecionar local do evento.
+
 | Data | Ação |
 |---|---|
+| 2026-11-08 | Adiciona gestão paginada e edição auditada de locais. |
 | 2026-07-29 | Implementa criação tenant-aware de Venue como unidade operacional. |
 | 2026-07-30 | Evento passa a referenciar Venue com isolamento também no PostgreSQL. |

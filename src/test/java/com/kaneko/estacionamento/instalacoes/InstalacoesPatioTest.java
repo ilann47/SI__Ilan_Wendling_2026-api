@@ -2,6 +2,8 @@ package com.kaneko.estacionamento.instalacoes;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -65,6 +67,85 @@ class InstalacoesPatioTest {
         criarMembership(organizacaoId, admin.getId(), tokenAdmin);
         tokenContextual = selecionar(organizacaoId, tokenAdmin);
         cidadeId = criarCidade();
+    }
+
+    @Test
+    void consultaPaginadaPorNomeRespeitaTenantPermissaoESetorDoPatio() throws Exception {
+        var norte = criarPatio(tokenContextual, "Pátio São José", 100, 90, status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Number patioId = JsonPath.read(norte, "$.id");
+        criarPatio(tokenContextual, "Pátio Sul", 100, 90, status().isCreated());
+        mvc.perform(post("/api/v1/parking-facilities/{id}/sectors", patioId)
+                        .header("Authorization", tokenContextual).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"code":"S1","name":"Área Coberta","capacity":20,"categories":["COMUM"]}
+                                """))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/api/v1/parking-facilities").param("name", "sao JOSE").param("size", "1")
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Pátio São José"));
+        mvc.perform(get("/api/v1/sectors").param("name", "area").param("parkingFacilityId", patioId.toString())
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].parkingFacilityName").value("Pátio São José"));
+        mvc.perform(get("/api/v1/sectors").header("Authorization", tokenAdmin))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/installation-cities").param("id", cidadeId.toString())
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(cidadeId));
+        mvc.perform(get("/api/v1/parking-facilities").param("size", "101").header("Authorization", tokenContextual))
+                .andExpect(status().isBadRequest());
+
+        var outra = organizacoes.criar(new CriarOrganizacaoRequest(
+                "11.222.333/0001-81", "Outra instalação Ltda", null,
+                "BRL", "America/Sao_Paulo", "BR-PR", "ENTERPRISE")).id();
+        criarMembership(outra, admin.getId(), tokenAdmin);
+        String outroToken = selecionar(outra, tokenAdmin);
+        mvc.perform(get("/api/v1/parking-facilities").param("id", patioId.toString())
+                        .param("organizationId", organizacaoId.toString()).header("Authorization", outroToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/sectors").param("parkingFacilityId", patioId.toString())
+                        .header("Authorization", outroToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void editaPatioESetorRespeitandoCapacidadesERetornaInativosSomenteNaGestao() throws Exception {
+        long patio = ((Number) JsonPath.read(criarPatio(tokenContextual, "Pátio Original", 100, 90,
+                status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id")).longValue();
+        long setor = ((Number) JsonPath.read(criarSetor(tokenContextual, patio, "A1", "Setor Original", 40,
+                "[\"COMUM\"]", status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id")).longValue();
+        mvc.perform(post("/api/v1/parking-facilities").header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload("Pátio Arquivado", 80, 75).replace("true", "false")))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/parking-facilities/management").param("name", "arquivado")
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].active").value(false));
+        mvc.perform(get("/api/v1/parking-facilities").param("name", "arquivado")
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(put("/api/v1/parking-facilities/{id}", patio).header("Authorization", tokenContextual)
+                        .header("If-Match", "\"0\"").contentType(MediaType.APPLICATION_JSON)
+                        .content(payload("Pátio Renomeado", 39, 39)))
+                .andExpect(status().isConflict());
+        mvc.perform(put("/api/v1/parking-facilities/{id}", patio).header("Authorization", tokenContextual)
+                        .header("If-Match", "\"0\"").contentType(MediaType.APPLICATION_JSON)
+                        .content(payload("Pátio Renomeado", 95, 90)))
+                .andExpect(status().isOk()).andExpect(header().string("ETag", "\"1\""));
+        mvc.perform(get("/api/v1/sectors/{id}", setor).header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.parkingFacilityName").value("Pátio Renomeado"));
+        mvc.perform(put("/api/v1/sectors/{id}", setor).header("Authorization", tokenContextual)
+                        .header("If-Match", "\"0\"").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"code":"A2","name":"Setor Renomeado","capacity":42,"categories":["COMUM"]}
+                                """))
+                .andExpect(status().isOk()).andExpect(header().string("ETag", "\"1\""));
+        mvc.perform(get("/api/v1/sectors/management").param("name", "renomeado")
+                        .header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].name").value("Setor Renomeado"));
     }
 
     @Test
@@ -245,7 +326,7 @@ class InstalacoesPatioTest {
 
         assertThat(auditorias.findAll().stream()
                 .filter(a -> "VAGA_CRIADA".equals(a.getAcao())
-                        && a.getRecursoId() != null).count()).isEqualTo(2);
+                        && organizacaoId.equals(a.getOrganizacaoId()) && a.getRecursoId() != null).count()).isEqualTo(2);
         assertThat(jdbc.queryForObject("""
                 SELECT count(*) FROM evento_outbox
                 WHERE event_type = 'VagaCriada' AND aggregate_type = 'VAGA'
@@ -318,6 +399,174 @@ class InstalacoesPatioTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload.replace("{\"spaces\"", "{\"organizationId\":999,\"spaces\"")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void cadastraUmaVagaDiretamenteECompartilhaAsRegrasComALote() throws Exception {
+        long setorId = criarCenarioSetor("Pátio Nova Vaga", 2, "[\"COMUM\",\"PCD\"]");
+        String payload = """
+                {"code":" p-01 ","type":"PCD","accessible":true,"position":" Junto à rampa "}
+                """;
+        var resposta = cadastrarVaga(tokenContextual, setorId, payload)
+                .andExpect(status().isCreated()).andExpect(header().string("ETag", "\"0\""))
+                .andExpect(jsonPath("$.code").value("P-01")).andExpect(jsonPath("$.sectorId").value(setorId))
+                .andExpect(jsonPath("$.position").value("Junto à rampa")).andExpect(jsonPath("$.status").value("LIVRE"))
+                .andReturn().getResponse();
+        long id = ((Number) JsonPath.read(resposta.getContentAsString(), "$.id")).longValue();
+        assertThat(resposta.getHeader("Location")).endsWith("/api/v1/spaces/" + id);
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenContextual).param("code", "p-01"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(id));
+        cadastrarVaga(tokenContextual, setorId, payload).andExpect(status().isConflict());
+        cadastrarVaga(tokenContextual, setorId, payload.replace("p-01", "p-02").replace("PCD", "VIP"))
+                .andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId).header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"spaces":[{"code":"P-01","type":"PCD","accessible":true,"position":"Junto à rampa"},
+                                           {"code":"P-02","type":"COMUM","accessible":false}]}
+                                """))
+                .andExpect(status().isMultiStatus()).andExpect(jsonPath("$.created").value(1))
+                .andExpect(jsonPath("$.existing").value(1));
+        cadastrarVaga(tokenContextual, setorId, payload.replace("p-01", "p-03")).andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM vaga WHERE setor_id = ?", Long.class, setorId)).isEqualTo(2);
+        assertThat(auditorias.findAll().stream().anyMatch(a -> "VAGA_CRIADA".equals(a.getAcao())
+                && organizacaoId.equals(a.getOrganizacaoId()) && a.getRecursoId().equals(id))).isTrue();
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM evento_outbox
+                WHERE event_type = 'VagaCriada' AND aggregate_type = 'VAGA' AND aggregate_id = ? AND organizacao_id = ?
+                """, Long.class, id, organizacaoId)).isEqualTo(1);
+    }
+
+    @Test
+    void pesquisaEEditaVagaImportadaSemAlterarSetorOuSituacao() throws Exception {
+        long setorId = criarCenarioSetor("Pátio Edição Vagas", 4, "[\"COMUM\",\"PCD\"]");
+        long outroSetor = criarCenarioSetor("Pátio Outro Setor", 3, "[\"COMUM\"]");
+        long vagaId = importarVagasParaEdicao(setorId);
+        importarVagasParaEdicao(outroSetor);
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(4));
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenContextual).param("code", "a-01"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2));
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenContextual)
+                        .param("code", "a-0").param("sectorId", Long.toString(setorId)).param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[0].code").value("A-01"))
+                .andExpect(jsonPath("$.content[0].parkingFacilityName").value("Pátio Edição Vagas"));
+        mvc.perform(get("/api/v1/spaces/{id}", vagaId).header("Authorization", tokenContextual))
+                .andExpect(status().isOk()).andExpect(header().string("ETag", "\"0\""))
+                .andExpect(jsonPath("$.sectorName").value("Setor 1"))
+                .andExpect(jsonPath("$.allowedCategories[1]").value("PCD"));
+        String alteracao = """
+                {"code":" a-09 ","type":"PCD","accessible":true,"position":"  Ao lado da rampa  "}
+                """;
+        mvc.perform(put("/api/v1/spaces/{id}", vagaId).header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content(alteracao))
+                .andExpect(status().isPreconditionRequired());
+        atualizarVaga(tokenContextual, vagaId, 0, alteracao)
+                .andExpect(status().isOk()).andExpect(header().string("ETag", "\"1\""))
+                .andExpect(jsonPath("$.code").value("A-09")).andExpect(jsonPath("$.type").value("PCD"))
+                .andExpect(jsonPath("$.accessible").value(true))
+                .andExpect(jsonPath("$.position").value("Ao lado da rampa"))
+                .andExpect(jsonPath("$.sectorId").value(setorId)).andExpect(jsonPath("$.status").value("LIVRE"));
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenContextual)
+                        .param("code", "a-09").param("sectorId", Long.toString(setorId)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(vagaId));
+        assertThat(auditorias.findAll().stream().anyMatch(a -> "VAGA_ATUALIZADA".equals(a.getAcao())
+                && organizacaoId.equals(a.getOrganizacaoId()) && a.getRecursoId().equals(vagaId))).isTrue();
+        atualizarVaga(tokenContextual, vagaId, 0, alteracao).andExpect(status().isPreconditionFailed());
+        atualizarVaga(tokenContextual, vagaId, 1, alteracao.replace("a-09", "a-02")).andExpect(status().isConflict());
+        atualizarVaga(tokenContextual, vagaId, 1, alteracao.replace("PCD", "VIP")).andExpect(status().isConflict());
+        atualizarVaga(tokenContextual, vagaId, 1, alteracao.replace("\"code\"", "\"sectorId\":9,\"code\""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void bloqueiaColocaEmManutencaoELiberaVagaComVersaoEAuditoria() throws Exception {
+        long setorId = criarCenarioSetor("Pátio Situação Vagas", 2, "[\"COMUM\"]");
+        long vagaId = importarVagasParaEdicao(setorId);
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenContextual).param("code", "A-01"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].version").value(0));
+        mvc.perform(patch("/api/v1/spaces/{id}/status", vagaId).header("Authorization", tokenContextual)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"BLOQUEADA\"}"))
+                .andExpect(status().isPreconditionRequired());
+        mudarSituacaoVaga(tokenContextual, vagaId, 0, "BLOQUEADA").andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"1\"")).andExpect(jsonPath("$.status").value("BLOQUEADA"))
+                .andExpect(jsonPath("$.sectorId").value(setorId)).andExpect(jsonPath("$.code").value("A-01"));
+        mudarSituacaoVaga(tokenContextual, vagaId, 0, "LIVRE").andExpect(status().isPreconditionFailed());
+        mudarSituacaoVaga(tokenContextual, vagaId, 1, "MANUTENCAO").andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"2\"")).andExpect(jsonPath("$.status").value("MANUTENCAO"));
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenContextual).param("code", "A-01"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].status").value("MANUTENCAO"))
+                .andExpect(jsonPath("$.content[0].version").value(2));
+        mudarSituacaoVaga(tokenContextual, vagaId, 2, "LIVRE").andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"3\"")).andExpect(jsonPath("$.status").value("LIVRE"));
+        mudarSituacaoVaga(tokenContextual, vagaId, 3, "LIVRE").andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"3\""));
+        mudarSituacaoVaga(tokenContextual, vagaId, 3, "OCUPADA").andExpect(status().isBadRequest());
+        assertThat(auditorias.findAll().stream().filter(a -> "VAGA_SITUACAO_ALTERADA".equals(a.getAcao())
+                && organizacaoId.equals(a.getOrganizacaoId()) && vagaId == a.getRecursoId()).toList())
+                .hasSize(3).anySatisfy(a -> {
+                    assertThat(a.getEstadoAnterior()).containsEntry("status", "MANUTENCAO");
+                    assertThat(a.getEstadoPosterior()).containsEntry("status", "LIVRE");
+                });
+    }
+
+    @Test
+    void gestaoDeVagasNaoExibeOuAlteraRegistrosDeOutraOrganizacao() throws Exception {
+        long setorId = criarCenarioSetor("Pátio Vagas Isoladas", 2, "[\"COMUM\"]");
+        long vagaId = importarVagasParaEdicao(setorId);
+        criarMembership(organizacaoId, operador.getId(), tokenContextual);
+        var tokenOperador = selecionar(organizacaoId, bearer(jwt.gerarToken(operador.getLogin(), "ADMIN")));
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenOperador)).andExpect(status().isForbidden());
+        mudarSituacaoVaga(tokenOperador, vagaId, 0, "BLOQUEADA").andExpect(status().isForbidden());
+        String novaVaga = """
+                {"code":"A-99","type":"COMUM","accessible":false}
+                """;
+        cadastrarVaga(tokenOperador, setorId, novaVaga).andExpect(status().isForbidden());
+        long outroTenant = organizacoes.criar(new CriarOrganizacaoRequest(
+                "45.723.174/0001-10", "Outro Tenant Gestão Vagas Ltda", null,
+                "BRL", "America/Sao_Paulo", "BR-SP", "ENTERPRISE")).id();
+        criarMembership(outroTenant, admin.getId(), tokenAdmin);
+        var tokenOutroTenant = selecionar(outroTenant, tokenAdmin);
+        mudarSituacaoVaga(tokenOutroTenant, vagaId, 0, "BLOQUEADA").andExpect(status().isNotFound());
+        cadastrarVaga(tokenOutroTenant, setorId, novaVaga).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/spaces").header("Authorization", tokenOutroTenant)
+                        .param("sectorId", Long.toString(setorId)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/spaces/{id}", vagaId).header("Authorization", tokenOutroTenant))
+                .andExpect(status().isNotFound());
+        atualizarVaga(tokenOutroTenant, vagaId, 0, """
+                {"code":"A-99","type":"COMUM","accessible":false}
+                """).andExpect(status().isNotFound());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions mudarSituacaoVaga(String token, long id, long versao, String situacao)
+            throws Exception {
+        return mvc.perform(patch("/api/v1/spaces/{id}/status", id).header("Authorization", token)
+                .header("If-Match", "\"" + versao + "\"").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"" + situacao + "\"}"));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions cadastrarVaga(String token, long setorId, String payload)
+            throws Exception {
+        return mvc.perform(post("/api/v1/sectors/{id}/spaces", setorId).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).content(payload));
+    }
+
+    private long importarVagasParaEdicao(long setorId) throws Exception {
+        var json = mvc.perform(post("/api/v1/sectors/{id}/spaces:batch", setorId)
+                        .header("Authorization", tokenContextual).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"spaces":[{"code":"A-01","type":"COMUM","accessible":false},
+                                           {"code":"A-02","type":"COMUM","accessible":false}]}
+                                """))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return ((Number) JsonPath.read(json, "$.items[0].id")).longValue();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions atualizarVaga(
+            String token, long id, long version, String payload) throws Exception {
+        return mvc.perform(put("/api/v1/spaces/{id}", id).header("Authorization", token)
+                .header("If-Match", "\"" + version + "\"").contentType(MediaType.APPLICATION_JSON).content(payload));
     }
 
     private org.springframework.test.web.servlet.ResultActions criarPatio(

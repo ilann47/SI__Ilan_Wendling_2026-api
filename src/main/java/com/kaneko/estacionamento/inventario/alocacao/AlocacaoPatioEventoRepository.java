@@ -57,17 +57,20 @@ public interface AlocacaoPatioEventoRepository
 
     boolean existsByEventoIdAndPatioId(Long eventoId, Long patioId);
 
+    List<AlocacaoPatioEvento> findAllByOrganizacaoIdAndPatioIdAndFimAfter(
+            Long organizacaoId, Long patioId, OffsetDateTime fim);
+
     boolean existsByEventoIdAndOrganizacaoIdAndCapacidadeVendavelGreaterThan(
             Long eventoId, Long organizacaoId, Integer capacidadeVendavel);
 
     @Query("""
-            select coalesce(sum(a.capacidadeOperacional), 0)
-            from AlocacaoPatioEvento a
-            where a.patioId = :patioId
+            select a from AlocacaoPatioEvento a
+            where a.organizacaoId = :organizacaoId and a.patioId = :patioId
               and a.inicio < :fim and a.fim > :inicio
               and (:excluirId is null or a.id <> :excluirId)
             """)
-    Long somarCapacidadeOperacionalSobreposta(
+    List<AlocacaoPatioEvento> buscarSobrepostas(
+            @Param("organizacaoId") Long organizacaoId,
             @Param("patioId") Long patioId,
             @Param("inicio") OffsetDateTime inicio,
             @Param("fim") OffsetDateTime fim,
