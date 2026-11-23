@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+com.kaneko.estacionamento.common.config.ProductionSafetyEnvironment
