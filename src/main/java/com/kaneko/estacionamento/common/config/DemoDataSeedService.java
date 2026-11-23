@@ -1,6 +1,8 @@
 package com.kaneko.estacionamento.common.config;
 
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
+import com.kaneko.estacionamento.conveniencia.ServicoService;
+import com.kaneko.estacionamento.conveniencia.dto.ServicoRequest;
 import com.kaneko.estacionamento.evento.EventoService;
 import com.kaneko.estacionamento.evento.PoliticaReentrada;
 import com.kaneko.estacionamento.evento.dto.AbrirVendasEventoRequest;
@@ -75,6 +77,7 @@ public class DemoDataSeedService {
     private final SetorService setorService;
     private final VagaService vagaService;
     private final EventoService eventoService;
+    private final ServicoService servicoService;
     private final AlocacaoPatioEventoService alocacaoService;
     private final ProdutoEstacionamentoService produtoService;
     private final LotePrecoService loteService;
@@ -95,6 +98,7 @@ public class DemoDataSeedService {
             SetorService setorService,
             VagaService vagaService,
             EventoService eventoService,
+            ServicoService servicoService,
             AlocacaoPatioEventoService alocacaoService,
             ProdutoEstacionamentoService produtoService,
             LotePrecoService loteService) {
@@ -113,6 +117,7 @@ public class DemoDataSeedService {
         this.setorService = setorService;
         this.vagaService = vagaService;
         this.eventoService = eventoService;
+        this.servicoService = servicoService;
         this.alocacaoService = alocacaoService;
         this.produtoService = produtoService;
         this.loteService = loteService;
@@ -174,6 +179,8 @@ public class DemoDataSeedService {
                 .truncatedTo(ChronoUnit.MINUTES);
         OffsetDateTime inicio = agora.minusHours(1);
         OffsetDateTime fim = agora.plusDays(30);
+        var servicoDemo = servicoService.criar(organizacaoId,
+                new ServicoRequest("Estacionamento", "Serviço escolhido pelo seed local para o evento demonstrativo.", null, true));
         var evento = eventoService.criar(
                 organizacaoId,
                 admin.getId(),
@@ -184,7 +191,8 @@ public class DemoDataSeedService {
                         inicio,
                         fim,
                         FUSO,
-                        "KANEKO-DEMO-EVENTO"));
+                        "KANEKO-DEMO-EVENTO",
+                        servicoDemo.getId()));
         evento = eventoService.atualizar(
                 organizacaoId,
                 evento.id(),
