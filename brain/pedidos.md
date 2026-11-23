@@ -144,6 +144,7 @@ validação de limite e isolamento do ator.
 - [[auditoria]]
 - [[idempotencia]]
 - [[outbox]]
+- [[opcoes-operacionais]]
 
 ## Histórico (data + ação)
 
@@ -155,3 +156,4 @@ validação de limite e isolamento do ator.
 | 2026-07-30 | Snapshot do item inclui pátio e pedido atendido depende de todas as credenciais. |
 | 2026-07-30 | Implementa UC713 com cancelamento próprio, compensação única e pendência de reembolso. |
 | 2026-08-01 | Implementa leitura própria paginada por cursor com `orders:read` e filtros. |
+| 2026-11-22 | Acrescenta `sales-orders` e `issuing-orders` para seleção por número público ou evento, sem ampliar a leitura. |

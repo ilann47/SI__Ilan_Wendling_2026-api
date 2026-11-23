@@ -140,6 +140,7 @@ auditoria/outbox e preservação de credencial/presença/sessão/ocupação.
 - [[auditoria]]
 - [[idempotencia]]
 - [[outbox]]
+- [[opcoes-operacionais]]
 
 ## Histórico (data + ação)
 
@@ -150,3 +151,4 @@ auditoria/outbox e preservação de credencial/presença/sessão/ocupação.
 | 2026-08-01 | Serializa admissões e saídas concorrentes com o encerramento operacional da UC720. |
 | 2026-08-01 | Publica feed auditável tenant-aware de tentativas com cursor e filtros. |
 | 2026-08-01 | Implementa validação QR idempotente sem consumo físico ou comercial. |
+| 2026-11-22 | Acrescenta consulta paginada de eventos, pátios alocados e credenciais bloqueáveis para os seletores. |
