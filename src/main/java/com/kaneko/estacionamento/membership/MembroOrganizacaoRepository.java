@@ -25,7 +25,7 @@ public interface MembroOrganizacaoRepository extends JpaRepository<MembroOrganiz
 
     @Query("""
             select new com.kaneko.estacionamento.membership.dto.OrganizacaoAcessivelResponse(
-                o.id, o.razaoSocial, o.nomeFantasia, m.id, m.version)
+                o.id, o.razaoSocial, o.nomeFantasia, o.fusoHorario, m.id, m.version)
             from MembroOrganizacao m, Organizacao o
             where m.organizacaoId = o.id
               and m.usuarioId = :usuarioId

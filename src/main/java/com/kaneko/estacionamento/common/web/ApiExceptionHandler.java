@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.common.web;
 
 import com.kaneko.estacionamento.common.exception.AutenticacaoException;
+import com.kaneko.estacionamento.common.exception.CampoInvalidoException;
 import com.kaneko.estacionamento.common.exception.ConflitoException;
 import com.kaneko.estacionamento.common.exception.RecursoNaoEncontradoException;
 import jakarta.validation.ConstraintViolationException;
@@ -89,6 +90,14 @@ public class ApiExceptionHandler {
             erros.put(fe.getField(), fe.getDefaultMessage());
         }
         pd.setProperty("erros", erros);
+        return pd;
+    }
+
+    @ExceptionHandler(CampoInvalidoException.class)
+    public ProblemDetail handleCampoInvalido(CampoInvalidoException ex) {
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "Requisicao invalida",
+                "Ha campos invalidos na requisicao.");
+        pd.setProperty("erros", Map.of(ex.campo(), ex.getMessage()));
         return pd;
     }
 

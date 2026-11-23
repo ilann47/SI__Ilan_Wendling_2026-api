@@ -31,7 +31,8 @@ public class RelatorioController {
 
     /** 4.26 — Veiculos atualmente no patio. */
     @GetMapping("/patio")
-    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('operations:read', authentication)")
+    @PreAuthorize("@rbacGuard.hasPermissionInActiveContext('operations:read', authentication)"
+            + " or @rbacGuard.hasPermissionInActiveContext('operations:checkout', authentication)")
     public PatioAtualResponse patio(@AuthenticationPrincipal UsuarioAutenticado principal) {
         return service.patioAtual(org(principal));
     }

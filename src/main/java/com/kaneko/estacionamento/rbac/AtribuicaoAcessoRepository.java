@@ -12,12 +12,21 @@ public interface AtribuicaoAcessoRepository extends JpaRepository<AtribuicaoAces
     boolean existsByMembershipIdAndPapelIdAndOrganizacaoIdAndRevogadoEmIsNull(Long membershipId, Long papelId, Long orgId);
 
     @Query(value = """
-        SELECT DISTINCT pe.codigo FROM permissao pe
-        JOIN papel_permissao pp ON pp.permissao_id = pe.id
-        JOIN atribuicao_acesso aa ON aa.papel_id = pp.papel_id
-        WHERE aa.membro_organizacao_id = :membershipId AND aa.organizacao_id = :orgId
-          AND aa.revogado_em IS NULL AND aa.vigente_de <= :agora
-          AND (aa.vigente_ate IS NULL OR aa.vigente_ate > :agora) ORDER BY pe.codigo
+        WITH papeis_vigentes AS (
+            SELECT p.id, p.codigo, p.sistema
+            FROM atribuicao_acesso aa JOIN papel p ON p.id = aa.papel_id
+            WHERE aa.membro_organizacao_id = :membershipId AND aa.organizacao_id = :orgId
+              AND aa.escopo_tipo = 'ORGANIZACAO' AND aa.escopo_id = :orgId
+              AND aa.revogado_em IS NULL AND aa.vigente_de <= :agora
+              AND (aa.vigente_ate IS NULL OR aa.vigente_ate > :agora)
+        )
+        SELECT pe.codigo FROM permissao pe
+        WHERE EXISTS (SELECT 1 FROM papeis_vigentes p WHERE p.sistema AND p.codigo = 'ADMIN_ORGANIZACAO')
+           OR EXISTS (
+               SELECT 1 FROM papel_permissao pp JOIN papeis_vigentes p ON p.id = pp.papel_id
+               WHERE pp.permissao_id = pe.id
+           )
+        ORDER BY pe.codigo
         """, nativeQuery = true)
     List<String> permissoesEfetivas(
             @Param("membershipId") Long membershipId,

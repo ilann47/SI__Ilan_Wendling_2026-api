@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.membership;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -13,10 +14,13 @@ import com.kaneko.estacionamento.usuario.PerfilUsuario;
 import com.kaneko.estacionamento.usuario.UsuarioService;
 import com.kaneko.estacionamento.usuario.dto.UsuarioRequest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +52,8 @@ class MeOrganizacaoSelfServiceTest {
     private UsuarioService usuarioService;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Test
     void usuarioCriaOrganizacaoComMembershipAdminEAtivaSomenteQuandoEscolher() throws Exception {
@@ -60,7 +66,7 @@ class MeOrganizacaoSelfServiceTest {
         String criacao = mvc.perform(post("/api/v1/me/organizations")
                         .header("Authorization", conta.authorization())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(ORGANIZACAO_UM))
+                        .content(ORGANIZACAO_UM.replace("America/Sao_Paulo", "America/Manaus")))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andExpect(header().string("ETag", "\"0\""))
@@ -78,7 +84,8 @@ class MeOrganizacaoSelfServiceTest {
                 .andExpect(jsonPath("$.activeOrganization").doesNotExist());
         mvc.perform(get("/api/v1/me/organizations").header("Authorization", conta.authorization()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].organizationId").value(organizacaoId.longValue()));
+                .andExpect(jsonPath("$[0].organizationId").value(organizacaoId.longValue()))
+                .andExpect(jsonPath("$[0].timeZone").value("America/Manaus"));
 
         String ativacao = mvc.perform(post("/api/v1/me/active-organization")
                         .header("Authorization", conta.authorization())
@@ -98,11 +105,20 @@ class MeOrganizacaoSelfServiceTest {
                 .andExpect(jsonPath("$.activeOrganization.organizationId")
                         .value(organizacaoId.longValue()));
 
+        assertThat(jdbc.queryForList("""
+                SELECT p.codigo FROM atribuicao_acesso a JOIN papel p ON p.id = a.papel_id
+                WHERE a.organizacao_id = ? AND a.revogado_em IS NULL
+                """, String.class, organizacaoId.longValue())).containsExactly("ADMIN_ORGANIZACAO");
+
+        var permissoesDeOrganizacao = jdbc.queryForList("SELECT codigo FROM permissao", String.class);
         mvc.perform(get("/api/v1/me/permissions")
                         .header("Authorization", "Bearer " + tokenContextual))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.permissions").value(
-                        org.hamcrest.Matchers.hasItem("organizations:admin")));
+                        containsInAnyOrder(permissoesDeOrganizacao.toArray(String[]::new))));
+
+        mvc.perform(get("/api/usuarios").header("Authorization", "Bearer " + tokenContextual))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -172,6 +188,24 @@ class MeOrganizacaoSelfServiceTest {
                 .andExpect(jsonPath("$.title").value("Requisicao invalida"))
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.erros.razaoSocial").exists());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"11.111.111/1111-11", "12.345.678/0001-90"})
+    void rejeitaCnpjInvalidoSemCriarOrganizacao(String documento) throws Exception {
+        ContaRegistrada conta = registrar("selfserve.cnpj", "selfserve.cnpj@example.com");
+
+        mvc.perform(post("/api/v1/me/organizations")
+                        .header("Authorization", conta.authorization())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ORGANIZACAO_UM.replace("12.345.678/0001-95", documento)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.erros.document").value("Informe um CNPJ válido."));
+
+        mvc.perform(get("/api/v1/me/organizations").header("Authorization", conta.authorization()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test

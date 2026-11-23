@@ -9,13 +9,21 @@ permissão e escopo, sem confiar no perfil legado ou em IDs enviados pelo client
 
 ## Contexto
 
-A implementação atual usa exclusivamente o escopo `ORGANIZACAO`. O papel de
-sistema `ADMIN_ORGANIZACAO` reúne `organizations:admin`, `users:invite`,
-`roles:grant`, `roles:revoke`, `facilities:manage`, `events:create` e as demais
-permissões de gestão já migradas. `orders:create` e `orders:read` integram
-Administrador, Gestor e Organizador; escopo por evento permanece futuro.
+A implementação atual usa exclusivamente o escopo `ORGANIZACAO`. Uma atribuição
+vigente do papel de sistema `ADMIN_ORGANIZACAO` concede todo o catálogo de
+permissões contextuais na organização ativa, inclusive iniciar a portaria.
+O criador self-service não precisa acumular os papéis Supervisor ou Caixa.
+Os demais papéis continuam limitados às permissões explícitas de
+`papel_permissao`. O perfil global é independente do catálogo contextual.
+
+O papel `CAIXA_PATIO` (V102) concede `operations:checkout`: operação e
+ocupação do pátio, sem permissão para administrar tarifas e cadastros.
 
 ## Fluxo (camadas da arquitetura)
+
+A API e a navegação usam o mesmo cálculo de permissões efetivas. A regra não
+ignora vigência, revogação, validação da Membership, isolamento entre
+organizações ou regras de negócio de cada operação. Não exige mudança de schema.
 
 ```text
 JwtAuthFilter -> Membership/Organizacao válidas -> RbacService -> permissões efetivas
@@ -45,6 +53,10 @@ Nenhuma. As permissões são resolvidas no PostgreSQL em cada requisição conte
 `401` para contexto inválido, `403` para ausência de permissão/escopo, `404` para
 recurso invisível, `409` para duplicidade/lockout, `412` para versão divergente e
 `428` para revogação sem `If-Match`.
+
+Negativas na cadeia de filtros respondem com status `403` diretamente. Isso
+evita que o redespacho do servlet para `/error` troque uma negativa de autorização
+por `401` e encerre uma sessão ainda válida.
 
 ## Testes (curl ou equivalente)
 
@@ -102,3 +114,5 @@ proteção do último administrador.
 | 2026-08-01 | Reutiliza `access:operate` no encerramento operacional da UC720. |
 | 2026-08-01 | Catálogo recebe `orders:read` para consulta própria individual e paginada. |
 | 2026-08-01 | Catálogo recebe `credentials:block` restrita ao Supervisor. |
+| 2026-11-22 | Administrador vigente passa a receber o catálogo contextual completo; outros papéis e perfil global não mudam. |
+| 2026-11-22 | [[opcoes-operacionais]] consulta vínculos de acordo com a permissão efetiva de consultar, conceder ou revogar, sem expor login ou e-mail. |

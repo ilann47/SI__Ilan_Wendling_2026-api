@@ -1,6 +1,7 @@
 package com.kaneko.estacionamento.organizacao;
 
 import com.kaneko.estacionamento.common.AuditableEntity;
+import com.kaneko.estacionamento.common.exception.CampoInvalidoException;
 import com.kaneko.estacionamento.common.util.Documentos;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -147,7 +148,7 @@ public class Organizacao extends AuditableEntity {
     private static String normalizarEValidarCnpj(String valor) {
         String documento = Documentos.soDigitos(valor);
         if (!cnpjValido(documento)) {
-            throw new IllegalArgumentException("O documento empresarial deve ser um CNPJ valido.");
+            throw new CampoInvalidoException("document", "Informe um CNPJ válido.");
         }
         return documento;
     }

@@ -15,6 +15,10 @@ o registro anterior nunca é reaberto. O perfil global `ADMIN/OPERADOR/USUARIO`
 continua vindo do `Usuario`; APIs tenant-aware usam [[rbac]], e [[contas]] cria
 novas identidades sempre como `USUARIO` sem acesso organizacional implicito.
 
+A listagem `GET /api/v1/me/organizations` inclui o `timeZone` de cada
+organização acessível ao usuário. A projeção mantém os mesmos filtros de
+organização e vínculo ativos; não muda JWT nem exige outro acesso.
+
 ## Fluxo (camadas da arquitetura)
 
 ```text
@@ -50,7 +54,7 @@ validação de contexto consulta PostgreSQL a cada requisição contextual.
 
 ## Tratamento de Erros
 
-- `400`: payload, status ou `If-Match` malformado.
+- `400`: payload, status ou `If-Match` malformado; CNPJ inválido no self-service informa `erros.document`.
 - `401`: token ausente/inválido ou contexto cuja Membership, versão, usuário ou organização deixou de ser válido.
 - `403`: perfil sem autorização; self-service aceita somente conta global `USUARIO`.
 - `404`: vínculo/recurso invisível ou organização não acessível na seleção.
@@ -92,6 +96,7 @@ claims contextuais, invalidação por versão/estado/usuário e compatibilidade 
 
 | Data | Ação |
 |---|---|
+| 2026-11-10 | Rejeita CNPJ inválido no self-service com HTTP 400 e mensagem no campo, antes de criar a organização ou o vínculo. |
 | 2026-07-29 | Implementa vínculo temporal, descoberta de organizações e JWT contextual. |
 | 2026-07-29 | Administração do vínculo migra de `ROLE_ADMIN` global para permissões contextuais. |
 | 2026-07-29 | Criação, suspensão, reativação e encerramento passam a gerar auditoria imutável. |

@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.common.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -75,6 +76,22 @@ class AutorizacaoPerfilTest {
     void operadorNaoListaUsuarios() throws Exception {
         mvc.perform(get("/api/usuarios").header("Authorization", tokenOperador))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void contaNeutraRecebe403SemAcionarDespachoDeErroDoServlet() throws Exception {
+        String login = "conta_neutra_sem_acesso_test";
+        usuarioService.criar(new UsuarioRequest("Conta neutra", login, "senha123",
+                null, null, PerfilUsuario.USUARIO));
+        String token = "Bearer " + jwtService.gerarToken(login, "USUARIO");
+        for (String path : new String[]{"/api/usuarios", "/api/paises", "/api/estados", "/api/cidades"}) {
+            mvc.perform(get(path).header("Authorization", token))
+                    .andExpect(status().isForbidden())
+                    .andExpect(result -> assertThat(result.getResponse().getErrorMessage())
+                            .as("não chamar sendError, que é redespachado para /error em produção")
+                            .isNull());
+        }
+        mvc.perform(get("/api/v1/me").header("Authorization", token)).andExpect(status().isOk());
     }
 
     @Test

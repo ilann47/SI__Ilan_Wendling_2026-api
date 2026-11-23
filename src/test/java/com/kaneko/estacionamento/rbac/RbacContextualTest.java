@@ -1,5 +1,6 @@
 package com.kaneko.estacionamento.rbac;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -18,10 +19,13 @@ import com.kaneko.estacionamento.usuario.UsuarioService;
 import com.kaneko.estacionamento.usuario.dto.UsuarioRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +39,7 @@ class RbacContextualTest {
     @Autowired UsuarioService usuarioService;
     @Autowired OrganizacaoService organizacaoService;
     @Autowired JwtService jwtService;
+    @Autowired JdbcTemplate jdbc;
 
     private Usuario adminPlataforma;
     private Usuario segundoUsuario;
@@ -75,6 +80,32 @@ class RbacContextualTest {
 
         mvc.perform(get("/api/v1/me/permissions").header("Authorization", tokenAdminLegado))
                 .andExpect(status().isForbidden());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"CAIXA_PATIO", "GESTOR", "SUPERVISOR"})
+    void papeisNaoAdministrativosMantemSomentePermissoesExplicitas(String papel) throws Exception {
+        criarMembership(tokenAdminLegado, adminPlataforma.getId(), status().isCreated());
+        String adminContextual = selecionar(tokenAdminLegado);
+        long membership = criarMembership(adminContextual, segundoUsuario.getId(), status().isCreated());
+        mvc.perform(post("/api/v1/organizations/{organizationId}/memberships/{membershipId}/role-assignments",
+                        organizacaoId, membership)
+                        .header("Authorization", adminContextual)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleCode\":\"" + papel + "\"}"))
+                .andExpect(status().isCreated());
+
+        var permissoes = jdbc.queryForList("""
+                SELECT pe.codigo FROM papel p
+                JOIN papel_permissao pp ON pp.papel_id = p.id
+                JOIN permissao pe ON pe.id = pp.permissao_id
+                WHERE p.codigo = ?
+                """, String.class, papel);
+        String contextual = selecionar(bearer(jwtService.gerarToken(segundoUsuario.getLogin(), "OPERADOR")));
+        mvc.perform(get("/api/v1/me/permissions").header("Authorization", contextual))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissions").value(containsInAnyOrder(permissoes.toArray(String[]::new))))
+                .andExpect(jsonPath("$.permissions[?(@ == 'organizations:admin')]").isEmpty());
     }
 
     @Test

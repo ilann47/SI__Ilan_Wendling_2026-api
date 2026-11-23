@@ -84,7 +84,6 @@ public class SecurityConfig {
                             .requestMatchers("/api/tarifas/**").authenticated()
                             .requestMatchers("/api/mensalistas/**").authenticated()
                             .requestMatchers("/api/movimentacoes/**").authenticated()
-                            .requestMatchers("/api/contas-pagar-avulsas/**").authenticated()
                             .requestMatchers("/api/relatorios/**").authenticated()
                             // APIs enterprise recebem USUARIO e decidem o acesso pelo RBAC contextual.
                             .requestMatchers("/api/v1/**").authenticated()
@@ -98,8 +97,11 @@ public class SecurityConfig {
                             .anyRequest().authenticated())
                     .addFilterBefore(new JwtAuthFilter(jwtService, usuarioRepository, contextoService, rbacService),
                             UsernamePasswordAuthenticationFilter.class)
-                    .exceptionHandling(ex -> ex.authenticationEntryPoint(
-                            new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
+                    .exceptionHandling(ex -> ex
+                            .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                            // sendError(403) pode redespachar para /error sem autenticação e virar 401.
+                            .accessDeniedHandler((request, response, denied) ->
+                                    response.setStatus(HttpStatus.FORBIDDEN.value())));
         } else {
             http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
         }

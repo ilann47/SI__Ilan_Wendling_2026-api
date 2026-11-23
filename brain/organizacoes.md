@@ -43,7 +43,7 @@ Não existem integrações externas nesta história.
 
 ## Tratamento de Erros
 
-- `400`: payload, valor ou `If-Match` malformado.
+- `400`: payload, valor ou `If-Match` malformado; CNPJ inválido informa `erros.document`.
 - `404`: organização inexistente; futuramente também será usado para recurso fora do tenant visível.
 - `409`: documento duplicado ou estado incompatível; duplicidade empresarial
   também informa `erros.document` para associação direta ao campo do formulário.
@@ -87,3 +87,4 @@ Testes automatizados cobrem domínio, API, constraints PostgreSQL, segurança e 
 | 2026-07-29 | Venue passa a integrar o contexto de Organizações como unidade operacional. |
 | 2026-09-10 | Libera bootstrap self-service transacional e criação adicional por ADMIN contextual. |
 | 2026-09-10 | Padroniza duplicidade empresarial como `409` com `detail` e `erros.document`. |
+| 2026-11-10 | Trata CNPJ inválido como HTTP 400 com `erros.document` e preserva HTTP 409 para duplicidade. |
